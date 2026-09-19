@@ -9,19 +9,23 @@ failing before the corresponding implementation task begins.
 
 **Purpose**: Prove the toolchain and remote read before product architecture.
 
-- [ ] T001 Pin Flutter 3.47.5 and create `Makefile`, `.mise.toml`, and
+- [x] T001 Pin Flutter 3.47.5 and create `Makefile`, `.mise.toml`, and
   `pubspec.yaml` with `package:http` as the only runtime dependency.
 - [ ] T002 Generate the stock Flutter Android application in `lib/main.dart`,
   `android/`, and `test/app_smoke_test.dart`; add `make doctor` and prove a
-  debug launch on one API 29+ target.
-- [ ] T003 Write a bounded anonymous transport probe test first in
+  debug launch on one API 29+ target. The scaffold and doctor check are done;
+  the Android build/launch gate remains unverified per
+  `docs/acceptance/feasibility.md`.
+- [x] T003 Write a bounded anonymous transport probe test first in
   `tool/feasibility/yandere_probe_test.dart`, then implement
   `tool/feasibility/yandere_probe.dart`; record status, content type, redirect
   host, and normalized item count without response bodies.
-- [ ] T004 Record toolchain and transport outcomes in
+- [x] T004 Record toolchain and transport outcomes in
   `docs/acceptance/feasibility.md`; stop feature work if either gate fails.
 
-**Checkpoint**: Flutter launches and the Dart client decodes one allowed post.
+**Checkpoint**: The Dart client decodes one anonymous post. Android launch is
+still a blocking environment gate until an API 29+ target and accepted SDK
+toolchain are available.
 
 ## Phase 2: Foundational contracts
 
