@@ -1,7 +1,7 @@
 # Validation quickstart: yande.re core journey
 
-This guide becomes executable as implementation tasks land. Until then, missing
-commands are expected and are not evidence that a story passes.
+This guide describes the executable bootstrap and deterministic gates. Story
+work remains blocked until the Android feasibility gate is verified.
 
 ## Prerequisites
 
@@ -14,10 +14,10 @@ commands are expected and are not evidence that a story passes.
 ```bash
 mise install
 make doctor
-make feasibility
+make probe
 ```
 
-`make feasibility` must prove both gates before feature work:
+The bootstrap must prove both gates before feature work:
 
 1. a minimal Dart client receives and decodes one anonymous yande.re post page;
 2. a stock Flutter application builds and launches on the chosen Android target.
@@ -65,6 +65,7 @@ media, device identifiers, account data, cookies, or credentials.
 
 ## Expected milestone result
 
-On the accepted Android target, the owner can open Latte, browse safe and
-questionable yande.re posts, search an opaque tag expression, inspect a post,
-save one chosen variant to the public Latte album, and repeat without overwrite.
+On the accepted Android target, the owner can open Latte, browse all ratings by
+default, optionally enable Safe Mode to filter explicit posts, search an opaque
+tag expression, inspect a post, save one chosen variant to the public Latte
+album, and repeat without overwrite.
