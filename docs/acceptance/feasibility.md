@@ -43,8 +43,9 @@ client. The live probe is manual evidence and is not part of `make check`.
 
 ## Android build and launch boundary
 
-`adb devices -l` returned no connected Android device. No emulator executable or
-API 29+ target was available to launch.
+`adb devices -l` returned no connected Android device. `flutter devices` found
+only the macOS desktop target, and `flutter emulators` found no emulator
+sources, so no API 29+ target was available to launch.
 
 `flutter build apk --debug` could not reach compilation because the local SDK
 requires an unaccepted `ndk;28.2.13676358` license. No SDK license was accepted
