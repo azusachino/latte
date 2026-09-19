@@ -93,7 +93,7 @@ capabilities remain absent and unadvertised.
 | Moebooru common code absorbs yande.re policy | High | Keep site configuration and policy in `yandere`; shared code owns only observed wire mechanics |
 | Flutter dependencies choose the architecture before behavior is known | Medium | Start with SDK tooling and `package:http`; add packages only against an accepted slice need |
 | Download semantics differ across host platforms | Medium | Select one first host before the slice and hide platform behavior behind one save boundary |
-| Explicit content leaks into an unsafe default | High | Make content policy an owner-approved input before live browsing; keep fixtures minimal and non-sensitive |
+| Explicit content leaks into an unsafe default | High | Default to the owner-approved all-ratings mode; make Safe Mode an explicit opt-in filter and keep fixtures minimal and non-sensitive |
 
 ## Evidence gates
 
@@ -107,7 +107,8 @@ capabilities remain absent and unadvertised.
 ## Open decisions before Task 1
 
 - First Flutter host.
-- Default content policy.
+- Content policy is settled: all ratings by default; Safe Mode filters explicit
+  content.
 - Download destination behavior.
 - Approval of the proposed public test seams.
 

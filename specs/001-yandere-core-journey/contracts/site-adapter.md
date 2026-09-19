@@ -30,7 +30,11 @@ host immediately before transfer.
 ## Success rules
 
 - Returned posts belong to `descriptor.id`.
-- Explicit-rated posts never cross the production adapter boundary.
+- Default mode permits all normalized ratings, including explicit. When Safe Mode
+  is active, explicit-rated posts are filtered before the production adapter
+  returns presentation data.
+- A Safe Mode query that explicitly requests explicit-rated content returns a
+  structured policy conflict; default mode preserves the owner's expression.
 - Page order matches the site result after invalid/duplicate items are handled.
 - Missing optional metadata stays absent.
 - Continuation is opaque outside the adapter.

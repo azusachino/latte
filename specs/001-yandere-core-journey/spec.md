@@ -28,7 +28,8 @@ pages, open a post, return, and observe the same feed position and post order.
 
 1. **Given** the first page is available, **When** the owner opens Latte,
    **Then** preview images appear in a scrollable image-first grid with stable
-   post identity and no explicit-rated posts.
+   post identity; explicit-rated posts are visible because Safe Mode is off by
+   default.
 2. **Given** the owner reaches the feed boundary, **When** another page is
    available, **Then** Latte appends it without duplicating existing posts or
    replacing the visible feed.
@@ -44,6 +45,9 @@ pages, open a post, return, and observe the same feed position and post order.
 6. **Given** system light/dark appearance, enlarged text, reduced motion, or a
    changed Android window width, **When** the owner uses the flow, **Then** its
    Material 3 hierarchy remains usable without clipped actions or lost state.
+7. **Given** Safe Mode is enabled, **When** a page contains explicit-rated
+   posts, **Then** Latte omits those posts from discovery and search results and
+   keeps the mode visibly enabled.
 
 ---
 
@@ -128,8 +132,10 @@ without changing the original file.
   ID and MUST deduplicate by that identity.
 - **FR-003**: Latte MUST present a paged, image-first discovery grid and preserve
   its order and position across detail navigation during the active session.
-- **FR-004**: Latte MUST exclude explicit-rated content from discovery, search,
-  detail, and save in this milestone; safe and questionable content are allowed.
+- **FR-004**: Latte MUST show safe, questionable, and explicit-rated content by
+  default. When the owner enables Safe Mode, Latte MUST filter explicit-rated
+  content from discovery and search and MUST prevent opening or saving an
+  explicit-rated post through that mode.
 - **FR-005**: Latte MUST distinguish initial loading, next-page loading, empty,
   no-results, transport-unavailable, throttled, malformed-response,
   remote-unavailable, and retryable states; it MUST NOT claim the device is
@@ -142,7 +148,8 @@ without changing the original file.
   content rules, and page mechanics out of product presentation concepts.
 - **FR-009**: Latte MUST accept the owner's complete yande.re tag expression as
   site-owned syntax and MUST preserve spaces, negative terms, and meta-tags. A
-  query that requests explicit content MUST return a policy-conflict result.
+  query that requests explicit content MUST return a policy-conflict result only
+  when Safe Mode is enabled; default mode MUST preserve the expression.
 - **FR-010**: Latte MUST reset result pagination when search intent changes and
   MUST prevent a superseded response from replacing current results.
 - **FR-011**: Latte MUST restore the prior discovery state when a search is
@@ -178,6 +185,10 @@ without changing the original file.
 - **FR-023**: Every interactive Material surface MUST expose a semantic label,
   visible focus/pressed/disabled state, and a target of at least 48 by 48
   logical pixels; status MUST never be communicated by color or motion alone.
+- **FR-024**: Latte MUST expose Safe Mode as an opt-in Material 3 filter with a
+  clear selected/unselected state. Changing the mode MUST replace the active
+  content intent from the beginning and MUST NOT leave explicit-rated results
+  visible while the mode is enabled.
 
 ### Key Entities
 
@@ -231,8 +242,9 @@ without changing the original file.
   future decisions.
 - Network access is required for remote discovery and media; transport failure
   preserves the current in-memory view and does not imply an offline catalog.
-- Safe and questionable posts meet the intended first content policy; explicit
-  content is excluded rather than guarded by an age gate in this milestone.
+- All ratings, including explicit, are visible by default for this owner-only
+  client. Safe Mode is an opt-in filter for owners who do not want explicit
+  content in the active browse or search result.
 - A user-visible Latte album/directory is preferable to asking for a destination
   on every save.
 - yande.re remains an external dependency with no availability or compatibility

@@ -27,7 +27,7 @@ failing before the corresponding implementation task begins.
 
 **Purpose**: Establish public seams and Material baseline shared by all stories.
 
-- [ ] T005 [P] Write equality, policy, and state tests in
+- [ ] T005 [P] Write equality, content-policy, Safe Mode, and state tests in
   `test/domain/post_test.dart` and `test/domain/explore_state_test.dart` before
   implementing normalized values in `lib/src/domain/`.
 - [ ] T006 [P] Write adapter contract tests in
@@ -85,11 +85,12 @@ conditions, return, and observe the same ordered feed and position.
 policy bypass.
 
 **Independent Test**: Submit a negative/meta-tag expression, replace it while
-loading, reject explicit-content intent, and clear back to discovery.
+loading, reject explicit-content intent only in Safe Mode, and clear back to
+discovery.
 
 ### Tests for User Story 2
 
-- [ ] T017 [P] [US2] Write failing query preservation and explicit-policy
+- [ ] T017 [P] [US2] Write failing query preservation and Safe Mode explicit-policy
   conflict tests in `test/sites/yandere/yandere_search_test.dart`.
 - [ ] T018 [P] [US2] Write failing replacement-race, no-results, and
   clear-to-discovery tests in `test/features/explore/search_controller_test.dart`.
@@ -181,6 +182,6 @@ and prove the original bytes remain unchanged.
 | FR-012–FR-016 | T023–T029 |
 | FR-018 | T006, T009, T033 |
 | FR-019–FR-020 | T001–T004, T023, T032 |
-| FR-021–FR-023 | T007, T012, T015–T016, T019, T026, T029–T031 |
+| FR-021–FR-024 | T007, T012, T015–T016, T019, T026, T029–T031 |
 | SC-001–SC-007, SC-009 | T016, T022–T032, T034 |
 | SC-008 | T033 |

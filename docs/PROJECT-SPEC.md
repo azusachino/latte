@@ -199,8 +199,9 @@ the first abstraction.
 
 1. Which Flutter host is the first owner-verified target: Android, macOS, or
    another single platform?
-2. Should explicit-rated content be hidden by default, configurable, or allowed
-   unfiltered for this owner-only client?
+2. Resolved by owner follow-up: explicit-rated content is allowed by default;
+   Safe Mode is an opt-in filter for browse/search and blocks explicit detail/save
+   paths.
 3. Should the first download slice use a save dialog every time or one
    configured library directory?
 4. After the anonymous milestone, is the next capability pools or authenticated

@@ -5,9 +5,9 @@ Latte is a planned Dart/Flutter image-board client. Its first supported site is
 site can be added without teaching the UI that site's wire format, pagination,
 authentication, or download rules.
 
-The repository is intentionally documentation-only while the rewrite contract
-is reviewed. No implementation should begin until the active Spec Kit feature,
-its owner checklist, and its feasibility gates are accepted.
+The active rewrite contract is recorded in Spec Kit artifacts. Implementation
+begins with bounded feasibility gates; feature work remains blocked until the
+Dart transport and Android target checks pass.
 
 ## Start here
 
@@ -31,4 +31,5 @@ The first slice is anonymous and read-only: load one page of yande.re posts,
 render it with a token-owned Material 3 theme, and expose honest loading, empty,
 malformed-response, and transport-failure states. Search, detail, and downloads
 follow as separate red-green-refactor slices. Authentication, favorites, pools,
-and a second real site stay out of the first milestone.
+and a second real site stay out of the first milestone. All ratings are visible
+by default; Safe Mode is an opt-in filter for explicit content.

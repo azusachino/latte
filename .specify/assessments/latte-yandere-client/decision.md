@@ -40,5 +40,8 @@ conditions before feature implementation expands.
   minutes; every failure class has deterministic acceptance coverage; no
   deferred subsystem appears in production code; the site boundary accepts a
   test adapter without presentation changes.
-- **Carried-forward open questions**: exact default content policy and whether
-  the first save experience uses one library directory or per-save selection.
+- **Resolved owner decision**: all ratings, including explicit, are visible by
+  default; Safe Mode is an opt-in filter that removes explicit content from
+  browse/search and blocks its detail/save path.
+- **Carried-forward open question**: whether the first save experience uses one
+  library directory or per-save selection.

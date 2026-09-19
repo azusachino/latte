@@ -41,10 +41,10 @@ host bridge for public image publication
 seconds on stable broadband; no fixture-backed interaction stall over 100 ms;
 bounded page size at or below the site's documented limit of 100
 
-**Constraints**: anonymous/read-only remote use except local saves; safe and
-questionable content only; no database/background queue/authentication; no
-arbitrary URL or path authority from widgets; one bounded retry for retryable
-reads
+**Constraints**: anonymous/read-only remote use except local saves; all ratings
+are visible by default and opt-in Safe Mode filters explicit content; no
+database/background queue/authentication; no arbitrary URL or path authority from
+widgets; one bounded retry for retryable reads
 
 **Scale/Scope**: one owner, one production site, three product screens, one
 active feed/search result set, one foreground save at a time

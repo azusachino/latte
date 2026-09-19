@@ -13,10 +13,11 @@ and evidence boundaries before implementation
   product, with search as the only additional milestone capability. [Scope]
 - [ ] CHK002 Android API 29+ and yande.re-only are acceptable first support
   claims. [Assumption]
-- [ ] CHK003 Allowing safe and questionable content while rejecting explicit
-  content matches the intended owner experience. [Spec §FR-004]
-- [ ] CHK004 Rejecting explicit-content query conflicts is preferable to
-  silently rewriting the owner's expression. [Spec §FR-009]
+- [ ] CHK003 Showing explicit content by default while offering Safe Mode as an
+  opt-in filter matches the intended owner experience. [Spec §FR-004]
+- [ ] CHK004 In Safe Mode, rejecting explicit-content query conflicts is
+  preferable to silently rewriting the owner's expression; default mode keeps
+  the expression unchanged. [Spec §FR-009]
 - [ ] CHK005 Authentication, favorites, pools, uploads, history, background
   queues, second sites, and non-Android targets are correctly deferred.
   [Spec §FR-018]

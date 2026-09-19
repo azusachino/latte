@@ -22,7 +22,8 @@ platform payloads are private boundary types and are not domain entities.
 - `tags`: ordered normalized strings preserving site spelling.
 - `preview`: optional usable `MediaVariant`.
 - `score`, `width`, `height`, `source`, `createdAt`: optional.
-- An explicit-rated summary is rejected by milestone policy before presentation.
+- Explicit-rated summaries are valid presentation data in default mode. Safe
+  Mode filters them before presentation and before a save request is accepted.
 - A summary without usable preview media may be omitted from the grid but remains
   a structured adapter result for diagnostics.
 
@@ -46,7 +47,9 @@ platform payloads are private boundary types and are not domain entities.
 
 - `source`: `discovery | tagSearch`.
 - `expression`: required for tag search; trimmed but otherwise opaque.
-- `contentPolicy`: fixed to allow safe/questionable and reject explicit.
+- `contentPolicy`: `all` by default, or `safe` when Safe Mode is enabled. `all`
+  preserves all normalized ratings; `safe` filters explicit-rated posts and
+  rejects explicit-content query intent.
 - `continuation`: optional adapter-owned value.
 - Control characters and empty submitted searches are invalid.
 

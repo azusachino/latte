@@ -14,6 +14,10 @@ Explore
 There is no account, library-history, settings, pools, or site-switcher screen in
 this milestone.
 
+Safe Mode is an opt-in content filter, not a separate destination. It is off by
+default, so explicit-rated posts remain visible to the owner unless the Material
+3 Safe Mode filter is selected.
+
 ## Explore screen
 
 - Material 3 medium top app bar: Latte title and one labelled search action.
@@ -26,6 +30,9 @@ this milestone.
   already visible posts.
 - Initial empty/failure states occupy the content region with one concise reason
   and one valid next action.
+- The Explore and Search surfaces expose a labelled Material 3 Safe Mode filter
+  with a clear selected/unselected state. Selecting it restarts the active query
+  from the first page and removes explicit-rated results.
 
 ## Detail screen
 
@@ -34,6 +41,8 @@ this milestone.
 - Tags wrap below the facts and remain selectable as text; tag-to-search is
   deferred unless separately specified.
 - Media quality and save action remain reachable without obscuring the image.
+- Safe Mode never opens or saves an explicit-rated post; default mode does not
+  hide it.
 - Back restores prior feed/query and scroll position.
 
 ## Save interaction

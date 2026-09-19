@@ -33,8 +33,8 @@
 
 ## Notes
 
-- Product decisions made from the assessment handoff: Android-first; safe and
-  questionable content allowed; explicit content excluded; images save to a
-  user-visible Latte album/directory.
+- Product decisions made from the assessment handoff and owner follow-up:
+  Android-first; all ratings visible by default; opt-in Safe Mode filters
+  explicit content; images save to a user-visible Latte album/directory.
 - The transport and Android build gates remain functional requirements rather
   than unresolved clarifications.
