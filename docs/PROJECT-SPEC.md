@@ -1,5 +1,9 @@
 # Spec: Latte yande.re foundation
 
+> Historical input, superseded on 2026-09-20 by
+> `specs/001-yandere-core-journey/spec.md`. Do not maintain this as a parallel
+> execution specification.
+
 Status: draft for owner review. Implementation is not approved by this document.
 
 ## Assumptions

@@ -1,0 +1,239 @@
+# Feature Specification: yande.re core journey
+
+**Feature Branch**: `docs/dart-rewrite-plan`
+
+**Created**: 2026-09-20
+
+**Status**: Draft for owner approval
+
+**Input**: Assessment handoff from
+`.specify/assessments/latte-yandere-client/decision.md`
+
+## User Scenarios & Testing
+
+### User Story 1 - Discover and inspect art (Priority: P1)
+
+As the owner, I open Latte and see a calm, image-first feed of recent yande.re
+posts. I can continue through the feed and open a post to inspect its image,
+rating, dimensions, source, score, and tags without losing my place.
+
+**Why this priority**: Discovery and inspection are the smallest useful product.
+They prove remote access, normalization, visual hierarchy, and navigation before
+search or local side effects are added.
+
+**Independent Test**: Start Latte with a deterministic post catalog, browse two
+pages, open a post, return, and observe the same feed position and post order.
+
+**Acceptance Scenarios**:
+
+1. **Given** the first page is available, **When** the owner opens Latte,
+   **Then** preview images appear in a scrollable image-first grid with stable
+   post identity and no explicit-rated posts.
+2. **Given** the owner reaches the feed boundary, **When** another page is
+   available, **Then** Latte appends it without duplicating existing posts or
+   replacing the visible feed.
+3. **Given** a card is visible, **When** the owner opens it, **Then** Latte shows
+   the best usable inspection image and all available normalized metadata while
+   clearly omitting unavailable fields.
+4. **Given** the detail view is open, **When** the owner returns, **Then** the
+   feed restores the prior position and order.
+5. **Given** the remote site is empty, malformed, throttled, unavailable, or the
+   request has no usable network path, **When** a page is requested, **Then**
+   Latte shows a truthful, actionable state and never presents failure as an
+   empty success.
+6. **Given** system light/dark appearance, enlarged text, reduced motion, or a
+   changed Android window width, **When** the owner uses the flow, **Then** its
+   Material 3 hierarchy remains usable without clipped actions or lost state.
+
+---
+
+### User Story 2 - Search by yande.re tags (Priority: P2)
+
+As the owner, I enter the tag expression I already use on yande.re and see a
+separate paged result set. Negative terms and yande.re meta-tags retain their
+meaning, and clearing the query returns me to discovery.
+
+**Why this priority**: Search turns passive browsing into purposeful discovery,
+but the app remains useful as a feed viewer without it.
+
+**Independent Test**: Enter a multi-term expression containing a negative tag,
+page through its results, replace it with another query, and clear it without a
+stale response overwriting the latest intent.
+
+**Acceptance Scenarios**:
+
+1. **Given** the discovery feed is visible, **When** the owner submits a valid
+   tag expression, **Then** Latte shows results for that complete expression and
+   starts its pagination from the beginning.
+2. **Given** one search is loading, **When** the owner submits another query,
+   **Then** an older response cannot replace the newer query's state.
+3. **Given** a search has no matches, **When** it completes, **Then** Latte shows
+   a search-specific no-results state and keeps the query editable.
+4. **Given** search results are visible, **When** the owner clears the query,
+   **Then** the discovery feed and its prior position return.
+
+---
+
+### User Story 3 - Keep one image locally (Priority: P3)
+
+As the owner inspecting a post, I choose one available media quality and save it
+to Latte's user-visible image library. Latte reports progress and the final
+location, and it never silently overwrites an existing file.
+
+**Why this priority**: Saving completes the intended find-inspect-keep loop but
+adds a device side effect, so it follows a proven read-only experience.
+
+**Independent Test**: From a deterministic post detail, save one variant, open
+or locate the result, repeat the request, and observe an existing-file outcome
+without changing the original file.
+
+**Acceptance Scenarios**:
+
+1. **Given** a post exposes multiple media variants, **When** the owner chooses
+   one, **Then** Latte labels the available choices by useful quality information
+   and saves only the chosen variant.
+2. **Given** a save is in progress, **When** the owner remains on the detail
+   screen, **Then** Latte communicates progress and prevents an accidental
+   duplicate request.
+3. **Given** the target file already exists, **When** the same post and variant
+   are saved again, **Then** Latte reports the existing result and leaves the
+   file unchanged.
+4. **Given** media resolution, transfer, or device storage fails, **When** the
+   save terminates, **Then** Latte removes incomplete output and reports a
+   retryable or terminal failure without losing the current post.
+
+### Edge Cases
+
+- A response contains a post without any usable preview or inspection media.
+- The same post appears on adjacent remote pages.
+- Optional dimensions, source, score, tags, or media sizes are absent or null.
+- A post is deleted or becomes unavailable between feed and detail/save.
+- A remote page succeeds after an older request has already been superseded.
+- The remote service returns custom throttling, standard throttling, an HTML
+  error page, malformed JSON, or a successful response with no posts.
+- A media URL redirects to a host or scheme not accepted for the selected site.
+- Device storage is full, access is revoked, or the app closes mid-save.
+- System appearance, text scale, reduced-motion preference, or window width
+  changes while feed/detail state is active.
+- The user enters only whitespace, control characters, or a query too long for
+  safe submission.
+
+## Requirements
+
+### Functional Requirements
+
+- **FR-001**: Latte MUST launch into the most recently requested discovery feed
+  for the active session without requiring an account.
+- **FR-002**: Latte MUST identify every remote post by both site and remote post
+  ID and MUST deduplicate by that identity.
+- **FR-003**: Latte MUST present a paged, image-first discovery grid and preserve
+  its order and position across detail navigation during the active session.
+- **FR-004**: Latte MUST exclude explicit-rated content from discovery, search,
+  detail, and save in this milestone; safe and questionable content are allowed.
+- **FR-005**: Latte MUST distinguish initial loading, next-page loading, empty,
+  no-results, transport-unavailable, throttled, malformed-response,
+  remote-unavailable, and retryable states; it MUST NOT claim the device is
+  offline when an HTTP failure cannot establish that fact.
+- **FR-006**: Latte MUST stop automatic retry after one bounded retry for an
+  explicitly retryable read and MUST offer owner-initiated retry afterward.
+- **FR-007**: Latte MUST display only normalized metadata and MUST omit missing
+  optional values rather than inventing replacements.
+- **FR-008**: Latte MUST keep remote wire fields, base URLs, status codes,
+  content rules, and page mechanics out of product presentation concepts.
+- **FR-009**: Latte MUST accept the owner's complete yande.re tag expression as
+  site-owned syntax and MUST preserve spaces, negative terms, and meta-tags. A
+  query that requests explicit content MUST return a policy-conflict result.
+- **FR-010**: Latte MUST reset result pagination when search intent changes and
+  MUST prevent a superseded response from replacing current results.
+- **FR-011**: Latte MUST restore the prior discovery state when a search is
+  cleared during the same session.
+- **FR-012**: Latte MUST expose only media variants actually available for a
+  post and MUST label them with known quality, dimensions, and size.
+- **FR-013**: A save request MUST originate from a normalized post reference and
+  selected variant; the presentation layer MUST NOT supply an arbitrary remote
+  URL as download authority.
+- **FR-014**: Latte MUST save completed images into a user-visible Latte album
+  or directory and report the resulting album, display name, and a
+  system-openable content reference; no filesystem path is promised.
+- **FR-015**: Latte MUST use deterministic, collision-resistant filenames and
+  MUST return an existing-file outcome instead of overwriting.
+- **FR-016**: Latte MUST remove or hide incomplete output after a failed save or
+  interrupted publication. User-initiated save cancellation is deferred.
+- **FR-017**: Latte MUST accept a deterministic substitute site for acceptance
+  tests without changing discovery, search, detail, or save presentation.
+- **FR-018**: Latte MUST NOT expose authentication, favorites, pools, uploads,
+  persistent history, background queues, or another production site in this
+  milestone.
+- **FR-019**: Latte MUST record a dated, redacted live receipt before claiming
+  yande.re or Android support.
+- **FR-020**: Feature implementation MUST remain blocked until a Dart transport
+  probe fetches and decodes the anonymous post route and a stock Android build
+  runs on an emulator or device.
+- **FR-021**: Latte MUST use Material 3 components and semantic color,
+  typography, shape, elevation, spacing, and motion roles for owner-facing
+  Android UI; visual styling MUST NOT be duplicated as arbitrary widget values.
+- **FR-022**: Latte MUST support system light and dark appearance, text scaling,
+  reduced motion, and compact through expanded Android window widths without
+  hiding or clipping the core browse, search, detail, and save actions.
+- **FR-023**: Every interactive Material surface MUST expose a semantic label,
+  visible focus/pressed/disabled state, and a target of at least 48 by 48
+  logical pixels; status MUST never be communicated by color or motion alone.
+
+### Key Entities
+
+- **Site**: A remote platform identity and its verified product capabilities.
+- **Post Reference**: The unique pair of site identity and remote post ID.
+- **Post Summary**: Feed/search identity, rating, preview, score, dimensions,
+  tags, and other optional discovery metadata.
+- **Post Detail**: A post summary plus inspection metadata and available media
+  variants.
+- **Tag Query**: The owner's opaque site expression and its active result state.
+- **Continuation**: Adapter-owned information required to request another page.
+- **Media Variant**: One available preview, sample, JPEG, or original resource
+  with known quality metadata.
+- **Save Request**: A post reference plus chosen media variant and owner intent.
+- **Save Result**: Completed, existing, retryable failure, or terminal failure,
+  with an album, display name, and content reference only when usable.
+
+## Success Criteria
+
+### Measurable Outcomes
+
+- **SC-001**: The owner completes launch → browse → inspect → save on the first
+  supported Android device in under two minutes without prior instruction.
+- **SC-002**: Discovery and search show their first usable content or a truthful
+  terminal state within five seconds in at least 19 of 20 fixture-backed Android
+  integration runs; live timing is recorded separately and is not deterministic.
+- **SC-003**: Scrolling and opening/closing detail maintain responsive
+  interaction with no visible input stall longer than 100 milliseconds during
+  the fixture-backed acceptance journey.
+- **SC-004**: Every acceptance scenario and listed edge-case class has a
+  deterministic boundary, controller, or widget test; actual process death and
+  MediaStore behavior are additionally evidenced by the device receipt.
+- **SC-005**: The four-stage product flow runs unchanged against both the
+  production yande.re adapter and a deterministic substitute adapter.
+- **SC-006**: Repeating a successful save 20 times produces one usable local
+  file, 19 existing-file outcomes, and no overwritten or partial files.
+- **SC-007**: A redacted live receipt proves anonymous browse, tag search, detail
+  media retrieval, and one local save on the claimed Android target.
+- **SC-008**: Spec Kit's first-milestone evaluation records time spent per
+  artifact stage, pre-code defects found, post-code requirement changes, and a
+  seeded inconsistency result, enabling an explicit keep/simplify/remove
+  decision after convergence.
+- **SC-009**: Golden/widget acceptance at compact and expanded widths, light and
+  dark appearance, 200% text scale, and reduced motion shows no clipped primary
+  action, unreadable text, unexplained color-only state, or layout exception.
+
+## Assumptions
+
+- The repository owner is the only required user for the first milestone.
+- Android is the first supported product platform; other Flutter targets are
+  future decisions.
+- Network access is required for remote discovery and media; transport failure
+  preserves the current in-memory view and does not imply an offline catalog.
+- Safe and questionable posts meet the intended first content policy; explicit
+  content is excluded rather than guarded by an age gate in this milestone.
+- A user-visible Latte album/directory is preferable to asking for a destination
+  on every save.
+- yande.re remains an external dependency with no availability or compatibility
+  guarantee; unsupported behavior is surfaced, not bypassed.

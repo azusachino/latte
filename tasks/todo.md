@@ -1,5 +1,8 @@
 # Latte yande.re foundation tasks
 
+> Historical input, superseded on 2026-09-20 by
+> `specs/001-yandere-core-journey/tasks.md`. Do not execute this checklist.
+
 These tasks are proposals, not authorization to implement. Each implementation
 task is a vertical red-green slice and should touch no more than five files.
 
