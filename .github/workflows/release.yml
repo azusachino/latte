@@ -26,6 +26,9 @@ jobs:
         with:
           version: 2026.5.12
 
+      - name: Accept Android SDK licenses
+        run: yes | mise exec -- sdkmanager --licenses >/dev/null
+
       - name: Run tests
         run: make check
 
