@@ -52,4 +52,23 @@ void main() {
     );
     expect(requests, 0);
   });
+
+  test('adds an adapter-owned explicit exclusion in Safe Mode', () async {
+    late http.Request request;
+    final client = MockClient((incoming) async {
+      request = incoming;
+      return http.Response(
+        '[]',
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+    const expression = 'artist_name -tag:example order:score';
+
+    await YandeAdapter(client: client).queryPosts(
+      PostQuery.tagSearch(expression, contentPolicy: ContentPolicy.safe),
+    );
+
+    expect(request.url.queryParameters['tags'], '$expression -rating:explicit');
+  });
 }
