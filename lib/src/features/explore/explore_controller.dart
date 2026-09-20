@@ -10,6 +10,7 @@ class ExploreController extends ChangeNotifier {
 
   final SiteAdapter adapter;
   ExploreState _state = ExploreState.initial();
+  ExploreState? _discoveryState;
   ExploreState? _feedState;
   var _requestGeneration = 0;
 
@@ -27,6 +28,7 @@ class ExploreController extends ChangeNotifier {
       final state = page.posts.isEmpty
           ? ExploreState.empty(query)
           : ExploreState.content(query, page.posts, next: page.next);
+      _discoveryState = state;
       _feedState = state;
       _setState(state);
     } on Object catch (error) {
@@ -38,6 +40,41 @@ class ExploreController extends ChangeNotifier {
   Future<void> setSafeMode(bool enabled) => loadDiscovery(
     contentPolicy: enabled ? ContentPolicy.safe : ContentPolicy.all,
   );
+
+  Future<void> search(String expression) async {
+    final policy =
+        _state.query?.contentPolicy ??
+        _feedState?.query?.contentPolicy ??
+        ContentPolicy.all;
+    final query = PostQuery.tagSearch(expression, contentPolicy: policy);
+    final generation = ++_requestGeneration;
+    _setState(ExploreState.replacingQuery(query));
+    try {
+      final page = await adapter.queryPosts(query);
+      if (generation != _requestGeneration) return;
+      final state = page.posts.isEmpty
+          ? ExploreState.noResults(query)
+          : ExploreState.content(query, page.posts, next: page.next);
+      _feedState = state;
+      _setState(state);
+    } on Object catch (error) {
+      if (generation != _requestGeneration) return;
+      _setState(ExploreState.failure(query, _failure(error)));
+    }
+  }
+
+  Future<void> clearSearch() async {
+    ++_requestGeneration;
+    final discovery = _discoveryState;
+    if (discovery != null) {
+      _feedState = discovery;
+      _setState(discovery);
+      return;
+    }
+    await loadDiscovery(
+      contentPolicy: _state.query?.contentPolicy ?? ContentPolicy.all,
+    );
+  }
 
   Future<void> loadNextPage() async {
     final feed = _feedState ?? _state;
