@@ -106,14 +106,25 @@ class YandeAdapter implements SiteAdapter {
       path: path.path,
       queryParameters: path.queryParameters,
     );
+    var attempt = 0;
     try {
-      final response = await _client
-          .get(uri, headers: const {'accept': 'application/json'})
-          .timeout(const Duration(seconds: 8));
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        return response;
+      while (true) {
+        final response = await _client
+            .get(uri, headers: const {'accept': 'application/json'})
+            .timeout(const Duration(seconds: 8));
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          return response;
+        }
+        final failure = _failureForStatus(response);
+        if (attempt == 0 && failure.retryable) {
+          attempt++;
+          if (failure.retryAfter case final delay? when delay > Duration.zero) {
+            await Future<void>.delayed(delay);
+          }
+          continue;
+        }
+        throw SiteFailureException(failure);
       }
-      throw SiteFailureException(_failureForStatus(response));
     } on SiteFailureException {
       rethrow;
     } on TimeoutException {

@@ -138,4 +138,30 @@ void main() {
       ),
     );
   });
+
+  test('retries one throttled read and then returns the successful page', () async {
+    var calls = 0;
+    final client = MockClient((_) async {
+      calls++;
+      if (calls == 1) {
+        return http.Response(
+          'slow down',
+          429,
+          headers: {'retry-after': '0'},
+        );
+      }
+      return http.Response(
+        '[]',
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+
+    final page = await YandeAdapter(client: client).queryPosts(
+      const PostQuery.discovery(),
+    );
+
+    expect(calls, 2);
+    expect(page.posts, isEmpty);
+  });
 }
