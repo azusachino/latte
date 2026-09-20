@@ -1,13 +1,15 @@
 # Latte
 
-Latte is a planned Dart/Flutter image-board client. Its first supported site is
+[![CI](https://github.com/azusachino/latte/actions/workflows/ci.yml/badge.svg)](https://github.com/azusachino/latte/actions/workflows/ci.yml)
+
+Latte is an early Dart/Flutter image-board client. Its first supported site is
 [yande.re](https://yande.re/); its application boundary is designed so another
 site can be added without teaching the UI that site's wire format, pagination,
 authentication, or download rules.
 
-The active rewrite contract is recorded in Spec Kit artifacts. Implementation
-begins with bounded feasibility gates; feature work remains blocked until the
-Dart transport and Android target checks pass.
+The active rewrite contract is recorded in Spec Kit artifacts. Material 3 is the
+visual implementation layer; Yande remains the authority for component
+composition, workflow, dataflow, and gestures.
 
 ## Start here
 
@@ -39,3 +41,21 @@ slice; the displayed aggregate score is never treated as the owner's vote.
 
 Ratings remain adapter/search metadata but are not rendered in the Latte UI.
 Latte has no Safe Mode filter or policy-driven query rewrite.
+
+## Development
+
+Latte uses the Flutter version pinned in `.mise.toml`:
+
+```bash
+mise install
+mise exec -- flutter pub get
+make check
+mise exec -- flutter build apk --debug
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution workflow and
+[CHANGELOG.md](CHANGELOG.md) for release history.
+
+## License
+
+Latte is released under the [MIT License](LICENSE).
