@@ -98,6 +98,38 @@ class YandePlugin(
 
     override fun getScore(postId: Long): Int? = userScores[postId]
 
+    // yande.re's vote API has no "what's my existing score" lookup, only
+    // POST /post/vote.json (which errors on a re-vote) -- but the favorite
+    // (score 3) tier is separately exposed via the users who favorited a
+    // post, so that's the one tier we can recover after login/restart.
+    override suspend fun refreshScore(postId: Long): Int? = withContext(Dispatchers.IO) {
+        val username = cachedUsername ?: return@withContext null
+        try {
+            val request = Request.Builder()
+                .url("$baseUrl/favorite/list_users.json?id=$postId")
+                .header("Accept", "application/json")
+                .build()
+
+            val response = httpClient.newCall(request).execute()
+            if (!response.isSuccessful) return@withContext null
+
+            val body = response.body?.string().orEmpty()
+            val favoritedUsers = FAVORITED_USERS_REGEX.find(body)
+                ?.groupValues?.get(1)
+                ?.split(",")
+                ?: emptyList()
+
+            if (favoritedUsers.any { it.equals(username, ignoreCase = true) }) {
+                userScores[postId] = 3
+                3
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     override fun logout() {
         storage.clearPlugin(id)
         cachedUsername = null
@@ -179,6 +211,7 @@ class YandePlugin(
 
         private val CSRF_REGEX_1 = Regex("""<meta[^>]*name=["']csrf-token["'][^>]*content=["']([^"']+)["']""", RegexOption.IGNORE_CASE)
         private val CSRF_REGEX_2 = Regex("""<meta[^>]*content=["']([^"']+)["'][^>]*name=["']csrf-token["']""", RegexOption.IGNORE_CASE)
+        private val FAVORITED_USERS_REGEX = Regex(""""favorited_users"\s*:\s*"([^"]*)"""")
 
         fun extractCsrfToken(html: String): String? {
             return CSRF_REGEX_1.find(html)?.groupValues?.get(1)

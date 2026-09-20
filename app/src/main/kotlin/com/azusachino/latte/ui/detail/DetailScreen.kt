@@ -56,6 +56,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -111,6 +112,17 @@ fun DetailScreen(
     var localScores by remember { mutableStateOf(mapOf<Long, Int>()) }
 
     val currentPost = posts.getOrNull(pagerState.currentPage)
+
+    // The site never tells the app "you already scored this post" up front --
+    // recover a favorite (score 3) set in a prior session or on the web.
+    LaunchedEffect(currentPost?.id, sitePlugin?.isLoggedIn) {
+        val post = currentPost
+        if (post != null && sitePlugin != null && sitePlugin.isLoggedIn && sitePlugin.getScore(post.id) == null) {
+            sitePlugin.refreshScore(post.id)?.let { refreshed ->
+                localScores = localScores + (post.id to refreshed)
+            }
+        }
+    }
 
     Box(
         modifier = modifier

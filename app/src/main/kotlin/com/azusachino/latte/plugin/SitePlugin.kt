@@ -35,5 +35,10 @@ interface SitePlugin {
 
     fun getScore(postId: Long): Int? = null
 
+    // Best-effort lookup for a score set outside this app process (a prior
+    // session, or the site's own web UI) -- null if the plugin has no way
+    // to check, or the post genuinely has no recorded score.
+    suspend fun refreshScore(postId: Long): Int? = null
+
     fun applyHeaders(builder: Request.Builder, url: String) {}
 }
