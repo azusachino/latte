@@ -23,37 +23,39 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
 
 ---
 
-## Milestone 0.0.2: Yande Authentication, Scoring Subsystem & UX Hardening
+## Milestone 0.0.2: Account Manager Center (yande.re & Pixiv Support), Scoring & UX Hardening
 
-### 1. UX Hardening & Interaction Fixes
-- **Search Result Swipe-to-Back**:
-  - Enable horizontal swipe-right in `_ExploreTabScaffold` to trigger `controller.clearSearch()`, returning to the prior discovery/popular position.
-  - Add explicit `leading: BackButton` to the search app bar.
-- **Detail Inspect Sheet Dragging Fix**:
-  - Add an explicit Material 3 drag handle pill (`showDragHandle` / top grab area) to `_DetailInspectSheet`.
-  - Increase collapsed peek height from 66px to 88px so FAB buttons do not consume all draggable surface area.
-- **Download Feedback & Confirmation Overhaul**:
-  - Replace the floating SnackBar (`bottom + 176`) with a clean Material 3 confirmation `AlertDialog` (`showDialog`) for "Already saved. Download again?".
-  - Remove redundant native Android Toasts from `MainActivity.kt`; let native system notifications own progress.
+> **Active Feature Spec**: [002 Account Manager Center](file:///Users/azusachino/Projects/project-github/harus-workstation/vendor/latte/specs/002-account-manager/spec.md)  
+> **Tasks**: [002 Tasks](file:///Users/azusachino/Projects/project-github/harus-workstation/vendor/latte/specs/002-account-manager/tasks.md)
 
-### 2. Cache Manager Subsystem
-- **Unified Disk Cache**:
-  - Standardize feed thumbnail rendering in `_RemoteArtwork` to use `ExtendedImage.network(..., cache: true)`.
-  - Enables offline thumbnail persistence across app restarts.
-- **Cache Management in Settings**:
-  - Expose a "Storage & Cache" section in `SettingsScreen`.
-  - Display real-time cached image size via `getCachedSizeBytes()`.
-  - Provide a "Clear image cache" action invoking `clearDiskCachedImages()` and `imageCache.clear()`.
+### 1. Account Manager Center Subsystem
+- **Dedicated Account Center UI**:
+  - Expose "Account Manager" under an "Accounts" section in `SettingsScreen`.
+  - Platform status cards for `yande.re` and `pixiv` displaying connection state (`Unauthenticated`, `Authenticated as <username>`, `Token Expired`).
+  - Sign-in dialogs with password visibility toggle and IME action management.
+- **Hardware-Backed Credential Security**:
+  - Use `androidx.security:security-crypto` (`EncryptedSharedPreferences`) backed by Android Keystore.
+  - Zero plaintext storage: yande.re stores `SHA1("choujin-steiner--$password--")`; Pixiv stores encrypted OAuth tokens.
+  - One-tap sign-out permanently purges credentials and session state.
 
-### 3. Yande.re Authentication & Scoring
-- **Credential Storage**:
-  - Implement secure storage for `username` and `password_hash = SHA1("choujin-steiner--$password--")`.
-  - Never store credentials in plaintext `SharedPreferences`.
-- **Capability Implementation**:
-  - Implement `AuthenticationCapability` (`signIn`, `signOut`) in `YandeAdapter`.
-  - Implement `PersonalScoreCapability` (`score(PostRef)`, `setScore(PostRef, int)`) calling `POST /post/vote.json`.
-  - Add interactive 0–3 star rating bar and Favorite toggle button (`score == 3`) in `_DetailInspectSheet`.
-  - Add `PostQuery.tagSearch('vote:3:$username')` to browse personal favorites.
+### 2. Yande.re Authentication & Scoring
+- **Credential Verification**:
+  - Verify credentials against yande.re before persisting account.
+- **Personal Scoring & Favorites**:
+  - Interactive 0–3 star rating bar and Favorite toggle (`score == 3`) in `DetailScreen`.
+  - Executes `POST /post/vote.json` with optimistic UI updates.
+  - Quick "My Favorites" filter in `ExploreScreen` querying `vote:3:<username>`.
+
+### 3. Pixiv Platform Foundation
+- **OAuth2 Token Management**:
+  - Token lifecycle management (access token, refresh token, expiry) in `PixivAuthAdapter`.
+- **Network Interceptor**:
+  - Automatic injection of `Referer: https://app-api.pixiv.net/` and `Authorization: Bearer <token>` for `*.pximg.net` and `app-api.pixiv.net` domains.
+  - Prepares the network layer for milestone 0.0.3 multi-platform browsing.
+
+### 4. UX Hardening (Principle VI)
+- Early thin-slice hardware verification on OnePlus 8 (`0cadf428`).
+- Smooth dialog/IME interactions and quiet inline error states.
 
 ---
 
