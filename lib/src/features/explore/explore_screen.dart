@@ -84,11 +84,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 scrollController: _scrollController,
               );
         final reducedMotion = MediaQuery.disableAnimationsOf(context);
-        return AnimatedSwitcher(
-          duration: reducedMotion
-              ? Duration.zero
-              : const Duration(milliseconds: 180),
-          child: KeyedSubtree(key: ValueKey(isDetail), child: child),
+        return PopScope<void>(
+          canPop: !isDetail,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop && isDetail) widget.controller.closeDetail();
+          },
+          child: AnimatedSwitcher(
+            duration: reducedMotion
+                ? Duration.zero
+                : const Duration(milliseconds: 180),
+            child: KeyedSubtree(key: ValueKey(isDetail), child: child),
+          ),
         );
       },
     );

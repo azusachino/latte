@@ -155,6 +155,26 @@ void main() {
     );
   });
 
+  testWidgets('platform back from detail restores the discovery grid', (
+    tester,
+  ) async {
+    final item = post('platform-back');
+    final controller = ExploreController(adapter: WidgetAdapter(posts: [item]));
+    await tester.pumpWidget(app(controller));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.bySemanticsLabel('Post platform-back, safe, 1200 × 800'),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('explore-detail')), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('explore-grid')), findsOneWidget);
+  });
+
   testWidgets(
     'fits expanded dark layouts with 200 percent text and reduced motion',
     (tester) async {
