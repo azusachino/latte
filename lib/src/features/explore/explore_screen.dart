@@ -71,6 +71,9 @@ class _ExploreScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final scaledLabel = MediaQuery.textScalerOf(context).scale(14);
+    final showSafeModeInBar = scaledLabel < 20 && width >= 340;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Latte'),
@@ -81,14 +84,11 @@ class _ExploreScaffold extends StatelessWidget {
             tooltip: 'Search',
             constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: FilterChip(
-              label: const Text('Safe Mode'),
-              selected: state.query?.contentPolicy == ContentPolicy.safe,
-              onSelected: controller.setSafeMode,
+          if (showSafeModeInBar)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: _SafeModeChip(state: state, controller: controller),
             ),
-          ),
         ],
       ),
       body: LayoutBuilder(
@@ -98,11 +98,44 @@ class _ExploreScaffold extends StatelessWidget {
             key: ValueKey(expanded ? 'expanded-explore' : 'compact-explore'),
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: _ExploreBody(controller: controller, state: state),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (!showSafeModeInBar) ...[
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: _SafeModeChip(
+                        state: state,
+                        controller: controller,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  Expanded(
+                    child: _ExploreBody(controller: controller, state: state),
+                  ),
+                ],
+              ),
             ),
           );
         },
       ),
+    );
+  }
+}
+
+class _SafeModeChip extends StatelessWidget {
+  const _SafeModeChip({required this.state, required this.controller});
+
+  final ExploreState state;
+  final ExploreController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return FilterChip(
+      label: const Text('Safe Mode'),
+      selected: state.query?.contentPolicy == ContentPolicy.safe,
+      onSelected: controller.setSafeMode,
     );
   }
 }

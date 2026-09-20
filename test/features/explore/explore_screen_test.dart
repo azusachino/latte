@@ -100,6 +100,26 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('keeps compact Safe Mode available at 200 percent text', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 640));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final controller = ExploreController(
+      adapter: WidgetAdapter(posts: [post('compact')]),
+    );
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+        child: app(controller),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Safe Mode'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 MaterialApp app(ExploreController controller) => MaterialApp(

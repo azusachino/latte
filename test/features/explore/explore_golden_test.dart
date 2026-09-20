@@ -63,7 +63,7 @@ Future<void> _pump(WidgetTester tester, ThemeData theme, Size size) async {
   );
   await tester.pumpWidget(
     MediaQuery(
-      data: const MediaQueryData(disableAnimations: true),
+      data: MediaQueryData(size: size, disableAnimations: true),
       child: MaterialApp(
         theme: theme,
         home: ExploreScreen(controller: controller),
