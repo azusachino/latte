@@ -9,7 +9,7 @@ import 'package:latte/src/features/explore/explore_screen.dart';
 import 'package:latte/src/sites/site_adapter.dart';
 
 void main() {
-  testWidgets('renders explicit discovery cards with labelled Safe Mode', (
+  testWidgets('renders explicit discovery cards without a content filter', (
     tester,
   ) async {
     final explicit = post('explicit', rating: PostRating.explicit);
@@ -22,8 +22,7 @@ void main() {
     expect(find.byKey(const ValueKey('explore-grid')), findsOneWidget);
     expect(find.bySemanticsLabel('Post safe, safe'), findsOneWidget);
     expect(find.bySemanticsLabel('Post explicit, explicit'), findsOneWidget);
-    expect(find.text('Safe Mode'), findsOneWidget);
-    expect(tester.getSemantics(find.text('Safe Mode')).label, 'Safe Mode');
+    expect(find.text('Safe Mode'), findsNothing);
   });
 
   testWidgets('shows loading, empty, and failure states with actionable copy', (
@@ -101,7 +100,7 @@ void main() {
     },
   );
 
-  testWidgets('keeps compact Safe Mode available at 200 percent text', (
+  testWidgets('keeps compact controls available at 200 percent text', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(320, 640));
@@ -117,7 +116,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Safe Mode'), findsOneWidget);
+    expect(find.text('Safe Mode'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

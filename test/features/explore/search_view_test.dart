@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latte/src/domain/explore_state.dart';
-import 'package:latte/src/domain/failure.dart';
 import 'package:latte/src/domain/post.dart';
 import 'package:latte/src/features/explore/explore_controller.dart';
 import 'package:latte/src/features/explore/search_view.dart';
@@ -66,18 +65,19 @@ void main() {
     expect(controller.state.posts.single.reference.remoteId, 'discovery');
   });
 
-  testWidgets('overflow exposes labelled search options', (tester) async {
+  testWidgets('overflow exposes no content-policy controls', (tester) async {
     final controller = ExploreController(adapter: SearchWidgetAdapter());
     await tester.pumpWidget(app(SearchView(controller: controller)));
 
-    await tester.tap(find.byTooltip('More options'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Safe Mode'), findsOneWidget);
+    expect(find.byTooltip('More options'), findsNothing);
+    expect(find.text('Safe Mode'), findsNothing);
   });
 
-  testWidgets('renders a structured search failure', (tester) async {
-    final controller = ExploreController(adapter: ErrorSearchAdapter());
+  testWidgets('forwards an explicit search expression without filtering', (
+    tester,
+  ) async {
+    final adapter = SearchWidgetAdapter();
+    final controller = ExploreController(adapter: adapter);
     await tester.pumpWidget(app(SearchView(controller: controller)));
 
     await tester.tap(find.byType(SearchBar));
@@ -86,10 +86,8 @@ void main() {
     await tester.testTextInput.receiveAction(TextInputAction.search);
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('Safe Mode cannot search for explicit content'),
-      findsOneWidget,
-    );
+    expect(adapter.queries.single.expression, 'rating:explicit');
+    expect(controller.state.status, ExploreStatus.content);
   });
 }
 
@@ -128,23 +126,4 @@ class SearchWidgetAdapter implements SiteAdapter {
     PostRef reference,
     MediaVariantId variant,
   ) => throw UnimplementedError();
-}
-
-class ErrorSearchAdapter extends SearchWidgetAdapter {
-  @override
-  Future<PostPage> queryPosts(PostQuery query) {
-    queries.add(query);
-    if (query.source == PostQuerySource.tagSearch) {
-      return Future.error(
-        const SiteFailureException(
-          SiteFailure(
-            kind: SiteFailureKind.policyConflict,
-            retryable: false,
-            message: 'Safe Mode cannot search for explicit content',
-          ),
-        ),
-      );
-    }
-    return super.queryPosts(query);
-  }
 }

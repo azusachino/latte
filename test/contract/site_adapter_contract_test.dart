@@ -15,16 +15,17 @@ void main() {
     expect(adapter.descriptor.displayName, 'Fake Site');
   });
 
-  test('query accepts opaque intent and applies content policy', () async {
+  test('query accepts opaque intent and preserves every rating', () async {
     final page = await adapter.queryPosts(
-      PostQuery.tagSearch(
-        'artist_name -tag:example',
-        contentPolicy: ContentPolicy.safe,
-      ),
+      PostQuery.tagSearch('artist_name -tag:example rating:explicit'),
     );
 
-    expect(adapter.lastQuery?.expression, 'artist_name -tag:example');
-    expect(page.posts, isEmpty);
+    expect(
+      adapter.lastQuery?.expression,
+      'artist_name -tag:example rating:explicit',
+    );
+    expect(page.posts, hasLength(1));
+    expect(page.posts.single.rating, PostRating.explicit);
     expect(page.next, isNull);
   });
 

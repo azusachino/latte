@@ -111,9 +111,6 @@ class _ExploreScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    final scaledLabel = MediaQuery.textScalerOf(context).scale(14);
-    final showSafeModeInBar = scaledLabel < 20 && width >= 340;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Latte'),
@@ -124,11 +121,6 @@ class _ExploreScaffold extends StatelessWidget {
             tooltip: 'Search',
             constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
           ),
-          if (showSafeModeInBar)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: _SafeModeChip(state: state, controller: controller),
-            ),
         ],
       ),
       body: LayoutBuilder(
@@ -142,16 +134,6 @@ class _ExploreScaffold extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   searchView,
-                  if (!showSafeModeInBar) ...[
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: _SafeModeChip(
-                        state: state,
-                        controller: controller,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
                   Expanded(
                     child: _ExploreBody(
                       controller: controller,
@@ -165,22 +147,6 @@ class _ExploreScaffold extends StatelessWidget {
           );
         },
       ),
-    );
-  }
-}
-
-class _SafeModeChip extends StatelessWidget {
-  const _SafeModeChip({required this.state, required this.controller});
-
-  final ExploreState state;
-  final ExploreController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return FilterChip(
-      label: const Text('Safe Mode'),
-      selected: state.query?.contentPolicy == ContentPolicy.safe,
-      onSelected: controller.setSafeMode,
     );
   }
 }

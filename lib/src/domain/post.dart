@@ -1,13 +1,5 @@
 enum PostRating { safe, questionable, explicit, unknown }
 
-enum ContentPolicy {
-  all,
-  safe;
-
-  bool allows(PostRating rating) =>
-      this == ContentPolicy.all || rating != PostRating.explicit;
-}
-
 enum PostQuerySource { discovery, tagSearch }
 
 enum MediaVariantId { preview, sample, jpeg, original }
@@ -100,8 +92,6 @@ class PostSummary {
   final String? source;
   final DateTime? createdAt;
 
-  bool isVisibleTo(ContentPolicy policy) => policy.allows(rating);
-
   @override
   bool operator ==(Object other) =>
       other is PostSummary &&
@@ -148,44 +138,32 @@ class PostDetail {
 }
 
 class PostQuery {
-  const PostQuery.discovery({
-    this.contentPolicy = ContentPolicy.all,
-    this.continuation,
-  }) : source = PostQuerySource.discovery,
-       expression = null;
+  const PostQuery.discovery({this.continuation})
+    : source = PostQuerySource.discovery,
+      expression = null;
 
-  PostQuery.tagSearch(
-    String expression, {
-    this.contentPolicy = ContentPolicy.all,
-    this.continuation,
-  }) : source = PostQuerySource.tagSearch,
-       expression = _validatedExpression(expression);
+  PostQuery.tagSearch(String expression, {this.continuation})
+    : source = PostQuerySource.tagSearch,
+      expression = _validatedExpression(expression);
 
   final PostQuerySource source;
   final String? expression;
-  final ContentPolicy contentPolicy;
   final String? continuation;
 
   PostQuery withContinuation(String? value) =>
       source == PostQuerySource.discovery
-      ? PostQuery.discovery(contentPolicy: contentPolicy, continuation: value)
-      : PostQuery.tagSearch(
-          expression!,
-          contentPolicy: contentPolicy,
-          continuation: value,
-        );
+      ? PostQuery.discovery(continuation: value)
+      : PostQuery.tagSearch(expression!, continuation: value);
 
   @override
   bool operator ==(Object other) =>
       other is PostQuery &&
       other.source == source &&
       other.expression == expression &&
-      other.contentPolicy == contentPolicy &&
       other.continuation == continuation;
 
   @override
-  int get hashCode =>
-      Object.hash(source, expression, contentPolicy, continuation);
+  int get hashCode => Object.hash(source, expression, continuation);
 }
 
 class PostPage {

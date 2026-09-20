@@ -49,16 +49,12 @@ class LatteShell extends StatelessWidget {
     required this.body,
     this.title = 'Latte',
     this.onSearch,
-    this.safeMode = false,
-    this.onSafeModeChanged,
     super.key,
   });
 
   final String title;
   final Widget body;
   final VoidCallback? onSearch;
-  final bool safeMode;
-  final ValueChanged<bool>? onSafeModeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -74,14 +70,6 @@ class LatteShell extends StatelessWidget {
                 onPressed: onSearch,
                 tooltip: 'Search',
                 constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: FilterChip(
-                  label: const Text('Safe Mode'),
-                  selected: safeMode,
-                  onSelected: onSafeModeChanged,
-                ),
               ),
             ],
           ),

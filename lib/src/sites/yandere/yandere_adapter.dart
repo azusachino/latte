@@ -29,22 +29,9 @@ class YandeAdapter implements SiteAdapter {
 
   @override
   Future<PostPage> queryPosts(PostQuery query) async {
-    if (query.contentPolicy == ContentPolicy.safe &&
-        query.source == PostQuerySource.tagSearch &&
-        _requestsExplicitContent(query.expression!)) {
-      throw const SiteFailureException(
-        SiteFailure(
-          kind: SiteFailureKind.policyConflict,
-          retryable: false,
-          message: 'Safe Mode cannot search for explicit content',
-        ),
-      );
-    }
     final parameters = <String, String>{'limit': '$_limit'};
     if (query.continuation != null) parameters['page'] = query.continuation!;
-    if (query.contentPolicy == ContentPolicy.safe) {
-      parameters['tags'] = _tagsFor(query);
-    } else if (query.source == PostQuerySource.tagSearch) {
+    if (query.source == PostQuerySource.tagSearch) {
       parameters['tags'] = query.expression!;
     }
     final response = await _get(
@@ -53,7 +40,6 @@ class YandeAdapter implements SiteAdapter {
     final decoded = _decodeJson(response);
     final decodedPosts = _decoder.decodePage(decoded);
     final posts = decodedPosts
-        .where((post) => post.summary.isVisibleTo(query.contentPolicy))
         .map((post) => post.summary)
         .toList(growable: false);
     for (final post in decodedPosts) {
@@ -233,41 +219,4 @@ class YandeAdapter implements SiteAdapter {
       source.scheme == 'https' &&
       (source.host == _baseUri.host ||
           source.host.endsWith('.${_baseUri.host}'));
-
-  static bool _requestsExplicitContent(String expression) {
-    for (final token in expression.toLowerCase().split(RegExp(r'\s+'))) {
-      if (token.startsWith('-') || !token.startsWith('rating:')) continue;
-      final rating = token.substring('rating:'.length);
-      if (rating == 'e' ||
-          rating == 'explicit' ||
-          rating == '>e' ||
-          rating == '>=e' ||
-          rating == '>explicit' ||
-          rating == '>=explicit') {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  static String _tagsFor(PostQuery query) {
-    if (query.source == PostQuerySource.discovery) return '-rating:explicit';
-    final expression = query.expression!;
-    return _excludesExplicitContent(expression)
-        ? expression
-        : '$expression -rating:explicit';
-  }
-
-  static bool _excludesExplicitContent(String expression) => expression
-      .toLowerCase()
-      .split(RegExp(r'\s+'))
-      .any(
-        (token) =>
-            token == '-rating:e' ||
-            token == '-rating:explicit' ||
-            token == '-rating:>e' ||
-            token == '-rating:>=e' ||
-            token == '-rating:>explicit' ||
-            token == '-rating:>=explicit',
-      );
 }

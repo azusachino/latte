@@ -16,10 +16,8 @@ class ExploreController extends ChangeNotifier {
 
   ExploreState get state => _state;
 
-  Future<void> loadDiscovery({ContentPolicy? contentPolicy}) async {
-    final policy =
-        contentPolicy ?? _state.query?.contentPolicy ?? ContentPolicy.all;
-    final query = PostQuery.discovery(contentPolicy: policy);
+  Future<void> loadDiscovery() async {
+    final query = PostQuery.discovery();
     final generation = ++_requestGeneration;
     _setState(ExploreState.initialLoading(query));
     try {
@@ -37,23 +35,8 @@ class ExploreController extends ChangeNotifier {
     }
   }
 
-  Future<void> setSafeMode(bool enabled) {
-    final activeQuery = _state.query;
-    final policy = enabled ? ContentPolicy.safe : ContentPolicy.all;
-    if (activeQuery?.source == PostQuerySource.tagSearch &&
-        activeQuery?.expression != null) {
-      return search(activeQuery!.expression!, contentPolicy: policy);
-    }
-    return loadDiscovery(contentPolicy: policy);
-  }
-
-  Future<void> search(String expression, {ContentPolicy? contentPolicy}) async {
-    final policy =
-        contentPolicy ??
-        _state.query?.contentPolicy ??
-        _feedState?.query?.contentPolicy ??
-        ContentPolicy.all;
-    final query = PostQuery.tagSearch(expression, contentPolicy: policy);
+  Future<void> search(String expression) async {
+    final query = PostQuery.tagSearch(expression);
     final generation = ++_requestGeneration;
     _setState(ExploreState.replacingQuery(query));
     try {
@@ -78,9 +61,7 @@ class ExploreController extends ChangeNotifier {
       _setState(discovery);
       return;
     }
-    await loadDiscovery(
-      contentPolicy: _state.query?.contentPolicy ?? ContentPolicy.all,
-    );
+    await loadDiscovery();
   }
 
   Future<void> loadNextPage() async {
@@ -113,31 +94,13 @@ class ExploreController extends ChangeNotifier {
     final summary = feed.posts
         .where((post) => post.reference == reference)
         .firstOrNull;
-    if (summary == null ||
-        !summary.isVisibleTo(feed.query?.contentPolicy ?? ContentPolicy.all)) {
-      return;
-    }
+    if (summary == null) return;
 
     final generation = ++_requestGeneration;
     _setState(ExploreState.detailLoading(feed, reference));
     try {
       final detail = await adapter.getPost(reference);
       if (generation != _requestGeneration) return;
-      if (!detail.summary.isVisibleTo(
-        feed.query?.contentPolicy ?? ContentPolicy.all,
-      )) {
-        _setState(
-          ExploreState.detailFailure(
-            feed,
-            const SiteFailure(
-              kind: SiteFailureKind.invalidRequest,
-              retryable: false,
-              message: 'This post is hidden by Safe Mode',
-            ),
-          ),
-        );
-        return;
-      }
       _setState(ExploreState.detail(feed, detail));
     } on Object catch (error) {
       if (generation != _requestGeneration) return;

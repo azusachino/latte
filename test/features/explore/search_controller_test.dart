@@ -54,24 +54,6 @@ void main() {
     expect(controller.state.posts, [discovery]);
     expect(adapter.queries, hasLength(2));
   });
-
-  test('Safe Mode restarts the active search intent', () async {
-    final adapter = QueuedSearchAdapter([
-      PostPage(posts: [post('discovery')]),
-      PostPage(posts: [post('all-result')]),
-      PostPage(posts: [post('safe-result')]),
-    ]);
-    final controller = ExploreController(adapter: adapter);
-
-    await controller.loadDiscovery();
-    await controller.search('artist');
-    await controller.setSafeMode(true);
-
-    expect(controller.state.query?.source, PostQuerySource.tagSearch);
-    expect(controller.state.query?.contentPolicy, ContentPolicy.safe);
-    expect(adapter.queries.last.expression, 'artist');
-    expect(adapter.queries.last.contentPolicy, ContentPolicy.safe);
-  });
 }
 
 PostSummary post(String id) => PostSummary(

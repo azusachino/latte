@@ -26,7 +26,6 @@ void main() {
       'safe',
       'explicit',
     ]);
-    expect(adapter.queries.single.contentPolicy, ContentPolicy.all);
   });
 
   test('appends the next page once and removes duplicate identities', () async {
@@ -105,26 +104,16 @@ void main() {
     expect(controller.state.posts, [summary]);
   });
 
-  test('safe mode restarts discovery and filters explicit content', () async {
+  test('preserves explicit search expressions without filtering', () async {
     final adapter = ScriptedAdapter.immediate([
-      PostPage(
-        posts: [
-          post('safe'),
-          post('explicit', rating: PostRating.explicit),
-        ],
-      ),
-      PostPage(posts: [post('safe-2')]),
+      PostPage(posts: [post('explicit', rating: PostRating.explicit)]),
     ]);
     final controller = ExploreController(adapter: adapter);
 
-    await controller.loadDiscovery();
-    await controller.setSafeMode(true);
+    await controller.search('rating:explicit order:score');
 
-    expect(controller.state.query?.contentPolicy, ContentPolicy.safe);
-    expect(controller.state.posts.map((item) => item.reference.remoteId), [
-      'safe-2',
-    ]);
-    expect(adapter.queries.last.contentPolicy, ContentPolicy.safe);
+    expect(controller.state.posts.single.rating, PostRating.explicit);
+    expect(adapter.queries.single.expression, 'rating:explicit order:score');
   });
 }
 

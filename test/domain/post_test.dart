@@ -25,31 +25,17 @@ void main() {
     );
   });
 
-  test('all content policy keeps explicit posts by default', () {
-    expect(ContentPolicy.all.allows(PostRating.explicit), isTrue);
-    expect(summary(PostRating.explicit).isVisibleTo(ContentPolicy.all), isTrue);
+  test('explicit rating remains presentation metadata', () {
+    final post = summary(PostRating.explicit);
+
+    expect(post.rating, PostRating.explicit);
   });
 
-  test('safe mode filters only explicit posts', () {
-    expect(ContentPolicy.safe.allows(PostRating.safe), isTrue);
-    expect(ContentPolicy.safe.allows(PostRating.questionable), isTrue);
-    expect(ContentPolicy.safe.allows(PostRating.unknown), isTrue);
-    expect(ContentPolicy.safe.allows(PostRating.explicit), isFalse);
-    expect(
-      summary(PostRating.explicit).isVisibleTo(ContentPolicy.safe),
-      isFalse,
-    );
-  });
-
-  test('tag query preserves opaque site expression and policy', () {
-    final query = PostQuery.tagSearch(
-      'blue_eyes -rating:explicit order:score',
-      contentPolicy: ContentPolicy.safe,
-    );
+  test('tag query preserves an opaque site expression', () {
+    final query = PostQuery.tagSearch('blue_eyes -rating:explicit order:score');
 
     expect(query.source, PostQuerySource.tagSearch);
     expect(query.expression, 'blue_eyes -rating:explicit order:score');
-    expect(query.contentPolicy, ContentPolicy.safe);
     expect(() => PostQuery.tagSearch('  '), throwsArgumentError);
   });
 }

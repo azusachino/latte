@@ -26,12 +26,7 @@ class FakeSiteAdapter implements SiteAdapter {
   @override
   Future<PostPage> queryPosts(PostQuery query) async {
     lastQuery = query;
-    return PostPage(
-      posts: _posts
-          .where((post) => post.isVisibleTo(query.contentPolicy))
-          .toList(),
-      next: null,
-    );
+    return PostPage(posts: _posts, next: null);
   }
 
   @override

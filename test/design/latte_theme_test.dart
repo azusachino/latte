@@ -26,8 +26,6 @@ void main() {
           title: 'Explore',
           body: const Text('Content'),
           onSearch: () {},
-          safeMode: false,
-          onSafeModeChanged: (_) {},
         ),
       ),
     );
@@ -38,7 +36,7 @@ void main() {
     expect(find.byKey(const ValueKey('compact-shell')), findsOneWidget);
     expect(find.text('Content'), findsOneWidget);
     expect(find.byTooltip('Search'), findsOneWidget);
-    expect(find.text('Safe Mode'), findsOneWidget);
+    expect(find.text('Safe Mode'), findsNothing);
     expect(tester.getSize(find.byTooltip('Search')), const Size(48, 48));
 
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -55,8 +53,6 @@ void main() {
           title: 'Explore',
           body: const Text('Content'),
           onSearch: () {},
-          safeMode: true,
-          onSafeModeChanged: (_) {},
         ),
       ),
     );
@@ -65,9 +61,8 @@ void main() {
     expect(find.byKey(const ValueKey('expanded-shell')), findsOneWidget);
     expect(find.text('Content'), findsOneWidget);
     expect(find.byTooltip('Search'), findsOneWidget);
-    expect(find.text('Safe Mode'), findsOneWidget);
-    expect(find.byType(FilterChip), findsOneWidget);
-    expect(tester.widget<FilterChip>(find.byType(FilterChip)).selected, isTrue);
+    expect(find.text('Safe Mode'), findsNothing);
+    expect(find.byType(FilterChip), findsNothing);
 
     addTearDown(() => tester.binding.setSurfaceSize(null));
   });

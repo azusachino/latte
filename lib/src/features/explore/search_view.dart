@@ -56,14 +56,14 @@ class SearchViewState extends State<SearchView> {
                 icon: const Icon(Icons.arrow_back),
                 tooltip: 'Close search',
               ),
-              viewTrailing: [_clearButton(), _optionsButton()],
+              viewTrailing: [_clearButton()],
               viewOnSubmitted: _submit,
               builder: (context, controller) => widget.showBar
                   ? SearchBar(
                       controller: controller,
                       hintText: 'Search tags',
                       leading: const Icon(Icons.search),
-                      trailing: [_clearButton(), _optionsButton()],
+                      trailing: [_clearButton()],
                       onTap: controller.openView,
                       onChanged: (_) => controller.openView(),
                       onSubmitted: _submit,
@@ -93,20 +93,6 @@ class SearchViewState extends State<SearchView> {
     icon: const Icon(Icons.clear),
     tooltip: 'Clear search',
     constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-  );
-
-  Widget _optionsButton() => PopupMenuButton<String>(
-    tooltip: 'More options',
-    onSelected: (value) {
-      if (value == 'safe') {
-        widget.controller.setSafeMode(
-          widget.controller.state.query?.contentPolicy != ContentPolicy.safe,
-        );
-      }
-    },
-    itemBuilder: (context) => const [
-      PopupMenuItem(value: 'safe', child: Text('Safe Mode')),
-    ],
   );
 
   Future<void> _submit(String expression) async {
