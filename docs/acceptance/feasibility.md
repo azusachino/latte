@@ -14,7 +14,7 @@ stored.
 | Flutter | `3.47.5` |
 | Bundled Dart | `3.13.4` |
 | Deterministic gates | `make check` passed |
-| Flutter doctor | Flutter SDK passed; Android toolchain reported missing command-line tools |
+| Flutter doctor | Flutter SDK and Android toolchain passed after selecting `/opt/homebrew/share/android-commandlinetools`; the doctor reported the machine's existing SDK licenses as accepted. No license command was run by this task. |
 
 The app is generated for Android with `minSdk = 29`. Flutter reports Android
 deployment support for API 24–37 in the selected stable line; Latte claims API
@@ -43,14 +43,27 @@ client. The live probe is manual evidence and is not part of `make check`.
 
 ## Android build and launch boundary
 
-`adb devices -l` returned no connected Android device. `flutter devices` found
-only the macOS desktop target, and `flutter emulators` found no emulator
-sources, so no API 29+ target was available to launch.
+Flutter initially selected the platform-tools directory
+`/opt/homebrew/Caskroom/android-platform-tools/37.0.1` as the SDK. The SDK
+path was corrected with:
 
-`flutter build apk --debug` could not reach compilation because the local SDK
-requires an unaccepted `ndk;28.2.13676358` license. No SDK license was accepted
-as part of this task.
+```text
+mise exec -- flutter config --android-sdk /opt/homebrew/share/android-commandlinetools
+```
 
-**Android build/launch gate: UNVERIFIED / BLOCKED BY LOCAL SDK STATE.** Do not
-claim Android support or begin Story 1 until an owner-approved SDK setup provides
-an API 29+ emulator/device and the stock debug build launches there.
+The connected OnePlus 8 was observed as `0cadf428`, Android 16 / API 36. The
+stock debug APK then built successfully:
+
+```text
+mise exec -- flutter build apk --debug
+✓ Built build/app/outputs/flutter-apk/app-debug.apk
+```
+
+The APK was installed with `adb install -r`, and the launch was verified with
+`adb shell monkey -p com.azusachino.latte 1`; Android reported the visible
+activity as `com.azusachino.latte/.MainActivity`. The build used the machine's
+already-installed SDK components and licenses; this task did not accept any
+license or legal terms.
+
+**Android build/launch gate: PASS.** The API 36 device is above Latte's API
+29+ support floor.
