@@ -4,6 +4,7 @@ import 'package:latte/src/design/latte_toast.dart';
 import 'package:toastification/toastification.dart';
 
 Widget testApp(Widget child) => ToastificationWrapper(
+  config: LatteToast.config,
   child: MaterialApp(home: Scaffold(body: child)),
 );
 
@@ -125,7 +126,7 @@ void main() {
     expect(find.byKey(const ValueKey('latte-toast-pill')), findsNothing);
   });
 
-  testWidgets('showing a new toast replaces the previous one', (tester) async {
+  testWidgets('showing multiple toasts stacks them vertically', (tester) async {
     await tester.pumpWidget(
       testApp(
         Builder(
@@ -159,7 +160,7 @@ void main() {
     await tester.tap(find.text('Second'));
     await tester.pump();
     await tester.pumpAndSettle();
-    expect(find.text('First toast'), findsNothing);
+    expect(find.text('First toast'), findsOneWidget);
     expect(find.text('Second toast'), findsOneWidget);
 
     await cleanUpToasts(tester);

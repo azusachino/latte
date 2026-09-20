@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:toastification/toastification.dart';
 import 'package:latte/src/app.dart';
 import 'package:latte/src/design/latte_theme.dart';
+import 'package:latte/src/design/latte_toast.dart';
 import 'package:latte/src/domain/popular_query.dart';
 import 'package:latte/src/domain/post.dart';
 import 'package:latte/src/features/explore/explore_controller.dart';
@@ -180,47 +181,41 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('offers a retry dialog for an already saved image', (
-    tester,
-  ) async {
-    const channel = MethodChannel('com.azusachino.latte/download');
-    final messenger =
-        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-    var force = false;
-    messenger.setMockMethodCallHandler(channel, (call) async {
-      force = call.arguments is Map && call.arguments['force'] == true;
-      return <String, Object?>{
-        'status': force ? 'started' : 'already_saved',
-        'album': 'Pictures/Latte',
-        'displayName': 'latte_fake_download_jpeg.jpg',
-      };
-    });
-    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+  testWidgets(
+    'shows a warning toast for an already saved image and does not redownload',
+    (tester) async {
+      const channel = MethodChannel('com.azusachino.latte/download');
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      var downloadCalls = 0;
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        downloadCalls++;
+        return <String, Object?>{
+          'status': 'already_saved',
+          'album': 'Pictures/Latte',
+          'displayName': 'latte_fake_download_jpeg.jpg',
+        };
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
 
-    final controller = ExploreController(
-      adapter: WidgetAdapter(posts: [post('already-saved')]),
-    );
-    await tester.pumpWidget(app(controller));
-    await tester.pumpAndSettle();
-    await tester.tap(find.bySemanticsLabel('Post already-saved'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Download'));
-    await tester.pumpAndSettle();
+      final controller = ExploreController(
+        adapter: WidgetAdapter(posts: [post('already-saved')]),
+      );
+      await tester.pumpWidget(app(controller));
+      await tester.pumpAndSettle();
+      await tester.tap(find.bySemanticsLabel('Post already-saved'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Download'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Already saved'), findsOneWidget);
-    expect(
-      find.text(
-        'This image is already in Pictures/Latte. Do you want to download it again?',
-      ),
-      findsOneWidget,
-    );
-    expect(find.text('Download again'), findsOneWidget);
-    await tester.tap(find.text('Download again'));
-    await tester.pump();
-    expect(force, isTrue);
-    await tester.pump(const Duration(seconds: 3));
-    await tester.pumpAndSettle();
-  });
+      expect(find.text('Already saved in Pictures/Latte'), findsOneWidget);
+      expect(downloadCalls, 1);
+      expect(find.byType(AlertDialog), findsNothing);
+
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
+    },
+  );
 
   testWidgets('detail pager keeps Popular context and moves between posts', (
     tester,
@@ -631,6 +626,7 @@ void main() {
 }
 
 Widget app(ExploreController controller) => ToastificationWrapper(
+  config: LatteToast.config,
   child: MaterialApp(
     theme: LatteTheme.light(),
     darkTheme: LatteTheme.dark(),

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:toastification/toastification.dart';
 
 import 'design/latte_theme.dart';
+import 'design/latte_toast.dart';
 import 'features/explore/explore_controller.dart';
 import 'features/explore/explore_screen.dart';
 import 'features/settings/settings_screen.dart';
@@ -58,6 +59,7 @@ class _LatteAppState extends State<LatteApp> {
   @override
   Widget build(BuildContext context) {
     return ToastificationWrapper(
+      config: LatteToast.config,
       child: MaterialApp(
         navigatorKey: _navigatorKey,
         title: 'Latte',

@@ -1380,37 +1380,19 @@ class _DetailInspectSheetState extends State<_DetailInspectSheet> {
     unawaited(_startDownload());
   }
 
-  Future<void> _startDownload({bool force = false}) async {
+  Future<void> _startDownload() async {
     try {
       final receipt = await widget.downloadService.save(
         reference: widget.detail.summary.reference,
         variant: _bestVariant(widget.detail.media),
-        force: force,
       );
       if (!mounted) return;
       if (receipt.status == DownloadStatus.alreadySaved) {
-        final confirm = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Already saved'),
-            content: const Text(
-              'This image is already in Pictures/Latte. Do you want to download it again?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Download again'),
-              ),
-            ],
-          ),
+        LatteToast.show(
+          context,
+          message: 'Already saved in Pictures/Latte',
+          type: ToastType.warning,
         );
-        if (confirm == true) {
-          unawaited(_startDownload(force: true));
-        }
       } else if (receipt.status == DownloadStatus.alreadyRunning) {
         LatteToast.show(
           context,
