@@ -1,71 +1,81 @@
-# Tasks: 002 Account Manager Center (yande.re & Pixiv)
+# Tasks: 002 Account Manager Center (Mihon-Style Plugin Architecture)
 
 **Feature**: 002 Account Manager Center  
 **Status**: Ready for execution  
+**Inspiration**: Mihon / Tachiyomi `Tracker` & `TrackerManager`  
 **Constitution**: v2.0.0 (Device-First Ergonomics, Downsized Spec-Kit)  
 
 ---
 
-## Slice 1: Security & Storage Foundation
+## Slice 1: Plugin Core & Secure Storage
 
 - [ ] **T001**: Add `androidx.security:security-crypto:1.1.0-alpha06` to `app/build.gradle.kts`.
-- [ ] **T002**: Define domain models in `com.azusachino.latte.data.account.model`:
-  - `SiteId` (`YANDE`, `PIXIV`)
-  - `AuthState` (`Unauthenticated`, `Authenticating`, `Authenticated(profile)`, `Error(message)`)
-  - `UserProfile(userId, username, avatarUrl)`
-  - `Account(siteId, authState, credentials)`
-- [ ] **T003**: Implement `SecureAccountStorage` backed by `EncryptedSharedPreferences` for storing/retrieving credentials and tokens per `SiteId`.
-- [ ] **T004**: Unit tests for `SecureAccountStorage`: persistence across re-instantiation, deletion on logout, and serialization.
+- [ ] **T002**: Define core plugin contracts in `com.azusachino.latte.plugin`:
+  - `SitePlugin`: interface with `id`, `name`, `iconRes`, `authType`, `capabilities`, `isLoggedIn`, `isLoggedInFlow`, `login()`, `logout()`, `applyHeaders()`
+  - `AuthType` (`CREDENTIALS`, `OAUTH2`, `API_KEY`)
+  - `PluginCapability` (`SCORING`, `FAVORITES`, `REFERER_INJECT`, `USER_FEED`)
+- [ ] **T003**: Implement `SecurePluginStorage` backed by `EncryptedSharedPreferences` for plugin-scoped credential storage.
+- [ ] **T004**: Implement `SitePluginManager` managing `plugins = listOf(yandePlugin, pixivPlugin)` and exposing `loggedInPluginsFlow()`.
+- [ ] **T005**: Unit tests for `SecurePluginStorage` and `SitePluginManager`.
 
 ---
 
-## Slice 2: Yande Authentication & API Integration
+## Slice 2: YandePlugin Implementation
 
-- [ ] **T005**: Implement `YandePasswordHasher`: `SHA1("choujin-steiner--$password--")` with hex encoding.
-- [ ] **T006**: Add authentication endpoints to `YandeApi`:
-  - Verify credentials / user profile check.
-  - Return structured success (`UserProfile`) or error (`InvalidCredentials`, `NetworkError`).
-- [ ] **T007**: Implement `YandeAuthAdapter` managing login, session verification, and sign-out.
-- [ ] **T008**: Implement `AccountManager` coordinator exposing `StateFlow<Map<SiteId, AccountState>>`.
-- [ ] **T009**: Unit tests for `YandePasswordHasher` and `YandeAuthAdapter` with MockWebServer.
-
----
-
-## Slice 3: Account Manager Center UI & Device Slice (Principle VI)
-
-- [ ] **T010**: Create `AccountManagerScreen` with platform cards for `yande.re` and `pixiv`, displaying current connection status.
-- [ ] **T011**: Create `YandeLoginDialog` with username, password, password visibility toggle, IME action (`Next` → `Done`), and inline error feedback.
-- [ ] **T012**: Add "Account Manager" entry row to `SettingsScreen` under an "Accounts" section.
-- [ ] **T013**: Wire `AccountManagerViewModel` to `AccountManagerScreen` and `YandeLoginDialog`.
-- [ ] **T014**: **Hardware Verification**: Deploy debug APK to OnePlus 8 (`0cadf428`) and verify:
-  - IME keyboard open/close and focus transitions.
-  - Password visibility toggle.
-  - Live login with yande.re credentials and credential persistence across app kill.
+- [ ] **T006**: Implement `YandePasswordHasher`: `SHA1("choujin-steiner--$password--")` with hex string output.
+- [ ] **T007**: Add credential verification to `YandeApi`:
+  - Verify session via `/user/check` or authenticated probe.
+- [ ] **T008**: Implement `YandePlugin` implementing `SitePlugin`:
+  - `id = "yande.re"`
+  - `capabilities = setOf(SCORING, FAVORITES)`
+  - `login(mapOf("username" to u, "password" to p))`
+  - `logout()`
+- [ ] **T009**: Unit tests for `YandePlugin` with MockWebServer.
 
 ---
 
-## Slice 4: Yande Personal Scoring & Favorites
+## Slice 3: Mihon-Style Account Center UI & Device Slice (Principle VI)
 
-- [ ] **T015**: Add `vote(postId: Long, score: Int)` to `YandeApi` executing `POST /post/vote.json`.
-- [ ] **T016**: Add interactive 0–3 star rating bar and Favorite toggle button to `DetailScreen`.
-- [ ] **T017**: Handle unauthenticated rating click: prompt user to sign in via Account Manager.
-- [ ] **T018**: Add "My Favorites" filter/chip to `ExploreScreen` querying `vote:3:<username>` when signed in.
-- [ ] **T019**: Unit and integration tests for voting and favorites query.
-
----
-
-## Slice 5: Pixiv Platform Foundation
-
-- [ ] **T020**: Define Pixiv credential and token models (`accessToken`, `refreshToken`, `expiresAt`).
-- [ ] **T021**: Create `PixivAuthAdapter` skeleton managing token lifecycle and OAuth2 PKCE parameters.
-- [ ] **T022**: Implement OkHttp `PixivInterceptor`: automatically injects `Referer: https://app-api.pixiv.net/` and `Authorization: Bearer <token>` for Pixiv domains (`*.pximg.net`, `app-api.pixiv.net`).
-- [ ] **T023**: Add Pixiv card UI in `AccountManagerScreen` with token configuration / sign-in options.
-- [ ] **T024**: Unit tests for `PixivInterceptor` verifying header injection.
+- [ ] **T010**: Create `AccountPreferenceWidget` (Mihon-style):
+  - Platform icon/logo, title, display username (when logged in), and green checkmark badge.
+  - Tapping opens login or logout/profile dialog.
+- [ ] **T011**: Create `PluginLoginDialog`:
+  - Supports `AuthType.CREDENTIALS` (username, password, password toggle, IME action `Next` → `Done`, inline error message).
+- [ ] **T012**: Create `PluginProfileDialog` for logged-in state (shows username, active capabilities, and "Sign Out" button).
+- [ ] **T013**: Create `AccountManagerScreen` and link it under "Accounts" in `SettingsScreen`.
+- [ ] **T014**: **Hardware Verification**: Deploy debug APK to OnePlus 8 (`0cadf428`):
+  - Test Mihon-style preference widget rendering.
+  - Test keyboard IME, password toggle, and live Yande login.
+  - Test app kill and restart: credentials remain securely restored.
 
 ---
 
-## Slice 6: Quality Gates & Milestone Release
+## Slice 4: Yande Scoring & Favorites Integration
 
-- [ ] **T025**: Run `make check` (`./gradlew testDebugUnitTest`, lint, formatting).
-- [ ] **T026**: Perform full hardware acceptance on OnePlus 8 (`0cadf428`): Yande sign-in, post scoring, favorites browsing, sign-out.
-- [ ] **T027**: Bump version to `0.0.2` in `app/build.gradle.kts`.
+- [ ] **T015**: Implement `setScore(postId: Long, score: Int)` in `YandePlugin` calling `POST /post/vote.json`.
+- [ ] **T016**: Wire `DetailScreen` to check `YandePlugin.isLoggedIn` and `PluginCapability.SCORING`:
+  - If logged in: show interactive 0–3 star rating bar and Favorite toggle button (`score == 3`).
+  - If not logged in: tapping rating stars launches `PluginLoginDialog` for Yande.
+- [ ] **T017**: Add "My Favorites" filter chip in `ExploreScreen` querying `vote:3:<username>` when `YandePlugin` is logged in.
+- [ ] **T018**: Unit tests for scoring capability and favorites query.
+
+---
+
+## Slice 5: PixivPlugin Foundation & Header Interceptor
+
+- [ ] **T019**: Implement `PixivPlugin` skeleton:
+  - `id = "pixiv"`
+  - `authType = AuthType.OAUTH2`
+  - `capabilities = setOf(PluginCapability.REFERER_INJECT)`
+- [ ] **T020**: Implement `applyHeaders` in `PixivPlugin`: injects `Referer: https://app-api.pixiv.net/` and `Authorization: Bearer <token>` for `*.pximg.net` and `app-api.pixiv.net`.
+- [ ] **T021**: Add `PluginHeaderInterceptor` into `OkHttpProvider` routing outbound requests through `SitePluginManager.plugins.forEach { it.applyHeaders(...) }`.
+- [ ] **T022**: Add Pixiv card in `AccountManagerScreen` with token configuration / sign-in options.
+- [ ] **T023**: Unit tests for `PluginHeaderInterceptor` verifying Referer header injection.
+
+---
+
+## Slice 6: Release & Hardware Receipt
+
+- [ ] **T024**: Run `make check` (`./gradlew testDebugUnitTest`, lint, formatting).
+- [ ] **T025**: Final hardware acceptance on OnePlus 8 (`0cadf428`).
+- [ ] **T026**: Bump version to `0.0.2` in `app/build.gradle.kts`.

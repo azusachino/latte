@@ -23,18 +23,23 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
 
 ---
 
-## Milestone 0.0.2: Account Manager Center (yande.re & Pixiv Support), Scoring & UX Hardening
+## Milestone 0.0.2: Account Manager Center (Mihon-Style Plugin Architecture), Scoring & UX Hardening
 
 > **Active Feature Spec**: [002 Account Manager Center](file:///Users/azusachino/Projects/project-github/harus-workstation/vendor/latte/specs/002-account-manager/spec.md)  
-> **Tasks**: [002 Tasks](file:///Users/azusachino/Projects/project-github/harus-workstation/vendor/latte/specs/002-account-manager/tasks.md)
+> **Tasks**: [002 Tasks](file:///Users/azusachino/Projects/project-github/harus-workstation/vendor/latte/specs/002-account-manager/tasks.md)  
+> **Design Inspiration**: Mihon / Tachiyomi `Tracker` & `TrackerManager` plugin architecture
 
-### 1. Account Manager Center Subsystem
-- **Dedicated Account Center UI**:
-  - Expose "Account Manager" under an "Accounts" section in `SettingsScreen`.
-  - Platform status cards for `yande.re` and `pixiv` displaying connection state (`Unauthenticated`, `Authenticated as <username>`, `Token Expired`).
-  - Sign-in dialogs with password visibility toggle and IME action management.
+### 1. Mihon-Style Plugin Subsystem (`SitePlugin` & `SitePluginManager`)
+- **Plugin Architecture**:
+  - Each platform is an encapsulated `SitePlugin` implementing identity, `AuthType` (`CREDENTIALS`, `OAUTH2`), capabilities (`SCORING`, `FAVORITES`, `REFERER_INJECT`), login/logout lifecycle, and header hooks.
+  - `SitePluginManager` maintains the plugin registry and exposes `loggedInPluginsFlow()`.
+- **Mihon-Style UI (`AccountPreferenceWidget`)**:
+  - In `SettingsScreen` (under "Accounts") or dedicated `AccountManagerScreen`.
+  - Displays each platform with its logo, title, and display username with a green checkmark when logged in.
+  - Tapping an unauthenticated plugin opens its specific login flow (`PluginLoginDialog` for Yande, OAuth2 for Pixiv).
+  - Tapping an authenticated plugin opens a management dialog showing active capabilities and a "Sign Out" action.
 - **Hardware-Backed Credential Security**:
-  - Use `androidx.security:security-crypto` (`EncryptedSharedPreferences`) backed by Android Keystore.
+  - `androidx.security:security-crypto` (`EncryptedSharedPreferences`) backed by Android Keystore.
   - Zero plaintext storage: yande.re stores `SHA1("choujin-steiner--$password--")`; Pixiv stores encrypted OAuth tokens.
   - One-tap sign-out permanently purges credentials and session state.
 
@@ -48,7 +53,7 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
 
 ### 3. Pixiv Platform Foundation
 - **OAuth2 Token Management**:
-  - Token lifecycle management (access token, refresh token, expiry) in `PixivAuthAdapter`.
+  - Token lifecycle management (access token, refresh token, expiry) in `PixivPlugin`.
 - **Network Interceptor**:
   - Automatic injection of `Referer: https://app-api.pixiv.net/` and `Authorization: Bearer <token>` for `*.pximg.net` and `app-api.pixiv.net` domains.
   - Prepares the network layer for milestone 0.0.3 multi-platform browsing.
