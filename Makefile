@@ -1,7 +1,7 @@
 FLUTTER := mise exec -- flutter
 DART := mise exec -- dart
 
-.PHONY: format analyze test check doctor dev probe
+.PHONY: format analyze test test-story check doctor dev probe
 
 # `test` runs only checked-in tests and injected HTTP doubles. Live yande.re
 # access is limited to the opt-in `probe` target.
@@ -15,6 +15,10 @@ analyze:
 test:
 	$(FLUTTER) test test
 	$(FLUTTER) test tool/feasibility/yandere_probe_test.dart
+
+test-story:
+	@test "$(STORY)" = "discover" || (echo "usage: make test-story STORY=discover" >&2; exit 2)
+	$(FLUTTER) test test/sites/yandere test/features/explore
 
 check: format analyze test
 
