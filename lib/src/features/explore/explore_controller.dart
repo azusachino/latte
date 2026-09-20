@@ -2,19 +2,29 @@ import 'package:flutter/foundation.dart';
 
 import '../../domain/explore_state.dart';
 import '../../domain/failure.dart';
+import '../../domain/popular_query.dart';
 import '../../domain/post.dart';
 import '../../sites/site_adapter.dart';
 
 class ExploreController extends ChangeNotifier {
-  ExploreController({required this.adapter});
+  ExploreController({required this.adapter, DateTime Function()? now})
+    : _lastPopularQuery = PopularQuery(
+        period: PopularPeriod.day,
+        anchor: (now ?? _systemNow)(),
+      );
 
   final SiteAdapter adapter;
   ExploreState _state = ExploreState.initial();
   ExploreState? _discoveryState;
+  ExploreState? _browseState;
   ExploreState? _feedState;
+  PopularQuery _lastPopularQuery;
   var _requestGeneration = 0;
 
   ExploreState get state => _state;
+
+  PopularQuery get selectedPopularQuery =>
+      _state.query?.popularQuery ?? _lastPopularQuery;
 
   Future<void> loadDiscovery() async {
     final query = PostQuery.discovery();
@@ -27,12 +37,43 @@ class ExploreController extends ChangeNotifier {
           ? ExploreState.empty(query)
           : ExploreState.content(query, page.posts, next: page.next);
       _discoveryState = state;
+      _browseState = state;
       _feedState = state;
       _setState(state);
     } on Object catch (error) {
       if (generation != _requestGeneration) return;
       _setState(ExploreState.failure(query, _failure(error)));
     }
+  }
+
+  Future<void> loadPopular({PopularPeriod? period, DateTime? anchor}) async {
+    final current = _lastPopularQuery;
+    final queryValue = PopularQuery(
+      period: period ?? current.period,
+      anchor: anchor ?? current.anchor,
+    );
+    _lastPopularQuery = queryValue;
+    final query = PostQuery.popular(queryValue);
+    final generation = ++_requestGeneration;
+    _setState(ExploreState.initialLoading(query));
+    try {
+      final page = await adapter.queryPosts(query);
+      if (generation != _requestGeneration) return;
+      final state = page.posts.isEmpty
+          ? ExploreState.empty(query)
+          : ExploreState.content(query, page.posts, next: page.next);
+      _browseState = state;
+      _feedState = state;
+      _setState(state);
+    } on Object catch (error) {
+      if (generation != _requestGeneration) return;
+      _setState(ExploreState.failure(query, _failure(error)));
+    }
+  }
+
+  Future<void> shiftPopularAnchor(int amount) {
+    final next = selectedPopularQuery.shifted(amount);
+    return loadPopular(period: next.period, anchor: next.anchor);
   }
 
   Future<void> search(String expression) async {
@@ -55,7 +96,7 @@ class ExploreController extends ChangeNotifier {
 
   Future<void> clearSearch() async {
     ++_requestGeneration;
-    final discovery = _discoveryState;
+    final discovery = _browseState ?? _discoveryState;
     if (discovery != null) {
       _feedState = discovery;
       _setState(discovery);
@@ -144,4 +185,6 @@ class ExploreController extends ChangeNotifier {
           retryable: true,
           message: "Can't reach Yande.re",
         );
+
+  static DateTime _systemNow() => DateTime.now().toUtc();
 }

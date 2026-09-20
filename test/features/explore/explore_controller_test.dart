@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latte/src/domain/explore_state.dart';
 import 'package:latte/src/domain/failure.dart';
+import 'package:latte/src/domain/popular_query.dart';
 import 'package:latte/src/domain/post.dart';
 import 'package:latte/src/features/explore/explore_controller.dart';
 import 'package:latte/src/sites/site_adapter.dart';
@@ -26,6 +27,89 @@ void main() {
       'safe',
       'explicit',
     ]);
+  });
+
+  test('loads Popular with a visible period and anchor identity', () async {
+    final adapter = ScriptedAdapter.immediate([
+      PostPage(posts: [post('day')]),
+      PostPage(posts: [post('week')]),
+    ]);
+    final controller = ExploreController(adapter: adapter);
+
+    await controller.loadPopular(
+      period: PopularPeriod.day,
+      anchor: DateTime.utc(2026, 9, 20),
+    );
+    expect(controller.state.query?.source, PostQuerySource.popular);
+    expect(
+      controller.state.query?.popularQuery,
+      PopularQuery(
+        period: PopularPeriod.day,
+        anchor: DateTime.utc(2026, 9, 20),
+      ),
+    );
+
+    await controller.loadPopular(
+      period: PopularPeriod.week,
+      anchor: DateTime.utc(2026, 9, 20),
+    );
+    expect(controller.state.posts.single.reference.remoteId, 'week');
+    expect(
+      controller.state.query?.popularQuery?.window.start,
+      DateTime.utc(2026, 9, 14),
+    );
+  });
+
+  test('switching anchors rejects an older Popular response', () async {
+    final adapter = ScriptedAdapter.deferred();
+    final controller = ExploreController(adapter: adapter);
+
+    final first = controller.loadPopular(
+      period: PopularPeriod.day,
+      anchor: DateTime.utc(2026, 9, 20),
+    );
+    final second = controller.loadPopular(
+      period: PopularPeriod.day,
+      anchor: DateTime.utc(2026, 9, 19),
+    );
+
+    adapter.completers[1].complete(PostPage(posts: [post('newer')]));
+    await second;
+    adapter.completers[0].complete(PostPage(posts: [post('older')]));
+    await first;
+
+    expect(controller.state.posts.single.reference.remoteId, 'newer');
+    expect(
+      controller.state.query?.popularQuery?.anchor,
+      DateTime.utc(2026, 9, 19),
+    );
+  });
+
+  test('anchor navigation and detail back preserve Popular context', () async {
+    final item = post('detail');
+    final adapter = ScriptedAdapter.immediate([
+      PostPage(posts: [item]),
+      PostPage(posts: [post('shifted')]),
+    ])..details[item.reference] = PostDetail(summary: item, media: const []);
+    final controller = ExploreController(adapter: adapter);
+
+    await controller.loadPopular(
+      period: PopularPeriod.month,
+      anchor: DateTime.utc(2026, 9, 20),
+    );
+    await controller.openDetail(item.reference);
+    controller.closeDetail();
+    expect(controller.state.query?.popularQuery?.period, PopularPeriod.month);
+    expect(
+      controller.state.query?.popularQuery?.anchor,
+      DateTime.utc(2026, 9, 20),
+    );
+
+    await controller.shiftPopularAnchor(-1);
+    expect(
+      controller.state.query?.popularQuery?.anchor,
+      DateTime.utc(2026, 8, 1),
+    );
   });
 
   test('appends the next page once and removes duplicate identities', () async {
