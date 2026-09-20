@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../domain/failure.dart';
+import '../../domain/popular_query.dart';
 import '../../domain/post.dart';
 import '../moebooru/moebooru_decoder.dart';
 import '../site_adapter.dart';
@@ -31,8 +32,13 @@ class YandeAdapter implements SiteAdapter {
   Future<PostPage> queryPosts(PostQuery query) async {
     final parameters = <String, String>{'limit': '$_limit'};
     if (query.continuation != null) parameters['page'] = query.continuation!;
-    if (query.source == PostQuerySource.tagSearch) {
-      parameters['tags'] = query.expression!;
+    switch (query.source) {
+      case PostQuerySource.discovery:
+        break;
+      case PostQuerySource.popular:
+        parameters['tags'] = _popularTags(query.popularQuery!);
+      case PostQuerySource.tagSearch:
+        parameters['tags'] = query.expression!;
     }
     final response = await _get(
       Uri(path: '/post.json', queryParameters: parameters),
@@ -219,4 +225,17 @@ class YandeAdapter implements SiteAdapter {
       source.scheme == 'https' &&
       (source.host == _baseUri.host ||
           source.host.endsWith('.${_baseUri.host}'));
+
+  static String _popularTags(PopularQuery query) {
+    final start = _formatDate(query.window.start);
+    final end = _formatDate(query.window.end);
+    return start == end
+        ? 'order:score date:$start'
+        : 'order:score date:$start..$end';
+  }
+
+  static String _formatDate(DateTime value) =>
+      '${value.year.toString().padLeft(4, '0')}-'
+      '${value.month.toString().padLeft(2, '0')}-'
+      '${value.day.toString().padLeft(2, '0')}';
 }

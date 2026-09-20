@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:latte/src/domain/failure.dart';
+import 'package:latte/src/domain/popular_query.dart';
 import 'package:latte/src/domain/post.dart';
 import 'package:latte/src/sites/yandere/yandere_adapter.dart';
 
@@ -92,6 +93,53 @@ void main() {
       PostRating.explicit,
     ]);
   });
+
+  test(
+    'maps Popular periods to the verified yande.re date expression',
+    () async {
+      final requests = <http.Request>[];
+      final client = MockClient((incoming) async {
+        requests.add(incoming);
+        return http.Response(
+          '[]',
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+      final adapter = YandeAdapter(client: client);
+
+      await adapter.queryPosts(
+        PostQuery.popular(
+          PopularQuery(
+            period: PopularPeriod.day,
+            anchor: DateTime.utc(2026, 9, 20),
+          ),
+        ),
+      );
+      await adapter.queryPosts(
+        PostQuery.popular(
+          PopularQuery(
+            period: PopularPeriod.week,
+            anchor: DateTime.utc(2026, 9, 20),
+          ),
+        ),
+      );
+      await adapter.queryPosts(
+        PostQuery.popular(
+          PopularQuery(
+            period: PopularPeriod.month,
+            anchor: DateTime.utc(2026, 9, 20),
+          ),
+        ),
+      );
+
+      expect(requests.map((request) => request.url.queryParameters['tags']), [
+        'order:score date:2026-09-20',
+        'order:score date:2026-09-14..2026-09-20',
+        'order:score date:2026-09-01..2026-09-30',
+      ]);
+    },
+  );
 
   test('tag query remains opaque at the yande.re boundary', () async {
     late http.Request request;
