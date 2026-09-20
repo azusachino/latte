@@ -64,8 +64,9 @@ Yande.re first without making it the shared product model for future platforms.
 - A peekable Material bottom sheet groups the current post's metadata, tags, and
   available actions. It may be expanded without leaving the image-first pager.
 - A compact facts row contains dimensions, score, and source when known.
-- Tags wrap below the facts and remain selectable as text; tag-to-search is
-  deferred unless separately specified.
+- Tags wrap below the facts and remain selectable as text. Selecting a tag
+  launches a new opaque tag-search intent without exposing provider wire syntax
+  to shared UI.
 - The image first shows the loaded thumbnail, then replaces it with the selected
   higher-quality detail variant when that transfer completes. The peek row uses
   the reference's compact core operation layout: Download in the center and
@@ -86,6 +87,10 @@ Yande.re first without making it the shared product model for future platforms.
   reports transfer, completion, duplicate, and failure states while the detail
   image remains visible. Each active save owns its progress notification;
   concurrent saves remain separate entries in the Latte notification group.
+- Native Android Toast feedback reports that a download started or is already
+  running. A standard in-app Snackbar is reserved for the already-saved case
+  and offers an explicit retry; it does not cover the detail action area with a
+  custom overlay.
 - Completion reports the public Latte album and provides a system-supported
   open/view action.
 - Existing-file, retryable, and terminal outcomes use distinct copy.

@@ -10,6 +10,12 @@ their completed checkboxes and wording are not rewritten. The owner's 2026-09-20
 UX decision supersedes the historical Safe Mode portions. T035 onward is the
 active Popular-first implementation graph.
 
+**0.0.1 status (2026-09-20):** The active implementation slice is locally
+complete. T044 and T048 remain open for owner/device visual and gesture
+acceptance; T023–T032 remain historical evidence gaps rather than claims that
+the older save architecture was implemented. See
+`docs/spec-kit-evaluation.md` for the convergence record.
+
 ## Phase 1: Setup and feasibility
 
 **Purpose**: Prove the toolchain and remote read before product architecture.
@@ -170,9 +176,11 @@ and prove the original bytes remain unchanged.
   `docs/acceptance/milestone-001.md`.
 - [ ] T032 Run opt-in `make acceptance-live DEVICE=<adb-serial>` and append a
   redacted live receipt proving anonymous browse/search/detail and one save.
-- [ ] T033 Run final Spec Kit analysis and convergence; update
+- [x] T033 Run final Spec Kit analysis and convergence; update
   `docs/spec-kit-evaluation.md` with traceability, seeded-inconsistency result,
-  artifact effort, defects caught, and keep/simplify/remove recommendation.
+  defects caught, implementation evidence, remaining gaps, and
+  keep/simplify/remove recommendation. Maintenance percentage remains pending
+  until the next review pass.
 - [ ] T034 Run `make check`, verify the owner checklist is resolved, and perform
   the owner launch → browse → inspect → save acceptance without instruction.
 
@@ -220,22 +228,22 @@ Authenticated 0–3 personal scoring remains a later specification.
 - [x] T038 Write failing controller tests for Popular period/anchor switching,
   restoration after detail/back, duplicate-page append, and stale response
   rejection, then implement those transitions in the Explore controller.
-- [ ] T039 Write failing Explore widget tests for the reference-derived
-  Popular/Newest tab composition, period/date surface, Settings action and
-  column-density preference, compact aggregate score/rating/dimensions
-  semantics, and 48dp targets.
-  Implement the Material 3 rework without replacing the Yande workflow.
-- [ ] T040 Add reviewed compact/expanded light/dark goldens and run the focused
-  Popular story target, `make check`, `rumdl`, `git diff --check`, and the
-  Android build/install/launch receipt on device `0cadf428` when connected.
-  The previous goldens and checks are superseded because they validated the
-  wrong component composition.
+- [x] T039 Write and implement Explore widget coverage for the
+  reference-derived Popular/Newest tab composition, period/date surface,
+  Settings action, column-density preference, thumbnail-only cards, and 48dp
+  targets. The Material 3 rework does not replace the Yande workflow; ratings
+  are not rendered.
+- [x] T040 Add and run the compact/expanded light/dark goldens, focused Popular
+  story target, `make check`, `rumdl`, `git diff --check`, and the Android
+  build/install/launch receipt on device `0cadf428`. The old PR CI result is
+  stale and must be re-run after the current push.
 
 ### Popular-first checkpoint
 
 - Popular day/week/month and anchor/window are stable query identity.
-- Explicit ratings remain visible; no Safe Mode UI, policy filter, or query
-  rewrite exists.
+- Aggregate score remains detail metadata when available; ratings and personal
+  scoring are not rendered. No Safe Mode UI, policy filter, or query rewrite
+  exists.
 - Popular and Newest are visible primary modes; the masonry feed preserves
   aspect ratio and existing content while paging.
 - Detail/back preserves context and supports previous/next within the loaded
@@ -254,15 +262,16 @@ control.
   Popular/Newest tab row, Settings action and column-density preference,
   period/date FAB surface, and responsive staggered feed; implement that shell
   without changing query state.
-- [ ] T043 Write failing detail widget tests for horizontal pager swipe, arrow
-  fallback, Android platform back, thumbnail-to-high-quality replacement,
-  two-finger image zoom, the non-blocking background Download task, and the
-  peekable metadata/tag action sheet; implement the compact reference-derived
-  Download and expand operations without adding non-functional scoring
-  controls.
+- [x] T043 Write and implement detail coverage for horizontal pager swipe,
+  arrow fallback, Android platform back, thumbnail-to-high-quality replacement,
+  two-finger image zoom, the non-blocking WorkManager Download task, bounded
+  next-three prefetch, and the peekable metadata/tag action sheet. The compact
+  reference-derived Download and expand operations contain no non-functional
+  scoring controls.
 - [ ] T044 Re-record reviewed compact/expanded light/dark goldens and perform
   the connected-device visual and gesture acceptance against the pinned
-  reference UX. Run `make check` after the slice is complete.
+  reference UX. The local gate is green; final owner/device comparison remains
+  open.
 
 ## Phase 9: Cross-site seam and durable saves
 
@@ -279,8 +288,10 @@ download code.
   HTTP range resume through pending MediaStore rows, and Android notification
   settings access.
 - [x] T047 Persist the implemented global theme/column settings, document the
-  Yande-derived settings mapping, redraw the launcher source icon as SVG, and
-  provide an Android vector launcher resource.
+  Yande-derived settings mapping, and install the owner-approved launcher PNG
+  resource. An SVG/vector redraw is not required after the owner rejected that
+  conversion.
 - [ ] T048 Complete connected-device acceptance for restart-resume, concurrent
-  notification stacking, notification open/view, vector launcher rendering,
-  and the reference UX/gesture comparison before calling the slice released.
+  notification stacking, notification open/view, owner-approved launcher
+  rendering, and the reference UX/gesture comparison before calling the slice
+  released.

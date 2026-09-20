@@ -88,3 +88,68 @@ depends on disciplined agent analysis rather than a standalone validator.
   avoidable churn.
 - **Do not claim success yet**: implementation rediscovery, requirement churn,
   and the maintenance-cost percentage can only be measured after convergence.
+
+## 0.0.1 convergence status (2026-09-20)
+
+The 0.0.1 implementation slice is complete locally, but owner acceptance and
+live/device evidence remain open. The current implementation preserves the
+reference Yande workflow and uses Material 3 for styling and platform
+components; Material 3 is not treated as the product-design authority.
+
+### Delivered scope
+
+- Popular/Newest exploration with period selection, search, settings, column
+  density, and thumbnail-only staggered browsing.
+- Image-first detail paging with Android back, previous/next fallback controls,
+  thumbnail-to-higher-quality replacement, two-finger zoom, metadata table,
+  clickable tag queries, and a compact reference-derived action sheet.
+- Best-quality background downloads through WorkManager with unique-task
+  handling, restart/range resume, concurrent notifications, completion
+  thumbnail/open action, native start/running feedback, and retry feedback for
+  an already-saved image.
+- Bounded prefetch of the next three loaded detail images using display-quality
+  variants only; original media is never prefetched speculatively.
+- Provider-neutral site registry and capability seams, with authenticated
+  personal scoring explicitly retained for the roadmap.
+
+### Evidence and remaining gaps
+
+- `make check`: passed locally with 70 tests and the opt-in Yande probe
+  available separately.
+- Debug APK: built, installed, and launched on device `0cadf428` without a
+  fatal launch exception.
+- Live browse/download acceptance is incomplete because the connected device
+  could not resolve `yande.re`; this is not evidence that the feature works
+  end to end.
+- The old PR check failed only the four Explore golden comparisons and ran
+  before the latest implementation commits. A fresh CI run after this update
+  is required.
+- Android instrumentation, the 20-run fixture-backed journey, the owner
+  launch acceptance, and the final owner visual/gesture acceptance remain open
+  in T023-T032, T034, T044, and T048.
+
+### Traceability corrections for the next review
+
+- Ratings remain adapter/search metadata but are not rendered in the UI;
+  authenticated scoring is roadmap-only.
+- Explore cards show thumbnails only. Detail tags are selectable and launch an
+  opaque tag search intent.
+- The accepted launcher asset is the owner-provided PNG in the Android
+  resources. The previously proposed SVG/vector conversion is not a product
+  requirement after the owner rejected that redraw.
+- The system notification owns background download progress and completion;
+  the detail page does not remain blocked by a download button.
+
+### Spec Kit status
+
+For the next agent review, retain the assessment, constitution, active feature
+specification, plan, task graph, contracts, and this convergence record. Keep
+the generated `.specify/` workflow files until the review decides whether they
+are worth maintaining. `docs/PROJECT-SPEC.md` remains historical and
+superseded; it is not a second execution specification.
+
+Spec Kit found eight material pre-code defects and made the seeded
+inconsistency actionable. It has therefore earned a provisional **keep, with
+smaller maintenance scope** decision for 0.0.1. Do not call the experiment a
+full success yet: maintenance percentage, end-to-end acceptance, and whether
+the custom checklist adds value still need the next review pass.
