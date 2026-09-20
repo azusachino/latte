@@ -1167,6 +1167,8 @@ class _DetailInspectSheet extends StatefulWidget {
 class _DetailInspectSheetState extends State<_DetailInspectSheet> {
   late final DraggableScrollableController _sheetController =
       DraggableScrollableController();
+  OverlayEntry? _downloadToast;
+  Timer? _downloadToastTimer;
   var _expanded = false;
 
   @override
@@ -1177,6 +1179,8 @@ class _DetailInspectSheetState extends State<_DetailInspectSheet> {
 
   @override
   void dispose() {
+    _downloadToastTimer?.cancel();
+    _downloadToast?.remove();
     _sheetController.removeListener(_onSheetChanged);
     _sheetController.dispose();
     super.dispose();
@@ -1195,18 +1199,18 @@ class _DetailInspectSheetState extends State<_DetailInspectSheet> {
     final peekSize = (66 / MediaQuery.sizeOf(context).height)
         .clamp(0.035, 0.16)
         .toDouble();
-    final facts = <Widget>[
+    final metadata = <_MetadataEntry>[
       if (widget.detail.summary.width != null &&
           widget.detail.summary.height != null)
-        _Fact(
+        _MetadataEntry(
           label: 'Dimensions',
           value:
               '${widget.detail.summary.width} × ${widget.detail.summary.height}',
         ),
       if (widget.detail.summary.score != null)
-        _Fact(label: 'Score', value: '${widget.detail.summary.score}'),
+        _MetadataEntry(label: 'Score', value: '${widget.detail.summary.score}'),
       if (widget.detail.summary.source != null)
-        _Fact(label: 'Source', value: widget.detail.summary.source!),
+        _MetadataEntry(label: 'Source', value: widget.detail.summary.source!),
     ];
     return Align(
       alignment: Alignment.bottomCenter,
@@ -1239,7 +1243,7 @@ class _DetailInspectSheetState extends State<_DetailInspectSheet> {
                 ),
               ),
               const SizedBox(height: 12),
-              Wrap(spacing: 8, runSpacing: 8, children: facts),
+              if (metadata.isNotEmpty) _DetailMetadataTable(rows: metadata),
               if (widget.detail.summary.tags.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 Text('Tags', style: Theme.of(context).textTheme.titleMedium),
@@ -1247,14 +1251,22 @@ class _DetailInspectSheetState extends State<_DetailInspectSheet> {
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: widget.detail.summary.tags
-                      .map(
-                        (tag) => _DetailTagChip(
-                          tag: tag,
-                          onPressed: () => unawaited(widget.onTagSelected(tag)),
+                  children: [
+                    for (
+                      var index = 0;
+                      index < widget.detail.summary.tags.length;
+                      index++
+                    )
+                      _DetailTagChip(
+                        tag: widget.detail.summary.tags[index],
+                        index: index,
+                        onPressed: () => unawaited(
+                          widget.onTagSelected(
+                            widget.detail.summary.tags[index],
+                          ),
                         ),
-                      )
-                      .toList(),
+                      ),
+                  ],
                 ),
               ],
             ],
@@ -1284,24 +1296,69 @@ class _DetailInspectSheetState extends State<_DetailInspectSheet> {
   }
 
   void _showDownloadMessage(String message) {
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    if (messenger == null) return;
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(message),
-          behavior: SnackBarBehavior.floating,
-          // Keep the transient message above the collapsed detail action row.
-          margin: EdgeInsets.fromLTRB(
-            16,
-            0,
-            16,
-            MediaQuery.paddingOf(context).bottom + 176,
+    final overlay = Overlay.maybeOf(context);
+    if (overlay == null) return;
+    _downloadToastTimer?.cancel();
+    _downloadToast?.remove();
+    final entry = OverlayEntry(
+      builder: (context) {
+        final brightness = Theme.of(context).brightness;
+        final foreground = brightness == Brightness.dark
+            ? Colors.white
+            : Colors.black;
+        final shadow = brightness == Brightness.dark
+            ? Colors.black
+            : Colors.white;
+        return Positioned(
+          top: MediaQuery.paddingOf(context).top + kToolbarHeight + 64,
+          left: 16,
+          right: 16,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: IgnorePointer(
+                child: Material(
+                  key: const ValueKey('download-toast'),
+                  type: MaterialType.transparency,
+                  child: Semantics(
+                    liveRegion: true,
+                    label: message,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.download_done_outlined,
+                          color: foreground,
+                          shadows: [Shadow(color: shadow, blurRadius: 4)],
+                        ),
+                        const SizedBox(width: 12),
+                        Flexible(
+                          child: Text(
+                            message,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: foreground,
+                              shadows: [Shadow(color: shadow, blurRadius: 4)],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
-          duration: const Duration(seconds: 3),
-        ),
-      );
+        );
+      },
+    );
+    _downloadToast = entry;
+    overlay.insert(entry);
+    _downloadToastTimer = Timer(const Duration(seconds: 3), () {
+      if (entry.mounted) entry.remove();
+      if (identical(_downloadToast, entry)) _downloadToast = null;
+    });
   }
 }
 
@@ -1371,30 +1428,68 @@ int _variantQuality(MediaVariant variant) => switch (variant.id) {
   MediaVariantId.original => 3,
 };
 
-class _Fact extends StatelessWidget {
-  const _Fact({required this.label, required this.value});
+class _MetadataEntry {
+  const _MetadataEntry({required this.label, required this.value});
 
   final String label;
   final String value;
+}
+
+class _DetailMetadataTable extends StatelessWidget {
+  const _DetailMetadataTable({required this.rows});
+
+  final List<_MetadataEntry> rows;
 
   @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: '$label: $value',
-      child: Chip(label: Text('$label  $value')),
-    );
-  }
+  Widget build(BuildContext context) => Table(
+    columnWidths: const {0: IntrinsicColumnWidth(), 1: FlexColumnWidth()},
+    defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+    border: TableBorder(
+      horizontalInside: BorderSide(
+        color: Theme.of(context).colorScheme.outlineVariant,
+        width: 0.5,
+      ),
+    ),
+    children: [
+      for (final row in rows)
+        TableRow(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Text(
+                row.label,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 0, 10),
+              child: Semantics(
+                label: '${row.label}: ${row.value}',
+                child: Text(row.value),
+              ),
+            ),
+          ],
+        ),
+    ],
+  );
 }
 
 class _DetailTagChip extends StatelessWidget {
-  const _DetailTagChip({required this.tag, required this.onPressed});
+  const _DetailTagChip({
+    required this.tag,
+    required this.index,
+    required this.onPressed,
+  });
 
   final String tag;
+  final int index;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    final colors = _tagColors(context, tag);
+    final colors = _tagColors(context, index);
     return Tooltip(
       message: 'Search tag $tag',
       child: ActionChip(
@@ -1421,30 +1516,23 @@ class _TagColors {
   final Color border;
 }
 
-_TagColors _tagColors(BuildContext context, String tag) {
+_TagColors _tagColors(BuildContext context, int index) {
   final scheme = Theme.of(context).colorScheme;
-  final palette = [
-    _TagColors(
-      background: scheme.primaryContainer,
-      foreground: scheme.onPrimaryContainer,
-      border: scheme.primary,
-    ),
-    _TagColors(
-      background: scheme.secondaryContainer,
-      foreground: scheme.onSecondaryContainer,
-      border: scheme.secondary,
-    ),
-    _TagColors(
-      background: scheme.tertiaryContainer,
-      foreground: scheme.onTertiaryContainer,
-      border: scheme.tertiary,
-    ),
+  final base = scheme.surfaceContainerHighest;
+  final accents = [
+    scheme.primary,
+    scheme.secondary,
+    scheme.tertiary,
+    scheme.error,
+    scheme.inversePrimary,
+    scheme.outline,
   ];
-  var hash = 17;
-  for (final unit in tag.codeUnits) {
-    hash = (hash * 31 + unit) & 0x7fffffff;
-  }
-  return palette[hash % palette.length];
+  final accent = accents[index % accents.length];
+  return _TagColors(
+    background: Color.alphaBlend(accent.withAlpha(48), base),
+    foreground: scheme.onSurface,
+    border: accent,
+  );
 }
 
 class _LoadingState extends StatelessWidget {

@@ -171,10 +171,16 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Download started in the background.'), findsOneWidget);
-    final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
+    final toast = tester.widget<Material>(
+      find.byKey(const ValueKey('download-toast')),
+    );
+    expect(toast.type, MaterialType.transparency);
+    expect(toast.color, isNull);
     expect(
-      snackBar.margin?.resolve(TextDirection.ltr).bottom,
-      greaterThanOrEqualTo(176),
+      tester.getTopLeft(find.byKey(const ValueKey('download-toast'))).dy,
+      lessThan(
+        tester.view.physicalSize.height / tester.view.devicePixelRatio / 2,
+      ),
     );
   });
 
@@ -324,7 +330,10 @@ void main() {
   testWidgets('detail tags launch the shared tag search workflow', (
     tester,
   ) async {
-    final item = post('tagged-detail', tags: const ['artist', 'blue_eyes']);
+    final item = post(
+      'tagged-detail',
+      tags: const ['artist', 'blue_eyes', 'character', 'background'],
+    );
     final controller = ExploreController(adapter: WidgetAdapter(posts: [item]));
     await tester.pumpWidget(app(controller));
     await tester.pumpAndSettle();
@@ -343,6 +352,15 @@ void main() {
       find.byKey(const ValueKey('detail-tag-artist')),
     );
     expect(chip.backgroundColor, isNotNull);
+    final chipColors = ['artist', 'blue_eyes', 'character', 'background']
+        .map(
+          (tag) => tester
+              .widget<ActionChip>(find.byKey(ValueKey('detail-tag-$tag')))
+              .backgroundColor,
+        )
+        .toSet();
+    expect(chipColors.length, greaterThanOrEqualTo(3));
+    expect(find.text('Dimensions'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('detail-tag-artist')));
     await tester.pumpAndSettle();
