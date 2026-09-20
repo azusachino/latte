@@ -5,9 +5,11 @@ import android.content.pm.PackageManager
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.work.BackoffPolicy
 import androidx.work.ExistingWorkPolicy
+import androidx.work.WorkInfo
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
@@ -41,6 +43,7 @@ class MainActivity : FlutterActivity() {
                 val sourceUrl = call.argument<String>("sourceUrl")
                 val displayName = call.argument<String>("displayName")
                 val mimeType = call.argument<String>("mimeType")
+                val force = call.argument<Boolean>("force") == true
                 if (sourceUrl == null || displayName == null || mimeType == null) {
                     result.error("invalid_request", "Download arguments are incomplete", null)
                     return@setMethodCallHandler
@@ -56,9 +59,24 @@ class MainActivity : FlutterActivity() {
                             workInfos.get().any { !it.state.isFinished }
                         }.getOrDefault(false)
                         if (active) {
+                            showDownloadToast("It's already in the download queue. Please wait.")
                             result.success(
                                 mapOf(
                                     "status" to "already_running",
+                                    "album" to DownloadWorker.album,
+                                    "displayName" to displayName,
+                                ),
+                            )
+                            return@addListener
+                        }
+
+                        val completed = runCatching {
+                            workInfos.get().any { it.state == WorkInfo.State.SUCCEEDED }
+                        }.getOrDefault(false)
+                        if (completed && !force) {
+                            result.success(
+                                mapOf(
+                                    "status" to "already_saved",
                                     "album" to DownloadWorker.album,
                                     "displayName" to displayName,
                                 ),
@@ -86,6 +104,7 @@ class MainActivity : FlutterActivity() {
                             ExistingWorkPolicy.KEEP,
                             request,
                         )
+                        showDownloadToast("Downloading has started. Please wait.")
                         result.success(
                             mapOf(
                                 "status" to "started",
@@ -108,5 +127,9 @@ class MainActivity : FlutterActivity() {
                 notificationPermissionRequestCode,
             )
         }
+    }
+
+    private fun showDownloadToast(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 }

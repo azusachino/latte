@@ -119,6 +119,7 @@ class _DownloadStore implements DownloadStore {
   Future<DownloadReceipt> save({
     required ResolvedMedia media,
     required String displayName,
+    bool force = false,
   }) async {
     this.media = media;
     this.displayName = displayName;

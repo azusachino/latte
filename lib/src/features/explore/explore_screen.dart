@@ -1167,8 +1167,6 @@ class _DetailInspectSheet extends StatefulWidget {
 class _DetailInspectSheetState extends State<_DetailInspectSheet> {
   late final DraggableScrollableController _sheetController =
       DraggableScrollableController();
-  OverlayEntry? _downloadToast;
-  Timer? _downloadToastTimer;
   var _expanded = false;
 
   @override
@@ -1179,8 +1177,6 @@ class _DetailInspectSheetState extends State<_DetailInspectSheet> {
 
   @override
   void dispose() {
-    _downloadToastTimer?.cancel();
-    _downloadToast?.remove();
     _sheetController.removeListener(_onSheetChanged);
     _sheetController.dispose();
     super.dispose();
@@ -1281,93 +1277,54 @@ class _DetailInspectSheetState extends State<_DetailInspectSheet> {
     unawaited(_startDownload());
   }
 
-  Future<void> _startDownload() async {
+  Future<void> _startDownload({bool force = false}) async {
     try {
       final receipt = await widget.downloadService.save(
         reference: widget.detail.summary.reference,
         variant: _bestVariant(widget.detail.media),
+        force: force,
       );
       if (!mounted) return;
-      _showDownloadMessage(_downloadMessage(receipt));
+      if (receipt.status == DownloadStatus.alreadySaved) {
+        _showAlreadySavedMessage();
+      }
     } on Object {
       if (!mounted) return;
       _showDownloadMessage('Download could not be started.');
     }
   }
 
-  void _showDownloadMessage(String message) {
-    final overlay = Overlay.maybeOf(context);
-    if (overlay == null) return;
-    _downloadToastTimer?.cancel();
-    _downloadToast?.remove();
-    final entry = OverlayEntry(
-      builder: (context) {
-        final brightness = Theme.of(context).brightness;
-        final foreground = brightness == Brightness.dark
-            ? Colors.white
-            : Colors.black;
-        final shadow = brightness == Brightness.dark
-            ? Colors.black
-            : Colors.white;
-        return Positioned(
-          top: MediaQuery.paddingOf(context).top + kToolbarHeight + 64,
-          left: 16,
-          right: 16,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: IgnorePointer(
-                child: Material(
-                  key: const ValueKey('download-toast'),
-                  type: MaterialType.transparency,
-                  child: Semantics(
-                    liveRegion: true,
-                    label: message,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.download_done_outlined,
-                          color: foreground,
-                          shadows: [Shadow(color: shadow, blurRadius: 4)],
-                        ),
-                        const SizedBox(width: 12),
-                        Flexible(
-                          child: Text(
-                            message,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: foreground,
-                              shadows: [Shadow(color: shadow, blurRadius: 4)],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
+  void _showAlreadySavedMessage() {
+    _showDownloadMessage(
+      'Image already saved. Download again?',
+      action: SnackBarAction(
+        label: 'Download again',
+        onPressed: () => unawaited(_startDownload(force: true)),
+      ),
     );
-    _downloadToast = entry;
-    overlay.insert(entry);
-    _downloadToastTimer = Timer(const Duration(seconds: 3), () {
-      if (entry.mounted) entry.remove();
-      if (identical(_downloadToast, entry)) _downloadToast = null;
-    });
+  }
+
+  void _showDownloadMessage(String message, {SnackBarAction? action}) {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          key: const ValueKey('download-snackbar'),
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.fromLTRB(
+            16,
+            0,
+            16,
+            MediaQuery.paddingOf(context).bottom + 176,
+          ),
+          action: action,
+        ),
+      );
   }
 }
-
-String _downloadMessage(DownloadReceipt receipt) => switch (receipt.status) {
-  DownloadStatus.started => 'Download started in the background.',
-  DownloadStatus.alreadyRunning => 'This image is already downloading.',
-  DownloadStatus.alreadySaved => 'Image already saved.',
-  DownloadStatus.completed => 'Image saved.',
-};
 
 class _DetailActions extends StatelessWidget {
   const _DetailActions({

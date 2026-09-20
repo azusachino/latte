@@ -147,7 +147,9 @@ void main() {
     expect(find.text('1200 × 800'), findsNothing);
   });
 
-  testWidgets('acknowledges a background download in the app', (tester) async {
+  testWidgets('starts a background download without an in-app toast', (
+    tester,
+  ) async {
     const channel = MethodChannel('com.azusachino.latte/download');
     final messenger =
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
@@ -170,18 +172,40 @@ void main() {
     await tester.tap(find.byTooltip('Download'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Download started in the background.'), findsOneWidget);
-    final toast = tester.widget<Material>(
-      find.byKey(const ValueKey('download-toast')),
+    expect(find.byKey(const ValueKey('download-toast')), findsNothing);
+    expect(find.byKey(const ValueKey('download-snackbar')), findsNothing);
+  });
+
+  testWidgets('offers a retry for an already saved image', (tester) async {
+    const channel = MethodChannel('com.azusachino.latte/download');
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    var force = false;
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      force = call.arguments is Map && call.arguments['force'] == true;
+      return <String, Object?>{
+        'status': 'already_saved',
+        'album': 'Pictures/Latte',
+        'displayName': 'latte_fake_download_jpeg.jpg',
+      };
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+
+    final controller = ExploreController(
+      adapter: WidgetAdapter(posts: [post('already-saved')]),
     );
-    expect(toast.type, MaterialType.transparency);
-    expect(toast.color, isNull);
-    expect(
-      tester.getTopLeft(find.byKey(const ValueKey('download-toast'))).dy,
-      lessThan(
-        tester.view.physicalSize.height / tester.view.devicePixelRatio / 2,
-      ),
-    );
+    await tester.pumpWidget(app(controller));
+    await tester.pumpAndSettle();
+    await tester.tap(find.bySemanticsLabel('Post already-saved'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Download'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Image already saved. Download again?'), findsOneWidget);
+    expect(find.text('Download again'), findsOneWidget);
+    await tester.tap(find.text('Download again'));
+    await tester.pumpAndSettle();
+    expect(force, isTrue);
   });
 
   testWidgets('detail pager keeps Popular context and moves between posts', (

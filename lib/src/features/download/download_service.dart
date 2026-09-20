@@ -23,6 +23,7 @@ abstract interface class DownloadStore {
   Future<DownloadReceipt> save({
     required ResolvedMedia media,
     required String displayName,
+    bool force = false,
   });
 }
 
@@ -37,6 +38,7 @@ class MethodChannelDownloadStore implements DownloadStore {
   Future<DownloadReceipt> save({
     required ResolvedMedia media,
     required String displayName,
+    bool force = false,
   }) async {
     final result = await _channel.invokeMapMethod<String, dynamic>(
       'saveImage',
@@ -44,6 +46,7 @@ class MethodChannelDownloadStore implements DownloadStore {
         'sourceUrl': media.source.toString(),
         'displayName': displayName,
         'mimeType': _mimeType(media.variant.extension),
+        'force': force,
       },
     );
     if (result == null) {
@@ -74,9 +77,14 @@ class DownloadService {
   Future<DownloadReceipt> save({
     required PostRef reference,
     required MediaVariant variant,
+    bool force = false,
   }) async {
     final media = await adapter.resolveMedia(reference, variant.id);
-    return _store.save(media: media, displayName: _displayName(media));
+    return _store.save(
+      media: media,
+      displayName: _displayName(media),
+      force: force,
+    );
   }
 
   static String _displayName(ResolvedMedia media) {

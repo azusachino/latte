@@ -9,6 +9,8 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
@@ -296,8 +298,35 @@ class DownloadWorker(
         val notification = notificationBuilder(title, text)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
+            .apply {
+                loadNotificationThumbnail(receipt.contentUri)?.let { thumbnail ->
+                    setLargeIcon(thumbnail)
+                    setStyle(Notification.BigPictureStyle().bigPicture(thumbnail))
+                }
+            }
             .build()
         notify(resultNotificationId, notification)
+    }
+
+    private fun loadNotificationThumbnail(contentUri: String): Bitmap? {
+        if (contentUri.isBlank()) return null
+        val uri = Uri.parse(contentUri)
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        applicationContext.contentResolver.openInputStream(uri)?.use { input ->
+            BitmapFactory.decodeStream(input, null, bounds)
+        }
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+
+        var sampleSize = 1
+        while (bounds.outWidth / sampleSize > 500 ||
+            bounds.outHeight / sampleSize > 500
+        ) {
+            sampleSize *= 2
+        }
+        val options = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+        return applicationContext.contentResolver.openInputStream(uri)?.use { input ->
+            BitmapFactory.decodeStream(input, null, options)
+        }
     }
 
     private fun showDownloadFailure(message: String) {
