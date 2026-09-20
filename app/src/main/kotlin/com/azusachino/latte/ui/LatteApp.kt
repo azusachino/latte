@@ -2,6 +2,8 @@ package com.azusachino.latte.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -18,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.IntOffset
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.azusachino.latte.data.download.DownloadManager
 import com.azusachino.latte.ui.common.ToastHost
@@ -34,6 +37,21 @@ sealed interface Screen {
     data object Settings : Screen
     data object AccountManager : Screen
 }
+
+private val Screen.navDepth: Int
+    get() = when (this) {
+        is Screen.Explore -> 0
+        is Screen.Detail -> 1
+        is Screen.Settings -> 1
+        is Screen.AccountManager -> 2
+    }
+
+// A quick, slightly overshooting settle (inspired by transitions.dev's toggle
+// curve) rather than Compose's flatter default spring for slideIn/Out.
+private val screenSlideSpec = spring<IntOffset>(
+    dampingRatio = 0.8f,
+    stiffness = Spring.StiffnessMediumLow,
+)
 
 @Composable
 fun LatteApp(
@@ -57,15 +75,12 @@ fun LatteApp(
                 targetState = currentScreen,
                 label = "ScreenTransition",
                 transitionSpec = {
-                    when {
-                        targetState is Screen.Detail || targetState is Screen.Settings || targetState is Screen.AccountManager -> {
-                            (slideInHorizontally { width -> width } + fadeIn())
-                                .togetherWith(slideOutHorizontally { width -> -width / 3 } + fadeOut())
-                        }
-                        else -> {
-                            (slideInHorizontally { width -> -width / 3 } + fadeIn())
-                                .togetherWith(slideOutHorizontally { width -> width } + fadeOut())
-                        }
+                    if (targetState.navDepth >= initialState.navDepth) {
+                        (slideInHorizontally(screenSlideSpec) { width -> width } + fadeIn())
+                            .togetherWith(slideOutHorizontally(screenSlideSpec) { width -> -width / 3 } + fadeOut())
+                    } else {
+                        (slideInHorizontally(screenSlideSpec) { width -> -width / 3 } + fadeIn())
+                            .togetherWith(slideOutHorizontally(screenSlideSpec) { width -> width } + fadeOut())
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
