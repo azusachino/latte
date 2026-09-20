@@ -1,10 +1,11 @@
 # Latte Product & Architecture Roadmap
 
 > **Status**: Active execution roadmap  
-> **Updated**: 2026-09-20  
+> **Updated**: 2026-09-21
 > **Source Documents**:
-> - [001 Active Feature Spec](file:///Users/azusachino/Projects/project-github/harus-workstation/vendor/latte/specs/001-yandere-core-journey/spec.md)
-> - [Code Review & Parity Analysis](file:///Users/azusachino/Projects/project-github/harus-workstation/vendor/latte/docs/review/2026-09-20-code-review-and-parity.md)
+> - [002 Active Feature Spec](../specs/002-account-manager/spec.md)
+> - [Spec Kit evaluation](spec-kit-evaluation.md)
+> **Historical context**: [code review & parity analysis](review/2026-09-20-code-review-and-parity.md)
 
 ---
 
@@ -25,8 +26,13 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
 
 ## Milestone 0.0.2: Account Manager Center (Mihon-Style Plugin Architecture), Scoring & UX Hardening
 
-> **Active Feature Spec**: [002 Account Manager Center](file:///Users/azusachino/Projects/project-github/harus-workstation/vendor/latte/specs/002-account-manager/spec.md)  
-> **Tasks**: [002 Tasks](file:///Users/azusachino/Projects/project-github/harus-workstation/vendor/latte/specs/002-account-manager/tasks.md)  
+> **Status**: In progress. Plugin, Yande authentication/scoring, Favorites, and
+> Pools have source implementations locally, but storage/traceability/test gaps
+> remain; T014 hardware verification is partial. Pixiv, final hardware
+> acceptance, and the 0.0.2 version bump remain open.
+
+> **Active Feature Spec**: [002 Account Manager Center](../specs/002-account-manager/spec.md)
+> **Tasks**: [002 Tasks](../specs/002-account-manager/tasks.md)
 > **Design Inspiration**: Mihon / Tachiyomi `Tracker` & `TrackerManager` plugin architecture
 
 ### 1. Mihon-Style Plugin Subsystem (`SitePlugin` & `SitePluginManager`)
@@ -49,7 +55,20 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
 - **Personal Scoring & Favorites**:
   - Interactive 0–3 star rating bar and Favorite toggle (`score == 3`) in `DetailScreen`.
   - Executes `POST /post/vote.json` with optimistic UI updates.
-  - Quick "My Favorites" filter in `ExploreScreen` querying `vote:3:<username>`.
+  - A dedicated "Favorites" tab in `ExploreScreen` (alongside Popular/Newest)
+    backed by its own feed, querying `vote:3:<username>`.
+  - Favorite state set outside this app (a prior session, or the web) is
+    recovered via `GET /favorite/list_users.json?id=<post>` -- yande.re has
+    no "my existing vote" lookup, so only the favorite (score 3) tier is
+    recoverable; 1/2-star ratings don't survive a restart.
+- **Pool Browsing (delivered ahead of schedule)**:
+  - A "Pools" tab lists/searches yande.re pools (`GET /pool.json`).
+  - Opening a pool reuses the existing post-search feed via `pool:<id>` as a
+    search tag (verified to match `pool/show.json`'s post order), rather
+    than a parallel detail screen.
+  - Not in the original 002 spec -- added directly from live-device
+    feedback per this project's device-first-thin-slices practice; see
+    `specs/002-account-manager/spec.md` User Story 4.
 
 ### 3. Pixiv Platform Foundation
 - **OAuth2 Token Management**:
@@ -90,6 +109,6 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
 
 ## Quality & Governance Gates
 
-1. Every milestone must maintain `make check` passing with zero lints, formatting compliance, and deterministic tests.
+1. Every milestone must maintain the project gates: `make check`, `make lint`, and `make validate`; deterministic tests and lint must stay green.
 2. New network capabilities (Yande vote, Pixiv OAuth2) must use isolated test doubles in the test suite and opt-in manual probes for live verification.
 3. No credentials, tokens, or private media may ever be logged, committed, or exposed in error messages.

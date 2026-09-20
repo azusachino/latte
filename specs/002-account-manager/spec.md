@@ -4,7 +4,10 @@
 
 **Created**: 2026-09-20
 
-**Status**: Planned
+**Status**: Slices 1-4 have source implementations locally, but storage,
+runtime-registry, test-coverage, and credential-verification gaps remain. T014
+hardware verification is partial, pool browsing was delivered post-hoc, and
+Slice 5 (Pixiv) plus Slice 6 (release) remain open -- see `tasks.md`.
 
 **Inspiration**: Mihon / Tachiyomi `Tracker` & `TrackerManager` plugin architecture (`eu.kanade.tachiyomi.data.track.*`).
 
@@ -119,7 +122,23 @@ As an authenticated yande.re user, I can rate posts from 0 to 3 stars in the pos
 1. **Given** `YandePlugin.isLoggedIn == true`, **When** viewing post detail, **Then** an interactive 0–3 star rating bar and Favorite icon button are displayed.
 2. **Given** rating 3 stars or tapping Favorite, **When** `YandePlugin.setScore(postId, 3)` completes, **Then** the UI reflects the score with a subtle confirmation.
 3. **Given** `YandePlugin.isLoggedIn == false`, **When** tapping rating stars, **Then** the app prompts to sign in to yande.re via the plugin login dialog.
-4. **Given** signed in to yande.re, **When** on Explore screen, **Then** a "My Favorites" chip is available that queries `vote:3:<username>`.
+4. **Given** signed in to yande.re, **When** on Explore screen, **Then** a dedicated "Favorites" tab (alongside Popular/Newest) is available, backed by its own feed querying `vote:3:<username>`.
+5. **Given** a post was favorited in a prior session or on the web, **When** opening its detail, **Then** the heart/star reflects that existing favorite (recovered via `GET /favorite/list_users.json`, since yande.re exposes no other "my existing vote" lookup; 1/2-star ratings cannot be recovered this way).
+
+---
+
+### User Story 4 - Pool Browsing (Priority: P2, added post-hoc)
+
+As the owner, I can browse and search yande.re pools (curated ordered post
+collections) from a dedicated "Pools" tab, and open one to view its posts in
+pool order. Not in the original spec for this milestone -- added directly
+from live-device feedback, per this project's device-first-thin-slices
+practice. The post-hoc addition is recorded in `tasks.md`.
+
+**Acceptance Scenarios**:
+1. **Given** the Pools tab, **When** it loads, **Then** it lists pools via `GET /pool.json`, each row showing a cover thumbnail (lazily fetched from the pool's first post), its id, post count, and a lock badge if private.
+2. **Given** the Pools tab, **When** using the app bar's search action, **Then** it searches pools by name (`GET /pool.json?query=`) instead of post tags -- the same search entry point is contextual per tab, not a second search UI.
+3. **Given** a pool row is tapped, **When** its posts load, **Then** they render via the existing post-search feed using `pool:<id>` as the tag (verified to return the same order as `pool/show.json`), with the app bar title showing `#<id> · <name>` (ellipsized on overflow) and a back arrow returning to the Pools tab.
 
 ---
 
@@ -146,6 +165,8 @@ As the owner, I can configure a Pixiv account in Account Center. `PixivPlugin` s
 - **FR-007**: Post detail UI MUST dynamically query `SitePluginManager.get(siteId)?.capabilities` to render scoring controls conditionally.
 - **FR-008**: `PixivPlugin` MUST implement `REFERER_INJECT` capability injecting `Referer: https://app-api.pixiv.net/` on matching URLs.
 - **FR-009**: Password dialogs MUST provide visibility toggles and proper IME keyboard actions (`Next` / `Done`).
+- **FR-010**: Explore MUST expose Favorites as a dedicated tab with its own feed state, not a search-bar substitution.
+- **FR-011**: Explore MUST expose a Pools tab (`GET /pool.json` list/search); opening a pool MUST reuse the existing post-search feed via `pool:<id>` rather than a parallel detail screen.
 
 ---
 

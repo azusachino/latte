@@ -186,3 +186,42 @@ Spec Kit is **downsized to a lightweight, mobile-first workflow** for future mil
 3. **Adopted Rule: Device-First Ergonomics**:
    - Tactile ergonomics, transitions, gesture expectations, and ambient safety cannot be finalized in markdown.
    - Every milestone must deliver a runnable APK to physical hardware early. Real-device receipts are required before closing UI journeys.
+
+## 0.0.2 Account Manager Review Status (2026-09-21)
+
+This review checks whether the downsized Spec Kit workflow was actually used for
+the account-manager change and whether its status matches the repository.
+
+### Evidence
+
+- The downsized shape was used: one feature specification and one flat task
+  record under `specs/002-account-manager/`, with the constitution retained as
+  the project-level boundary.
+- The task record drove source implementations for the plugin, secure-storage,
+  Yande login, account UI, scoring, and Favorites slices. The corresponding
+  unit tests are present, and `mise exec -- make check` passed locally, but the
+  review found an unencrypted Keystore-failure fallback and missing storage/UI
+  and pool-behavior tests.
+- The broader review also found that the runtime registers Yande only, the
+  detail flow bypasses the manager lookup required by FR-007, Yande-specific
+  query syntax lives in `ExploreViewModel`, the cookie jar uses ordinary
+  preferences, Safe Mode defaults off in code despite the constitution, and
+  rating/favorite failures still surface through toasts.
+- Pool browsing was discovered and delivered after the original task breakdown.
+  It is now recorded as post-hoc work in `tasks.md` rather than being presented
+  as an original requirement.
+- The workflow is not complete for this milestone: the bundled prerequisite
+  check still resolves `.specify/feature.json` to
+  `specs/001-yandere-core-journey`, and no 002 `plan.md` or analyze/convergence
+  receipt exists. T014 still lacks live login and process-restart persistence
+  evidence, Pixiv is not implemented, the release gate/version bump is open,
+  and the current `make check` target runs unit tests only. No 0.0.2
+  maintenance-cost measurement exists yet.
+
+### Verdict
+
+Spec Kit did useful work, but only partially. It provided a lightweight scope,
+task trace, and a place to record the post-hoc pool decision; it did not produce
+enough evidence to call 0.0.2 complete or PR-ready as a milestone. Keep the
+downsized artifacts, mark 0.0.2 **IN PROGRESS / PARTIALLY VERIFIED**, and do not
+claim hardware-complete status until T014 and the final acceptance tasks pass.

@@ -1,7 +1,9 @@
 # Tasks: 002 Account Manager Center (Mihon-Style Plugin Architecture)
 
 **Feature**: 002 Account Manager Center  
-**Status**: Ready for execution  
+**Status**: In progress — Slices 1–4 are implemented locally, T014 hardware
+verification is partial, pool browsing was delivered post-hoc, and Slices 5–6
+remain open.
 **Inspiration**: Mihon / Tachiyomi `Tracker` & `TrackerManager`  
 **Constitution**: v2.0.0 (Device-First Ergonomics, Downsized Spec-Kit)  
 
@@ -14,17 +16,18 @@
   - `SitePlugin`: interface with `id`, `name`, `iconRes`, `authType`, `capabilities`, `isLoggedIn`, `isLoggedInFlow`, `login()`, `logout()`, `applyHeaders()`
   - `AuthType` (`CREDENTIALS`, `OAUTH2`, `API_KEY`)
   - `PluginCapability` (`SCORING`, `FAVORITES`, `REFERER_INJECT`, `USER_FEED`)
-- [x] **T003**: Implement `SecurePluginStorage` backed by `EncryptedSharedPreferences` for plugin-scoped credential storage.
-- [x] **T004**: Implement `SitePluginManager` managing `plugins = listOf(yandePlugin, pixivPlugin)` and exposing `loggedInPluginsFlow()`.
-- [x] **T005**: Unit tests for `SecurePluginStorage` and `SitePluginManager`.
+- [ ] **T003**: Implement `SecurePluginStorage` backed by `EncryptedSharedPreferences` for plugin-scoped credential storage. The source implementation currently has an unencrypted fallback after Keystore initialization failure, and `PersistentCookieJar` also uses ordinary preferences; both must fail closed before this task is complete.
+- [ ] **T004**: Implement `SitePluginManager` managing `plugins = listOf(yandePlugin, pixivPlugin)` and exposing `loggedInPluginsFlow()`. The manager exists, but the runtime registry currently contains Yande only until the Pixiv slice lands.
+- [ ] **T005**: Unit tests for `SecurePluginStorage` and `SitePluginManager`. Manager tests exist; secure-storage tests are still missing.
 
 ---
 
 ## Slice 2: YandePlugin Implementation
 
 - [x] **T006**: Implement `YandePasswordHasher`: `SHA1("choujin-steiner--$password--")` with hex string output.
-- [x] **T007**: Add credential verification to `YandeApi`:
+- [ ] **T007**: Add credential verification to `YandeApi`:
   - Verify session via `/user/check` or authenticated probe.
+  - The current fallback probe is not sufficient evidence because it queries a public user endpoint.
 - [x] **T008**: Implement `YandePlugin` implementing `SitePlugin`:
   - `id = "yande.re"`
   - `capabilities = setOf(SCORING, FAVORITES)`
@@ -56,26 +59,38 @@
 - [x] **T016**: Wire `DetailScreen` to check `YandePlugin.isLoggedIn` and `PluginCapability.SCORING`:
   - If logged in: show interactive 0–3 star rating bar and Favorite toggle button (`score == 3`).
   - If not logged in: tapping rating stars launches `PluginLoginDialog` for Yande.
-- [x] **T017**: Add "My Favorites" filter chip in `ExploreScreen` querying `vote:3:<username>` when `YandePlugin` is logged in.
+- [x] **T017**: Add "My Favorites" filter chip in `ExploreScreen` querying `vote:3:<username>` when `YandePlugin` is logged in. (Superseded 2026-09-20: promoted to a dedicated Favorites tab with its own feed, see User Story 2 in `spec.md`.)
 - [x] **T018**: Unit tests for scoring capability and favorites query.
+
+---
+
+## Post-hoc delivered scope: Pool Browsing
+
+This scope was added from live-device feedback after the original Slice 4
+breakdown. It is tracked here so the implementation record covers the shipped
+behavior without rewriting the original acceptance history.
+
+- [x] **T019**: Add a Pools tab that lists and searches pools through `GET /pool.json`.
+- [x] **T020**: Show pool id, name, post count, private-state badge, and lazy cover thumbnails.
+- [x] **T021**: Open a pool through the existing `pool:<id>` post feed and preserve a titled back path to Pools.
 
 ---
 
 ## Slice 5: PixivPlugin Foundation & Header Interceptor
 
-- [ ] **T019**: Implement `PixivPlugin` skeleton:
+- [ ] **T022**: Implement `PixivPlugin` skeleton:
   - `id = "pixiv"`
   - `authType = AuthType.OAUTH2`
   - `capabilities = setOf(PluginCapability.REFERER_INJECT)`
-- [ ] **T020**: Implement `applyHeaders` in `PixivPlugin`: injects `Referer: https://app-api.pixiv.net/` and `Authorization: Bearer <token>` for `*.pximg.net` and `app-api.pixiv.net`.
-- [ ] **T021**: Add `PluginHeaderInterceptor` into `OkHttpProvider` routing outbound requests through `SitePluginManager.plugins.forEach { it.applyHeaders(...) }`.
-- [ ] **T022**: Add Pixiv card in `AccountManagerScreen` with token configuration / sign-in options.
-- [ ] **T023**: Unit tests for `PluginHeaderInterceptor` verifying Referer header injection.
+- [ ] **T023**: Implement `applyHeaders` in `PixivPlugin`: injects `Referer: https://app-api.pixiv.net/` and `Authorization: Bearer <token>` for `*.pximg.net` and `app-api.pixiv.net`.
+- [ ] **T024**: Add `PluginHeaderInterceptor` into `OkHttpProvider` routing outbound requests through `SitePluginManager.plugins.forEach { it.applyHeaders(...) }`.
+- [ ] **T025**: Add Pixiv card in `AccountManagerScreen` with token configuration / sign-in options.
+- [ ] **T026**: Unit tests for `PluginHeaderInterceptor` verifying Referer header injection.
 
 ---
 
 ## Slice 6: Release & Hardware Receipt
 
-- [ ] **T024**: Run `make check` (`./gradlew testDebugUnitTest`, lint, formatting).
-- [ ] **T025**: Final hardware acceptance on OnePlus 8 (`0cadf428`).
-- [ ] **T026**: Bump version to `0.0.2` in `app/build.gradle.kts`.
+- [x] **T027**: Run the project gates: `make check`, `make lint`, and `make validate` (all passed locally on 2026-09-21; `make check` itself runs unit tests only).
+- [ ] **T028**: Final hardware acceptance on OnePlus 8 (`0cadf428`).
+- [ ] **T029**: Bump version to `0.0.2` in `app/build.gradle.kts`.
