@@ -1,39 +1,25 @@
-FLUTTER := mise exec -- flutter
-DART := mise exec -- dart
+GRADLE := ./gradlew
 
-.PHONY: format lint analyze test test-story check validate doctor dev probe
-
-# `test` runs only checked-in tests and injected HTTP doubles. Live yande.re
-# access is limited to the opt-in `probe` target.
-
-format:
-	$(DART) format --output=none --set-exit-if-changed .
-
-lint:
-	$(FLUTTER) analyze
-
-analyze: lint
+.PHONY: check validate test lint assemble install dev clean
 
 test:
-	$(FLUTTER) test test
-	$(FLUTTER) test tool/feasibility/yandere_probe_test.dart
+	$(GRADLE) testDebugUnitTest
 
-test-story:
-	@if [ "$(STORY)" = "discover" ] || [ "$(STORY)" = "popular" ] || [ "$(STORY)" = "search" ]; then \
-		$(FLUTTER) test test/domain/popular_query_test.dart test/sites/yandere test/features/explore; \
-	else \
-		echo "usage: make test-story STORY=popular|discover|search" >&2; exit 2; \
-	fi
+lint:
+	$(GRADLE) lintDebug
 
-check: format lint test
+check: test
 
-validate: check
+validate: check assemble
 
-doctor:
-	$(FLUTTER) doctor -v
+assemble:
+	$(GRADLE) assembleDebug
 
-dev:
-	$(FLUTTER) run
+install:
+	$(GRADLE) installDebug
 
-probe:
-	$(DART) run tool/feasibility/yandere_probe.dart
+dev: install
+	adb shell am start -n com.azusachino.latte/.MainActivity
+
+clean:
+	$(GRADLE) clean
