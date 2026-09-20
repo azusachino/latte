@@ -2,9 +2,10 @@
 
 Date: 2026-09-20  
 Status: read-only research for the Latte redesign. The owner decision recorded
-below supersedes the earlier Safe Mode recommendation in this evidence note;
-the observed reference behavior remains historical evidence, not a product
-requirement.
+below supersedes the earlier Safe Mode recommendation and the earlier
+interpretation that the reference was only historical evidence. The pinned
+reference is the UX source for component composition, workflow, and dataflow;
+Material 3 supplies the reworked visual and accessibility language.
 
 ## Scope and evidence boundary
 
@@ -18,7 +19,7 @@ Evidence used:
 
 - The installed `com.github.yueeng.moebooru.yande` Android app (`1.0.9.1`)
   was observed on the connected OnePlus 8 on 2026-09-20. The observations below
-  are interaction evidence, not a claim that the app is the target UI.
+  are interaction evidence and the source for the target UX grammar.
 - The pinned open-source reference at
   [`refs/image-gallery-apps/moebooru`](../../../../refs/image-gallery-apps/moebooru/README.md)
   (`5bcf766`) supplies source-level behavior for the installed app. The
@@ -126,21 +127,22 @@ redesigned.
    and download records must include the site plus remote post id; yande and a
    future Moebooru-compatible site must not collide.
 
-## 3. Legacy presentation and interaction debt to redesign
+## 3. Reference UX grammar and Material rework boundaries
 
-The reference app is useful because it proves the workflow, but its surface is
-not a good template for Latte:
+The reference app supplies the workflow and component composition. Latte may
+rework its visual language with Material 3, but a rework must preserve these
+roles:
 
 | Observed debt | Redesign implication |
 | --- | --- |
-| Period choices are hidden in a FAB menu, and the current title/date context can be easy to miss | Put Day / Week / Month in an always-readable Material 3 control and show the anchor date/window beside it |
-| Purple toolbar, floating controls, and full-screen overlays make state and hierarchy compete with the artwork | Use a quieter M3 surface system, a stable top context bar, and a persistent but unobtrusive action rail |
+| Period choices live behind a FAB/date control and the selected window is carried by the pager | Use a Material FAB and bottom sheet/date surface while keeping period/date discovery in the same place in the workflow |
+| The toolbar owns search, column, and settings roles; tabs own Popular/Newest navigation | Use a Material top app bar and tab row with the same roles. Do not collapse them into unrelated segmented controls |
 | Several detail controls are icon-only; the reference XML gives controls generic `Yande` content descriptions | Give every action a meaningful label, tooltip, state, and 48 dp target; make Download and Score discoverable without guessing |
 | Cards emphasize dimensions/quality but do not clearly communicate period, rank, aggregate score, or rating | Use a restrained metadata line or accessible card semantics; keep the image dominant and facts available on inspect |
 | The tag bottom sheet is dense and color-coded without a simple explanation of the categories | Group metadata into clear sections: score/rating, dimensions/media, tags, source, and actions; keep tags selectable but secondary |
 | Star, favorite-like affordances, and download sit together visually | Separate remote account mutations from local download, and label personal score as “Your score” |
 | Login is discovered only after invoking a protected action | Show an inline “Sign in to score” state and explain that browsing/download remain anonymous |
-| A full-screen image can hide the feed context and the current post position | Add a compact “Popular · Week · 2026-09-20 · 12 of 80” context treatment and preserve it on back |
+| A full-screen image can hide the feed context and the current post position | Keep the image-first pager, add a compact “Popular · Week · 2026-09-20 · 12 of 80” context treatment, and preserve it on back |
 
 These are presentation debts, not reasons to discard compatibility. Latte's
 current contract already calls for Material 3, compact/expanded adaptive detail,
@@ -155,23 +157,22 @@ IA is:
 
 ```text
 Explore
-  ├─ context bar: Latte, search, Safe Mode status
-  ├─ discovery controls: Popular + Day | Week | Month + date/window rail
+  ├─ Material top app bar: Latte, search, column/layout action
+  ├─ Popular/Newest tab row
+  ├─ period/date FAB and Material selection surface
   ├─ masonry feed: image, loading/error state, optional compact facts
   └─ detail route/sheet
        ├─ image pager and position/context
-       ├─ bottom action bar: Download, Your score, More
-       └─ inspect sheet/pane: aggregate score, rating, dimensions, variants,
-          tags, source, and policy state
+       └─ peekable action/inspect sheet: aggregate score, rating, dimensions,
+          variants, tags, source, and implemented actions
 ```
 
 ### Feed anatomy
 
-- Use a `Scaffold` with a Material 3 top app bar. Keep Search available but do
-  not let it displace the Popular period control.
-- Put Day / Week / Month in a segmented control or compact tab row with a
-  visible selected state. Put date/window navigation in a horizontal rail below
-  it; the selected anchor must be readable and restorable.
+- Use a `Scaffold` with a Material 3 top app bar and a horizontal Popular/Newest
+  tab row. Keep Search and column density as real app-bar actions.
+- Open Day / Week / Month and date/window navigation from a Material FAB and
+  selection surface; the selected anchor must remain readable and restorable.
 - Use an adaptive, aspect-preserving masonry grid. On compact widths, prioritize
   two columns; on expanded widths, increase columns without changing card
   semantics. Do not use a fixed `childAspectRatio` as the only layout rule.
@@ -183,16 +184,14 @@ Explore
 
 ### Detail anatomy
 
-- On compact screens, use a full-screen route with a visible top back/context
-  affordance and a bottom action bar. On expanded screens, use a side-by-side
-  image and inspect pane, matching Latte's existing adaptive intent.
-- Keep swipe/next/previous navigation, zoom, and image loading progress. The
-  inspect pane should remain available without making the user hunt through a
-  tag sheet.
-- Show aggregate score as a read-only fact. Show “Your score” as a separate
-  0–3 control with a sign-in gate. Do not show a favorite control until its
-  remote mapping is verified; if added later, give it a separate label and
-  state.
+- On compact screens, use an image-first detail route with visible back/context
+  affordances and a peekable bottom sheet. On expanded screens, the sheet may
+  become a side-by-side inspect pane without changing the workflow.
+- Keep horizontal swipe/next/previous navigation, zoom, and image loading
+  progress. The inspect surface should remain available without making the user
+  hunt through a separate destination.
+- Show aggregate score as a read-only fact. Authenticated personal scoring is a
+  roadmap item only; do not show a non-functional score control in this slice.
 - Download opens a small variant sheet (preview/sample/JPEG/original when
   available) with dimensions and an approximate size if known. The resulting
   progress and completion message belong to the local device flow.
@@ -311,5 +310,8 @@ The owner explicitly removed Safe Mode. All returned ratings, including
 explicit, remain visible; Latte must not add a rating filter, policy toggle,
 policy-conflict error, or query rewrite. Authenticated personal scoring from 0
 through 3 is a later distinct slice and is not part of the current
-implementation turn. This decision updates the active Spec Kit artifacts while
-leaving the installed-app observations above intact as compatibility evidence.
+implementation turn. The owner also confirmed that Latte is a Material 3
+rework of the reference UX: Material styling may change the visual treatment,
+but the reference-derived component composition, workflow, and dataflow remain
+the target. This decision updates the active Spec Kit artifacts while leaving
+the installed-app observations above intact as compatibility evidence.

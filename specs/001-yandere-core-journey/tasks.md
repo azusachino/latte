@@ -191,11 +191,11 @@ and prove the original bytes remain unchanged.
 
 | Requirement | Tasks |
 | --- | --- |
-| FR-001–FR-005, FR-008–FR-012 | T035–T039 |
+| FR-001–FR-005, FR-008–FR-012 | T035–T039, T042–T043 |
 | FR-006–FR-007, FR-020–FR-021 | T001–T004, T040 |
 | FR-013–FR-018 | T023–T029 |
-| FR-019 | T006, T009, T033, T040 |
-| FR-022–FR-024 | T007, T012, T015–T016, T019, T039–T040 |
+| FR-019 | T006, T009, T033, T040, T043 |
+| FR-022–FR-025 | T007, T012, T015–T016, T019, T039–T044 |
 | SC-001–SC-007, SC-009 | T016, T022–T032, T040 |
 | SC-008 | T033 |
 
@@ -220,15 +220,15 @@ Authenticated 0–3 personal scoring remains a later specification.
 - [x] T038 Write failing controller tests for Popular period/anchor switching,
   restoration after detail/back, duplicate-page append, and stale response
   rejection, then implement those transitions in the Explore controller.
-- [x] T039 Write failing Explore widget tests for Popular/Newest navigation,
-  visible Day/Week/Month controls, readable anchor/window navigation, compact
-  aggregate score/rating/dimensions semantics, and 48dp targets. Implement the
-  Material 3 responsive aspect-preserving masonry-like surface and detail pager.
-- [x] T040 Add reviewed compact/expanded light/dark Popular goldens and run the
-  focused Popular story target, `make check`, `rumdl`, `git diff --check`, and
-  the Android build/install/launch receipt on device `0cadf428` when connected.
-  Active-spec Markdown is clean under `rumdl`; the repository-wide run still
-  reports pre-existing issues in vendored Spec Kit skill/template Markdown.
+- [ ] T039 Write failing Explore widget tests for the reference-derived
+  Popular/Newest tab composition, period/date surface, column-density action,
+  compact aggregate score/rating/dimensions semantics, and 48dp targets.
+  Implement the Material 3 rework without replacing the Yande workflow.
+- [ ] T040 Add reviewed compact/expanded light/dark goldens and run the focused
+  Popular story target, `make check`, `rumdl`, `git diff --check`, and the
+  Android build/install/launch receipt on device `0cadf428` when connected.
+  The previous goldens and checks are superseded because they validated the
+  wrong component composition.
 
 ### Popular-first checkpoint
 
@@ -239,3 +239,23 @@ Authenticated 0–3 personal scoring remains a later specification.
   aspect ratio and existing content while paging.
 - Detail/back preserves context and supports previous/next within the loaded
   feed. Download and authenticated scoring remain separately staged.
+
+## Phase 8: Yande-derived Material rework
+
+The owner-approved direction keeps Yande's component composition, workflow, and
+dataflow while reworking the visual language with Material 3. Authenticated
+personal scoring remains a roadmap capability and must not appear as a dead
+control.
+
+- [x] T041 Reconcile the product contract, feature specification, research
+  interpretation, and task acceptance around the owner-approved UX boundary.
+- [ ] T042 Write failing Explore widget tests for the Material top app bar,
+  Popular/Newest tab row, column-density menu, period/date FAB surface, and
+  responsive staggered feed; implement that shell without changing query state.
+- [ ] T043 Write failing detail widget tests for horizontal pager swipe, arrow
+  fallback, Android platform back, image-first layout, and the peekable
+  metadata/tag action sheet; implement the detail composition without adding
+  non-functional scoring or download controls.
+- [ ] T044 Re-record reviewed compact/expanded light/dark goldens and perform
+  the connected-device visual and gesture acceptance against the pinned
+  reference UX. Run `make check` after the slice is complete.

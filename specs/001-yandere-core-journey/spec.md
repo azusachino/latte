@@ -4,10 +4,20 @@
 
 **Created**: 2026-09-20
 
-**Status**: Draft for owner approval
+**Status**: Owner-approved direction; implementation in progress
 
 **Input**: Assessment handoff from
 `.specify/assessments/latte-yandere-client/decision.md`
+
+## UX compatibility boundary
+
+Latte is a Material 3 rework of the pinned Yande-compatible reference app.
+Material 3 may modernize visual tokens, accessibility, and component styling,
+but it MUST preserve the reference-derived component composition, workflow, and
+dataflow: Popular/Newest discovery, period/date selection, dense staggered image
+browsing, image-first detail paging, grouped detail actions, and reversible
+back/swipe navigation. A Material component is not permission to invent a
+different information architecture.
 
 ## User Scenarios & Testing
 
@@ -38,11 +48,12 @@ order.
    available, **Then** Latte appends it without duplicating existing posts or
    replacing the visible feed.
 3. **Given** a card is visible, **When** the owner opens it, **Then** Latte shows
-   the best usable inspection image in a pager with previous/next navigation,
-   aggregate score, rating, and all available normalized metadata while clearly
-   omitting unavailable fields.
-4. **Given** the detail view is open, **When** the owner returns, **Then** the
-   feed restores the prior Popular period, anchor, position, and order.
+   the best usable inspection image in a horizontally swipable pager with
+   previous/next controls, aggregate score, rating, and all available normalized
+   metadata while clearly omitting unavailable fields.
+4. **Given** the detail view is open, **When** the owner uses Android back or the
+   visible back action, **Then** the feed restores the prior Popular period,
+   anchor, position, and order without exiting the app.
 5. **Given** the remote site is empty, malformed, throttled, unavailable, or the
    request has no usable network path, **When** a page is requested, **Then**
    Latte shows a truthful, actionable state and never presents failure as an
@@ -153,6 +164,9 @@ already presentation metadata and MUST NOT be treated as the owner's vote.
 - **FR-004**: Latte MUST present a paged, image-first, aspect-preserving
   masonry-like feed for Popular and Newest and MUST preserve its order, period,
   anchor, and position across detail navigation during the active session.
+- **FR-004a**: Latte MUST use a horizontally swipable image-first detail pager,
+  retain accessible previous/next controls, and route Android platform back from
+  detail to the preserved feed instead of exiting the root activity.
 - **FR-005**: Latte MUST preserve and display safe, questionable, explicit, and
   unknown ratings returned by the adapter; it MUST NOT locally filter ratings or
   rewrite opaque expressions based on rating.
@@ -202,13 +216,19 @@ already presentation metadata and MUST NOT be treated as the owner's vote.
   runs on an emulator or device.
 - **FR-022**: Latte MUST use Material 3 components and semantic color,
   typography, shape, elevation, spacing, and motion roles for owner-facing
-  Android UI; visual styling MUST NOT be duplicated as arbitrary widget values.
+  Android UI. Material 3 styling MUST preserve the reference-derived
+  component composition, workflow, and dataflow rather than replacing them with
+  a new information architecture.
 - **FR-023**: Latte MUST support system light and dark appearance, text scaling,
   reduced motion, and compact through expanded Android window widths without
   hiding or clipping the core browse, search, detail, and save actions.
 - **FR-024**: Every interactive Material surface MUST expose a semantic label,
   visible focus/pressed/disabled state, and a target of at least 48 by 48
   logical pixels; status MUST never be communicated by color or motion alone.
+
+- **FR-025**: Authenticated personal scoring from 0 through 3 MUST remain a
+  documented roadmap capability, distinct from aggregate score and local
+  download, and MUST NOT appear as a non-functional control in this milestone.
 
 ### Key Entities
 
