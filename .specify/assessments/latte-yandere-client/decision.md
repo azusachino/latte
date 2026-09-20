@@ -1,5 +1,10 @@
 # Decision: Latte yande.re client
 
+> **Historical discovery record**: This assessment recommended the earlier
+> Flutter/Dart direction. The active implementation is native Kotlin/Compose;
+> use `specs/002-account-manager/` and the current Gradle gates for present
+> product and verification status.
+
 - **Slug**: `latte-yandere-client`
 - **Decided**: 2026-09-20
 - **Verdict**: go

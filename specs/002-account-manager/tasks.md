@@ -1,9 +1,11 @@
 # Tasks: 002 Account Manager Center (Mihon-Style Plugin Architecture)
 
 **Feature**: 002 Account Manager Center  
-**Status**: In progress — Slices 1–4 are implemented locally, T014 hardware
-verification is partial, pool browsing was delivered post-hoc, and Slices 5–6
-remain open.
+**Status**: In progress — Slices 1–4 have source implementations and the
+review-blocking storage, authentication, adapter-boundary, Safe Mode, and
+inline-error issues are repaired. Secure-storage tests, T014 hardware
+verification, Pixiv, and release work remain open; pool browsing was delivered
+post-hoc.
 **Inspiration**: Mihon / Tachiyomi `Tracker` & `TrackerManager`  
 **Constitution**: v2.0.0 (Device-First Ergonomics, Downsized Spec-Kit)  
 
@@ -16,7 +18,7 @@ remain open.
   - `SitePlugin`: interface with `id`, `name`, `iconRes`, `authType`, `capabilities`, `isLoggedIn`, `isLoggedInFlow`, `login()`, `logout()`, `applyHeaders()`
   - `AuthType` (`CREDENTIALS`, `OAUTH2`, `API_KEY`)
   - `PluginCapability` (`SCORING`, `FAVORITES`, `REFERER_INJECT`, `USER_FEED`)
-- [ ] **T003**: Implement `SecurePluginStorage` backed by `EncryptedSharedPreferences` for plugin-scoped credential storage. The source implementation currently has an unencrypted fallback after Keystore initialization failure, and `PersistentCookieJar` also uses ordinary preferences; both must fail closed before this task is complete.
+- [x] **T003**: Implement `SecurePluginStorage` backed by `EncryptedSharedPreferences` for plugin-scoped credential storage, and make `PersistentCookieJar` use encrypted preferences with no ordinary-preferences fallback after Keystore failure.
 - [ ] **T004**: Implement `SitePluginManager` managing `plugins = listOf(yandePlugin, pixivPlugin)` and exposing `loggedInPluginsFlow()`. The manager exists, but the runtime registry currently contains Yande only until the Pixiv slice lands.
 - [ ] **T005**: Unit tests for `SecurePluginStorage` and `SitePluginManager`. Manager tests exist; secure-storage tests are still missing.
 
@@ -25,9 +27,9 @@ remain open.
 ## Slice 2: YandePlugin Implementation
 
 - [x] **T006**: Implement `YandePasswordHasher`: `SHA1("choujin-steiner--$password--")` with hex string output.
-- [ ] **T007**: Add credential verification to `YandeApi`:
-  - Verify session via `/user/check` or authenticated probe.
-  - The current fallback probe is not sufficient evidence because it queries a public user endpoint.
+- [x] **T007**: Add credential verification at the Yande login boundary:
+  - Accept a login only when the response establishes a positive `user_id` session cookie.
+  - Do not use a public user endpoint as credential evidence.
 - [x] **T008**: Implement `YandePlugin` implementing `SitePlugin`:
   - `id = "yande.re"`
   - `capabilities = setOf(SCORING, FAVORITES)`
@@ -56,11 +58,11 @@ remain open.
 ## Slice 4: Yande Scoring & Favorites Integration
 
 - [x] **T015**: Implement `setScore(postId: Long, score: Int)` in `YandePlugin` calling `POST /post/vote.json`.
-- [x] **T016**: Wire `DetailScreen` to check `YandePlugin.isLoggedIn` and `PluginCapability.SCORING`:
+- [x] **T016**: Wire `DetailScreen` through `SitePluginManager.get(post.siteId)` and check the resolved plugin's login state and `PluginCapability.SCORING`:
   - If logged in: show interactive 0–3 star rating bar and Favorite toggle button (`score == 3`).
   - If not logged in: tapping rating stars launches `PluginLoginDialog` for Yande.
 - [x] **T017**: Add "My Favorites" filter chip in `ExploreScreen` querying `vote:3:<username>` when `YandePlugin` is logged in. (Superseded 2026-09-20: promoted to a dedicated Favorites tab with its own feed, see User Story 2 in `spec.md`.)
-- [x] **T018**: Unit tests for scoring capability and favorites query.
+- [x] **T018**: Unit tests for scoring capability, the exact Yande password hash vector, authenticated-session login evidence, and adapter-owned favorite/pool query construction.
 
 ---
 
@@ -72,7 +74,7 @@ behavior without rewriting the original acceptance history.
 
 - [x] **T019**: Add a Pools tab that lists and searches pools through `GET /pool.json`.
 - [x] **T020**: Show pool id, name, post count, private-state badge, and lazy cover thumbnails.
-- [x] **T021**: Open a pool through the existing `pool:<id>` post feed and preserve a titled back path to Pools.
+- [x] **T021**: Open a pool through the existing `YandeApi.poolTags(<id>)` post feed and preserve a titled back path to Pools.
 
 ---
 

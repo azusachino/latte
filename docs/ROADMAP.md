@@ -27,9 +27,11 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
 ## Milestone 0.0.2: Account Manager Center (Mihon-Style Plugin Architecture), Scoring & UX Hardening
 
 > **Status**: In progress. Plugin, Yande authentication/scoring, Favorites, and
-> Pools have source implementations locally, but storage/traceability/test gaps
-> remain; T014 hardware verification is partial. Pixiv, final hardware
-> acceptance, and the 0.0.2 version bump remain open.
+> Pools have source implementations locally; review blockers for storage,
+> credential evidence, plugin lookup, query ownership, Safe Mode defaults, and
+> inline action errors are repaired. Secure-storage/pool test coverage and T014
+> hardware verification are partial. Pixiv, final hardware acceptance, and the
+> 0.0.2 version bump remain open.
 
 > **Active Feature Spec**: [002 Account Manager Center](../specs/002-account-manager/spec.md)
 > **Tasks**: [002 Tasks](../specs/002-account-manager/tasks.md)
@@ -88,22 +90,23 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
 ### 1. Architectural Adjustments
 - **Custom HTTP Headers for Media (`Referer`)**:
   - Pixiv images on `i.pximg.net` return HTTP 403 Forbidden without `Referer: https://app-api.pixiv.net/`.
-  - Add `Map<String, String> headers` to `ResolvedMedia`.
-  - Forward headers to `ExtendedImage.network(..., headers: media.headers)`.
-  - Forward headers via `MethodChannel` (`saveImage`) to `DownloadWorker.kt` for `HttpURLConnection.setRequestProperty`.
+  - Implement `PixivPlugin.applyHeaders` and route matching requests through
+    `SitePluginManager` and the OkHttp provider.
 - **1:N Multi-Page Artworks (`IllustPage`)**:
   - Pixiv illusts can contain multiple pages (`page_count >= 1`).
-  - Refactor `PostDetail` from a flat `List<MediaVariant>` to `List<IllustPage>`.
+  - Extend the Kotlin post/media model with a site-owned multi-page mapping
+    before exposing it to the shared detail pager.
   - Support navigating pages within a post in the detail pager.
 - **Subscribed / Following Updates**:
-  - Add `PostQuerySource.subscribed` to `PostQuery`.
-  - Fetch followed artists' newest works via Pixiv App API `/v2/illust/follow`.
-  - Add a "Following" tab to Explore when the selected adapter supports it.
+  - Add a Pixiv-owned following query and expose a "Following" tab only when
+    the selected plugin advertises the capability.
 
 ### 2. Pixiv Adapter & OAuth2 PKCE
-- Implement `PixivAdapter` implementing `SiteAdapter`.
+- Implement `PixivPlugin` implementing `SitePlugin` and register it only after
+  its deterministic and device acceptance receipts pass.
 - Handle OAuth2 PKCE token exchange (`access_token` and `refresh_token`) and automated token refresh interceptor.
-- Map Pixiv ranking modes (`day`, `week`, `month`, `rookie`, `r18`) to `PopularQuery`.
+- Map Pixiv ranking modes (`day`, `week`, `month`, `rookie`, `r18`) to the
+  shared post-query seam without adding Pixiv conditions to Compose screens.
 
 ---
 
