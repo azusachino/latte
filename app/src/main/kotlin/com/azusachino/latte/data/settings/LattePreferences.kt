@@ -25,6 +25,9 @@ class LattePreferences(private val context: Context) {
     )
     val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
 
+    private val _safeMode = MutableStateFlow(prefs.getBoolean(KEY_SAFE_MODE, false))
+    val safeMode: StateFlow<Boolean> = _safeMode.asStateFlow()
+
     fun setColumnCount(count: Int) {
         val safeCount = count.coerceIn(1, 3)
         prefs.edit().putInt(KEY_COLUMN_COUNT, safeCount).apply()
@@ -42,6 +45,11 @@ class LattePreferences(private val context: Context) {
         _themeMode.value = mode
     }
 
+    fun setSafeMode(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_SAFE_MODE, enabled).apply()
+        _safeMode.value = enabled
+    }
+
     fun getCacheSizeBytes(): Long {
         val cacheDir = context.cacheDir ?: return 0L
         return cacheDir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
@@ -55,5 +63,6 @@ class LattePreferences(private val context: Context) {
     companion object {
         private const val KEY_COLUMN_COUNT = "column_count"
         private const val KEY_THEME_MODE = "theme_mode"
+        private const val KEY_SAFE_MODE = "safe_mode"
     }
 }

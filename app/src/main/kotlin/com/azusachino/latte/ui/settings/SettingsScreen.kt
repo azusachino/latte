@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.ViewColumn
 import androidx.compose.material3.AlertDialog
@@ -30,6 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -61,6 +63,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     val columnCount by preferences.columnCount.collectAsState()
     val themeMode by preferences.themeMode.collectAsState()
+    val safeMode by preferences.safeMode.collectAsState()
 
     var cacheSizeBytes by remember { mutableLongStateOf(preferences.getCacheSizeBytes()) }
     var showAboutDialog by remember { mutableStateOf(false) }
@@ -87,6 +90,19 @@ fun SettingsScreen(
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState()),
         ) {
+            // Content Section
+            SettingsSectionHeader("Content")
+
+            SettingsSwitchRow(
+                icon = Icons.Default.Security,
+                title = "Safe Mode",
+                subtitle = "Show safe contents only",
+                checked = safeMode,
+                onCheckedChange = { preferences.setSafeMode(it) },
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+
             // Appearance Section
             SettingsSectionHeader("Appearance")
 
@@ -247,6 +263,44 @@ private fun SettingsRow(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun SettingsSwitchRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String? = null,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) }
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = title, style = MaterialTheme.typography.bodyLarge)
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+        )
     }
 }
 

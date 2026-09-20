@@ -95,6 +95,10 @@ fun LatteApp(
                             onBack = {
                                 currentScreen = Screen.Explore
                             },
+                            onTagClick = { tag ->
+                                exploreViewModel.search(tag)
+                                currentScreen = Screen.Explore
+                            },
                         )
                     }
                     is Screen.Settings -> {

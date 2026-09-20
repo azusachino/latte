@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.CoroutineScope
@@ -101,53 +102,51 @@ fun ToastHost(modifier: Modifier = Modifier) {
 
 @Composable
 private fun ToastItem(toast: ToastMessage) {
-    val (bgColor, contentColor, icon) = when (toast.type) {
-        ToastType.SUCCESS -> Triple(
-            MaterialTheme.colorScheme.primaryContainer,
-            MaterialTheme.colorScheme.onPrimaryContainer,
+    val (icon, iconColor) = when (toast.type) {
+        ToastType.SUCCESS -> Pair(
             Icons.Default.CheckCircle,
+            Color(0xFF4CAF50),
         )
-        ToastType.WARNING -> Triple(
-            MaterialTheme.colorScheme.tertiaryContainer,
-            MaterialTheme.colorScheme.onTertiaryContainer,
+        ToastType.WARNING -> Pair(
             Icons.Default.Warning,
+            Color(0xFFFFA000),
         )
-        ToastType.ERROR -> Triple(
-            MaterialTheme.colorScheme.errorContainer,
-            MaterialTheme.colorScheme.onErrorContainer,
+        ToastType.ERROR -> Pair(
             Icons.Default.Warning,
+            MaterialTheme.colorScheme.error,
         )
-        ToastType.INFO -> Triple(
-            MaterialTheme.colorScheme.surfaceVariant,
-            MaterialTheme.colorScheme.onSurfaceVariant,
+        ToastType.INFO -> Pair(
             Icons.Default.Info,
+            MaterialTheme.colorScheme.primary,
         )
     }
 
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp)),
-        color = bgColor,
+            .clip(RoundedCornerShape(24.dp)),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
         shadowElevation = 6.dp,
+        tonalElevation = 3.dp,
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = contentColor,
+                tint = iconColor,
                 modifier = Modifier.size(20.dp),
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
                 text = toast.message,
-                color = contentColor,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 2,
             )

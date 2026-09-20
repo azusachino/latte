@@ -33,21 +33,35 @@ class YandeApi(private val baseUrl: String = "https://yande.re") {
             executeGetPosts(urlBuilder.build().toString())
         }
 
-    suspend fun getPopular(period: PopularPeriod, date: LocalDate): List<Post> =
-        withContext(Dispatchers.IO) {
-            val endpoint = when (period) {
-                PopularPeriod.DAY -> "popular_by_day.json"
-                PopularPeriod.WEEK -> "popular_by_week.json"
-                PopularPeriod.MONTH -> "popular_by_month.json"
-                PopularPeriod.YEAR -> "popular_recent.json"
+    suspend fun getPopular(
+        period: PopularPeriod,
+        date: LocalDate,
+        page: Int = 1,
+        limit: Int = 100,
+        safeMode: Boolean = false,
+    ): List<Post> {
+        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        val baseTags = when (period) {
+            PopularPeriod.DAY -> "order:score date:${date.format(formatter)}"
+            PopularPeriod.WEEK -> {
+                val start = date.minusDays((date.dayOfWeek.value - 1).toLong())
+                val end = start.plusDays(6)
+                "order:score date:${start.format(formatter)}..${end.format(formatter)}"
             }
-            val urlBuilder = "$baseUrl/post/$endpoint".toHttpUrl().newBuilder()
-                .addQueryParameter("year", date.year.toString())
-                .addQueryParameter("month", date.monthValue.toString())
-                .addQueryParameter("day", date.dayOfMonth.toString())
-
-            executeGetPosts(urlBuilder.build().toString())
+            PopularPeriod.MONTH -> {
+                val start = date.withDayOfMonth(1)
+                val end = date.withDayOfMonth(date.lengthOfMonth())
+                "order:score date:${start.format(formatter)}..${end.format(formatter)}"
+            }
+            PopularPeriod.YEAR -> {
+                val start = date.withDayOfYear(1)
+                val end = date.withDayOfYear(date.lengthOfYear())
+                "order:score date:${start.format(formatter)}..${end.format(formatter)}"
+            }
         }
+        val tags = if (safeMode) "$baseTags rating:safe" else baseTags
+        return getPosts(page = page, limit = limit, tags = tags)
+    }
 
     suspend fun getPost(id: Long): Post? = withContext(Dispatchers.IO) {
         val posts = getPosts(page = 1, limit = 1, tags = "id:$id")

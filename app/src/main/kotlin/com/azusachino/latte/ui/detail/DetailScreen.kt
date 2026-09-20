@@ -81,6 +81,7 @@ fun DetailScreen(
     initialIndex: Int,
     downloadManager: DownloadManager,
     onBack: () -> Unit,
+    onTagClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val pagerState = rememberPagerState(
@@ -341,7 +342,10 @@ fun DetailScreen(
                     ) {
                         currentPost.tags.forEach { tag ->
                             SuggestionChip(
-                                onClick = { /* Future: filter by tag */ },
+                                onClick = {
+                                    showInspectSheet = false
+                                    onTagClick(tag)
+                                },
                                 label = { Text(tag) },
                             )
                         }
