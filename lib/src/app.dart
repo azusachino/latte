@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'design/latte_theme.dart';
 import 'features/explore/explore_controller.dart';
 import 'features/explore/explore_screen.dart';
+import 'features/settings/settings_screen.dart';
 import 'sites/site_adapter.dart';
 import 'sites/yandere/yandere_adapter.dart';
 
@@ -17,6 +18,8 @@ class LatteApp extends StatefulWidget {
 
 class _LatteAppState extends State<LatteApp> {
   late final ExploreController _controller;
+  final _navigatorKey = GlobalKey<NavigatorState>();
+  var _themeMode = ThemeMode.system;
 
   @override
   void initState() {
@@ -35,11 +38,24 @@ class _LatteAppState extends State<LatteApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'Latte',
       theme: LatteTheme.light(),
       darkTheme: LatteTheme.dark(),
-      themeMode: ThemeMode.system,
-      home: ExploreScreen(controller: _controller),
+      themeMode: _themeMode,
+      home: ExploreScreen(
+        controller: _controller,
+        onSettings: () {
+          _navigatorKey.currentState?.push<void>(
+            MaterialPageRoute<void>(
+              builder: (_) => SettingsScreen(
+                themeMode: _themeMode,
+                onThemeModeChanged: (mode) => setState(() => _themeMode = mode),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

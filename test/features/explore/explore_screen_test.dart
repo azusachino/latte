@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latte/src/app.dart';
 import 'package:latte/src/design/latte_theme.dart';
 import 'package:latte/src/domain/popular_query.dart';
 import 'package:latte/src/domain/post.dart';
@@ -32,34 +33,72 @@ void main() {
     expect(find.text('Safe Mode'), findsNothing);
   });
 
-  testWidgets('shows primary modes, Popular periods, and anchor controls', (
+  testWidgets(
+    'shows reference-derived Explore composition and period surface',
+    (tester) async {
+      final adapter = WidgetAdapter(posts: [post('popular')]);
+      final controller = ExploreController(
+        adapter: adapter,
+        now: () => DateTime.utc(2026, 9, 20),
+      );
+      await tester.pumpWidget(app(controller));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('explore-tabs')), findsOneWidget);
+      expect(find.text('Popular'), findsOneWidget);
+      expect(find.text('Newest'), findsOneWidget);
+      expect(find.byTooltip('Search'), findsOneWidget);
+      expect(find.byTooltip('Columns'), findsOneWidget);
+      expect(find.byTooltip('Choose popular period'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Choose popular period'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('popular-period-sheet')),
+        findsOneWidget,
+      );
+      expect(find.text('Day'), findsOneWidget);
+      expect(find.text('Week'), findsOneWidget);
+      expect(find.text('Month'), findsOneWidget);
+      expect(find.text('2026-09-20'), findsOneWidget);
+      expect(find.byTooltip('Previous period'), findsOneWidget);
+      expect(find.byTooltip('Next period'), findsOneWidget);
+
+      await tester.tap(find.text('Week'));
+      await tester.pumpAndSettle();
+
+      expect(controller.state.query?.popularQuery?.period, PopularPeriod.week);
+      expect(
+        controller.state.query?.popularQuery?.window.start,
+        DateTime.utc(2026, 9, 14),
+      );
+
+      await tester.tap(find.byTooltip('Columns'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('3 columns'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('explore-columns-3')), findsOneWidget);
+    },
+  );
+
+  testWidgets('opens global settings from the Explore toolbar menu', (
     tester,
   ) async {
-    final adapter = WidgetAdapter(posts: [post('popular')]);
-    final controller = ExploreController(
-      adapter: adapter,
-      now: () => DateTime.utc(2026, 9, 20),
+    await tester.pumpWidget(
+      LatteApp(adapter: WidgetAdapter(posts: [post('settings')])),
     );
-    await tester.pumpWidget(app(controller));
     await tester.pumpAndSettle();
 
-    expect(find.text('Popular'), findsOneWidget);
-    expect(find.text('Newest'), findsOneWidget);
-    expect(find.text('Day'), findsOneWidget);
-    expect(find.text('Week'), findsOneWidget);
-    expect(find.text('Month'), findsOneWidget);
-    expect(find.text('2026-09-20'), findsOneWidget);
-    expect(find.byTooltip('Previous period'), findsOneWidget);
-    expect(find.byTooltip('Next period'), findsOneWidget);
-
-    await tester.tap(find.text('Week'));
+    await tester.tap(find.byTooltip('Columns'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
 
-    expect(controller.state.query?.popularQuery?.period, PopularPeriod.week);
-    expect(
-      controller.state.query?.popularQuery?.window.start,
-      DateTime.utc(2026, 9, 14),
-    );
+    expect(find.text('Appearance'), findsOneWidget);
+    expect(find.text('System default'), findsOneWidget);
+    expect(find.text('Light'), findsOneWidget);
+    expect(find.text('Dark'), findsOneWidget);
   });
 
   testWidgets('cards expose compact aggregate score, rating, and dimensions', (
@@ -96,6 +135,10 @@ void main() {
 
     await tester.tap(find.bySemanticsLabel('Post first, safe, 1200 × 800'));
     await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('detail-pager')), findsOneWidget);
+    expect(find.byKey(const ValueKey('detail-inspect-sheet')), findsOneWidget);
+    expect(find.byKey(const ValueKey('detail-actions')), findsOneWidget);
+    expect(find.byTooltip('Download'), findsOneWidget);
     expect(find.textContaining('1 of 2'), findsOneWidget);
     expect(find.byTooltip('Previous post'), findsOneWidget);
     expect(find.byTooltip('Next post'), findsOneWidget);
@@ -106,8 +149,62 @@ void main() {
 
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Choose popular period'));
+    await tester.pumpAndSettle();
     expect(find.text('Day'), findsOneWidget);
     expect(find.text('2026-09-20'), findsOneWidget);
+  });
+
+  testWidgets('swipes between posts in the detail pager', (tester) async {
+    final items = [post('swipe-first'), post('swipe-second')];
+    final controller = ExploreController(adapter: WidgetAdapter(posts: items));
+    await tester.pumpWidget(app(controller));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.bySemanticsLabel('Post swipe-first, safe, 1200 × 800'),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(
+      find.byKey(const ValueKey('detail-pager')),
+      const Offset(-400, 0),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('2 of 2'), findsOneWidget);
+    expect(controller.state.selectedReference?.remoteId, 'swipe-second');
+  });
+
+  testWidgets('supports two-finger image zoom without taking pager swipes', (
+    tester,
+  ) async {
+    final controller = ExploreController(
+      adapter: WidgetAdapter(posts: [post('zoom')]),
+    );
+    await tester.pumpWidget(app(controller));
+    await tester.pumpAndSettle();
+    await tester.tap(find.bySemanticsLabel('Post zoom, safe, 1200 × 800'));
+    await tester.pumpAndSettle();
+
+    final zoomSurface = find.byKey(const ValueKey('detail-zoom'));
+    final rect = tester.getRect(zoomSurface);
+    final first = await tester.createGesture(pointer: 1);
+    final second = await tester.createGesture(pointer: 2);
+    await first.down(rect.center - const Offset(80, 0));
+    await second.down(rect.center + const Offset(80, 0));
+    await tester.pump();
+    await first.moveTo(rect.center - const Offset(160, 0));
+    await second.moveTo(rect.center + const Offset(160, 0));
+    await tester.pump();
+
+    final transform = tester.widget<Transform>(
+      find.descendant(of: zoomSurface, matching: find.byType(Transform)),
+    );
+    expect(transform.transform.getMaxScaleOnAxis(), greaterThan(1));
+
+    await first.up();
+    await second.up();
   });
 
   testWidgets('shows loading, empty, and failure states with actionable copy', (
@@ -143,6 +240,11 @@ void main() {
     await tester.tap(find.bySemanticsLabel('Post detail, safe, 1200 × 800'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('explore-detail')), findsOneWidget);
+    await tester.drag(
+      find.byKey(const ValueKey('detail-inspect-sheet')),
+      const Offset(0, -300),
+    );
+    await tester.pumpAndSettle();
     expect(find.text('one'), findsOneWidget);
     expect(find.text('two'), findsOneWidget);
 
@@ -322,14 +424,23 @@ class WidgetAdapter implements SiteAdapter {
   @override
   Future<PostDetail> getPost(PostRef reference) async => PostDetail(
     summary: _posts.singleWhere((post) => post.reference == reference),
-    media: const [],
+    media: const [
+      MediaVariant(
+        id: MediaVariantId.jpeg,
+        width: 1200,
+        height: 800,
+        extension: 'jpg',
+      ),
+    ],
   );
 
   @override
   Future<ResolvedMedia> resolveMedia(
     PostRef reference,
     MediaVariantId variant,
-  ) {
-    throw UnimplementedError();
-  }
+  ) async => ResolvedMedia(
+    reference: reference,
+    variant: MediaVariant(id: variant),
+    source: Uri.parse('https://fake.test/${reference.remoteId}/$variant.jpg'),
+  );
 }

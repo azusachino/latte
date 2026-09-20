@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class LatteTheme {
   const LatteTheme._();
@@ -23,6 +24,11 @@ class LatteTheme {
           ? Typography.material2021().white
           : Typography.material2021().black,
       useMaterial3: true,
+      appBarTheme: AppBarTheme(
+        systemOverlayStyle: brightness == Brightness.light
+            ? SystemUiOverlayStyle.dark
+            : SystemUiOverlayStyle.light,
+      ),
       cardTheme: const CardThemeData(
         shape: RoundedRectangleBorder(borderRadius: cardRadius),
       ),

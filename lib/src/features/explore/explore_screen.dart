@@ -5,14 +5,21 @@ import '../../domain/failure.dart';
 import '../../domain/popular_query.dart';
 import '../../domain/post.dart';
 import '../../sites/site_adapter.dart';
+import '../download/download_service.dart';
 import 'explore_controller.dart';
 import 'search_view.dart';
 
 class ExploreScreen extends StatefulWidget {
-  const ExploreScreen({required this.controller, this.onSearch, super.key});
+  const ExploreScreen({
+    required this.controller,
+    this.onSearch,
+    this.onSettings,
+    super.key,
+  });
 
   final ExploreController controller;
   final VoidCallback? onSearch;
+  final VoidCallback? onSettings;
 
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
@@ -23,6 +30,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   late final GlobalKey<SearchViewState> _searchKey;
   var _wasDetail = false;
   var _savedScrollOffset = 0.0;
+  int? _columnCount;
 
   @override
   void initState() {
@@ -73,8 +81,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
             : _ExploreScaffold(
                 controller: widget.controller,
                 state: state,
+                columnCount: _columnCount,
+                onColumnCount: (value) => setState(() => _columnCount = value),
                 onSearch:
                     widget.onSearch ?? () => _searchKey.currentState?.open(),
+                onSettings: widget.onSettings,
                 searchView: SearchView(
                   key: _searchKey,
                   controller: widget.controller,
@@ -105,149 +116,217 @@ class _ExploreScaffold extends StatelessWidget {
   const _ExploreScaffold({
     required this.controller,
     required this.state,
+    required this.columnCount,
+    required this.onColumnCount,
     required this.scrollController,
     required this.searchView,
     this.onSearch,
+    this.onSettings,
   });
 
   final ExploreController controller;
   final ExploreState state;
+  final int? columnCount;
+  final ValueChanged<int> onColumnCount;
   final ScrollController scrollController;
   final SearchView searchView;
   final VoidCallback? onSearch;
+  final VoidCallback? onSettings;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Latte'),
-        actions: [
-          IconButton(
-            onPressed: onSearch,
-            icon: const Icon(Icons.search),
-            tooltip: 'Search',
-            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+    final popular = _isPopular(state);
+    return DefaultTabController(
+      key: ValueKey(popular),
+      length: 2,
+      initialIndex: popular ? 0 : 1,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Latte'),
+          actions: [
+            IconButton(
+              onPressed: onSearch,
+              icon: const Icon(Icons.search),
+              tooltip: 'Search',
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            ),
+            PopupMenuButton<_ExploreMenuAction>(
+              tooltip: 'Columns',
+              icon: const Icon(Icons.view_column_outlined),
+              onSelected: (action) {
+                switch (action) {
+                  case _ExploreMenuAction.columns2:
+                    onColumnCount(2);
+                  case _ExploreMenuAction.columns3:
+                    onColumnCount(3);
+                  case _ExploreMenuAction.columns4:
+                    onColumnCount(4);
+                  case _ExploreMenuAction.settings:
+                    onSettings?.call();
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem<_ExploreMenuAction>(
+                  value: _ExploreMenuAction.columns2,
+                  child: Text('2 columns'),
+                ),
+                const PopupMenuItem<_ExploreMenuAction>(
+                  value: _ExploreMenuAction.columns3,
+                  child: Text('3 columns'),
+                ),
+                const PopupMenuItem<_ExploreMenuAction>(
+                  value: _ExploreMenuAction.columns4,
+                  child: Text('4 columns'),
+                ),
+                if (onSettings != null) ...[
+                  const PopupMenuDivider(),
+                  const PopupMenuItem<_ExploreMenuAction>(
+                    value: _ExploreMenuAction.settings,
+                    child: Text('Settings'),
+                  ),
+                ],
+              ],
+            ),
+          ],
+          bottom: TabBar(
+            key: const ValueKey('explore-tabs'),
+            tabs: const [
+              Tab(text: 'Popular'),
+              Tab(text: 'Newest'),
+            ],
+            onTap: (index) {
+              if (index == 0) {
+                controller.loadPopular();
+              } else {
+                controller.loadDiscovery();
+              }
+            },
           ),
-        ],
-      ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final expanded = constraints.maxWidth >= 600;
-          return KeyedSubtree(
-            key: ValueKey(expanded ? 'expanded-explore' : 'compact-explore'),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
+        ),
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            final expanded = constraints.maxWidth >= 600;
+            final columns = columnCount ?? (expanded ? 4 : 2);
+            return KeyedSubtree(
+              key: ValueKey(expanded ? 'expanded-explore' : 'compact-explore'),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _DiscoveryModes(controller: controller, state: state),
-                  if (_isPopular(state))
-                    _PopularControls(controller: controller),
                   searchView,
                   Expanded(
                     child: _ExploreBody(
                       controller: controller,
                       state: state,
+                      columnCount: columns,
                       scrollController: scrollController,
                     ),
                   ),
                 ],
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
+        floatingActionButton: popular
+            ? FloatingActionButton(
+                onPressed: () => _showPopularPeriodSheet(context, controller),
+                tooltip: 'Choose popular period',
+                child: const Icon(Icons.calendar_today_outlined),
+              )
+            : null,
       ),
     );
   }
 }
+
+enum _ExploreMenuAction { columns2, columns3, columns4, settings }
 
 bool _isPopular(ExploreState state) =>
-    state.query?.source != PostQuerySource.discovery;
+    state.query == null || state.query?.source == PostQuerySource.popular;
 
-class _DiscoveryModes extends StatelessWidget {
-  const _DiscoveryModes({required this.controller, required this.state});
+Future<void> _showPopularPeriodSheet(
+  BuildContext context,
+  ExploreController controller,
+) => showModalBottomSheet<void>(
+  context: context,
+  showDragHandle: true,
+  builder: (context) => _PopularPeriodSheet(controller: controller),
+);
 
-  final ExploreController controller;
-  final ExploreState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final popular = _isPopular(state);
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 48),
-      child: SegmentedButton<bool>(
-        segments: const [
-          ButtonSegment(value: true, label: Text('Popular')),
-          ButtonSegment(value: false, label: Text('Newest')),
-        ],
-        selected: {popular},
-        onSelectionChanged: (selection) {
-          if (selection.single) {
-            controller.loadPopular();
-          } else {
-            controller.loadDiscovery();
-          }
-        },
-      ),
-    );
-  }
-}
-
-class _PopularControls extends StatelessWidget {
-  const _PopularControls({required this.controller});
+class _PopularPeriodSheet extends StatelessWidget {
+  const _PopularPeriodSheet({required this.controller});
 
   final ExploreController controller;
 
   @override
   Widget build(BuildContext context) {
-    final query = controller.selectedPopularQuery;
-    return Column(
-      key: const ValueKey('popular-controls'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const SizedBox(height: 12),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 48),
-            child: SegmentedButton<PopularPeriod>(
-              segments: const [
-                ButtonSegment(value: PopularPeriod.day, label: Text('Day')),
-                ButtonSegment(value: PopularPeriod.week, label: Text('Week')),
-                ButtonSegment(value: PopularPeriod.month, label: Text('Month')),
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        final query = controller.selectedPopularQuery;
+        return SafeArea(
+          child: SingleChildScrollView(
+            key: const ValueKey('popular-period-sheet'),
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Popular', style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 16),
+                SegmentedButton<PopularPeriod>(
+                  segments: const [
+                    ButtonSegment(value: PopularPeriod.day, label: Text('Day')),
+                    ButtonSegment(
+                      value: PopularPeriod.week,
+                      label: Text('Week'),
+                    ),
+                    ButtonSegment(
+                      value: PopularPeriod.month,
+                      label: Text('Month'),
+                    ),
+                  ],
+                  selected: {query.period},
+                  onSelectionChanged: (selection) {
+                    controller.loadPopular(period: selection.single);
+                    Navigator.pop(context);
+                  },
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => controller.shiftPopularAnchor(-1),
+                      icon: const Icon(Icons.chevron_left),
+                      tooltip: 'Previous period',
+                      constraints: const BoxConstraints(
+                        minWidth: 48,
+                        minHeight: 48,
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        _popularWindowLabel(query),
+                        textAlign: TextAlign.center,
+                        semanticsLabel:
+                            'Selected period ${_popularWindowLabel(query)}',
+                        style: Theme.of(context).textTheme.labelLarge,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => controller.shiftPopularAnchor(1),
+                      icon: const Icon(Icons.chevron_right),
+                      tooltip: 'Next period',
+                      constraints: const BoxConstraints(
+                        minWidth: 48,
+                        minHeight: 48,
+                      ),
+                    ),
+                  ],
+                ),
               ],
-              selected: {query.period},
-              onSelectionChanged: (selection) =>
-                  controller.loadPopular(period: selection.single),
             ),
           ),
-        ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            IconButton(
-              onPressed: () => controller.shiftPopularAnchor(-1),
-              icon: const Icon(Icons.chevron_left),
-              tooltip: 'Previous period',
-              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-            ),
-            Expanded(
-              child: Text(
-                _popularWindowLabel(query),
-                textAlign: TextAlign.center,
-                semanticsLabel: 'Selected period ${_popularWindowLabel(query)}',
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
-            ),
-            IconButton(
-              onPressed: () => controller.shiftPopularAnchor(1),
-              icon: const Icon(Icons.chevron_right),
-              tooltip: 'Next period',
-              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-            ),
-          ],
-        ),
-      ],
+        );
+      },
     );
   }
 }
@@ -267,11 +346,13 @@ class _ExploreBody extends StatelessWidget {
   const _ExploreBody({
     required this.controller,
     required this.state,
+    required this.columnCount,
     required this.scrollController,
   });
 
   final ExploreController controller;
   final ExploreState state;
+  final int columnCount;
   final ScrollController scrollController;
 
   @override
@@ -298,6 +379,7 @@ class _ExploreBody extends StatelessWidget {
       ExploreStatus.endReached => _GridState(
         controller: controller,
         state: state,
+        columnCount: columnCount,
         scrollController: scrollController,
       ),
       ExploreStatus.detailLoading ||
@@ -318,11 +400,13 @@ class _GridState extends StatelessWidget {
   const _GridState({
     required this.controller,
     required this.state,
+    required this.columnCount,
     required this.scrollController,
   });
 
   final ExploreController controller;
   final ExploreState state;
+  final int columnCount;
   final ScrollController scrollController;
 
   @override
@@ -341,7 +425,6 @@ class _GridState extends StatelessWidget {
       },
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final columnCount = constraints.maxWidth >= 600 ? 4 : 2;
           final columns = _masonryColumns(state.posts, columnCount);
           return ListView(
             key: const ValueKey('explore-grid'),
@@ -349,6 +432,7 @@ class _GridState extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 24),
             children: [
               Row(
+                key: ValueKey('explore-columns-$columnCount'),
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   for (final column in columns)
@@ -488,10 +572,17 @@ double _aspectRatio(PostSummary post) {
 }
 
 class _RemoteArtwork extends StatefulWidget {
-  const _RemoteArtwork({required this.post, required this.adapter});
+  const _RemoteArtwork({
+    required this.post,
+    required this.adapter,
+    this.fit = BoxFit.cover,
+    this.variantId,
+  });
 
   final PostSummary post;
   final SiteAdapter adapter;
+  final BoxFit fit;
+  final MediaVariantId? variantId;
 
   @override
   State<_RemoteArtwork> createState() => _RemoteArtworkState();
@@ -499,6 +590,7 @@ class _RemoteArtwork extends StatefulWidget {
 
 class _RemoteArtworkState extends State<_RemoteArtwork> {
   Future<ResolvedMedia>? _media;
+  Future<ResolvedMedia>? _thumbnail;
 
   @override
   void initState() {
@@ -509,23 +601,64 @@ class _RemoteArtworkState extends State<_RemoteArtwork> {
   @override
   void didUpdateWidget(covariant _RemoteArtwork oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.post.reference != widget.post.reference) _start();
+    if (oldWidget.post.reference != widget.post.reference ||
+        oldWidget.variantId != widget.variantId) {
+      _start();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final preview = widget.post.preview;
-    if (preview == null) return const _ArtworkPlaceholder();
+    if (preview == null && widget.variantId == null) {
+      return const _ArtworkPlaceholder();
+    }
     return FutureBuilder<ResolvedMedia>(
       future: _media,
       builder: (context, snapshot) {
         final source = snapshot.data?.source;
-        if (source == null) return const _ArtworkPlaceholder();
-        return Image.network(
-          source.toString(),
-          fit: BoxFit.cover,
-          semanticLabel: 'Artwork ${widget.post.reference.remoteId}',
-          errorBuilder: (_, _, _) => const _ArtworkPlaceholder(),
+        return FutureBuilder<ResolvedMedia>(
+          future: _thumbnail,
+          builder: (context, thumbnailSnapshot) {
+            final thumbnail = thumbnailSnapshot.data?.source;
+            if (source == null && thumbnail == null) {
+              return const _ArtworkPlaceholder();
+            }
+            return SizedBox.expand(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (thumbnail != null)
+                    Image.network(
+                      thumbnail.toString(),
+                      fit: widget.fit,
+                      semanticLabel:
+                          'Artwork ${widget.post.reference.remoteId}',
+                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                    ),
+                  if (source != null)
+                    Image.network(
+                      source.toString(),
+                      fit: widget.fit,
+                      semanticLabel:
+                          'Artwork ${widget.post.reference.remoteId}',
+                      frameBuilder:
+                          (context, child, frame, wasSynchronouslyLoaded) {
+                            if (wasSynchronouslyLoaded || frame != null) {
+                              return AnimatedOpacity(
+                                opacity: 1,
+                                duration: const Duration(milliseconds: 180),
+                                child: child,
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          },
+                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                    ),
+                ],
+              ),
+            );
+          },
         );
       },
     );
@@ -533,8 +666,12 @@ class _RemoteArtworkState extends State<_RemoteArtwork> {
 
   void _start() {
     final preview = widget.post.preview;
-    _media = preview == null
+    final variantId = widget.variantId ?? preview?.id;
+    _media = variantId == null
         ? null
+        : widget.adapter.resolveMedia(widget.post.reference, variantId);
+    _thumbnail = widget.variantId == null || preview == null
+        ? _media
         : widget.adapter.resolveMedia(widget.post.reference, preview.id);
   }
 }
@@ -564,24 +701,18 @@ class _DetailScaffold extends StatelessWidget {
         ? -1
         : state.posts.indexWhere((post) => post.reference == selected);
     return Scaffold(
+      extendBodyBehindAppBar: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.surface.withAlpha(180),
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
         leading: BackButton(onPressed: controller.closeDetail),
-        title: const Text('Detail'),
+        title: Text(_detailTitle(state)),
       ),
-      body: Column(
+      body: Stack(
         children: [
-          _DetailPagerBar(
-            contextLabel: _contextLabel(state),
-            index: index,
-            count: state.posts.length,
-            onPrevious: index > 0
-                ? () => controller.openAdjacentDetail(-1)
-                : null,
-            onNext: index >= 0 && index < state.posts.length - 1
-                ? () => controller.openAdjacentDetail(1)
-                : null,
-          ),
-          Expanded(
+          Positioned.fill(
             child: switch (state.status) {
               ExploreStatus.detailLoading => const _LoadingState(),
               ExploreStatus.detailFailure => _MessageState(
@@ -589,11 +720,31 @@ class _DetailScaffold extends StatelessWidget {
                 action: controller.closeDetail,
               ),
               ExploreStatus.detail => _DetailBody(
+                controller: controller,
+                state: state,
                 detail: state.detail!,
                 adapter: controller.adapter,
+                downloadService: DownloadService(adapter: controller.adapter),
+                index: index,
               ),
               _ => const SizedBox.shrink(),
             },
+          ),
+          Positioned(
+            top: MediaQuery.paddingOf(context).top + kToolbarHeight,
+            left: 0,
+            right: 0,
+            child: _DetailPagerBar(
+              contextLabel: _contextLabel(state),
+              index: index,
+              count: state.posts.length,
+              onPrevious: index > 0
+                  ? () => controller.openAdjacentDetail(-1)
+                  : null,
+              onNext: index >= 0 && index < state.posts.length - 1
+                  ? () => controller.openAdjacentDetail(1)
+                  : null,
+            ),
           ),
         ],
       ),
@@ -620,7 +771,7 @@ class _DetailPagerBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final position = index < 0 ? '— of $count' : '${index + 1} of $count';
     return Material(
-      color: Theme.of(context).colorScheme.surfaceContainer,
+      color: Theme.of(context).colorScheme.surface.withAlpha(180),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8),
         child: Row(
@@ -652,6 +803,12 @@ class _DetailPagerBar extends StatelessWidget {
   }
 }
 
+String _detailTitle(ExploreState state) => switch (state.query?.source) {
+  PostQuerySource.popular => 'Popular',
+  PostQuerySource.tagSearch => 'Search results',
+  _ => 'Newest',
+};
+
 String _contextLabel(ExploreState state) {
   final query = state.query;
   if (query?.source == PostQuerySource.popular) {
@@ -665,67 +822,412 @@ String _contextLabel(ExploreState state) {
 }
 
 class _DetailBody extends StatelessWidget {
-  const _DetailBody({required this.detail, required this.adapter});
+  const _DetailBody({
+    required this.controller,
+    required this.state,
+    required this.detail,
+    required this.adapter,
+    required this.downloadService,
+    required this.index,
+  });
 
+  final ExploreController controller;
+  final ExploreState state;
   final PostDetail detail;
   final SiteAdapter adapter;
+  final DownloadService downloadService;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) => Stack(
+    key: const ValueKey('explore-detail'),
+    children: [
+      _DetailImagePager(
+        controller: controller,
+        state: state,
+        detail: detail,
+        adapter: adapter,
+        index: index,
+      ),
+      _DetailInspectSheet(detail: detail, downloadService: downloadService),
+    ],
+  );
+}
+
+class _DetailImagePager extends StatefulWidget {
+  const _DetailImagePager({
+    required this.controller,
+    required this.state,
+    required this.detail,
+    required this.adapter,
+    required this.index,
+  });
+
+  final ExploreController controller;
+  final ExploreState state;
+  final PostDetail detail;
+  final SiteAdapter adapter;
+  final int index;
+
+  @override
+  State<_DetailImagePager> createState() => _DetailImagePagerState();
+}
+
+class _DetailImagePagerState extends State<_DetailImagePager> {
+  late final PageController _pageController = PageController(
+    initialPage: widget.index,
+  );
+  var _pinching = false;
+
+  @override
+  void didUpdateWidget(covariant _DetailImagePager oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.index != widget.index && _pageController.hasClients) {
+      final current = _pageController.page?.round();
+      if (current != widget.index) {
+        _pageController.animateToPage(
+          widget.index,
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => PageView.builder(
+    key: const ValueKey('detail-pager'),
+    controller: _pageController,
+    physics: _pinching ? const NeverScrollableScrollPhysics() : null,
+    itemCount: widget.state.posts.length,
+    onPageChanged: (page) {
+      if (page == widget.index) return;
+      widget.controller.openAdjacentDetail(page - widget.index);
+    },
+    itemBuilder: (context, page) {
+      final post = page == widget.index
+          ? widget.detail.summary
+          : widget.state.posts[page];
+      return ColoredBox(
+        color: Theme.of(context).colorScheme.surface,
+        child: _DetailZoomImage(
+          onPinchActive: (active) {
+            if (!mounted || _pinching == active) return;
+            setState(() => _pinching = active);
+          },
+          child: _RemoteArtwork(
+            post: post,
+            adapter: widget.adapter,
+            fit: BoxFit.contain,
+            variantId: page == widget.index
+                ? _detailImageVariant(widget.detail.media)
+                : null,
+          ),
+        ),
+      );
+    },
+  );
+}
+
+MediaVariantId? _detailImageVariant(List<MediaVariant> variants) {
+  for (final candidate in const [
+    MediaVariantId.sample,
+    MediaVariantId.jpeg,
+    MediaVariantId.original,
+    MediaVariantId.preview,
+  ]) {
+    if (variants.any((variant) => variant.id == candidate)) return candidate;
+  }
+  return null;
+}
+
+class _DetailZoomImage extends StatefulWidget {
+  const _DetailZoomImage({required this.child, required this.onPinchActive});
+
+  final Widget child;
+  final ValueChanged<bool> onPinchActive;
+
+  @override
+  State<_DetailZoomImage> createState() => _DetailZoomImageState();
+}
+
+class _DetailZoomImageState extends State<_DetailZoomImage> {
+  final _pointers = <int, Offset>{};
+  var _pinching = false;
+  var _scale = 1.0;
+  var _gestureStartScale = 1.0;
+  var _initialDistance = 0.0;
+
+  void _handlePointerDown(PointerDownEvent event) {
+    _pointers[event.pointer] = event.position;
+    if (_pointers.length != 2 || _pinching) return;
+    _pinching = true;
+    _gestureStartScale = _scale;
+    _initialDistance = _distance();
+    widget.onPinchActive(true);
+  }
+
+  void _handlePointerMove(PointerMoveEvent event) {
+    if (!_pointers.containsKey(event.pointer)) return;
+    _pointers[event.pointer] = event.position;
+    if (!_pinching || _pointers.length != 2 || _initialDistance <= 0) return;
+    final nextScale = (_gestureStartScale * _distance() / _initialDistance)
+        .clamp(1.0, 4.0);
+    if (nextScale == _scale) return;
+    setState(() => _scale = nextScale);
+  }
+
+  void _handlePointerEnd(PointerEvent event) {
+    _pointers.remove(event.pointer);
+    if (_pinching && _pointers.length < 2) {
+      _pinching = false;
+      widget.onPinchActive(false);
+      if (_scale < 1.01) setState(() => _scale = 1.0);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Listener(
+    key: const ValueKey('detail-zoom'),
+    behavior: HitTestBehavior.opaque,
+    onPointerDown: _handlePointerDown,
+    onPointerMove: _handlePointerMove,
+    onPointerUp: _handlePointerEnd,
+    onPointerCancel: _handlePointerEnd,
+    child: Transform.scale(scale: _scale, child: widget.child),
+  );
+
+  double _distance() {
+    final points = _pointers.values.toList(growable: false);
+    return (points[0] - points[1]).distance;
+  }
+}
+
+class _DetailInspectSheet extends StatefulWidget {
+  const _DetailInspectSheet({
+    required this.detail,
+    required this.downloadService,
+  });
+
+  final PostDetail detail;
+  final DownloadService downloadService;
+
+  @override
+  State<_DetailInspectSheet> createState() => _DetailInspectSheetState();
+}
+
+class _DetailInspectSheetState extends State<_DetailInspectSheet> {
+  late final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
+  var _saving = false;
+
+  @override
+  void dispose() {
+    _sheetController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final expanded = MediaQuery.sizeOf(context).width >= 600;
+    final peekSize = (66 / MediaQuery.sizeOf(context).height)
+        .clamp(0.035, 0.16)
+        .toDouble();
     final facts = <Widget>[
-      _Fact(label: 'Rating', value: detail.summary.rating.name),
-      if (detail.summary.width != null && detail.summary.height != null)
+      _Fact(label: 'Rating', value: widget.detail.summary.rating.name),
+      if (widget.detail.summary.width != null &&
+          widget.detail.summary.height != null)
         _Fact(
           label: 'Dimensions',
-          value: '${detail.summary.width} × ${detail.summary.height}',
+          value:
+              '${widget.detail.summary.width} × ${widget.detail.summary.height}',
         ),
-      if (detail.summary.score != null)
-        _Fact(label: 'Score', value: '${detail.summary.score}'),
-      if (detail.summary.source != null)
-        _Fact(label: 'Source', value: detail.summary.source!),
+      if (widget.detail.summary.score != null)
+        _Fact(label: 'Score', value: '${widget.detail.summary.score}'),
+      if (widget.detail.summary.source != null)
+        _Fact(label: 'Source', value: widget.detail.summary.source!),
     ];
-    final metadata = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(spacing: 8, runSpacing: 8, children: facts),
-        if (detail.summary.tags.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Text('Tags', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: detail.summary.tags
-                .map((tag) => Chip(label: Text(tag)))
-                .toList(),
-          ),
-        ],
-      ],
-    );
-    final image = _RemoteArtwork(post: detail.summary, adapter: adapter);
-    return SingleChildScrollView(
-      key: const ValueKey('explore-detail'),
-      padding: const EdgeInsets.all(16),
-      child: expanded
-          ? Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: image),
-                const SizedBox(width: 24),
-                Expanded(child: metadata),
-              ],
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SizedBox(height: 320, child: image),
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: DraggableScrollableSheet(
+        key: const ValueKey('detail-inspect-sheet'),
+        controller: _sheetController,
+        initialChildSize: peekSize,
+        minChildSize: peekSize,
+        maxChildSize: 0.65,
+        snap: true,
+        snapSizes: [peekSize, 0.65],
+        expand: false,
+        builder: (context, scrollController) => Material(
+          color: Theme.of(context).colorScheme.surfaceContainer,
+          elevation: 4,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          clipBehavior: Clip.antiAlias,
+          child: ListView(
+            controller: scrollController,
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            children: [
+              Center(
+                child: Container(
+                  width: 32,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _DetailActions(
+                variants: widget.detail.media,
+                saving: _saving,
+                onDownload: _chooseVariant,
+                onExpand: () => _sheetController.animateTo(
+                  0.65,
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOut,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(spacing: 8, runSpacing: 8, children: facts),
+              if (widget.detail.summary.tags.isNotEmpty) ...[
                 const SizedBox(height: 16),
-                metadata,
+                Text('Tags', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: widget.detail.summary.tags
+                      .map((tag) => Chip(label: Text(tag)))
+                      .toList(),
+                ),
               ],
-            ),
+            ],
+          ),
+        ),
+      ),
     );
   }
+
+  Future<void> _chooseVariant() async {
+    if (_saving || widget.detail.media.isEmpty) return;
+    final variant = await showModalBottomSheet<MediaVariant>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.only(bottom: 16),
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+              child: Text(
+                'Download quality',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            for (final variant in widget.detail.media)
+              ListTile(
+                leading: const Icon(Icons.download_outlined),
+                title: Text(_variantLabel(variant)),
+                onTap: () => Navigator.pop(context, variant),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (variant == null || !mounted) return;
+    setState(() => _saving = true);
+    try {
+      final receipt = await widget.downloadService.save(
+        reference: widget.detail.summary.reference,
+        variant: variant,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            receipt.status == DownloadStatus.alreadySaved
+                ? 'Already saved to ${receipt.album}'
+                : 'Saved to ${receipt.album}',
+          ),
+        ),
+      );
+    } on Object catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Download failed: $error')));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+}
+
+class _DetailActions extends StatelessWidget {
+  const _DetailActions({
+    required this.variants,
+    required this.saving,
+    required this.onDownload,
+    required this.onExpand,
+  });
+
+  final List<MediaVariant> variants;
+  final bool saving;
+  final VoidCallback onDownload;
+  final VoidCallback onExpand;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: 56,
+    key: const ValueKey('detail-actions'),
+    child: Stack(
+      alignment: Alignment.center,
+      children: [
+        Semantics(
+          button: true,
+          label: 'Download',
+          child: FloatingActionButton(
+            heroTag: 'detail-download',
+            onPressed: variants.isEmpty || saving ? null : onDownload,
+            tooltip: 'Download',
+            child: saving
+                ? const SizedBox.square(
+                    dimension: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.save_alt_outlined),
+          ),
+        ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: FloatingActionButton.small(
+            heroTag: 'detail-expand',
+            onPressed: onExpand,
+            tooltip: 'Expand details',
+            child: const Icon(Icons.expand_less),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+String _variantLabel(MediaVariant variant) {
+  final name = switch (variant.id) {
+    MediaVariantId.preview => 'Preview',
+    MediaVariantId.sample => 'Sample',
+    MediaVariantId.jpeg => 'JPEG',
+    MediaVariantId.original => 'Original',
+  };
+  final dimensions = variant.width != null && variant.height != null
+      ? ' · ${variant.width} × ${variant.height}'
+      : '';
+  return '$name$dimensions';
 }
 
 class _Fact extends StatelessWidget {

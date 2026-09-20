@@ -253,9 +253,10 @@ control.
   Popular/Newest tab row, column-density menu, period/date FAB surface, and
   responsive staggered feed; implement that shell without changing query state.
 - [ ] T043 Write failing detail widget tests for horizontal pager swipe, arrow
-  fallback, Android platform back, image-first layout, and the peekable
-  metadata/tag action sheet; implement the detail composition without adding
-  non-functional scoring or download controls.
+  fallback, Android platform back, thumbnail-to-high-quality replacement,
+  two-finger image zoom, and the peekable metadata/tag action sheet; implement
+  the compact reference-derived Download and expand operations without adding
+  non-functional scoring controls.
 - [ ] T044 Re-record reviewed compact/expanded light/dark goldens and perform
   the connected-device visual and gesture acceptance against the pinned
   reference UX. Run `make check` after the slice is complete.

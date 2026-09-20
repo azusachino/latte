@@ -13,8 +13,10 @@ Explore
         └── Save sheet/progress/result
 ```
 
-There is no account, library-history, settings screen, pools, or site-switcher
-screen in this milestone. Material 3 is the implementation language for the
+There is no account, library-history, pools, or site-switcher screen in this
+milestone. A global Settings screen is available from the Explore app-bar menu
+for app-wide appearance choices; it is not a replacement for the reference
+discovery destinations. Material 3 is the implementation language for the
 rework; the Yande-derived component composition, workflow, and dataflow remain
 the experience source of truth.
 
@@ -58,9 +60,15 @@ community score is read-only in this milestone; authenticated `Your score` from
 - A compact facts row contains rating, dimensions, score, and source when known.
 - Tags wrap below the facts and remain selectable as text; tag-to-search is
   deferred unless separately specified.
-- Media quality and the future save action remain reachable without obscuring the
-  image. Download UI is introduced with the MediaStore save slice; no dead
-  download control is shown before then.
+- The image first shows the loaded thumbnail, then replaces it with the selected
+  higher-quality detail variant when that transfer completes. The peek row uses
+  the reference's compact core operation layout: Download in the center and
+  expand/inspect at the trailing edge. Authenticated scoring is omitted until
+  its roadmap capability exists.
+- Download opens a labelled media-variant sheet and saves through the Android
+  MediaStore boundary without overwriting an existing `Pictures/Latte` item.
+- Two-finger pinch scales the detail image up to inspect it; one-finger
+  horizontal swipes remain pager navigation.
 - Back restores prior feed/query and scroll position.
 
 ## Save interaction
@@ -103,7 +111,7 @@ community score is read-only in this milestone; authenticated `Your score` from
 - Every actionable element has a semantic label and a minimum 48 by 48 logical
   pixel target.
 - Reading and focus order follows app bar → discovery mode → period/anchor →
-  content → pagination, then image/pager → facts → tags → actions in detail.
+  content → pagination, then image/pager → actions → facts → tags in detail.
 - Text and meaningful icons meet WCAG AA contrast against their surfaces.
 - The experience remains complete with animation disabled; loading never relies
   on motion alone.
