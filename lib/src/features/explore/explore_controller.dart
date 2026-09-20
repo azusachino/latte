@@ -149,6 +149,16 @@ class ExploreController extends ChangeNotifier {
     }
   }
 
+  Future<void> openAdjacentDetail(int amount) async {
+    final feed = _feedState ?? _state;
+    final selected = _state.selectedReference;
+    if (selected == null) return;
+    final index = feed.posts.indexWhere((post) => post.reference == selected);
+    final nextIndex = index + amount;
+    if (index < 0 || nextIndex < 0 || nextIndex >= feed.posts.length) return;
+    await openDetail(feed.posts[nextIndex].reference);
+  }
+
   void closeDetail() {
     ++_requestGeneration;
     final feed = _feedState;

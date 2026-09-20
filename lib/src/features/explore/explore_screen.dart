@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/explore_state.dart';
 import '../../domain/failure.dart';
+import '../../domain/popular_query.dart';
 import '../../domain/post.dart';
 import '../../sites/site_adapter.dart';
 import 'explore_controller.dart';
@@ -30,7 +31,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     _searchKey = GlobalKey<SearchViewState>();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && widget.controller.state.status == ExploreStatus.initial) {
-        widget.controller.loadDiscovery();
+        widget.controller.loadPopular();
       }
     });
   }
@@ -133,6 +134,9 @@ class _ExploreScaffold extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  _DiscoveryModes(controller: controller, state: state),
+                  if (_isPopular(state))
+                    _PopularControls(controller: controller),
                   searchView,
                   Expanded(
                     child: _ExploreBody(
@@ -150,6 +154,108 @@ class _ExploreScaffold extends StatelessWidget {
     );
   }
 }
+
+bool _isPopular(ExploreState state) =>
+    state.query?.source != PostQuerySource.discovery;
+
+class _DiscoveryModes extends StatelessWidget {
+  const _DiscoveryModes({required this.controller, required this.state});
+
+  final ExploreController controller;
+  final ExploreState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final popular = _isPopular(state);
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 48),
+      child: SegmentedButton<bool>(
+        segments: const [
+          ButtonSegment(value: true, label: Text('Popular')),
+          ButtonSegment(value: false, label: Text('Newest')),
+        ],
+        selected: {popular},
+        onSelectionChanged: (selection) {
+          if (selection.single) {
+            controller.loadPopular();
+          } else {
+            controller.loadDiscovery();
+          }
+        },
+      ),
+    );
+  }
+}
+
+class _PopularControls extends StatelessWidget {
+  const _PopularControls({required this.controller});
+
+  final ExploreController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final query = controller.selectedPopularQuery;
+    return Column(
+      key: const ValueKey('popular-controls'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 12),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: SegmentedButton<PopularPeriod>(
+              segments: const [
+                ButtonSegment(value: PopularPeriod.day, label: Text('Day')),
+                ButtonSegment(value: PopularPeriod.week, label: Text('Week')),
+                ButtonSegment(value: PopularPeriod.month, label: Text('Month')),
+              ],
+              selected: {query.period},
+              onSelectionChanged: (selection) =>
+                  controller.loadPopular(period: selection.single),
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            IconButton(
+              onPressed: () => controller.shiftPopularAnchor(-1),
+              icon: const Icon(Icons.chevron_left),
+              tooltip: 'Previous period',
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            ),
+            Expanded(
+              child: Text(
+                _popularWindowLabel(query),
+                textAlign: TextAlign.center,
+                semanticsLabel: 'Selected period ${_popularWindowLabel(query)}',
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+            ),
+            IconButton(
+              onPressed: () => controller.shiftPopularAnchor(1),
+              icon: const Icon(Icons.chevron_right),
+              tooltip: 'Next period',
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+String _popularWindowLabel(PopularQuery query) {
+  final start = _dateLabel(query.window.start);
+  final end = _dateLabel(query.window.end);
+  return start == end ? start : '$start – $end';
+}
+
+String _dateLabel(DateTime value) =>
+    '${value.year.toString().padLeft(4, '0')}-'
+    '${value.month.toString().padLeft(2, '0')}-'
+    '${value.day.toString().padLeft(2, '0')}';
 
 class _ExploreBody extends StatelessWidget {
   const _ExploreBody({
@@ -170,15 +276,15 @@ class _ExploreBody extends StatelessWidget {
       ExploreStatus.replacingQuery => const _LoadingState(),
       ExploreStatus.empty => _MessageState(
         title: 'No posts yet',
-        action: controller.loadDiscovery,
+        action: _retryAction(controller, state),
       ),
       ExploreStatus.noResults => _MessageState(
         title: 'No matches',
-        action: controller.loadDiscovery,
+        action: _retryAction(controller, state),
       ),
       ExploreStatus.failure => _MessageState(
         title: _failureMessage(state.failure),
-        action: controller.loadDiscovery,
+        action: _retryAction(controller, state),
       ),
       ExploreStatus.content ||
       ExploreStatus.nextPageLoading ||
@@ -195,6 +301,13 @@ class _ExploreBody extends StatelessWidget {
   }
 }
 
+VoidCallback _retryAction(ExploreController controller, ExploreState state) {
+  final popular = state.query?.popularQuery;
+  if (popular == null) return controller.loadDiscovery;
+  return () =>
+      controller.loadPopular(period: popular.period, anchor: popular.anchor);
+}
+
 class _GridState extends StatelessWidget {
   const _GridState({
     required this.controller,
@@ -208,11 +321,8 @@ class _GridState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final expanded = MediaQuery.sizeOf(context).width >= 600;
     final isLoading = state.status == ExploreStatus.nextPageLoading;
     final hasNextFailure = state.status == ExploreStatus.nextPageFailure;
-    final itemCount =
-        state.posts.length + (isLoading || hasNextFailure ? 1 : 0);
     return NotificationListener<ScrollNotification>(
       onNotification: (notification) {
         if (notification is ScrollUpdateNotification &&
@@ -223,33 +333,69 @@ class _GridState extends StatelessWidget {
         }
         return false;
       },
-      child: GridView.builder(
-        key: const ValueKey('explore-grid'),
-        controller: scrollController,
-        padding: const EdgeInsets.only(bottom: 24),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: expanded ? 4 : 2,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 0.78,
-        ),
-        itemCount: itemCount,
-        itemBuilder: (context, index) {
-          if (index >= state.posts.length) {
-            return hasNextFailure
-                ? _PageRetry(onPressed: controller.loadNextPage)
-                : const _PageProgress();
-          }
-          final post = state.posts[index];
-          return _PostCard(
-            post: post,
-            adapter: controller.adapter,
-            onTap: () => controller.openDetail(post.reference),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final columnCount = constraints.maxWidth >= 600 ? 4 : 2;
+          final columns = _masonryColumns(state.posts, columnCount);
+          return ListView(
+            key: const ValueKey('explore-grid'),
+            controller: scrollController,
+            padding: const EdgeInsets.only(bottom: 24),
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final column in columns)
+                    Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          right: column == columns.last ? 0 : 6,
+                          left: column == columns.first ? 0 : 6,
+                        ),
+                        child: Column(
+                          children: [
+                            for (final post in column) ...[
+                              _PostCard(
+                                post: post,
+                                adapter: controller.adapter,
+                                onTap: () =>
+                                    controller.openDetail(post.reference),
+                              ),
+                              const SizedBox(height: 12),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              if (isLoading || hasNextFailure)
+                hasNextFailure
+                    ? _PageRetry(onPressed: controller.loadNextPage)
+                    : const _PageProgress(),
+            ],
           );
         },
       ),
     );
   }
+}
+
+List<List<PostSummary>> _masonryColumns(
+  List<PostSummary> posts,
+  int columnCount,
+) {
+  final columns = List.generate(columnCount, (_) => <PostSummary>[]);
+  final heights = List<double>.filled(columnCount, 0);
+  for (final post in posts) {
+    var shortest = 0;
+    for (var index = 1; index < heights.length; index++) {
+      if (heights[index] < heights[shortest]) shortest = index;
+    }
+    columns[shortest].add(post);
+    heights[shortest] += 1 / _aspectRatio(post);
+  }
+  return columns;
 }
 
 class _PostCard extends StatelessWidget {
@@ -265,9 +411,17 @@ class _PostCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = 'Post ${post.reference.remoteId}, ${post.rating.name}';
+    final facts = <String>[
+      'Post ${post.reference.remoteId}',
+      post.rating.name,
+      if (post.score != null) 'score ${post.score}',
+      if (post.width != null && post.height != null)
+        '${post.width} × ${post.height}',
+    ];
+    final label = facts.join(', ');
     return Semantics(
       button: true,
+      container: true,
       label: label,
       child: Card(
         clipBehavior: Clip.antiAlias,
@@ -276,16 +430,29 @@ class _PostCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
+              AspectRatio(
+                aspectRatio: _aspectRatio(post),
                 child: _RemoteArtwork(post: post, adapter: adapter),
               ),
               Padding(
                 padding: const EdgeInsets.all(8),
-                child: Text(
-                  '#${post.reference.remoteId}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelLarge,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '#${post.reference.remoteId}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _cardMetadata(post),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -294,6 +461,24 @@ class _PostCard extends StatelessWidget {
       ),
     );
   }
+}
+
+String _cardMetadata(PostSummary post) {
+  final values = <String>[post.rating.name];
+  if (post.score != null) values.add('score ${post.score}');
+  if (post.width != null && post.height != null) {
+    values.add('${post.width} × ${post.height}');
+  }
+  return values.join(' · ');
+}
+
+double _aspectRatio(PostSummary post) {
+  final width = post.width;
+  final height = post.height;
+  if (width == null || height == null || width <= 0 || height <= 0) {
+    return 1;
+  }
+  return width / height;
 }
 
 class _RemoteArtwork extends StatefulWidget {
@@ -368,25 +553,109 @@ class _DetailScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final selected = state.selectedReference;
+    final index = selected == null
+        ? -1
+        : state.posts.indexWhere((post) => post.reference == selected);
     return Scaffold(
       appBar: AppBar(
         leading: BackButton(onPressed: controller.closeDetail),
         title: const Text('Detail'),
       ),
-      body: switch (state.status) {
-        ExploreStatus.detailLoading => const _LoadingState(),
-        ExploreStatus.detailFailure => _MessageState(
-          title: _failureMessage(state.failure),
-          action: controller.closeDetail,
-        ),
-        ExploreStatus.detail => _DetailBody(
-          detail: state.detail!,
-          adapter: controller.adapter,
-        ),
-        _ => const SizedBox.shrink(),
-      },
+      body: Column(
+        children: [
+          _DetailPagerBar(
+            contextLabel: _contextLabel(state),
+            index: index,
+            count: state.posts.length,
+            onPrevious: index > 0
+                ? () => controller.openAdjacentDetail(-1)
+                : null,
+            onNext: index >= 0 && index < state.posts.length - 1
+                ? () => controller.openAdjacentDetail(1)
+                : null,
+          ),
+          Expanded(
+            child: switch (state.status) {
+              ExploreStatus.detailLoading => const _LoadingState(),
+              ExploreStatus.detailFailure => _MessageState(
+                title: _failureMessage(state.failure),
+                action: controller.closeDetail,
+              ),
+              ExploreStatus.detail => _DetailBody(
+                detail: state.detail!,
+                adapter: controller.adapter,
+              ),
+              _ => const SizedBox.shrink(),
+            },
+          ),
+        ],
+      ),
     );
   }
+}
+
+class _DetailPagerBar extends StatelessWidget {
+  const _DetailPagerBar({
+    required this.contextLabel,
+    required this.index,
+    required this.count,
+    required this.onPrevious,
+    required this.onNext,
+  });
+
+  final String contextLabel;
+  final int index;
+  final int count;
+  final VoidCallback? onPrevious;
+  final VoidCallback? onNext;
+
+  @override
+  Widget build(BuildContext context) {
+    final position = index < 0 ? '— of $count' : '${index + 1} of $count';
+    return Material(
+      color: Theme.of(context).colorScheme.surfaceContainer,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: onPrevious,
+              icon: const Icon(Icons.chevron_left),
+              tooltip: 'Previous post',
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            ),
+            Expanded(
+              child: Text(
+                '$contextLabel · $position',
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            IconButton(
+              onPressed: onNext,
+              icon: const Icon(Icons.chevron_right),
+              tooltip: 'Next post',
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _contextLabel(ExploreState state) {
+  final query = state.query;
+  if (query?.source == PostQuerySource.popular) {
+    final popular = query!.popularQuery!;
+    final period =
+        popular.period.name[0].toUpperCase() + popular.period.name.substring(1);
+    return 'Popular · $period · ${_popularWindowLabel(popular)}';
+  }
+  if (query?.source == PostQuerySource.tagSearch) return 'Search results';
+  return 'Newest';
 }
 
 class _DetailBody extends StatelessWidget {

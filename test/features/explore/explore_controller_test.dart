@@ -199,6 +199,28 @@ void main() {
     expect(controller.state.posts.single.rating, PostRating.explicit);
     expect(adapter.queries.single.expression, 'rating:explicit order:score');
   });
+
+  test('detail pager opens the adjacent loaded post', () async {
+    final items = [post('first'), post('second')];
+    final adapter = ScriptedAdapter.immediate([PostPage(posts: items)]);
+    for (final item in items) {
+      adapter.details[item.reference] = PostDetail(
+        summary: item,
+        media: const [],
+      );
+    }
+    final controller = ExploreController(adapter: adapter);
+
+    await controller.loadPopular(
+      period: PopularPeriod.day,
+      anchor: DateTime.utc(2026, 9, 20),
+    );
+    await controller.openDetail(items.first.reference);
+    await controller.openAdjacentDetail(1);
+
+    expect(controller.state.selectedReference, items[1].reference);
+    expect(controller.state.detail?.summary, items[1]);
+  });
 }
 
 PostSummary post(String id, {PostRating rating = PostRating.safe}) =>

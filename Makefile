@@ -17,10 +17,10 @@ test:
 	$(FLUTTER) test tool/feasibility/yandere_probe_test.dart
 
 test-story:
-	@if [ "$(STORY)" = "discover" ] || [ "$(STORY)" = "search" ]; then \
-		$(FLUTTER) test test/sites/yandere test/features/explore; \
+	@if [ "$(STORY)" = "discover" ] || [ "$(STORY)" = "popular" ] || [ "$(STORY)" = "search" ]; then \
+		$(FLUTTER) test test/domain/popular_query_test.dart test/sites/yandere test/features/explore; \
 	else \
-		echo "usage: make test-story STORY=discover|search" >&2; exit 2; \
+		echo "usage: make test-story STORY=popular|discover|search" >&2; exit 2; \
 	fi
 
 check: format analyze test

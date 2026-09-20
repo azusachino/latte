@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latte/src/design/latte_theme.dart';
+import 'package:latte/src/domain/popular_query.dart';
 import 'package:latte/src/domain/post.dart';
 import 'package:latte/src/features/explore/explore_controller.dart';
 import 'package:latte/src/features/explore/explore_screen.dart';
@@ -20,9 +21,93 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('explore-grid')), findsOneWidget);
-    expect(find.bySemanticsLabel('Post safe, safe'), findsOneWidget);
-    expect(find.bySemanticsLabel('Post explicit, explicit'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel('Post safe, safe, 1200 × 800'),
+      findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel('Post explicit, explicit, 1200 × 800'),
+      findsOneWidget,
+    );
     expect(find.text('Safe Mode'), findsNothing);
+  });
+
+  testWidgets('shows primary modes, Popular periods, and anchor controls', (
+    tester,
+  ) async {
+    final adapter = WidgetAdapter(posts: [post('popular')]);
+    final controller = ExploreController(
+      adapter: adapter,
+      now: () => DateTime.utc(2026, 9, 20),
+    );
+    await tester.pumpWidget(app(controller));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Popular'), findsOneWidget);
+    expect(find.text('Newest'), findsOneWidget);
+    expect(find.text('Day'), findsOneWidget);
+    expect(find.text('Week'), findsOneWidget);
+    expect(find.text('Month'), findsOneWidget);
+    expect(find.text('2026-09-20'), findsOneWidget);
+    expect(find.byTooltip('Previous period'), findsOneWidget);
+    expect(find.byTooltip('Next period'), findsOneWidget);
+
+    await tester.tap(find.text('Week'));
+    await tester.pumpAndSettle();
+
+    expect(controller.state.query?.popularQuery?.period, PopularPeriod.week);
+    expect(
+      controller.state.query?.popularQuery?.window.start,
+      DateTime.utc(2026, 9, 14),
+    );
+  });
+
+  testWidgets('cards expose compact aggregate score, rating, and dimensions', (
+    tester,
+  ) async {
+    final item = post(
+      'scored',
+      rating: PostRating.explicit,
+      score: 17,
+      width: 1200,
+      height: 800,
+    );
+    final controller = ExploreController(adapter: WidgetAdapter(posts: [item]));
+    await tester.pumpWidget(app(controller));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.bySemanticsLabel('Post scored, explicit, score 17, 1200 × 800'),
+      findsOneWidget,
+    );
+    expect(find.byType(AspectRatio), findsWidgets);
+  });
+
+  testWidgets('detail pager keeps Popular context and moves between posts', (
+    tester,
+  ) async {
+    final items = [post('first'), post('second')];
+    final controller = ExploreController(
+      adapter: WidgetAdapter(posts: items),
+      now: () => DateTime.utc(2026, 9, 20),
+    );
+    await tester.pumpWidget(app(controller));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.bySemanticsLabel('Post first, safe, 1200 × 800'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('1 of 2'), findsOneWidget);
+    expect(find.byTooltip('Previous post'), findsOneWidget);
+    expect(find.byTooltip('Next post'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Next post'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('2 of 2'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    expect(find.text('Day'), findsOneWidget);
+    expect(find.text('2026-09-20'), findsOneWidget);
   });
 
   testWidgets('shows loading, empty, and failure states with actionable copy', (
@@ -55,7 +140,7 @@ void main() {
     await tester.pumpWidget(app(controller));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.bySemanticsLabel('Post detail, safe'));
+    await tester.tap(find.bySemanticsLabel('Post detail, safe, 1200 × 800'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('explore-detail')), findsOneWidget);
     expect(find.text('one'), findsOneWidget);
@@ -64,7 +149,10 @@ void main() {
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('explore-grid')), findsOneWidget);
-    expect(find.bySemanticsLabel('Post detail, safe'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel('Post detail, safe, 1200 × 800'),
+      findsOneWidget,
+    );
   });
 
   testWidgets(
@@ -133,8 +221,10 @@ void main() {
       const Offset(0, -500),
     );
     await tester.pump();
-    final scrollable = tester.state<ScrollableState>(find.byType(Scrollable));
-    final before = scrollable.position.pixels;
+    final scrollController = tester
+        .widget<ListView>(find.byKey(const ValueKey('explore-grid')))
+        .controller!;
+    final before = scrollController.offset;
     expect(before, greaterThan(0));
 
     await controller.openDetail(items.first.reference);
@@ -142,10 +232,7 @@ void main() {
     controller.closeDetail();
     await tester.pumpAndSettle();
 
-    expect(
-      tester.state<ScrollableState>(find.byType(Scrollable)).position.pixels,
-      closeTo(before, 0.1),
-    );
+    expect(scrollController.offset, closeTo(before, 0.1));
   });
 }
 
@@ -159,12 +246,16 @@ PostSummary post(
   String id, {
   PostRating rating = PostRating.safe,
   List<String> tags = const ['fixture'],
+  int? score,
+  int? width = 1200,
+  int? height = 800,
 }) => PostSummary(
   reference: PostRef(siteId: const SiteId('fake'), remoteId: id),
   rating: rating,
   tags: tags,
-  width: 1200,
-  height: 800,
+  score: score,
+  width: width,
+  height: height,
 );
 
 class WidgetAdapter implements SiteAdapter {
@@ -189,6 +280,7 @@ class WidgetAdapter implements SiteAdapter {
   final List<PostSummary> _posts;
   final bool _error;
   final Completer<PostPage>? _pending;
+  final queries = <PostQuery>[];
 
   @override
   SiteDescriptor get descriptor =>
@@ -196,6 +288,7 @@ class WidgetAdapter implements SiteAdapter {
 
   @override
   Future<PostPage> queryPosts(PostQuery query) {
+    queries.add(query);
     if (_error) return Future.error(StateError('network'));
     if (_pending != null) return _pending.future;
     return Future.value(PostPage(posts: _posts));
