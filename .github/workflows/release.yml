@@ -27,7 +27,11 @@ jobs:
           version: 2026.5.12
 
       - name: Accept Android SDK licenses
-        run: yes | mise exec -- sdkmanager --licenses >/dev/null
+        run: |
+          mkdir -p "$ANDROID_SDK_ROOT/licenses"
+          printf '%s\n' \
+            24333f8a63b6825ea9c5514f83c2829b004d1fee \
+            > "$ANDROID_SDK_ROOT/licenses/android-sdk-license"
 
       - name: Run tests
         run: make check
