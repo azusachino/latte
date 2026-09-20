@@ -3,6 +3,7 @@ package com.azusachino.latte.ui.explore
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.azusachino.latte.data.model.PoolSummary
 import com.azusachino.latte.data.model.PopularPeriod
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.network.YandeApi
@@ -25,14 +26,30 @@ data class FeedState(
     val hasMore: Boolean = true,
 )
 
+data class PoolListState(
+    val pools: List<PoolSummary> = emptyList(),
+    val isLoading: Boolean = false,
+    val isLoadingMore: Boolean = false,
+    val isRefreshing: Boolean = false,
+    val error: String? = null,
+    val page: Int = 1,
+    val hasMore: Boolean = true,
+    val query: String = "",
+)
+
+// Tab indices: 0 = Popular, 1 = Newest, 2 = Favorites, 3 = Pools
 data class ExploreUiState(
     val popularFeed: FeedState = FeedState(),
     val newestFeed: FeedState = FeedState(),
+    val favoritesFeed: FeedState = FeedState(),
     val searchFeed: FeedState = FeedState(),
+    val poolsFeed: PoolListState = PoolListState(),
+    val poolCovers: Map<Long, String> = emptyMap(),
     val searchTags: String = "",
+    val activePoolName: String? = null,
     val popularPeriod: PopularPeriod = PopularPeriod.DAY,
     val popularDate: LocalDate = LocalDate.now(),
-    val selectedTab: Int = 0, // 0 = Popular, 1 = Newest
+    val selectedTab: Int = 0,
 ) {
     val isPopular: Boolean get() = selectedTab == 0 && searchTags.isBlank()
     val isSearch: Boolean get() = searchTags.isNotBlank()
@@ -41,35 +58,45 @@ data class ExploreUiState(
         get() = when {
             isSearch -> searchFeed.posts
             selectedTab == 0 -> popularFeed.posts
-            else -> newestFeed.posts
+            selectedTab == 1 -> newestFeed.posts
+            selectedTab == 2 -> favoritesFeed.posts
+            else -> emptyList()
         }
 
     val isLoading: Boolean
         get() = when {
             isSearch -> searchFeed.isLoading
             selectedTab == 0 -> popularFeed.isLoading
-            else -> newestFeed.isLoading
+            selectedTab == 1 -> newestFeed.isLoading
+            selectedTab == 2 -> favoritesFeed.isLoading
+            else -> false
         }
 
     val isLoadingMore: Boolean
         get() = when {
             isSearch -> searchFeed.isLoadingMore
             selectedTab == 0 -> popularFeed.isLoadingMore
-            else -> newestFeed.isLoadingMore
+            selectedTab == 1 -> newestFeed.isLoadingMore
+            selectedTab == 2 -> favoritesFeed.isLoadingMore
+            else -> false
         }
 
     val isRefreshing: Boolean
         get() = when {
             isSearch -> searchFeed.isRefreshing
             selectedTab == 0 -> popularFeed.isRefreshing
-            else -> newestFeed.isRefreshing
+            selectedTab == 1 -> newestFeed.isRefreshing
+            selectedTab == 2 -> favoritesFeed.isRefreshing
+            else -> false
         }
 
     val error: String?
         get() = when {
             isSearch -> searchFeed.error
             selectedTab == 0 -> popularFeed.error
-            else -> newestFeed.error
+            selectedTab == 1 -> newestFeed.error
+            selectedTab == 2 -> favoritesFeed.error
+            else -> null
         }
 }
 
@@ -97,14 +124,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun applySafeMode(tags: String?): String? {
-        if (!preferences.safeMode.value) return tags?.ifBlank { null }
-        return if (tags.isNullOrBlank()) {
-            "rating:safe"
-        } else if (!tags.contains("rating:")) {
-            "$tags rating:safe"
-        } else {
-            tags
-        }
+        return YandeApi.safeModeTags(tags, preferences.safeMode.value)
     }
 
     fun cycleColumns(): Int {
@@ -327,13 +347,13 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun search(tags: String) {
+    fun search(tags: String, poolName: String? = null) {
         val trimmed = tags.trim()
         if (trimmed.isBlank()) {
             clearSearch()
             return
         }
-        _uiState.update { it.copy(searchTags = trimmed) }
+        _uiState.update { it.copy(searchTags = trimmed, activePoolName = poolName) }
         viewModelScope.launch {
             _uiState.update { it.copy(searchFeed = it.searchFeed.copy(isLoading = true, error = null, page = 1)) }
             try {
@@ -356,7 +376,205 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun clearSearch() {
-        _uiState.update { it.copy(searchTags = "", searchFeed = FeedState()) }
+        _uiState.update { it.copy(searchTags = "", searchFeed = FeedState(), activePoolName = null) }
+    }
+
+    fun refreshSearch() {
+        val state = _uiState.value
+        if (state.searchTags.isBlank()) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(searchFeed = it.searchFeed.copy(isRefreshing = true, error = null)) }
+            try {
+                val posts = api.getPosts(page = 1, tags = applySafeMode(state.searchTags))
+                _uiState.update {
+                    it.copy(
+                        searchFeed = it.searchFeed.copy(
+                            posts = posts,
+                            isRefreshing = false,
+                            page = 1,
+                            hasMore = posts.isNotEmpty(),
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(searchFeed = it.searchFeed.copy(isRefreshing = false, error = e.message ?: "Failed to refresh"))
+                }
+            }
+        }
+    }
+
+    fun openPool(pool: PoolSummary) {
+        search(tags = YandeApi.poolTags(pool.id), poolName = "#${pool.id} · ${pool.displayName}")
+    }
+
+    fun loadFavoritesInitial(username: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(favoritesFeed = it.favoritesFeed.copy(isLoading = true, error = null, page = 1)) }
+            try {
+                val posts = api.getPosts(page = 1, tags = applySafeMode(YandeApi.favoriteTags(username)))
+                _uiState.update {
+                    it.copy(
+                        favoritesFeed = it.favoritesFeed.copy(
+                            posts = posts,
+                            isLoading = false,
+                            hasMore = posts.isNotEmpty(),
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        favoritesFeed = it.favoritesFeed.copy(
+                            isLoading = false,
+                            error = e.message ?: "Failed to load favorites",
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    fun loadMoreFavorites(username: String) {
+        val feed = _uiState.value.favoritesFeed
+        if (feed.isLoading || feed.isLoadingMore || !feed.hasMore) return
+
+        _uiState.update { it.copy(favoritesFeed = it.favoritesFeed.copy(isLoadingMore = true)) }
+        viewModelScope.launch {
+            val nextPage = feed.page + 1
+            try {
+                val newPosts = api.getPosts(page = nextPage, tags = applySafeMode(YandeApi.favoriteTags(username)))
+                _uiState.update {
+                    it.copy(
+                        favoritesFeed = it.favoritesFeed.copy(
+                            posts = it.favoritesFeed.posts + newPosts,
+                            page = nextPage,
+                            hasMore = newPosts.isNotEmpty(),
+                            isLoadingMore = false,
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(favoritesFeed = it.favoritesFeed.copy(isLoadingMore = false)) }
+            }
+        }
+    }
+
+    fun refreshFavorites(username: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(favoritesFeed = it.favoritesFeed.copy(isRefreshing = true, error = null)) }
+            try {
+                val posts = api.getPosts(page = 1, tags = applySafeMode(YandeApi.favoriteTags(username)))
+                _uiState.update {
+                    it.copy(
+                        favoritesFeed = it.favoritesFeed.copy(
+                            posts = posts,
+                            isRefreshing = false,
+                            page = 1,
+                            hasMore = posts.isNotEmpty(),
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(favoritesFeed = it.favoritesFeed.copy(isRefreshing = false, error = e.message ?: "Failed to refresh"))
+                }
+            }
+        }
+    }
+
+    fun loadPoolsInitial(query: String = "") {
+        viewModelScope.launch {
+            _uiState.update { it.copy(poolsFeed = it.poolsFeed.copy(isLoading = true, error = null, page = 1, query = query)) }
+            try {
+                val pools = api.getPools(query = query.ifBlank { null }, page = 1)
+                _uiState.update {
+                    it.copy(
+                        poolsFeed = it.poolsFeed.copy(
+                            pools = pools,
+                            isLoading = false,
+                            hasMore = pools.isNotEmpty(),
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        poolsFeed = it.poolsFeed.copy(
+                            isLoading = false,
+                            error = e.message ?: "Failed to load pools",
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    fun loadMorePools() {
+        val feed = _uiState.value.poolsFeed
+        if (feed.isLoading || feed.isLoadingMore || !feed.hasMore) return
+
+        _uiState.update { it.copy(poolsFeed = it.poolsFeed.copy(isLoadingMore = true)) }
+        viewModelScope.launch {
+            val nextPage = feed.page + 1
+            try {
+                val newPools = api.getPools(query = feed.query.ifBlank { null }, page = nextPage)
+                _uiState.update {
+                    it.copy(
+                        poolsFeed = it.poolsFeed.copy(
+                            pools = it.poolsFeed.pools + newPools,
+                            page = nextPage,
+                            hasMore = newPools.isNotEmpty(),
+                            isLoadingMore = false,
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(poolsFeed = it.poolsFeed.copy(isLoadingMore = false)) }
+            }
+        }
+    }
+
+    fun refreshPools() {
+        val query = _uiState.value.poolsFeed.query
+        viewModelScope.launch {
+            _uiState.update { it.copy(poolsFeed = it.poolsFeed.copy(isRefreshing = true, error = null)) }
+            try {
+                val pools = api.getPools(query = query.ifBlank { null }, page = 1)
+                _uiState.update {
+                    it.copy(
+                        poolsFeed = it.poolsFeed.copy(
+                            pools = pools,
+                            isRefreshing = false,
+                            page = 1,
+                            hasMore = pools.isNotEmpty(),
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(poolsFeed = it.poolsFeed.copy(isRefreshing = false, error = e.message ?: "Failed to refresh"))
+                }
+            }
+        }
+    }
+
+    // Pool list rows show a cover thumbnail (the pool's first post) and the
+    // pool's own id -- pool.json has no cover field, so this is a lazy
+    // one-shot fetch per pool id, cached so scrolling a row back into view
+    // doesn't refetch it.
+    fun loadPoolCover(poolId: Long) {
+        if (_uiState.value.poolCovers.containsKey(poolId)) return
+        viewModelScope.launch {
+            try {
+                val posts = api.getPosts(page = 1, limit = 1, tags = YandeApi.poolTags(poolId))
+                val coverUrl = posts.firstOrNull()?.previewUrl ?: return@launch
+                _uiState.update { it.copy(poolCovers = it.poolCovers + (poolId to coverUrl)) }
+            } catch (e: Exception) {
+                // Best-effort: the row just shows no thumbnail.
+            }
+        }
     }
 
     fun loadMore() {

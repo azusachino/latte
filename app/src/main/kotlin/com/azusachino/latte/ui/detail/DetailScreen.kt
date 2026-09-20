@@ -32,9 +32,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -52,6 +56,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -73,6 +79,9 @@ import com.azusachino.latte.data.download.DownloadManager
 import com.azusachino.latte.data.download.DownloadResult
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.model.PostRating
+import com.azusachino.latte.plugin.PluginCapability
+import com.azusachino.latte.plugin.SitePlugin
+import com.azusachino.latte.plugin.SitePluginManager
 import com.azusachino.latte.ui.common.ToastManager
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -88,6 +97,8 @@ fun DetailScreen(
     downloadManager: DownloadManager,
     onBack: () -> Unit,
     onTagClick: (String) -> Unit = {},
+    pluginManager: SitePluginManager,
+    onRequireLogin: (SitePlugin) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val pagerState = rememberPagerState(
@@ -99,8 +110,22 @@ fun DetailScreen(
 
     var showControls by remember { mutableStateOf(true) }
     var showInspectSheet by remember { mutableStateOf(false) }
+    var localScores by remember { mutableStateOf(mapOf<Long, Int>()) }
+    var inlineActionError by remember { mutableStateOf<String?>(null) }
 
     val currentPost = posts.getOrNull(pagerState.currentPage)
+    val currentPlugin = currentPost?.let { pluginManager.get(it.siteId) }
+
+    // The site never tells the app "you already scored this post" up front --
+    // recover a favorite (score 3) set in a prior session or on the web.
+    LaunchedEffect(currentPost?.id, currentPlugin?.isLoggedIn) {
+        val post = currentPost
+        if (post != null && currentPlugin != null && currentPlugin.isLoggedIn && currentPlugin.getScore(post.id) == null) {
+            currentPlugin.refreshScore(post.id)?.let { refreshed ->
+                localScores = localScores + (post.id to refreshed)
+            }
+        }
+    }
 
     Box(
         modifier = modifier
@@ -216,14 +241,25 @@ fun DetailScreen(
                 modifier = Modifier.fillMaxWidth(),
                 color = Color.Black.copy(alpha = 0.65f),
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .navigationBarsPadding()
                         .padding(horizontal = 20.dp, vertical = 14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    inlineActionError?.let { message ->
+                        Text(
+                            text = message,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.padding(bottom = 8.dp),
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                     // Details button: elegant pill with icon & resolution
                     FilledTonalButton(
                         onClick = { showInspectSheet = true },
@@ -247,46 +283,97 @@ fun DetailScreen(
                         )
                     }
 
-                    // Download button: matching 48dp pill
-                    Button(
-                        onClick = {
-                            if (currentPost != null) {
-                                scope.launch {
-                                    when (val result = downloadManager.enqueueDownload(currentPost)) {
-                                        is DownloadResult.AlreadySaved -> {
-                                            ToastManager.showWarning("Already saved: ${result.displayName}")
+                    // Right actions: Favorite + Save
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        if (currentPlugin != null && currentPlugin.capabilities.contains(PluginCapability.FAVORITES)) {
+                            val isPluginLoggedIn by currentPlugin.isLoggedInFlow.collectAsState(initial = currentPlugin.isLoggedIn)
+                            val post = currentPost
+                            val currentScore = localScores[post.id] ?: currentPlugin.getScore(post.id) ?: 0
+                            val isFavorited = currentScore == 3
+
+                            FilledTonalIconButton(
+                                onClick = {
+                                    if (!isPluginLoggedIn) {
+                                        onRequireLogin(currentPlugin)
+                                    } else {
+                                        scope.launch {
+                                            val targetScore = if (isFavorited) 0 else 3
+                                            val result = currentPlugin.setScore(post.id, targetScore)
+                                            if (result.isSuccess) {
+                                                inlineActionError = null
+                                                localScores = localScores + (post.id to targetScore)
+                                                if (targetScore == 3) {
+                                                    ToastManager.showSuccess("Added to favorites")
+                                                } else {
+                                                    ToastManager.showInfo("Removed from favorites")
+                                                }
+                                            } else {
+                                                inlineActionError = "Failed to update favorite: ${result.exceptionOrNull()?.message.orEmpty()}"
+                                            }
                                         }
-                                        is DownloadResult.AlreadyRunning -> {
-                                            ToastManager.showWarning("Download already running")
-                                        }
-                                        is DownloadResult.Started -> {
-                                            ToastManager.showSuccess("Download started: ${result.displayName}")
-                                        }
-                                        is DownloadResult.Failed -> {
-                                            ToastManager.showInfo("Failed: ${result.message}")
+                                    }
+                                },
+                                shape = CircleShape,
+                                modifier = Modifier.size(48.dp),
+                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                    containerColor = if (isFavorited) Color(0xFFE53935).copy(alpha = 0.25f) else Color.White.copy(alpha = 0.18f),
+                                    contentColor = if (isFavorited) Color(0xFFE53935) else Color.White,
+                                ),
+                            ) {
+                                Icon(
+                                    imageVector = if (isFavorited) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                    contentDescription = if (isFavorited) "Remove from favorites" else "Add to favorites",
+                                    modifier = Modifier.size(22.dp),
+                                )
+                            }
+                        }
+
+                        // Download button: matching 48dp pill
+                        Button(
+                            onClick = {
+                                if (currentPost != null) {
+                                    scope.launch {
+                                        when (val result = downloadManager.enqueueDownload(currentPost)) {
+                                            is DownloadResult.AlreadySaved -> {
+                                                ToastManager.showWarning("Already saved: ${result.displayName}")
+                                            }
+                                            is DownloadResult.AlreadyRunning -> {
+                                                ToastManager.showWarning("Download already running")
+                                            }
+                                            is DownloadResult.Started -> {
+                                                inlineActionError = null
+                                                ToastManager.showSuccess("Download started: ${result.displayName}")
+                                            }
+                                            is DownloadResult.Failed -> {
+                                                inlineActionError = "Failed to save image: ${result.message}"
+                                            }
                                         }
                                     }
                                 }
-                            }
-                        },
-                        shape = RoundedCornerShape(24.dp),
-                        modifier = Modifier.height(48.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        ),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Download,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Save",
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp,
-                        )
+                            },
+                            shape = RoundedCornerShape(24.dp),
+                            modifier = Modifier.height(48.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            ),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Download,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Save",
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 14.sp,
+                            )
+                        }
+                    }
                     }
                 }
             }
@@ -329,6 +416,46 @@ fun DetailScreen(
                             context.startActivity(intent)
                         },
                     )
+
+                    inlineActionError?.let { message ->
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = message,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+
+                    // Personal Rating (0-3 stars)
+                    if (currentPlugin != null && currentPlugin.capabilities.contains(PluginCapability.SCORING)) {
+                        val isPluginLoggedIn by currentPlugin.isLoggedInFlow.collectAsState(initial = currentPlugin.isLoggedIn)
+                        val currentScore = localScores[currentPost.id] ?: currentPlugin.getScore(currentPost.id) ?: 0
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        PersonalRatingSection(
+                            score = currentScore,
+                            isLoggedIn = isPluginLoggedIn,
+                            onRate = { newScore ->
+                                scope.launch {
+                                    val result = currentPlugin.setScore(currentPost.id, newScore)
+                                    if (result.isSuccess) {
+                                        inlineActionError = null
+                                        localScores = localScores + (currentPost.id to newScore)
+                                        when (newScore) {
+                                            0 -> ToastManager.showInfo("Rating removed")
+                                            3 -> ToastManager.showSuccess("Rated 3 stars (Favorited)")
+                                            else -> ToastManager.showSuccess("Rated $newScore star${if (newScore > 1) "s" else ""}")
+                                        }
+                                    } else {
+                                        inlineActionError = "Failed to submit rating: ${result.exceptionOrNull()?.message.orEmpty()}"
+                                    }
+                                }
+                            },
+                            onLoginRequest = {
+                                onRequireLogin(currentPlugin)
+                            },
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(20.dp))
 
@@ -582,4 +709,71 @@ private fun formatFileSize(bytes: Long?): String {
         unitIndex++
     }
     return String.format(java.util.Locale.US, "%.1f %s", size, units[unitIndex])
+}
+
+@Composable
+private fun PersonalRatingSection(
+    score: Int,
+    isLoggedIn: Boolean,
+    onRate: (Int) -> Unit,
+    onLoginRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column {
+                Text(
+                    text = "Personal Rating",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = when (score) {
+                        1 -> "★ Good (1 star)"
+                        2 -> "★★ Great (2 stars)"
+                        3 -> "★★★ Favorite (3 stars)"
+                        else -> if (isLoggedIn) "Tap stars to rate" else "Sign in to rate"
+                    },
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (score > 0) Color(0xFFFFB300) else MaterialTheme.colorScheme.onSurface,
+                )
+            }
+
+            // Interactive 3-star row
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                (1..3).forEach { starIndex ->
+                    IconButton(
+                        onClick = {
+                            if (!isLoggedIn) {
+                                onLoginRequest()
+                            } else {
+                                val targetScore = if (score == starIndex) 0 else starIndex
+                                onRate(targetScore)
+                            }
+                        },
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        Icon(
+                            imageVector = if (starIndex <= score) Icons.Default.Star else Icons.Default.StarBorder,
+                            contentDescription = "Rate $starIndex star",
+                            tint = if (starIndex <= score) Color(0xFFFFB300) else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(26.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
 }

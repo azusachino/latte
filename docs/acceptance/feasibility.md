@@ -1,5 +1,9 @@
 # Phase 1 feasibility receipt
 
+> **Historical receipt**: This records the superseded Flutter/Dart feasibility
+> experiment from 0.0.1. The current implementation is native Kotlin/Compose;
+> use the active 0.0.2 tasks and current Gradle gates for present verification.
+
 **Observed**: 2026-09-20
 
 This receipt records the bounded T001–T004 checks. It contains status metadata

@@ -153,3 +153,84 @@ inconsistency actionable. It has therefore earned a provisional **keep, with
 smaller maintenance scope** decision for 0.0.1. Do not call the experiment a
 full success yet: maintenance percentage, end-to-end acceptance, and whether
 the custom checklist adds value still need the next review pass.
+
+## Final 0.0.1 Milestone Verdict (2026-09-20)
+
+Following the merge of PR #1 and the release of tag `v0.0.1`, the Spec Kit
+evaluation for milestone 0.0.1 is complete.
+
+### Decision Rubric Evaluation
+
+| Outcome | Result | Verdict | Evidence |
+| --- | --- | --- | --- |
+| Pre-code defect detection | 8 boundary defects found early (transport offline distinction, MediaStore URI vs path, save cancellation removal, etc.) | **Keep** | Found material defects in system/API boundaries before code. |
+| Traceability | FR-to-task mapping was thorough initially, but became brittle during live hardware testing. | **Simplify** | Manual repair was required once mobile usability feedback arrived. |
+| Change propagation | High friction across 25+ files (`spec.md`, `constitution.md`, `contracts/`, `checklists/`, `tasks.md`). | **Simplify** | Changing a single UI decision forced edits across multiple spec layers. |
+| Agent execution | Produced false certainty on UI/UX; paper invariants had to be abandoned on physical hardware. | **Remove (for UI)** | Tactile mobile ergonomics (transitions, gestures, safe mode) were undiscoverable on paper. |
+| Maintenance cost | Over 25% of milestone effort was consumed by artifact maintenance and cross-checking. | **Remove / Simplify** | Exceeded the 15% budget; starved live hardware execution. |
+
+### Final Decision: SIMPLIFY / DOWNSIZE
+
+Spec Kit is **downsized to a lightweight, mobile-first workflow** for future milestones:
+
+1. **What is retained**:
+   - The project constitution (`.specify/memory/constitution.md`) as the high-level boundary and invariant guard.
+   - A single feature `spec.md` with prioritized user stories, acceptance criteria, and clear architecture seams.
+   - A flat `tasks.md` for execution tracking and red-green slices.
+   - Deterministic contract tests and automated gates (`make check`).
+
+2. **What is removed / prohibited**:
+   - Multi-file artifact sprawl (separate contract fragments, custom requirements checklists, duplicate historical plans, multi-document analysis graphs).
+   - Upfront negative UI invariants (e.g. forbidding Safe Mode or metadata tables before real device testing).
+
+3. **Adopted Rule: Device-First Ergonomics**:
+   - Tactile ergonomics, transitions, gesture expectations, and ambient safety cannot be finalized in markdown.
+   - Every milestone must deliver a runnable APK to physical hardware early. Real-device receipts are required before closing UI journeys.
+
+## 0.0.2 Account Manager Review Status (2026-09-21)
+
+This review checks whether the downsized Spec Kit workflow was actually used for
+the account-manager change and whether its status matches the repository.
+
+### Evidence
+
+- The downsized shape was used: one feature specification and one flat task
+  record under `specs/002-account-manager/`, with the constitution retained as
+  the project-level boundary.
+- The task record drove source implementations for the plugin, secure-storage,
+  Yande login, account UI, scoring, and Favorites slices. The corresponding
+  unit tests were present, and `mise exec -- make check` passed locally before
+  this review.
+- The review found an unencrypted Keystore-failure fallback, public-user lookup
+  used as credential evidence, direct plugin use in detail, Yande-specific
+  query syntax in `ExploreViewModel`, ordinary cookie preferences, Safe Mode
+  defaulting off in code, and rating/favorite failures surfaced through
+  toasts. Those code issues are now repaired; the remaining test gaps are
+  tracked explicitly in `tasks.md`.
+- Pool browsing was discovered and delivered after the original task breakdown.
+  It is now recorded as post-hoc work in `tasks.md` rather than being presented
+  as an original requirement.
+- The workflow is not complete for this milestone. A live check of the bundled
+  prerequisite script resolved the default ignored pointer to
+  `specs/001-yandere-core-journey`; an explicit 002 resolution correctly found
+  `specs/002-account-manager/spec.md` and `tasks.md`, then stopped because
+  `plan.md` is absent. Therefore no valid 002 `speckit-analyze` or
+  `speckit-converge` receipt exists. This is consistent with the constitution's
+  downsized single-spec/flat-task decision, but it means the full Spec Kit
+  lifecycle was not run for 002 and the ignored feature pointer still needs
+  local operator setup.
+- T014 still lacks live login and process-restart persistence evidence, Pixiv
+  is not implemented, secure-storage and pool-behavior tests remain open, the
+  release gate/version bump is open, and the current `make check` target runs
+  unit tests only. No 0.0.2 maintenance-cost measurement exists yet.
+
+### Verdict
+
+Spec Kit did useful work, but only partially. The downsized artifacts exposed
+material scope and boundary defects and kept the post-hoc pool decision
+traceable. The repository evidence also proves that the full 002 analyzer and
+convergence lifecycle did not execute because its required plan artifact is
+absent. Keep the downsized artifacts, mark 0.0.2 **IN PROGRESS / PARTIALLY
+VERIFIED**, and do not claim hardware-complete or release-complete status until
+T014, the remaining tests, and the final acceptance tasks pass. The repaired
+code may be reviewed in a partial implementation PR with those limits stated.

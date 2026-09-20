@@ -5,6 +5,15 @@
 > **Date**: September 2026  
 > **Author**: Antigravity  
 
+> **STALE (2026-09-20)**: This analysis targets the pre-rewrite Flutter/Dart
+> implementation (`pubspec.yaml`, `android/app/.../DownloadWorker.kt`). Latte
+> was rewritten to native Kotlin/Jetpack Compose in `52fddb5` after this doc
+> was written, so its concrete file paths, dependency list, and test counts
+> no longer apply. Kept for the UX-parity findings and spec-kit practice
+> assessment, which may still be conceptually relevant. All concrete claims
+> below are historical; verify against the current `app/src/main/kotlin/` tree
+> before relying on any specific claim.
+
 ---
 
 ## 1. Executive Summary & Code Review Findings

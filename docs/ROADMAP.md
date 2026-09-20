@@ -1,10 +1,12 @@
 # Latte Product & Architecture Roadmap
 
 > **Status**: Active execution roadmap  
-> **Updated**: 2026-09-20  
+> **Updated**: 2026-09-21
 > **Source Documents**:
-> - [001 Active Feature Spec](file:///Users/azusachino/Projects/project-github/harus-workstation/vendor/latte/specs/001-yandere-core-journey/spec.md)
-> - [Code Review & Parity Analysis](file:///Users/azusachino/Projects/project-github/harus-workstation/vendor/latte/docs/review/2026-09-20-code-review-and-parity.md)
+>
+> - [002 Active Feature Spec](../specs/002-account-manager/spec.md)
+> - [Spec Kit evaluation](spec-kit-evaluation.md)
+> **Historical context**: [code review & parity analysis](review/2026-09-20-code-review-and-parity.md)
 
 ---
 
@@ -12,7 +14,7 @@
 
 Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenticated, multi-platform personal art workstation (`0.0.2` and `0.0.3`). This roadmap establishes the sequence of milestones, architectural requirements, UX standards, and cache policies.
 
-```
+```text
 0.0.1 (Delivered) ──> 0.0.2 (Auth, Scoring & UX Hardening) ──> 0.0.3 (Pixiv Multi-Platform)
   • Yande browse        • Yande login & password hash             • Pixiv OAuth2 PKCE
   • Masonry feed        • 0–3 scoring & Add to Favorite           • Referer header injection
@@ -23,66 +25,99 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
 
 ---
 
-## Milestone 0.0.2: Yande Authentication, Scoring Subsystem & UX Hardening
+## Milestone 0.0.2: Account Manager Center (Mihon-Style Plugin Architecture), Scoring & UX Hardening
 
-### 1. UX Hardening & Interaction Fixes
-- **Search Result Swipe-to-Back**:
-  - Enable horizontal swipe-right in `_ExploreTabScaffold` to trigger `controller.clearSearch()`, returning to the prior discovery/popular position.
-  - Add explicit `leading: BackButton` to the search app bar.
-- **Detail Inspect Sheet Dragging Fix**:
-  - Add an explicit Material 3 drag handle pill (`showDragHandle` / top grab area) to `_DetailInspectSheet`.
-  - Increase collapsed peek height from 66px to 88px so FAB buttons do not consume all draggable surface area.
-- **Download Feedback & Confirmation Overhaul**:
-  - Replace the floating SnackBar (`bottom + 176`) with a clean Material 3 confirmation `AlertDialog` (`showDialog`) for "Already saved. Download again?".
-  - Remove redundant native Android Toasts from `MainActivity.kt`; let native system notifications own progress.
+> **Status**: In progress. Plugin, Yande authentication/scoring, Favorites, and
+> Pools have source implementations locally; review blockers for storage,
+> credential evidence, plugin lookup, query ownership, Safe Mode defaults, and
+> inline action errors are repaired. Secure-storage/pool test coverage and T014
+> hardware verification are partial. Pixiv, final hardware acceptance, and the
+> 0.0.2 version bump remain open.
+> **Active Feature Spec**: [002 Account Manager Center](../specs/002-account-manager/spec.md)
+> **Tasks**: [002 Tasks](../specs/002-account-manager/tasks.md)
+> **Design Inspiration**: Mihon / Tachiyomi `Tracker` & `TrackerManager` plugin architecture
 
-### 2. Cache Manager Subsystem
-- **Unified Disk Cache**:
-  - Standardize feed thumbnail rendering in `_RemoteArtwork` to use `ExtendedImage.network(..., cache: true)`.
-  - Enables offline thumbnail persistence across app restarts.
-- **Cache Management in Settings**:
-  - Expose a "Storage & Cache" section in `SettingsScreen`.
-  - Display real-time cached image size via `getCachedSizeBytes()`.
-  - Provide a "Clear image cache" action invoking `clearDiskCachedImages()` and `imageCache.clear()`.
+### 1. Mihon-Style Plugin Subsystem (`SitePlugin` & `SitePluginManager`)
 
-### 3. Yande.re Authentication & Scoring
-- **Credential Storage**:
-  - Implement secure storage for `username` and `password_hash = SHA1("choujin-steiner--$password--")`.
-  - Never store credentials in plaintext `SharedPreferences`.
-- **Capability Implementation**:
-  - Implement `AuthenticationCapability` (`signIn`, `signOut`) in `YandeAdapter`.
-  - Implement `PersonalScoreCapability` (`score(PostRef)`, `setScore(PostRef, int)`) calling `POST /post/vote.json`.
-  - Add interactive 0–3 star rating bar and Favorite toggle button (`score == 3`) in `_DetailInspectSheet`.
-  - Add `PostQuery.tagSearch('vote:3:$username')` to browse personal favorites.
+- **Plugin Architecture**:
+  - Each platform is an encapsulated `SitePlugin` implementing identity, `AuthType` (`CREDENTIALS`, `OAUTH2`), capabilities (`SCORING`, `FAVORITES`, `REFERER_INJECT`), login/logout lifecycle, and header hooks.
+  - `SitePluginManager` maintains the plugin registry and exposes `loggedInPluginsFlow()`.
+- **Mihon-Style UI (`AccountPreferenceWidget`)**:
+  - In `SettingsScreen` (under "Accounts") or dedicated `AccountManagerScreen`.
+  - Displays each platform with its logo, title, and display username with a green checkmark when logged in.
+  - Tapping an unauthenticated plugin opens its specific login flow (`PluginLoginDialog` for Yande, OAuth2 for Pixiv).
+  - Tapping an authenticated plugin opens a management dialog showing active capabilities and a "Sign Out" action.
+- **Hardware-Backed Credential Security**:
+  - `androidx.security:security-crypto` (`EncryptedSharedPreferences`) backed by Android Keystore.
+  - Zero plaintext storage: yande.re stores `SHA1("choujin-steiner--$password--")`; Pixiv stores encrypted OAuth tokens.
+  - One-tap sign-out permanently purges credentials and session state.
+
+### 2. Yande.re Authentication & Scoring
+
+- **Credential Verification**:
+  - Verify credentials against yande.re before persisting account.
+- **Personal Scoring & Favorites**:
+  - Interactive 0–3 star rating bar and Favorite toggle (`score == 3`) in `DetailScreen`.
+  - Executes `POST /post/vote.json` with optimistic UI updates.
+  - A dedicated "Favorites" tab in `ExploreScreen` (alongside Popular/Newest)
+    backed by its own feed, querying `vote:3:<username>`.
+  - Favorite state set outside this app (a prior session, or the web) is
+    recovered via `GET /favorite/list_users.json?id=<post>` -- yande.re has
+    no "my existing vote" lookup, so only the favorite (score 3) tier is
+    recoverable; 1/2-star ratings don't survive a restart.
+- **Pool Browsing (delivered ahead of schedule)**:
+  - A "Pools" tab lists/searches yande.re pools (`GET /pool.json`).
+  - Opening a pool reuses the existing post-search feed via `pool:<id>` as a
+    search tag (verified to match `pool/show.json`'s post order), rather
+    than a parallel detail screen.
+  - Not in the original 002 spec -- added directly from live-device
+    feedback per this project's device-first-thin-slices practice; see
+    `specs/002-account-manager/spec.md` User Story 4.
+
+### 3. Pixiv Platform Foundation
+
+- **OAuth2 Token Management**:
+  - Token lifecycle management (access token, refresh token, expiry) in `PixivPlugin`.
+- **Network Interceptor**:
+  - Automatic injection of `Referer: https://app-api.pixiv.net/` and `Authorization: Bearer <token>` for `*.pximg.net` and `app-api.pixiv.net` domains.
+  - Prepares the network layer for milestone 0.0.3 multi-platform browsing.
+
+### 4. UX Hardening (Principle VI)
+
+- Early thin-slice hardware verification on OnePlus 8 (`0cadf428`).
+- Smooth dialog/IME interactions and quiet inline error states.
 
 ---
 
 ## Milestone 0.0.3: Pixiv Platform Support
 
 ### 1. Architectural Adjustments
+
 - **Custom HTTP Headers for Media (`Referer`)**:
   - Pixiv images on `i.pximg.net` return HTTP 403 Forbidden without `Referer: https://app-api.pixiv.net/`.
-  - Add `Map<String, String> headers` to `ResolvedMedia`.
-  - Forward headers to `ExtendedImage.network(..., headers: media.headers)`.
-  - Forward headers via `MethodChannel` (`saveImage`) to `DownloadWorker.kt` for `HttpURLConnection.setRequestProperty`.
+  - Implement `PixivPlugin.applyHeaders` and route matching requests through
+    `SitePluginManager` and the OkHttp provider.
 - **1:N Multi-Page Artworks (`IllustPage`)**:
   - Pixiv illusts can contain multiple pages (`page_count >= 1`).
-  - Refactor `PostDetail` from a flat `List<MediaVariant>` to `List<IllustPage>`.
+  - Extend the Kotlin post/media model with a site-owned multi-page mapping
+    before exposing it to the shared detail pager.
   - Support navigating pages within a post in the detail pager.
 - **Subscribed / Following Updates**:
-  - Add `PostQuerySource.subscribed` to `PostQuery`.
-  - Fetch followed artists' newest works via Pixiv App API `/v2/illust/follow`.
-  - Add a "Following" tab to Explore when the selected adapter supports it.
+  - Add a Pixiv-owned following query and expose a "Following" tab only when
+    the selected plugin advertises the capability.
 
 ### 2. Pixiv Adapter & OAuth2 PKCE
-- Implement `PixivAdapter` implementing `SiteAdapter`.
+
+- Implement `PixivPlugin` implementing `SitePlugin` and register it only after
+  its deterministic and device acceptance receipts pass.
 - Handle OAuth2 PKCE token exchange (`access_token` and `refresh_token`) and automated token refresh interceptor.
-- Map Pixiv ranking modes (`day`, `week`, `month`, `rookie`, `r18`) to `PopularQuery`.
+- Map Pixiv ranking modes (`day`, `week`, `month`, `rookie`, `r18`) to the
+  shared post-query seam without adding Pixiv conditions to Compose screens.
 
 ---
 
 ## Quality & Governance Gates
 
-1. Every milestone must maintain `make check` passing with zero lints, formatting compliance, and deterministic tests.
+1. Every milestone must maintain the project gates: `make check`, `make lint`, and `make validate`; deterministic tests and lint must stay green.
 2. New network capabilities (Yande vote, Pixiv OAuth2) must use isolated test doubles in the test suite and opt-in manual probes for live verification.
 3. No credentials, tokens, or private media may ever be logged, committed, or exposed in error messages.

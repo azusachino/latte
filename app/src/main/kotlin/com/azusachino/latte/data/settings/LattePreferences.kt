@@ -25,7 +25,7 @@ class LattePreferences(private val context: Context) {
     )
     val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
 
-    private val _safeMode = MutableStateFlow(prefs.getBoolean(KEY_SAFE_MODE, false))
+    private val _safeMode = MutableStateFlow(prefs.getBoolean(KEY_SAFE_MODE, true))
     val safeMode: StateFlow<Boolean> = _safeMode.asStateFlow()
 
     fun setColumnCount(count: Int) {

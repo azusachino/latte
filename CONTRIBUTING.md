@@ -2,25 +2,29 @@
 
 Thanks for helping improve Latte. The project is early-stage and intentionally
 keeps its first milestone narrow: a Yande-compatible exploration and download
-journey on Android.
+journey on native Android.
 
 ## Development setup
 
-Install the pinned Flutter toolchain and fetch dependencies:
+Install the pinned Java toolchain:
 
 ```bash
 mise install
-mise exec -- flutter pub get
 ```
 
 Run the complete local gate before opening a pull request:
 
 ```bash
+make md-format
 make check
-mise exec -- flutter build apk --debug
+make lint
+make validate
 ```
 
-The live Yande probe is opt-in; tests use checked-in fixtures and doubles.
+The live Yande verification is opt-in; automated tests use doubles and do not
+require a live account. `make check` runs Markdown checks and unit tests;
+`make lint` and `make validate` provide the separate Android lint and debug-APK
+checks. Run `make md-format` to apply the configured Markdown formatting.
 Do not add credentials, private URLs, generated build output, or downloaded
 post media to the repository.
 

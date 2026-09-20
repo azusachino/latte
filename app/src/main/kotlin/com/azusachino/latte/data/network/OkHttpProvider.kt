@@ -27,6 +27,10 @@ object OkHttpProvider {
     }
 
     private var _client: OkHttpClient? = null
+    private var _cookieJar: PersistentCookieJar? = null
+
+    val cookieJar: PersistentCookieJar?
+        get() = _cookieJar
 
     val client: OkHttpClient
         get() = _client ?: synchronized(this) {
@@ -36,6 +40,9 @@ object OkHttpProvider {
                 .writeTimeout(30, TimeUnit.SECONDS)
                 .connectionPool(ConnectionPool(32, 5, TimeUnit.MINUTES))
                 .dns(customDns)
+                .apply {
+                    _cookieJar?.let { cookieJar(it) }
+                }
                 .addInterceptor { chain ->
                     val request = chain.request().newBuilder()
                         .header("User-Agent", "Mozilla/5.0 (Android; Mobile; Latte/0.0.1)")
@@ -51,8 +58,11 @@ object OkHttpProvider {
             synchronized(this) {
                 if (_client == null) {
                     val cacheDir = File(context.cacheDir, "http_cache")
+                    val jar = PersistentCookieJar(context)
+                    _cookieJar = jar
                     _client = OkHttpClient.Builder()
                         .cache(Cache(cacheDir, CACHE_SIZE))
+                        .cookieJar(jar)
                         .connectTimeout(15, TimeUnit.SECONDS)
                         .readTimeout(30, TimeUnit.SECONDS)
                         .writeTimeout(30, TimeUnit.SECONDS)

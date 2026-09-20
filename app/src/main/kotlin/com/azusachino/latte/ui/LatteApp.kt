@@ -2,6 +2,8 @@ package com.azusachino.latte.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -18,9 +20,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.IntOffset
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.azusachino.latte.data.download.DownloadManager
 import com.azusachino.latte.ui.common.ToastHost
+import com.azusachino.latte.ui.common.ToastManager
 import com.azusachino.latte.ui.detail.DetailScreen
 import com.azusachino.latte.ui.explore.ExploreScreen
 import com.azusachino.latte.ui.explore.ExploreViewModel
@@ -31,7 +35,23 @@ sealed interface Screen {
     data object Explore : Screen
     data class Detail(val initialIndex: Int) : Screen
     data object Settings : Screen
+    data object AccountManager : Screen
 }
+
+private val Screen.navDepth: Int
+    get() = when (this) {
+        is Screen.Explore -> 0
+        is Screen.Detail -> 1
+        is Screen.Settings -> 1
+        is Screen.AccountManager -> 2
+    }
+
+// A quick, slightly overshooting settle (inspired by transitions.dev's toggle
+// curve) rather than Compose's flatter default spring for slideIn/Out.
+private val screenSlideSpec = spring<IntOffset>(
+    dampingRatio = 0.8f,
+    stiffness = Spring.StiffnessMediumLow,
+)
 
 @Composable
 fun LatteApp(
@@ -42,7 +62,12 @@ fun LatteApp(
     val downloadManager = remember { DownloadManager(context) }
     val themeMode by exploreViewModel.preferences.themeMode.collectAsState()
 
+    val pluginStorage = remember { com.azusachino.latte.plugin.storage.SecurePluginStorage(context) }
+    val yandePlugin = remember { com.azusachino.latte.plugin.yande.YandePlugin(pluginStorage, com.azusachino.latte.data.network.OkHttpProvider.client, com.azusachino.latte.data.network.OkHttpProvider.cookieJar) }
+    val sitePluginManager = remember { com.azusachino.latte.plugin.SitePluginManager(listOf(yandePlugin)) }
+
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Explore) }
+    var activeLoginPlugin by remember { mutableStateOf<com.azusachino.latte.plugin.SitePlugin?>(null) }
 
     LatteTheme(themeMode = themeMode) {
         Box(modifier = modifier.fillMaxSize()) {
@@ -50,23 +75,12 @@ fun LatteApp(
                 targetState = currentScreen,
                 label = "ScreenTransition",
                 transitionSpec = {
-                    when {
-                        targetState is Screen.Detail -> {
-                            (slideInHorizontally { width -> width } + fadeIn())
-                                .togetherWith(slideOutHorizontally { width -> -width / 3 } + fadeOut())
-                        }
-                        initialState is Screen.Detail -> {
-                            (slideInHorizontally { width -> -width / 3 } + fadeIn())
-                                .togetherWith(slideOutHorizontally { width -> width } + fadeOut())
-                        }
-                        targetState is Screen.Settings -> {
-                            (slideInHorizontally { width -> width } + fadeIn())
-                                .togetherWith(slideOutHorizontally { width -> -width / 3 } + fadeOut())
-                        }
-                        else -> {
-                            (slideInHorizontally { width -> -width / 3 } + fadeIn())
-                                .togetherWith(slideOutHorizontally { width -> width } + fadeOut())
-                        }
+                    if (targetState.navDepth >= initialState.navDepth) {
+                        (slideInHorizontally(screenSlideSpec) { width -> width } + fadeIn())
+                            .togetherWith(slideOutHorizontally(screenSlideSpec) { width -> -width / 3 } + fadeOut())
+                    } else {
+                        (slideInHorizontally(screenSlideSpec) { width -> -width / 3 } + fadeIn())
+                            .togetherWith(slideOutHorizontally(screenSlideSpec) { width -> width } + fadeOut())
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
@@ -75,11 +89,15 @@ fun LatteApp(
                     is Screen.Explore -> {
                         ExploreScreen(
                             viewModel = exploreViewModel,
+                            sitePlugin = yandePlugin,
                             onPostClick = { index ->
                                 currentScreen = Screen.Detail(index)
                             },
                             onOpenSettings = {
                                 currentScreen = Screen.Settings
+                            },
+                            onRequireLogin = { plugin ->
+                                activeLoginPlugin = plugin
                             },
                         )
                     }
@@ -92,12 +110,16 @@ fun LatteApp(
                             posts = posts,
                             initialIndex = screen.initialIndex,
                             downloadManager = downloadManager,
+                            pluginManager = sitePluginManager,
                             onBack = {
                                 currentScreen = Screen.Explore
                             },
                             onTagClick = { tag ->
                                 exploreViewModel.search(tag)
                                 currentScreen = Screen.Explore
+                            },
+                            onRequireLogin = { plugin ->
+                                activeLoginPlugin = plugin
                             },
                         )
                     }
@@ -110,9 +132,35 @@ fun LatteApp(
                             onBack = {
                                 currentScreen = Screen.Explore
                             },
+                            onOpenAccountManager = {
+                                currentScreen = Screen.AccountManager
+                            },
+                        )
+                    }
+                    is Screen.AccountManager -> {
+                        BackHandler {
+                            currentScreen = Screen.Settings
+                        }
+                        com.azusachino.latte.ui.account.AccountManagerScreen(
+                            pluginManager = sitePluginManager,
+                            onBack = {
+                                currentScreen = Screen.Settings
+                            },
                         )
                     }
                 }
+            }
+
+            // Global Login Dialog
+            activeLoginPlugin?.let { plugin ->
+                com.azusachino.latte.ui.account.PluginLoginDialog(
+                    plugin = plugin,
+                    onDismissRequest = { activeLoginPlugin = null },
+                    onLoginSuccess = {
+                        activeLoginPlugin = null
+                        ToastManager.showSuccess("Signed in to ${plugin.name}")
+                    },
+                )
             }
 
             // Stacking, full-width toasts over all screens

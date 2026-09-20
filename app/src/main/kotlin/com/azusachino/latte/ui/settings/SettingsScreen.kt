@@ -16,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
@@ -58,6 +59,7 @@ import com.azusachino.latte.ui.common.ToastManager
 fun SettingsScreen(
     preferences: LattePreferences,
     onBack: () -> Unit,
+    onOpenAccountManager: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -90,6 +92,18 @@ fun SettingsScreen(
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState()),
         ) {
+            // Accounts Section
+            SettingsSectionHeader("Accounts")
+
+            SettingsRow(
+                icon = Icons.Default.AccountCircle,
+                title = "Account Center",
+                subtitle = "Manage platform accounts & logins (yande.re, Pixiv)",
+                onClick = onOpenAccountManager,
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+
             // Content Section
             SettingsSectionHeader("Content")
 

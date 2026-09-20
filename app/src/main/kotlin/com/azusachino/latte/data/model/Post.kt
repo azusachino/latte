@@ -30,6 +30,7 @@ data class MediaVariant(
 
 data class Post(
     val id: Long,
+    val siteId: String = "yande.re",
     val rating: PostRating,
     val tags: List<String>,
     val score: Int,
@@ -109,6 +110,7 @@ fun YandePostDto.toDomain(): Post {
 
     return Post(
         id = id,
+        siteId = "yande.re",
         rating = PostRating.fromCode(rating),
         tags = tags.split(" ").filter { it.isNotBlank() },
         score = score,

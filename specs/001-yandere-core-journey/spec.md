@@ -4,8 +4,7 @@
 
 **Created**: 2026-09-20
 
-**Status**: 0.0.1 implementation slice complete locally; owner/device acceptance
-and live evidence pending
+**Status**: Shipped & Released in `v0.0.1` (merged to `main`)
 
 **Input**: Assessment handoff from
 `.specify/assessments/latte-yandere-client/decision.md`
@@ -295,13 +294,15 @@ already presentation metadata and MUST NOT be treated as the owner's vote.
 ## Assumptions
 
 - The repository owner is the only required user for the first milestone.
-- Android is the first supported product platform; other Flutter targets are
-  future decisions.
+- Android (Kotlin + Jetpack Compose) is the first supported product platform.
 - Network access is required for remote discovery and media; transport failure
   preserves the current in-memory view and does not imply an offline catalog.
-- Rating fields remain available to adapter/search compatibility, but are not
-  rendered by Latte. Latte does not provide a Safe Mode filter or rating-driven
-  query rewrite.
+- Safe Mode is supported as a user-configurable setting (defaulting to safe content)
+  that filters or rewrites queries to protect the owner in shared environments.
+- Post detail renders a structured metadata table (rating, score, dimensions, source)
+  and enlarged, thumb-friendly tag chips.
+- Interactive UI supports smooth tab transitions with stable header height,
+  pull-to-refresh on paged feeds, and quiet inline error states.
 - Authenticated personal scoring from 0 through 3 is deferred to a later
   specification and remains distinct from the read-only aggregate score.
 - A user-visible Latte album/directory is preferable to asking for a destination

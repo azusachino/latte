@@ -1,5 +1,9 @@
 # Latte 0.0.1 review handoff
 
+> **Historical handoff**: This records the superseded Flutter/Dart 0.0.1
+> release review. It is not evidence for the current native Kotlin/Compose
+> implementation or the active 0.0.2 milestone.
+
 **Snapshot**: 2026-09-20
 
 **Review target**: the complete 0.0.1 implementation on
