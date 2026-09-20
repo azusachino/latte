@@ -576,7 +576,23 @@ private fun PopularControls(
                 }
             },
         ) {
-            DatePicker(state = datePickerState)
+            DatePicker(
+                state = datePickerState,
+                headline = {
+                    val selectedMillis = datePickerState.selectedDateMillis
+                    val formatted = if (selectedMillis != null) {
+                        Instant.ofEpochMilli(selectedMillis).atZone(ZoneOffset.UTC).toLocalDate()
+                            .format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                    } else {
+                        "Select date"
+                    }
+                    Text(
+                        text = formatted,
+                        style = MaterialTheme.typography.headlineLarge,
+                        modifier = Modifier.padding(start = 24.dp, end = 12.dp, bottom = 12.dp),
+                    )
+                },
+            )
         }
     }
 }
@@ -591,9 +607,14 @@ private fun formatPopularWindow(period: PopularPeriod, anchor: LocalDate): Strin
             "${start.format(dateFormatter)} – ${end.format(dateFormatter)}"
         }
         PopularPeriod.MONTH -> {
-            val monthFormatter = DateTimeFormatter.ofPattern("yyyy-MM")
-            anchor.format(monthFormatter)
+            val start = anchor.withDayOfMonth(1)
+            val end = anchor.withDayOfMonth(anchor.lengthOfMonth())
+            "${start.format(dateFormatter)} – ${end.format(dateFormatter)}"
         }
-        PopularPeriod.YEAR -> anchor.year.toString()
+        PopularPeriod.YEAR -> {
+            val start = anchor.withDayOfYear(1)
+            val end = anchor.withDayOfYear(anchor.lengthOfYear())
+            "${start.format(dateFormatter)} – ${end.format(dateFormatter)}"
+        }
     }
 }

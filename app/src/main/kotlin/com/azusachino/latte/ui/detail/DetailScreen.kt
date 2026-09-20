@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -41,12 +42,12 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -63,6 +64,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -73,6 +75,10 @@ import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.model.PostRating
 import com.azusachino.latte.ui.common.ToastManager
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -295,7 +301,7 @@ fun DetailScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
+                        .padding(horizontal = 20.dp)
                         .padding(bottom = 36.dp)
                         .verticalScroll(rememberScrollState()),
                 ) {
@@ -303,50 +309,59 @@ fun DetailScreen(
                         text = "Post #${currentPost.id}",
                         style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                    // Meta Row
+                    // Metadata Table
+                    Text(
+                        text = "Information",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    MetadataTable(
+                        post = currentPost,
+                        onAuthorClick = { author ->
+                            showInspectSheet = false
+                            onTagClick("user:$author")
+                        },
+                        onSourceClick = { url ->
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                            context.startActivity(intent)
+                        },
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Tags with Colorful Palette
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Column {
-                            Text("Resolution", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
-                            Text("${currentPost.width} × ${currentPost.height}", style = MaterialTheme.typography.bodyMedium)
-                        }
-                        Column {
-                            Text("Score", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
-                            Text("${currentPost.score}", style = MaterialTheme.typography.bodyMedium)
-                        }
-                        Column {
-                            Text("Rating", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
-                            val ratingText = when (currentPost.rating) {
-                                PostRating.SAFE -> "Safe"
-                                PostRating.QUESTIONABLE -> "Questionable"
-                                PostRating.EXPLICIT -> "Explicit"
-                                PostRating.UNKNOWN -> "Unknown"
-                            }
-                            Text(ratingText, style = MaterialTheme.typography.bodyMedium)
-                        }
+                        Text(
+                            text = "Tags",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        )
+                        Text(
+                            text = "${currentPost.tags.size} tags",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
+                    Spacer(modifier = Modifier.height(10.dp))
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Tags
-                    Text("Tags", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
-                    Spacer(modifier = Modifier.height(8.dp))
                     FlowRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         currentPost.tags.forEach { tag ->
-                            SuggestionChip(
+                            TagChip(
+                                tag = tag,
                                 onClick = {
                                     showInspectSheet = false
                                     onTagClick(tag)
                                 },
-                                label = { Text(tag) },
                             )
                         }
                     }
@@ -354,4 +369,217 @@ fun DetailScreen(
             }
         }
     }
+}
+
+@Composable
+private fun MetadataTable(
+    post: Post,
+    onAuthorClick: (String) -> Unit,
+    onSourceClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Author
+            if (!post.author.isNullOrBlank()) {
+                MetadataTableRow(
+                    label = "Author",
+                    value = post.author,
+                    isClickable = true,
+                    onClick = { onAuthorClick(post.author) },
+                    valueColor = MaterialTheme.colorScheme.primary,
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+            }
+
+            // Dimensions
+            val ratio = calculateAspectRatio(post.width, post.height)
+            val ratioSuffix = if (ratio.isNotBlank()) " ($ratio)" else ""
+            MetadataTableRow(
+                label = "Dimensions",
+                value = "${post.width} × ${post.height}$ratioSuffix",
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+
+            // Rating
+            val (ratingLabel, ratingColor) = when (post.rating) {
+                PostRating.SAFE -> "Safe" to Color(0xFF4CAF50)
+                PostRating.QUESTIONABLE -> "Questionable" to Color(0xFFFFB300)
+                PostRating.EXPLICIT -> "Explicit" to Color(0xFFE53935)
+                PostRating.UNKNOWN -> "Unknown" to MaterialTheme.colorScheme.onSurfaceVariant
+            }
+            MetadataTableRow(
+                label = "Rating",
+                value = ratingLabel,
+                valueColor = ratingColor,
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+
+            // Score
+            MetadataTableRow(
+                label = "Score",
+                value = "${post.score}",
+            )
+
+            // Created Date
+            if (post.createdAt != null && post.createdAt > 0) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                val formattedDate = Instant.ofEpochSecond(post.createdAt)
+                    .atZone(ZoneId.systemDefault())
+                    .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+                MetadataTableRow(
+                    label = "Date",
+                    value = formattedDate,
+                )
+            }
+
+            // File Size
+            val bestVariant = post.bestVariant
+            if (bestVariant.fileSize != null && bestVariant.fileSize > 0) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                val ext = bestVariant.extension?.uppercase() ?: "IMAGE"
+                MetadataTableRow(
+                    label = "File",
+                    value = "$ext • ${formatFileSize(bestVariant.fileSize)}",
+                )
+            }
+
+            // Source
+            if (!post.source.isNullOrBlank()) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                val host = runCatching { Uri.parse(post.source).host?.removePrefix("www.") }.getOrNull()
+                val displaySource = if (!host.isNullOrBlank()) host else "View Source"
+                MetadataTableRow(
+                    label = "Source",
+                    value = displaySource,
+                    isClickable = true,
+                    onClick = { onSourceClick(post.source) },
+                    valueColor = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MetadataTableRow(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    isClickable: Boolean = false,
+    onClick: () -> Unit = {},
+    valueColor: Color = MaterialTheme.colorScheme.onSurface,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(if (isClickable) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(108.dp),
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = valueColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+private val TagPalette = listOf(
+    Color(0xFFE57373), // Red / Coral
+    Color(0xFFF06292), // Pink
+    Color(0xFFBA68C8), // Purple
+    Color(0xFF9575CD), // Deep Purple
+    Color(0xFF7986CB), // Indigo
+    Color(0xFF64B5F6), // Blue
+    Color(0xFF4FC3F7), // Light Blue
+    Color(0xFF4DD0E1), // Cyan
+    Color(0xFF4DB6AC), // Teal
+    Color(0xFF81C784), // Green
+    Color(0xFFAED581), // Light Green
+    Color(0xFFFFD54F), // Amber
+    Color(0xFFFFB74D), // Orange
+    Color(0xFFFF8A65), // Deep Orange
+    Color(0xFFA1887F), // Brown
+    Color(0xFF90A4AE), // Blue Grey
+)
+
+@Composable
+private fun TagChip(
+    tag: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val baseColor = TagPalette[abs(tag.hashCode()) % TagPalette.size]
+    val containerColor = baseColor.copy(alpha = 0.15f)
+    val borderColor = baseColor.copy(alpha = 0.45f)
+
+    Surface(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(8.dp),
+        color = containerColor,
+        border = BorderStroke(1.dp, borderColor),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(baseColor)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = tag,
+                color = baseColor,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+    }
+}
+
+private fun calculateAspectRatio(width: Int, height: Int): String {
+    if (width <= 0 || height <= 0) return ""
+    val gcd = gcd(width, height)
+    val rw = width / gcd
+    val rh = height / gcd
+    return if (rw <= 21 && rh <= 21) {
+        "$rw:$rh"
+    } else {
+        String.format(java.util.Locale.US, "%.2f:1", width.toFloat() / height.toFloat())
+    }
+}
+
+private fun gcd(a: Int, b: Int): Int = if (b == 0) a else gcd(b, a % b)
+
+private fun formatFileSize(bytes: Long?): String {
+    if (bytes == null || bytes <= 0) return ""
+    val units = arrayOf("B", "KB", "MB", "GB")
+    var size = bytes.toDouble()
+    var unitIndex = 0
+    while (size >= 1024 && unitIndex < units.size - 1) {
+        size /= 1024
+        unitIndex++
+    }
+    return String.format(java.util.Locale.US, "%.1f %s", size, units[unitIndex])
 }
