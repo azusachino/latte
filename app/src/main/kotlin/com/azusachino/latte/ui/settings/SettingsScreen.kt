@@ -195,16 +195,16 @@ fun SettingsScreen(
             SettingsRow(
                 icon = Icons.Default.SystemUpdate,
                 title = "Check for Updates",
-                subtitle = "Version 0.0.1",
+                subtitle = "Version 0.0.2",
                 onClick = {
-                    ToastManager.showInfo("You're using the latest version (0.0.1)")
+                    ToastManager.showInfo("You're using the latest version (0.0.2)")
                 },
             )
 
             SettingsRow(
                 icon = Icons.Default.Info,
                 title = "About Latte",
-                subtitle = "Version 0.0.1 · Fast native client",
+                subtitle = "Version 0.0.2 · Fast native client",
                 onClick = {
                     showAboutDialog = true
                 },
@@ -218,7 +218,7 @@ fun SettingsScreen(
             title = { Text("About Latte") },
             text = {
                 Column {
-                    Text("Latte 0.0.1", fontWeight = FontWeight.Bold)
+                    Text("Latte 0.0.2", fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(4.dp))
                     Text("A fast native Moebooru client for Android.")
                     Spacer(modifier = Modifier.height(12.dp))

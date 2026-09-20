@@ -220,9 +220,10 @@ the account-manager change and whether its status matches the repository.
   lifecycle was not run for 002 and the ignored feature pointer still needs
   local operator setup.
 - T014 still lacks live login and process-restart persistence evidence, Pixiv
-  is not implemented, secure-storage and pool-behavior tests remain open, the
-  release gate/version bump is open, and the current `make check` target runs
-  unit tests only. No 0.0.2 maintenance-cost measurement exists yet.
+  is not implemented, secure-storage and pool-behavior tests remain open, and
+  no 0.0.2 maintenance-cost measurement exists yet. The release gate and
+  version bump are now complete in `v0.0.2`; that tag does not close the
+  remaining acceptance gaps.
 
 ### Verdict
 
@@ -230,7 +231,7 @@ Spec Kit did useful work, but only partially. The downsized artifacts exposed
 material scope and boundary defects and kept the post-hoc pool decision
 traceable. The repository evidence also proves that the full 002 analyzer and
 convergence lifecycle did not execute because its required plan artifact is
-absent. Keep the downsized artifacts, mark 0.0.2 **IN PROGRESS / PARTIALLY
-VERIFIED**, and do not claim hardware-complete or release-complete status until
-T014, the remaining tests, and the final acceptance tasks pass. The repaired
-code may be reviewed in a partial implementation PR with those limits stated.
+absent. Keep the downsized artifacts and mark 0.0.2 **RELEASED / PARTIALLY
+VERIFIED**: `v0.0.2` is a real tagged release, but it is not hardware-complete
+or fully spec-verified until T014, the remaining tests, and the final
+acceptance tasks pass.
