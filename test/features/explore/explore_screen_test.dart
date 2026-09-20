@@ -462,6 +462,27 @@ void main() {
     expect(find.byKey(const ValueKey('explore-grid')), findsOneWidget);
   });
 
+  testWidgets('platform back from search results restores the discovery grid', (
+    tester,
+  ) async {
+    final item = post('platform-back-search', tags: const ['nature']);
+    final controller = ExploreController(adapter: WidgetAdapter(posts: [item]));
+    await tester.pumpWidget(app(controller));
+    await tester.pumpAndSettle();
+
+    await controller.search('nature');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Search results'), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Search results'), findsNothing);
+    expect(find.byKey(const ValueKey('explore-tabs')), findsOneWidget);
+    expect(controller.state.query?.source, isNot(PostQuerySource.tagSearch));
+  });
+
   testWidgets(
     'fits expanded dark layouts with 200 percent text and reduced motion',
     (tester) async {

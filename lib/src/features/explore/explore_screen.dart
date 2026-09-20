@@ -99,10 +99,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 scrollController: _scrollController,
               );
         final reducedMotion = MediaQuery.disableAnimationsOf(context);
+        final isSearch = state.query?.source == PostQuerySource.tagSearch;
+        final canPop = !isDetail && !isSearch;
         return PopScope<void>(
-          canPop: !isDetail,
+          canPop: canPop,
           onPopInvokedWithResult: (didPop, _) {
-            if (!didPop && isDetail) widget.controller.closeDetail();
+            if (didPop) return;
+            if (isDetail) {
+              widget.controller.closeDetail();
+            } else if (isSearch) {
+              widget.controller.clearSearch();
+            }
           },
           child: AnimatedSwitcher(
             duration: reducedMotion
