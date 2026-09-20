@@ -171,6 +171,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Download started in the background.'), findsOneWidget);
+    final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
+    expect(
+      snackBar.margin?.resolve(TextDirection.ltr).bottom,
+      greaterThanOrEqualTo(176),
+    );
   });
 
   testWidgets('detail pager keeps Popular context and moves between posts', (

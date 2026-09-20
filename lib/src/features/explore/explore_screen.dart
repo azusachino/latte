@@ -1292,6 +1292,13 @@ class _DetailInspectSheetState extends State<_DetailInspectSheet> {
         SnackBar(
           content: Text(message),
           behavior: SnackBarBehavior.floating,
+          // Keep the transient message above the collapsed detail action row.
+          margin: EdgeInsets.fromLTRB(
+            16,
+            0,
+            16,
+            MediaQuery.paddingOf(context).bottom + 176,
+          ),
           duration: const Duration(seconds: 3),
         ),
       );
