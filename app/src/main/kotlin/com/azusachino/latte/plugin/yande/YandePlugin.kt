@@ -1,0 +1,178 @@
+package com.azusachino.latte.plugin.yande
+
+import com.azusachino.latte.data.network.PersistentCookieJar
+import com.azusachino.latte.plugin.AuthType
+import com.azusachino.latte.plugin.PluginCapability
+import com.azusachino.latte.plugin.SitePlugin
+import com.azusachino.latte.plugin.storage.SecurePluginStorage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
+import okhttp3.FormBody
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.io.IOException
+
+class YandePlugin(
+    private val storage: SecurePluginStorage,
+    private val httpClient: OkHttpClient,
+    private val cookieJar: PersistentCookieJar? = null,
+    private val baseUrl: String = "https://yande.re",
+) : SitePlugin {
+
+    override val id: String = "yande.re"
+    override val name: String = "yande.re"
+    override val iconRes: Int? = null
+    override val authType: AuthType = AuthType.CREDENTIALS
+    override val capabilities: Set<PluginCapability> = setOf(
+        PluginCapability.SCORING,
+        PluginCapability.FAVORITES,
+    )
+
+    private var cachedUsername: String? = storage.get(id, KEY_USERNAME)
+    private val _isLoggedIn = MutableStateFlow(cachedUsername != null)
+    override val isLoggedIn: Boolean get() = _isLoggedIn.value
+    override val isLoggedInFlow: Flow<Boolean> = _isLoggedIn.asStateFlow()
+
+    override fun getDisplayUsername(): String? = cachedUsername
+
+    private var cachedCsrfToken: String? = null
+
+    override suspend fun login(credentials: Map<String, String>): Result<Unit> = withContext(Dispatchers.IO) {
+        val username = credentials["username"]?.trim()
+            ?: return@withContext Result.failure(IllegalArgumentException("Username required"))
+        val password = credentials["password"]
+            ?: return@withContext Result.failure(IllegalArgumentException("Password required"))
+
+        try {
+            // 1. Fetch CSRF token from login page
+            val csrf = fetchCsrfToken()
+                ?: return@withContext Result.failure(IOException("Failed to retrieve CSRF token from $name"))
+
+            val passHash = YandePasswordHasher.hash(password)
+
+            // 2. Submit login form
+            val formBody = FormBody.Builder()
+                .add("user[name]", username)
+                .add("user[password]", password)
+                .add("authenticity_token", csrf)
+                .add("commit", "Login")
+                .build()
+
+            val request = Request.Builder()
+                .url("$baseUrl/user/authenticate")
+                .post(formBody)
+                .header("X-CSRF-Token", csrf)
+                .header("Referer", "$baseUrl/user/login")
+                .build()
+
+            val response = httpClient.newCall(request).execute()
+            if (!response.isSuccessful && response.code != 302 && response.code != 303) {
+                return@withContext Result.failure(IOException("Login failed with HTTP ${response.code}"))
+            }
+
+            // 3. Verify session via cookies or user check
+            val userId = cookieJar?.getCookieValue("yande.re", "user_id")
+            val hasSession = userId != null && userId.toIntOrNull() != 0
+
+            // If cookieJar didn't find it directly, verify credentials via user query
+            if (!hasSession && !verifyUserSession(username)) {
+                return@withContext Result.failure(IllegalArgumentException("Invalid username or password"))
+            }
+
+            // 4. Persist
+            storage.save(id, KEY_USERNAME, username)
+            storage.save(id, KEY_PASS_HASH, passHash)
+            cachedUsername = username
+            _isLoggedIn.value = true
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override fun logout() {
+        storage.clearPlugin(id)
+        cachedUsername = null
+        cachedCsrfToken = null
+        cookieJar?.clear()
+        _isLoggedIn.value = false
+    }
+
+    override suspend fun setScore(postId: Long, score: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        if (!isLoggedIn) {
+            return@withContext Result.failure(IllegalStateException("Must be logged in to rate posts"))
+        }
+
+        try {
+            val csrf = cachedCsrfToken ?: fetchCsrfToken()
+                ?: return@withContext Result.failure(IOException("Failed to retrieve CSRF token"))
+
+            val formBody = FormBody.Builder()
+                .add("id", postId.toString())
+                .add("score", score.toString())
+                .build()
+
+            val request = Request.Builder()
+                .url("$baseUrl/post/vote.json")
+                .post(formBody)
+                .header("X-CSRF-Token", csrf)
+                .header("X-Requested-With", "XMLHttpRequest")
+                .header("Referer", "$baseUrl/post/show/$postId")
+                .build()
+
+            val response = httpClient.newCall(request).execute()
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(IOException("Vote failed with HTTP ${response.code}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    private fun fetchCsrfToken(): String? {
+        val request = Request.Builder()
+            .url("$baseUrl/user/login")
+            .header("Accept", "text/html")
+            .build()
+
+        return try {
+            val response = httpClient.newCall(request).execute()
+            val html = response.body?.string() ?: return null
+            extractCsrfToken(html).also { cachedCsrfToken = it }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun verifyUserSession(username: String): Boolean {
+        val request = Request.Builder()
+            .url("$baseUrl/user.json?name=$username")
+            .build()
+
+        return try {
+            val response = httpClient.newCall(request).execute()
+            response.isSuccessful && (response.body?.string()?.contains(username) == true)
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    companion object {
+        private const val KEY_USERNAME = "username"
+        private const val KEY_PASS_HASH = "pass_hash"
+
+        private val CSRF_REGEX_1 = Regex("""<meta[^>]*name=["']csrf-token["'][^>]*content=["']([^"']+)["']""", RegexOption.IGNORE_CASE)
+        private val CSRF_REGEX_2 = Regex("""<meta[^>]*content=["']([^"']+)["'][^>]*name=["']csrf-token["']""", RegexOption.IGNORE_CASE)
+
+        fun extractCsrfToken(html: String): String? {
+            return CSRF_REGEX_1.find(html)?.groupValues?.get(1)
+                ?: CSRF_REGEX_2.find(html)?.groupValues?.get(1)
+        }
+    }
+}
