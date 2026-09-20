@@ -25,7 +25,7 @@ different information architecture.
 
 As the owner, I open Latte and see Popular by day. I can switch to week or
 month, move through readable anchor periods, scan a dense image-first feed, and
-open a post to inspect its image, rating, dimensions, source, aggregate score,
+open a post to inspect its image, dimensions, source, aggregate score,
 and tags without losing my place.
 
 **Why this priority**: Popular period exploration is the owner's primary daily
@@ -41,15 +41,14 @@ order.
 
 1. **Given** the first Popular day page is available, **When** the owner opens
    Latte, **Then** the Explore surface shows Popular with Day selected, a
-   readable anchor period, and preview images in a dense aspect-preserving feed
-   with stable post identity; every returned rating, including explicit, remains
-   visible as metadata.
+   readable anchor period, and thumbnail-only images in a dense
+   aspect-preserving feed with stable post identity.
 2. **Given** the owner reaches the feed boundary, **When** another page is
    available, **Then** Latte appends it without duplicating existing posts or
    replacing the visible feed.
 3. **Given** a card is visible, **When** the owner opens it, **Then** Latte shows
    the best usable inspection image in a horizontally swipable pager with
-   previous/next controls, aggregate score, rating, and all available normalized
+   previous/next controls, aggregate score, and all available normalized
    metadata while clearly omitting unavailable fields.
 4. **Given** the detail view is open, **When** the owner uses Android back or the
    visible back action, **Then** the feed restores the prior Popular period,
@@ -96,8 +95,8 @@ stale response overwriting the latest intent.
 
 ### User Story 3 - Keep one image locally (Priority: P3)
 
-As the owner inspecting a post, I choose one available media quality and save it
-to Latte's user-visible image library. Latte reports progress and the final
+As the owner inspecting a post, I save the best available media quality to
+Latte's user-visible image library. Latte reports progress and the final
 location, and it never silently overwrites an existing file.
 
 **Why this priority**: Saving completes the intended find-inspect-keep loop but
@@ -109,9 +108,8 @@ without changing the original file.
 
 **Acceptance Scenarios**:
 
-1. **Given** a post exposes multiple media variants, **When** the owner chooses
-   one, **Then** Latte labels the available choices by useful quality information
-   and saves only the chosen variant.
+1. **Given** a post exposes multiple media variants, **When** the owner taps
+   Download, **Then** Latte chooses and saves the best available variant.
 2. **Given** a save is in progress, **When** the owner remains on the detail
    screen, **Then** Latte communicates progress and prevents an accidental
    duplicate request.
@@ -126,6 +124,9 @@ without changing the original file.
    save boundary finds the deterministic site/post/variant identity in
    `Pictures/Latte`, returns `Already saved` with its content URI, album, and
    display name, and leaves the original bytes unchanged.
+6. **Given** multiple posts are saved concurrently, **When** their transfers
+   are active or complete, **Then** each post keeps its own progress and result
+   entry in the native Latte notification group.
 
 ### Deferred capability - authenticated personal score
 
@@ -286,9 +287,9 @@ already presentation metadata and MUST NOT be treated as the owner's vote.
   future decisions.
 - Network access is required for remote discovery and media; transport failure
   preserves the current in-memory view and does not imply an offline catalog.
-- All returned ratings, including explicit, are visible for this owner-only
-  client. Latte does not provide a Safe Mode filter or rating-driven query
-  rewrite.
+- Rating fields remain available to adapter/search compatibility, but are not
+  rendered by Latte. Latte does not provide a Safe Mode filter or rating-driven
+  query rewrite.
 - Authenticated personal scoring from 0 through 3 is deferred to a later
   specification and remains distinct from the read-only aggregate score.
 - A user-visible Latte album/directory is preferable to asking for a destination

@@ -22,14 +22,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('explore-grid')), findsOneWidget);
-    expect(
-      find.bySemanticsLabel('Post safe, safe, 1200 × 800'),
-      findsOneWidget,
-    );
-    expect(
-      find.bySemanticsLabel('Post explicit, explicit, 1200 × 800'),
-      findsOneWidget,
-    );
+    expect(find.bySemanticsLabel('Post safe'), findsOneWidget);
+    expect(find.bySemanticsLabel('Post explicit'), findsOneWidget);
     expect(find.text('Safe Mode'), findsNothing);
   });
 
@@ -101,9 +95,7 @@ void main() {
     expect(find.text('Dark'), findsOneWidget);
   });
 
-  testWidgets('cards expose compact aggregate score, rating, and dimensions', (
-    tester,
-  ) async {
+  testWidgets('gallery cards expose only image semantics', (tester) async {
     final item = post(
       'scored',
       rating: PostRating.explicit,
@@ -115,11 +107,9 @@ void main() {
     await tester.pumpWidget(app(controller));
     await tester.pumpAndSettle();
 
-    expect(
-      find.bySemanticsLabel('Post scored, explicit, score 17, 1200 × 800'),
-      findsOneWidget,
-    );
-    expect(find.byType(AspectRatio), findsWidgets);
+    expect(find.bySemanticsLabel('Post scored'), findsOneWidget);
+    expect(find.text('score 17'), findsNothing);
+    expect(find.text('1200 × 800'), findsNothing);
   });
 
   testWidgets('detail pager keeps Popular context and moves between posts', (
@@ -133,15 +123,23 @@ void main() {
     await tester.pumpWidget(app(controller));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.bySemanticsLabel('Post first, safe, 1200 × 800'));
+    await tester.tap(find.bySemanticsLabel('Post first'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('detail-pager')), findsOneWidget);
     expect(find.byKey(const ValueKey('detail-inspect-sheet')), findsOneWidget);
     expect(find.byKey(const ValueKey('detail-actions')), findsOneWidget);
     expect(find.byTooltip('Download'), findsOneWidget);
+    expect(find.byTooltip('Expand details'), findsOneWidget);
     expect(find.textContaining('1 of 2'), findsOneWidget);
     expect(find.byTooltip('Previous post'), findsOneWidget);
     expect(find.byTooltip('Next post'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Expand details'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Collapse details'), findsOneWidget);
+    await tester.tap(find.byTooltip('Collapse details'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Expand details'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Next post'));
     await tester.pumpAndSettle();
@@ -161,9 +159,7 @@ void main() {
     await tester.pumpWidget(app(controller));
     await tester.pumpAndSettle();
 
-    await tester.tap(
-      find.bySemanticsLabel('Post swipe-first, safe, 1200 × 800'),
-    );
+    await tester.tap(find.bySemanticsLabel('Post swipe-first'));
     await tester.pumpAndSettle();
 
     await tester.drag(
@@ -184,7 +180,7 @@ void main() {
     );
     await tester.pumpWidget(app(controller));
     await tester.pumpAndSettle();
-    await tester.tap(find.bySemanticsLabel('Post zoom, safe, 1200 × 800'));
+    await tester.tap(find.bySemanticsLabel('Post zoom'));
     await tester.pumpAndSettle();
 
     final zoomSurface = find.byKey(const ValueKey('detail-zoom'));
@@ -237,7 +233,7 @@ void main() {
     await tester.pumpWidget(app(controller));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.bySemanticsLabel('Post detail, safe, 1200 × 800'));
+    await tester.tap(find.bySemanticsLabel('Post detail'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('explore-detail')), findsOneWidget);
     await tester.drag(
@@ -251,10 +247,7 @@ void main() {
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('explore-grid')), findsOneWidget);
-    expect(
-      find.bySemanticsLabel('Post detail, safe, 1200 × 800'),
-      findsOneWidget,
-    );
+    expect(find.bySemanticsLabel('Post detail'), findsOneWidget);
   });
 
   testWidgets('platform back from detail restores the discovery grid', (
@@ -265,9 +258,7 @@ void main() {
     await tester.pumpWidget(app(controller));
     await tester.pumpAndSettle();
 
-    await tester.tap(
-      find.bySemanticsLabel('Post platform-back, safe, 1200 × 800'),
-    );
+    await tester.tap(find.bySemanticsLabel('Post platform-back'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('explore-detail')), findsOneWidget);
 

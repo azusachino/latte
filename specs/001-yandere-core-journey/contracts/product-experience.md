@@ -20,10 +20,10 @@ discovery destinations. Material 3 is the implementation language for the
 rework; the Yande-derived component composition, workflow, and dataflow remain
 the experience source of truth.
 
-All returned ratings, including explicit, remain visible as metadata. There is no
-Safe Mode filter, policy toggle, or rating-driven query rewrite. The aggregate
-community score is read-only in this milestone; authenticated `Your score` from
-0 through 3 is a later distinct capability.
+Ratings remain adapter/search metadata, but are not rendered in the Latte UI.
+There is no Safe Mode filter, policy toggle, or rating-driven query rewrite. The
+aggregate community score is read-only in this milestone; authenticated `Your
+score` from 0 through 3 is a later distinct capability.
 
 ## Explore screen
 
@@ -45,8 +45,8 @@ community score is read-only in this milestone; authenticated `Your score` from
   already visible posts.
 - Initial empty/failure states occupy the content region with one concise reason
   and one valid next action.
-- Cards and detail expose rating and aggregate score semantics without treating
-  either as a personal vote.
+- Exploration cards render only image thumbnails. Aggregate score is available
+  in the detail sheet when known and is never treated as a personal vote.
 
 ## Detail screen
 
@@ -57,7 +57,7 @@ community score is read-only in this milestone; authenticated `Your score` from
   readable while the image is open.
 - A peekable Material bottom sheet groups the current post's metadata, tags, and
   available actions. It may be expanded without leaving the image-first pager.
-- A compact facts row contains rating, dimensions, score, and source when known.
+- A compact facts row contains dimensions, score, and source when known.
 - Tags wrap below the facts and remain selectable as text; tag-to-search is
   deferred unless separately specified.
 - The image first shows the loaded thumbnail, then replaces it with the selected
@@ -65,17 +65,20 @@ community score is read-only in this milestone; authenticated `Your score` from
   the reference's compact core operation layout: Download in the center and
   expand/inspect at the trailing edge. Authenticated scoring is omitted until
   its roadmap capability exists.
-- Download opens a labelled media-variant sheet and saves through the Android
-  MediaStore boundary without overwriting an existing `Pictures/Latte` item.
+- Download saves the best available media variant through the Android MediaStore
+  boundary by default, without overwriting an existing `Pictures/Latte` item.
 - Two-finger pinch scales the detail image up to inspect it; one-finger
   horizontal swipes remain pager navigation.
 - Back restores prior feed/query and scroll position.
 
 ## Save interaction
 
-- A Material 3 modal bottom sheet presents available labelled variants.
-- One foreground linear progress surface reports transfer state and disables
-  duplicate submission without removing context.
+- The primary Download action selects the best available variant without an
+  extra quality picker.
+- Android's native download notification reports transfer, completion,
+  duplicate, and failure states while the detail image remains visible. Each
+  active save owns its progress notification; concurrent saves remain separate
+  entries in the Latte notification group.
 - Completion reports the public Latte album and provides a system-supported
   open/view action.
 - Existing-file, retryable, and terminal outcomes use distinct copy.

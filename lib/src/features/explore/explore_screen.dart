@@ -501,65 +501,22 @@ class _PostCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final facts = <String>[
-      'Post ${post.reference.remoteId}',
-      post.rating.name,
-      if (post.score != null) 'score ${post.score}',
-      if (post.width != null && post.height != null)
-        '${post.width} × ${post.height}',
-    ];
-    final label = facts.join(', ');
     return Semantics(
       button: true,
       container: true,
-      label: label,
+      label: 'Post ${post.reference.remoteId}',
       child: Card(
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              AspectRatio(
-                aspectRatio: _aspectRatio(post),
-                child: _RemoteArtwork(post: post, adapter: adapter),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '#${post.reference.remoteId}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelLarge,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _cardMetadata(post),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          child: AspectRatio(
+            aspectRatio: _aspectRatio(post),
+            child: _RemoteArtwork(post: post, adapter: adapter),
           ),
         ),
       ),
     );
   }
-}
-
-String _cardMetadata(PostSummary post) {
-  final values = <String>[post.rating.name];
-  if (post.score != null) values.add('score ${post.score}');
-  if (post.width != null && post.height != null) {
-    values.add('${post.width} × ${post.height}');
-  }
-  return values.join(' · ');
 }
 
 double _aspectRatio(PostSummary post) {
@@ -1026,11 +983,27 @@ class _DetailInspectSheetState extends State<_DetailInspectSheet> {
   late final DraggableScrollableController _sheetController =
       DraggableScrollableController();
   var _saving = false;
+  var _expanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _sheetController.addListener(_onSheetChanged);
+  }
 
   @override
   void dispose() {
+    _sheetController.removeListener(_onSheetChanged);
     _sheetController.dispose();
     super.dispose();
+  }
+
+  void _onSheetChanged() {
+    if (!_sheetController.isAttached) return;
+    final expanded = _sheetController.size > 0.2;
+    if (expanded != _expanded && mounted) {
+      setState(() => _expanded = expanded);
+    }
   }
 
   @override
@@ -1039,7 +1012,6 @@ class _DetailInspectSheetState extends State<_DetailInspectSheet> {
         .clamp(0.035, 0.16)
         .toDouble();
     final facts = <Widget>[
-      _Fact(label: 'Rating', value: widget.detail.summary.rating.name),
       if (widget.detail.summary.width != null &&
           widget.detail.summary.height != null)
         _Fact(
@@ -1070,25 +1042,15 @@ class _DetailInspectSheetState extends State<_DetailInspectSheet> {
           clipBehavior: Clip.antiAlias,
           child: ListView(
             controller: scrollController,
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            padding: const EdgeInsets.fromLTRB(16, 5, 16, 24),
             children: [
-              Center(
-                child: Container(
-                  width: 32,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
               _DetailActions(
                 variants: widget.detail.media,
                 saving: _saving,
-                onDownload: _chooseVariant,
-                onExpand: () => _sheetController.animateTo(
-                  0.65,
+                onDownload: _saveBestVariant,
+                expanded: _expanded,
+                onToggle: () => _sheetController.animateTo(
+                  _expanded ? peekSize : 0.65,
                   duration: const Duration(milliseconds: 220),
                   curve: Curves.easeOut,
                 ),
@@ -1114,54 +1076,17 @@ class _DetailInspectSheetState extends State<_DetailInspectSheet> {
     );
   }
 
-  Future<void> _chooseVariant() async {
+  Future<void> _saveBestVariant() async {
     if (_saving || widget.detail.media.isEmpty) return;
-    final variant = await showModalBottomSheet<MediaVariant>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          padding: const EdgeInsets.only(bottom: 16),
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-              child: Text(
-                'Download quality',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-            ),
-            for (final variant in widget.detail.media)
-              ListTile(
-                leading: const Icon(Icons.download_outlined),
-                title: Text(_variantLabel(variant)),
-                onTap: () => Navigator.pop(context, variant),
-              ),
-          ],
-        ),
-      ),
-    );
-    if (variant == null || !mounted) return;
     setState(() => _saving = true);
     try {
-      final receipt = await widget.downloadService.save(
+      await widget.downloadService.save(
         reference: widget.detail.summary.reference,
-        variant: variant,
+        variant: _bestVariant(widget.detail.media),
       );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            receipt.status == DownloadStatus.alreadySaved
-                ? 'Already saved to ${receipt.album}'
-                : 'Saved to ${receipt.album}',
-          ),
-        ),
-      );
-    } on Object catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Download failed: $error')));
+    } on Object {
+      // Android reports completion, duplicate, and failure through its native
+      // download notification.
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -1173,13 +1098,15 @@ class _DetailActions extends StatelessWidget {
     required this.variants,
     required this.saving,
     required this.onDownload,
-    required this.onExpand,
+    required this.expanded,
+    required this.onToggle,
   });
 
   final List<MediaVariant> variants;
   final bool saving;
   final VoidCallback onDownload;
-  final VoidCallback onExpand;
+  final bool expanded;
+  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) => SizedBox(
@@ -1207,9 +1134,9 @@ class _DetailActions extends StatelessWidget {
           alignment: Alignment.centerRight,
           child: FloatingActionButton.small(
             heroTag: 'detail-expand',
-            onPressed: onExpand,
-            tooltip: 'Expand details',
-            child: const Icon(Icons.expand_less),
+            onPressed: onToggle,
+            tooltip: expanded ? 'Collapse details' : 'Expand details',
+            child: Icon(expanded ? Icons.expand_more : Icons.expand_less),
           ),
         ),
       ],
@@ -1217,18 +1144,20 @@ class _DetailActions extends StatelessWidget {
   );
 }
 
-String _variantLabel(MediaVariant variant) {
-  final name = switch (variant.id) {
-    MediaVariantId.preview => 'Preview',
-    MediaVariantId.sample => 'Sample',
-    MediaVariantId.jpeg => 'JPEG',
-    MediaVariantId.original => 'Original',
-  };
-  final dimensions = variant.width != null && variant.height != null
-      ? ' · ${variant.width} × ${variant.height}'
-      : '';
-  return '$name$dimensions';
+MediaVariant _bestVariant(List<MediaVariant> variants) {
+  return variants.reduce((best, candidate) {
+    final bestRank = _variantQuality(best);
+    final candidateRank = _variantQuality(candidate);
+    return candidateRank > bestRank ? candidate : best;
+  });
 }
+
+int _variantQuality(MediaVariant variant) => switch (variant.id) {
+  MediaVariantId.preview => 0,
+  MediaVariantId.sample => 1,
+  MediaVariantId.jpeg => 2,
+  MediaVariantId.original => 3,
+};
 
 class _Fact extends StatelessWidget {
   const _Fact({required this.label, required this.value});

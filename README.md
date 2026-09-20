@@ -30,12 +30,12 @@ Popular day/week/month -> Yande adapter -> normalized masonry feed
 
 The first journey is anonymous and read-only at the remote boundary: load
 Popular results for a visible day/week/month period, render a dense
-aspect-preserving feed with aggregate rating metadata, inspect a post in a
+thumbnail-only aspect-preserving feed, inspect a post in a
 context-preserving pager, and expose honest loading, empty, malformed-response,
 and transport-failure states. Newest and opaque tag search remain supported
 discovery modes. Local download follows the read-only foundation as the first
 device side effect. Authenticated personal scoring (0–3) is a later distinct
 slice; the displayed aggregate score is never treated as the owner's vote.
 
-All returned ratings, including explicit, remain visible and are carried as
-metadata. Latte has no Safe Mode filter or policy-driven query rewrite.
+Ratings remain adapter/search metadata but are not rendered in the Latte UI.
+Latte has no Safe Mode filter or policy-driven query rewrite.
