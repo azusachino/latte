@@ -5,6 +5,7 @@ import '../../domain/failure.dart';
 import '../../domain/post.dart';
 import '../../sites/site_adapter.dart';
 import 'explore_controller.dart';
+import 'search_view.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({required this.controller, this.onSearch, super.key});
@@ -18,6 +19,7 @@ class ExploreScreen extends StatefulWidget {
 
 class _ExploreScreenState extends State<ExploreScreen> {
   late final ScrollController _scrollController;
+  late final GlobalKey<SearchViewState> _searchKey;
   var _wasDetail = false;
   var _savedScrollOffset = 0.0;
 
@@ -25,6 +27,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   void initState() {
     super.initState();
     _scrollController = ScrollController();
+    _searchKey = GlobalKey<SearchViewState>();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && widget.controller.state.status == ExploreStatus.initial) {
         widget.controller.loadDiscovery();
@@ -69,7 +72,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
             : _ExploreScaffold(
                 controller: widget.controller,
                 state: state,
-                onSearch: widget.onSearch,
+                onSearch:
+                    widget.onSearch ?? () => _searchKey.currentState?.open(),
+                searchView: SearchView(
+                  key: _searchKey,
+                  controller: widget.controller,
+                  showStatus: false,
+                  showBar: false,
+                ),
                 scrollController: _scrollController,
               );
         final reducedMotion = MediaQuery.disableAnimationsOf(context);
@@ -89,12 +99,14 @@ class _ExploreScaffold extends StatelessWidget {
     required this.controller,
     required this.state,
     required this.scrollController,
+    required this.searchView,
     this.onSearch,
   });
 
   final ExploreController controller;
   final ExploreState state;
   final ScrollController scrollController;
+  final SearchView searchView;
   final VoidCallback? onSearch;
 
   @override
@@ -107,7 +119,7 @@ class _ExploreScaffold extends StatelessWidget {
         title: const Text('Latte'),
         actions: [
           IconButton(
-            onPressed: onSearch ?? () {},
+            onPressed: onSearch,
             icon: const Icon(Icons.search),
             tooltip: 'Search',
             constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
@@ -129,6 +141,7 @@ class _ExploreScaffold extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  searchView,
                   if (!showSafeModeInBar) ...[
                     Align(
                       alignment: Alignment.centerLeft,
