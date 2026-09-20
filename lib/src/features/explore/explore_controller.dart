@@ -37,12 +37,19 @@ class ExploreController extends ChangeNotifier {
     }
   }
 
-  Future<void> setSafeMode(bool enabled) => loadDiscovery(
-    contentPolicy: enabled ? ContentPolicy.safe : ContentPolicy.all,
-  );
+  Future<void> setSafeMode(bool enabled) {
+    final activeQuery = _state.query;
+    final policy = enabled ? ContentPolicy.safe : ContentPolicy.all;
+    if (activeQuery?.source == PostQuerySource.tagSearch &&
+        activeQuery?.expression != null) {
+      return search(activeQuery!.expression!, contentPolicy: policy);
+    }
+    return loadDiscovery(contentPolicy: policy);
+  }
 
-  Future<void> search(String expression) async {
+  Future<void> search(String expression, {ContentPolicy? contentPolicy}) async {
     final policy =
+        contentPolicy ??
         _state.query?.contentPolicy ??
         _feedState?.query?.contentPolicy ??
         ContentPolicy.all;
