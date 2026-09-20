@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../domain/explore_state.dart';
@@ -12,12 +14,14 @@ import 'search_view.dart';
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({
     required this.controller,
+    this.columnCount,
     this.onSearch,
     this.onSettings,
     super.key,
   });
 
   final ExploreController controller;
+  final int? columnCount;
   final VoidCallback? onSearch;
   final VoidCallback? onSettings;
 
@@ -30,7 +34,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
   late final GlobalKey<SearchViewState> _searchKey;
   var _wasDetail = false;
   var _savedScrollOffset = 0.0;
-  int? _columnCount;
 
   @override
   void initState() {
@@ -81,8 +84,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             : _ExploreScaffold(
                 controller: widget.controller,
                 state: state,
-                columnCount: _columnCount,
-                onColumnCount: (value) => setState(() => _columnCount = value),
+                columnCount: widget.columnCount,
                 onSearch:
                     widget.onSearch ?? () => _searchKey.currentState?.open(),
                 onSettings: widget.onSettings,
@@ -117,7 +119,6 @@ class _ExploreScaffold extends StatelessWidget {
     required this.controller,
     required this.state,
     required this.columnCount,
-    required this.onColumnCount,
     required this.scrollController,
     required this.searchView,
     this.onSearch,
@@ -127,7 +128,6 @@ class _ExploreScaffold extends StatelessWidget {
   final ExploreController controller;
   final ExploreState state;
   final int? columnCount;
-  final ValueChanged<int> onColumnCount;
   final ScrollController scrollController;
   final SearchView searchView;
   final VoidCallback? onSearch;
@@ -150,42 +150,11 @@ class _ExploreScaffold extends StatelessWidget {
               tooltip: 'Search',
               constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
             ),
-            PopupMenuButton<_ExploreMenuAction>(
-              tooltip: 'Columns',
-              icon: const Icon(Icons.view_column_outlined),
-              onSelected: (action) {
-                switch (action) {
-                  case _ExploreMenuAction.columns2:
-                    onColumnCount(2);
-                  case _ExploreMenuAction.columns3:
-                    onColumnCount(3);
-                  case _ExploreMenuAction.columns4:
-                    onColumnCount(4);
-                  case _ExploreMenuAction.settings:
-                    onSettings?.call();
-                }
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem<_ExploreMenuAction>(
-                  value: _ExploreMenuAction.columns2,
-                  child: Text('2 columns'),
-                ),
-                const PopupMenuItem<_ExploreMenuAction>(
-                  value: _ExploreMenuAction.columns3,
-                  child: Text('3 columns'),
-                ),
-                const PopupMenuItem<_ExploreMenuAction>(
-                  value: _ExploreMenuAction.columns4,
-                  child: Text('4 columns'),
-                ),
-                if (onSettings != null) ...[
-                  const PopupMenuDivider(),
-                  const PopupMenuItem<_ExploreMenuAction>(
-                    value: _ExploreMenuAction.settings,
-                    child: Text('Settings'),
-                  ),
-                ],
-              ],
+            IconButton(
+              onPressed: onSettings,
+              icon: const Icon(Icons.settings_outlined),
+              tooltip: 'Settings',
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
             ),
           ],
           bottom: TabBar(
@@ -214,11 +183,14 @@ class _ExploreScaffold extends StatelessWidget {
                 children: [
                   searchView,
                   Expanded(
-                    child: _ExploreBody(
-                      controller: controller,
-                      state: state,
-                      columnCount: columns,
-                      scrollController: scrollController,
+                    child: RepaintBoundary(
+                      key: const ValueKey('explore-golden-content'),
+                      child: _ExploreBody(
+                        controller: controller,
+                        state: state,
+                        columnCount: columns,
+                        scrollController: scrollController,
+                      ),
                     ),
                   ),
                 ],
@@ -237,8 +209,6 @@ class _ExploreScaffold extends StatelessWidget {
     );
   }
 }
-
-enum _ExploreMenuAction { columns2, columns3, columns4, settings }
 
 bool _isPopular(ExploreState state) =>
     state.query == null || state.query?.source == PostQuerySource.popular;
@@ -982,7 +952,6 @@ class _DetailInspectSheet extends StatefulWidget {
 class _DetailInspectSheetState extends State<_DetailInspectSheet> {
   late final DraggableScrollableController _sheetController =
       DraggableScrollableController();
-  var _saving = false;
   var _expanded = false;
 
   @override
@@ -1046,7 +1015,6 @@ class _DetailInspectSheetState extends State<_DetailInspectSheet> {
             children: [
               _DetailActions(
                 variants: widget.detail.media,
-                saving: _saving,
                 onDownload: _saveBestVariant,
                 expanded: _expanded,
                 onToggle: () => _sheetController.animateTo(
@@ -1076,34 +1044,33 @@ class _DetailInspectSheetState extends State<_DetailInspectSheet> {
     );
   }
 
-  Future<void> _saveBestVariant() async {
-    if (_saving || widget.detail.media.isEmpty) return;
-    setState(() => _saving = true);
-    try {
-      await widget.downloadService.save(
-        reference: widget.detail.summary.reference,
-        variant: _bestVariant(widget.detail.media),
-      );
-    } on Object {
-      // Android reports completion, duplicate, and failure through its native
-      // download notification.
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
+  void _saveBestVariant() {
+    if (widget.detail.media.isEmpty) return;
+    unawaited(
+      widget.downloadService
+          .save(
+            reference: widget.detail.summary.reference,
+            variant: _bestVariant(widget.detail.media),
+          )
+          .then<void>(
+            (_) {},
+            onError: (_) {
+              // Native Android reports transfer outcomes through notifications.
+            },
+          ),
+    );
   }
 }
 
 class _DetailActions extends StatelessWidget {
   const _DetailActions({
     required this.variants,
-    required this.saving,
     required this.onDownload,
     required this.expanded,
     required this.onToggle,
   });
 
   final List<MediaVariant> variants;
-  final bool saving;
   final VoidCallback onDownload;
   final bool expanded;
   final VoidCallback onToggle;
@@ -1120,14 +1087,9 @@ class _DetailActions extends StatelessWidget {
           label: 'Download',
           child: FloatingActionButton(
             heroTag: 'detail-download',
-            onPressed: variants.isEmpty || saving ? null : onDownload,
+            onPressed: variants.isEmpty ? null : onDownload,
             tooltip: 'Download',
-            child: saving
-                ? const SizedBox.square(
-                    dimension: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.save_alt_outlined),
+            child: const Icon(Icons.save_alt_outlined),
           ),
         ),
         Align(

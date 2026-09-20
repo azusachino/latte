@@ -1,7 +1,7 @@
 FLUTTER := mise exec -- flutter
 DART := mise exec -- dart
 
-.PHONY: format analyze test test-story check doctor dev probe
+.PHONY: format lint analyze test test-story check doctor dev probe
 
 # `test` runs only checked-in tests and injected HTTP doubles. Live yande.re
 # access is limited to the opt-in `probe` target.
@@ -9,8 +9,10 @@ DART := mise exec -- dart
 format:
 	$(DART) format --output=none --set-exit-if-changed .
 
-analyze:
+lint:
 	$(FLUTTER) analyze
+
+analyze: lint
 
 test:
 	$(FLUTTER) test test
@@ -23,7 +25,7 @@ test-story:
 		echo "usage: make test-story STORY=popular|discover|search" >&2; exit 2; \
 	fi
 
-check: format analyze test
+check: format lint test
 
 doctor:
 	$(FLUTTER) doctor -v

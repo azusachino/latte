@@ -20,6 +20,7 @@ class _LatteAppState extends State<LatteApp> {
   late final ExploreController _controller;
   final _navigatorKey = GlobalKey<NavigatorState>();
   var _themeMode = ThemeMode.system;
+  int? _columnCount;
 
   @override
   void initState() {
@@ -45,12 +46,16 @@ class _LatteAppState extends State<LatteApp> {
       themeMode: _themeMode,
       home: ExploreScreen(
         controller: _controller,
+        columnCount: _columnCount,
         onSettings: () {
           _navigatorKey.currentState?.push<void>(
             MaterialPageRoute<void>(
               builder: (_) => SettingsScreen(
                 themeMode: _themeMode,
                 onThemeModeChanged: (mode) => setState(() => _themeMode = mode),
+                columnCount: _columnCount,
+                onColumnCountChanged: (value) =>
+                    setState(() => _columnCount = value),
               ),
             ),
           );

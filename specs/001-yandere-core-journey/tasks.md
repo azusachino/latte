@@ -221,8 +221,9 @@ Authenticated 0–3 personal scoring remains a later specification.
   restoration after detail/back, duplicate-page append, and stale response
   rejection, then implement those transitions in the Explore controller.
 - [ ] T039 Write failing Explore widget tests for the reference-derived
-  Popular/Newest tab composition, period/date surface, column-density action,
-  compact aggregate score/rating/dimensions semantics, and 48dp targets.
+  Popular/Newest tab composition, period/date surface, Settings action and
+  column-density preference, compact aggregate score/rating/dimensions
+  semantics, and 48dp targets.
   Implement the Material 3 rework without replacing the Yande workflow.
 - [ ] T040 Add reviewed compact/expanded light/dark goldens and run the focused
   Popular story target, `make check`, `rumdl`, `git diff --check`, and the
@@ -250,13 +251,15 @@ control.
 - [x] T041 Reconcile the product contract, feature specification, research
   interpretation, and task acceptance around the owner-approved UX boundary.
 - [ ] T042 Write failing Explore widget tests for the Material top app bar,
-  Popular/Newest tab row, column-density menu, period/date FAB surface, and
-  responsive staggered feed; implement that shell without changing query state.
+  Popular/Newest tab row, Settings action and column-density preference,
+  period/date FAB surface, and responsive staggered feed; implement that shell
+  without changing query state.
 - [ ] T043 Write failing detail widget tests for horizontal pager swipe, arrow
   fallback, Android platform back, thumbnail-to-high-quality replacement,
-  two-finger image zoom, and the peekable metadata/tag action sheet; implement
-  the compact reference-derived Download and expand operations without adding
-  non-functional scoring controls.
+  two-finger image zoom, the non-blocking background Download task, and the
+  peekable metadata/tag action sheet; implement the compact reference-derived
+  Download and expand operations without adding non-functional scoring
+  controls.
 - [ ] T044 Re-record reviewed compact/expanded light/dark goldens and perform
   the connected-device visual and gesture acceptance against the pinned
   reference UX. Run `make check` after the slice is complete.

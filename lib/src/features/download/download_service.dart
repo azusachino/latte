@@ -17,7 +17,7 @@ class DownloadReceipt {
   final String displayName;
 }
 
-enum DownloadStatus { completed, alreadySaved }
+enum DownloadStatus { started, alreadyRunning, completed, alreadySaved }
 
 abstract interface class DownloadStore {
   Future<DownloadReceipt> save({
@@ -49,10 +49,14 @@ class MethodChannelDownloadStore implements DownloadStore {
     if (result == null) {
       throw const DownloadException('Latte could not save this image');
     }
+    final status = switch (result['status']) {
+      'started' => DownloadStatus.started,
+      'already_running' => DownloadStatus.alreadyRunning,
+      'already_saved' => DownloadStatus.alreadySaved,
+      _ => DownloadStatus.completed,
+    };
     return DownloadReceipt(
-      status: result['status'] == 'already_saved'
-          ? DownloadStatus.alreadySaved
-          : DownloadStatus.completed,
+      status: status,
       contentUri: result['contentUri'] as String? ?? '',
       album: result['album'] as String? ?? 'Pictures/Latte',
       displayName: result['displayName'] as String? ?? displayName,

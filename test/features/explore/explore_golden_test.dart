@@ -10,7 +10,7 @@ void main() {
   testWidgets('compact light Explore baseline', (tester) async {
     await _pump(tester, LatteTheme.light(), const Size(360, 720));
     await expectLater(
-      find.byType(ExploreScreen),
+      find.byKey(const ValueKey('explore-golden-content')),
       matchesGoldenFile('../../goldens/explore/explore_compact_light.png'),
     );
   });
@@ -18,7 +18,7 @@ void main() {
   testWidgets('compact dark Explore baseline', (tester) async {
     await _pump(tester, LatteTheme.dark(), const Size(360, 720));
     await expectLater(
-      find.byType(ExploreScreen),
+      find.byKey(const ValueKey('explore-golden-content')),
       matchesGoldenFile('../../goldens/explore/explore_compact_dark.png'),
     );
   });
@@ -26,7 +26,7 @@ void main() {
   testWidgets('expanded light Explore baseline', (tester) async {
     await _pump(tester, LatteTheme.light(), const Size(900, 720));
     await expectLater(
-      find.byType(ExploreScreen),
+      find.byKey(const ValueKey('explore-golden-content')),
       matchesGoldenFile('../../goldens/explore/explore_expanded_light.png'),
     );
   });
@@ -34,7 +34,7 @@ void main() {
   testWidgets('expanded dark Explore baseline', (tester) async {
     await _pump(tester, LatteTheme.dark(), const Size(900, 720));
     await expectLater(
-      find.byType(ExploreScreen),
+      find.byKey(const ValueKey('explore-golden-content')),
       matchesGoldenFile('../../goldens/explore/explore_expanded_dark.png'),
     );
   });

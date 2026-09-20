@@ -14,11 +14,11 @@ Explore
 ```
 
 There is no account, library-history, pools, or site-switcher screen in this
-milestone. A global Settings screen is available from the Explore app-bar menu
-for app-wide appearance choices; it is not a replacement for the reference
-discovery destinations. Material 3 is the implementation language for the
-rework; the Yande-derived component composition, workflow, and dataflow remain
-the experience source of truth.
+milestone. A global Settings screen is available from the Explore app-bar
+action for app-wide appearance and grid-density choices; it is not a
+replacement for the reference discovery destinations. Material 3 is the
+implementation language for the rework; the Yande-derived component
+composition, workflow, and dataflow remain the experience source of truth.
 
 Ratings remain adapter/search metadata, but are not rendered in the Latte UI.
 There is no Safe Mode filter, policy toggle, or rating-driven query rewrite. The
@@ -27,9 +27,9 @@ score` from 0 through 3 is a later distinct capability.
 
 ## Explore screen
 
-- Material 3 top app bar: Latte title, one labelled search action, and a real
-  column-density menu. The app bar may modernize the reference treatment, but
-  it keeps the same discovery roles.
+- Material 3 top app bar: Latte title, one labelled search action, and a
+  labelled Settings action. The app bar may modernize the reference treatment,
+  but it keeps the same discovery roles.
 - A horizontal Material tab row keeps Popular and Newest as the primary modes.
 - Search uses Material 3 `SearchAnchor`/`SearchBar` behavior; submitting replaces
   content intent while keeping discovery state available for clear/back.
@@ -39,8 +39,9 @@ score` from 0 through 3 is a later distinct capability.
   navigation row.
 - Body: an edge-to-edge, aspect-preserving staggered image feed selected from
   available width rather than device class. Compact windows start at two
-  columns; the owner may choose 2/3/4 columns for the current session. Cards use
-  theme surface roles without metadata overlays competing with artwork.
+  columns; Settings offers automatic or explicit 2/3/4-column density for the
+  current session. Cards use theme surface roles without metadata overlays
+  competing with artwork.
 - Next-page progress appears after the last content row and never replaces
   already visible posts.
 - Initial empty/failure states occupy the content region with one concise reason
@@ -75,10 +76,11 @@ score` from 0 through 3 is a later distinct capability.
 
 - The primary Download action selects the best available variant without an
   extra quality picker.
-- Android's native download notification reports transfer, completion,
-  duplicate, and failure states while the detail image remains visible. Each
-  active save owns its progress notification; concurrent saves remain separate
-  entries in the Latte notification group.
+- Download starts a native background task and returns the detail UI to its
+  normal interactive state immediately. Android's native download notification
+  reports transfer, completion, duplicate, and failure states while the detail
+  image remains visible. Each active save owns its progress notification;
+  concurrent saves remain separate entries in the Latte notification group.
 - Completion reports the public Latte album and provides a system-supported
   open/view action.
 - Existing-file, retryable, and terminal outcomes use distinct copy.

@@ -1,9 +1,12 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latte/src/domain/post.dart';
 import 'package:latte/src/features/download/download_service.dart';
 import 'package:latte/src/sites/site_adapter.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   test('resolves the selected variant before saving it', () async {
     final adapter = _DownloadAdapter();
     final store = _DownloadStore();
@@ -24,7 +27,56 @@ void main() {
     expect(store.displayName, 'latte_yandere_42_original.png');
     expect(receipt.status, DownloadStatus.completed);
   });
+
+  test('maps accepted native background task status', () async {
+    const channel = MethodChannel('latte.test/download');
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      expect(call.method, 'saveImage');
+      return <String, Object?>{
+        'status': 'started',
+        'album': 'Pictures/Latte',
+        'displayName': 'latte_yandere_42_original.jpg',
+      };
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+
+    final receipt = await MethodChannelDownloadStore(channel: channel).save(
+      media: _resolvedMedia(),
+      displayName: 'latte_yandere_42_original.jpg',
+    );
+
+    expect(receipt.status, DownloadStatus.started);
+  });
+
+  test('maps duplicate native background task status', () async {
+    const channel = MethodChannel('latte.test/download-duplicate');
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      return <String, Object?>{
+        'status': 'already_running',
+        'album': 'Pictures/Latte',
+        'displayName': 'latte_yandere_42_original.jpg',
+      };
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+
+    final receipt = await MethodChannelDownloadStore(channel: channel).save(
+      media: _resolvedMedia(),
+      displayName: 'latte_yandere_42_original.jpg',
+    );
+
+    expect(receipt.status, DownloadStatus.alreadyRunning);
+  });
 }
+
+ResolvedMedia _resolvedMedia() => ResolvedMedia(
+  reference: const PostRef(siteId: SiteId('yandere'), remoteId: '42'),
+  variant: const MediaVariant(id: MediaVariantId.original, extension: 'jpg'),
+  source: Uri.parse('https://fake.test/42.jpg'),
+);
 
 class _DownloadAdapter implements SiteAdapter {
   PostRef? resolved;

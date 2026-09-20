@@ -42,7 +42,7 @@ void main() {
       expect(find.text('Popular'), findsOneWidget);
       expect(find.text('Newest'), findsOneWidget);
       expect(find.byTooltip('Search'), findsOneWidget);
-      expect(find.byTooltip('Columns'), findsOneWidget);
+      expect(find.byTooltip('Settings'), findsOneWidget);
       expect(find.byTooltip('Choose popular period'), findsOneWidget);
 
       await tester.tap(find.byTooltip('Choose popular period'));
@@ -67,16 +67,10 @@ void main() {
         controller.state.query?.popularQuery?.window.start,
         DateTime.utc(2026, 9, 14),
       );
-
-      await tester.tap(find.byTooltip('Columns'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('3 columns'));
-      await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('explore-columns-3')), findsOneWidget);
     },
   );
 
-  testWidgets('opens global settings from the Explore toolbar menu', (
+  testWidgets('opens global settings from the Explore toolbar action', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -84,15 +78,24 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Columns'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Settings'));
+    await tester.tap(find.byTooltip('Settings'));
     await tester.pumpAndSettle();
 
     expect(find.text('Appearance'), findsOneWidget);
     expect(find.text('System default'), findsOneWidget);
     expect(find.text('Light'), findsOneWidget);
     expect(find.text('Dark'), findsOneWidget);
+    expect(find.text('Explore'), findsOneWidget);
+    expect(find.text('Automatic'), findsOneWidget);
+    expect(find.text('2 columns'), findsOneWidget);
+    expect(find.text('3 columns'), findsOneWidget);
+    expect(find.text('4 columns'), findsOneWidget);
+
+    await tester.tap(find.text('3 columns'));
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('explore-columns-3')), findsOneWidget);
   });
 
   testWidgets('gallery cards expose only image semantics', (tester) async {

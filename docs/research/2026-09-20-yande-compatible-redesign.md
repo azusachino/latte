@@ -136,7 +136,7 @@ roles:
 | Observed debt | Redesign implication |
 | --- | --- |
 | Period choices live behind a FAB/date control and the selected window is carried by the pager | Use a Material FAB and bottom sheet/date surface while keeping period/date discovery in the same place in the workflow |
-| The toolbar owns search, column, and settings roles; tabs own Popular/Newest navigation | Use a Material top app bar and tab row with the same roles. Do not collapse them into unrelated segmented controls |
+| The toolbar owns search, column, and settings roles; tabs own Popular/Newest navigation | Keep Search and Settings as app-bar actions, and place column density in the global Settings screen while preserving the same discovery workflow |
 | Several detail controls are icon-only; the reference XML gives controls generic `Yande` content descriptions | Give every action a meaningful label, tooltip, state, and 48 dp target; make Download and Score discoverable without guessing |
 | Cards emphasize dimensions/quality but do not clearly communicate period, rank, aggregate score, or rating | Use a restrained metadata line or accessible card semantics; keep the image dominant and facts available on inspect |
 | The tag bottom sheet is dense and color-coded without a simple explanation of the categories | Group metadata into clear sections: score/rating, dimensions/media, tags, source, and actions; keep tags selectable but secondary |
@@ -157,7 +157,8 @@ IA is:
 
 ```text
 Explore
-  ├─ Material top app bar: Latte, search, column/layout action
+  ├─ Material top app bar: Latte, search, settings action
+  ├─ global Settings: appearance and column/layout preference
   ├─ Popular/Newest tab row
   ├─ period/date FAB and Material selection surface
   ├─ masonry feed: image, loading/error state, optional compact facts
@@ -170,7 +171,8 @@ Explore
 ### Feed anatomy
 
 - Use a `Scaffold` with a Material 3 top app bar and a horizontal Popular/Newest
-  tab row. Keep Search and column density as real app-bar actions.
+  tab row. Keep Search and Settings as real app-bar actions; column density is a
+  global Settings preference.
 - Open Day / Week / Month and date/window navigation from a Material FAB and
   selection surface; the selected anchor must remain readable and restorable.
 - Use an adaptive, aspect-preserving masonry grid. On compact widths, prioritize
@@ -210,8 +212,9 @@ Explore
    states, and an aspect-preserving paged masonry feed.
 3. Open the image-first detail pager with aggregate score, rating, dimensions,
    tags, source, policy state, and media variants.
-4. Add anonymous local download with foreground progress, duplicate detection,
-   and retry. Keep the download target/device policy explicit.
+4. Add anonymous local download as a native background-started task with
+   notification progress, duplicate detection, and retry. Keep the download
+   target/device policy explicit.
 5. Preserve the complete feed context through detail navigation and back.
 
 This stage is enough to validate the user's dominant daily journey and should
@@ -313,5 +316,7 @@ through 3 is a later distinct slice and is not part of the current
 implementation turn. The owner also confirmed that Latte is a Material 3
 rework of the reference UX: Material styling may change the visual treatment,
 but the reference-derived component composition, workflow, and dataflow remain
-the target. This decision updates the active Spec Kit artifacts while leaving
-the installed-app observations above intact as compatibility evidence.
+the target. The owner subsequently clarified that Latte's top-right Explore
+action opens Settings, with column density managed there. This decision updates
+the active Spec Kit artifacts while leaving the installed-app observations above
+intact as compatibility evidence.

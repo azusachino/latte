@@ -15,6 +15,13 @@ import android.provider.MediaStore
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.ThreadFactory
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 class MainActivity : FlutterActivity() {
     private val channelName = "com.azusachino.latte/download"
@@ -22,6 +29,18 @@ class MainActivity : FlutterActivity() {
     private val notificationChannelId = "latte_downloads"
     private val notificationGroup = "latte_downloads"
     private val notificationPermissionRequestCode = 4001
+    private val downloadThreadId = AtomicInteger()
+    private val downloadExecutor = ThreadPoolExecutor(
+        3,
+        3,
+        0L,
+        TimeUnit.MILLISECONDS,
+        ArrayBlockingQueue<Runnable>(24),
+        ThreadFactory { runnable ->
+            Thread(runnable, "Latte-download-${downloadThreadId.incrementAndGet()}")
+        },
+    )
+    private val activeTasks = ConcurrentHashMap<String, DownloadTask>()
 
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,26 +64,68 @@ class MainActivity : FlutterActivity() {
                     return@setMethodCallHandler
                 }
 
+                val task = DownloadTask(
+                    key = displayName,
+                    sourceUrl = sourceUrl,
+                    displayName = displayName,
+                    mimeType = mimeType,
+                    notificationId = displayName.hashCode() and Int.MAX_VALUE,
+                )
+                if (activeTasks.putIfAbsent(task.key, task) != null) {
+                    result.success(
+                        mapOf(
+                            "status" to "already_running",
+                            "album" to album,
+                            "displayName" to displayName,
+                        ),
+                    )
+                    return@setMethodCallHandler
+                }
+
                 requestNotificationPermission()
-                val notificationId = displayName.hashCode() and Int.MAX_VALUE
-                showDownloadStarted(notificationId, displayName)
-                Thread {
-                    try {
-                        val receipt = saveImage(sourceUrl, displayName, mimeType, notificationId)
-                        showDownloadResult(notificationId, receipt, mimeType)
-                        runOnUiThread { result.success(receipt) }
-                    } catch (error: Exception) {
-                        showDownloadFailure(
-                            notificationId,
-                            displayName,
-                            error.message ?: "Image save failed",
-                        )
-                        runOnUiThread {
-                            result.error("save_failed", error.message ?: "Image save failed", null)
-                        }
-                    }
-                }.start()
+                showDownloadStarted(task.notificationId, task.displayName)
+                try {
+                    downloadExecutor.execute(task)
+                    result.success(
+                        mapOf(
+                            "status" to "started",
+                            "album" to album,
+                            "displayName" to displayName,
+                        ),
+                    )
+                } catch (error: RejectedExecutionException) {
+                    activeTasks.remove(task.key, task)
+                    getSystemService(NotificationManager::class.java).cancel(task.notificationId)
+                    result.error(
+                        "queue_full",
+                        "Latte already has too many downloads queued",
+                        null,
+                    )
+                }
             }
+    }
+
+    private inner class DownloadTask(
+        val key: String,
+        private val sourceUrl: String,
+        val displayName: String,
+        private val mimeType: String,
+        val notificationId: Int,
+    ) : Runnable {
+        override fun run() {
+            try {
+                val receipt = saveImage(sourceUrl, displayName, mimeType, notificationId)
+                showDownloadResult(notificationId, receipt, mimeType)
+            } catch (error: Exception) {
+                showDownloadFailure(
+                    notificationId,
+                    displayName,
+                    error.message ?: "Image save failed",
+                )
+            } finally {
+                activeTasks.remove(key, this)
+            }
+        }
     }
 
     private fun createDownloadNotificationChannel() {
