@@ -1,0 +1,64 @@
+# Product and Material 3 review checklist
+
+**Purpose**: Owner review of product scope, content policy, Material 3 design,
+and evidence boundaries before implementation
+
+**Created**: 2026-09-20
+
+**Feature**: [spec.md](../spec.md)
+
+## Product fit
+
+- [ ] CHK001 The Popular day/week/month → masonry browse → inspect/pager → save
+  journey is the right first useful product, with Newest and search as
+  additional discovery modes. [Scope]
+- [ ] CHK002 Android API 29+ and yande.re-only are acceptable first support
+  claims. [Assumption]
+- [ ] CHK003 Showing all returned ratings, including explicit, with no local
+  filter or query rewrite matches the intended owner experience. [Spec §FR-005,
+  FR-010]
+- [ ] CHK004 Authenticated 0–3 personal scoring remains a later distinct slice
+  from the read-only aggregate score. [Spec deferred capability]
+- [ ] CHK005 Authentication, favorites, pools, uploads, history, user-visible
+  queues, second sites, and non-Android targets are correctly deferred; native
+  background transfer remains covered by the save contract.
+  [Spec §FR-018]
+
+## Material 3 experience
+
+- [ ] CHK006 Material 3 is the visual and interaction baseline rather than only
+  a Flutter implementation default. [Spec §FR-021]
+- [ ] CHK007 The quiet, image-led theme direction gives artwork priority and
+  avoids decorative gradients, heavy shadows, and arbitrary rounding.
+  [Product contract §Material 3 design language]
+- [ ] CHK008 Explore mode/period controls, SearchBar, masonry feed, Detail/pager,
+  variant bottom sheet, and save progress form a coherent component hierarchy.
+  [Product contract]
+- [ ] CHK009 Compact and expanded layouts preserve the same information
+  architecture without adding speculative navigation. [Spec §FR-022]
+- [ ] CHK010 Light/dark appearance, 200% text, reduced motion, semantics, focus
+  states, and 48-by-48 targets are explicit acceptance dimensions.
+  [Spec §FR-022–FR-023]
+- [ ] CHK011 Golden baselines complement behavioral widget tests and require
+  owner review rather than replacing semantic assertions. [Spec §SC-009]
+
+## Evidence and TDD
+
+- [ ] CHK012 HTTP transport, Android build/run, and MediaStore publication are
+  correctly separated into blocking feasibility gates. [Plan §Constitution Check]
+- [ ] CHK013 Public-seam tests precede implementation in every story and avoid
+  mocking Latte-owned collaborators. [Constitution §II]
+- [ ] CHK014 Fixture-backed timing and behavior are deterministic while live
+  yande.re timing remains a recorded observation. [Spec §SC-002]
+- [ ] CHK015 A content URI plus album and display name is an acceptable save
+  result, and MediaStore lookup proves restart-safe `Already saved` behavior
+  without overwrite; no filesystem path or user cancel action is promised.
+  [Spec §FR-015–FR-017]
+- [ ] CHK016 The Spec Kit evaluation captures both defects prevented and the
+  workflow's maintenance cost before deciding whether to retain it. [Spec §SC-008]
+
+## Notes
+
+- Items intentionally remain unchecked until owner review.
+- Rejected items require updates to the active spec, plan, contracts, and tasks
+  before implementation begins.

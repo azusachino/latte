@@ -1,0 +1,28 @@
+# Gradle & Android
+.gradle/
+build/
+app/build/
+local.properties
+captures/
+.cxx/
+*.apk
+*.aab
+*.hprof
+
+# Kotlin & Linter
+.kotlin/
+.rumdl_cache/
+
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+
+# IntelliJ / Android Studio
+*.iml
+*.ipr
+*.iws
+.idea/
+.vscode/
