@@ -1,11 +1,10 @@
 # Tasks: 002 Account Manager Center (Mihon-Style Plugin Architecture)
 
 **Feature**: 002 Account Manager Center  
-**Status**: In progress — Slices 1–4 have source implementations and the
+**Status**: Released as `v0.0.2` with Slices 1–4 implemented; the
 review-blocking storage, authentication, adapter-boundary, Safe Mode, and
 inline-error issues are repaired. Secure-storage tests, T014 hardware
-verification, Pixiv, and release work remain open; pool browsing was delivered
-post-hoc.
+verification, and Pixiv remain open; pool browsing was delivered post-hoc.
 **Inspiration**: Mihon / Tachiyomi `Tracker` & `TrackerManager`  
 **Constitution**: v2.0.0 (Device-First Ergonomics, Downsized Spec-Kit)  
 
@@ -93,6 +92,6 @@ behavior without rewriting the original acceptance history.
 
 ## Slice 6: Release & Hardware Receipt
 
-- [x] **T027**: Run the project gates: `make check`, `make lint`, and `make validate` (all passed locally on 2026-09-21; `make check` itself runs unit tests only).
+- [x] **T027**: Run the project gates: `make check`, `make lint`, and `make validate` (all passed locally on 2026-09-21; `make check` runs Markdown checks and unit tests).
 - [ ] **T028**: Final hardware acceptance on OnePlus 8 (`0cadf428`).
-- [ ] **T029**: Bump version to `0.0.2` in `app/build.gradle.kts`.
+- [x] **T029**: Bump version to `0.0.2` in `app/build.gradle.kts`.

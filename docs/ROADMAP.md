@@ -27,12 +27,12 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
 
 ## Milestone 0.0.2: Account Manager Center (Mihon-Style Plugin Architecture), Scoring & UX Hardening
 
-> **Status**: In progress. Plugin, Yande authentication/scoring, Favorites, and
-> Pools have source implementations locally; review blockers for storage,
-> credential evidence, plugin lookup, query ownership, Safe Mode defaults, and
-> inline action errors are repaired. Secure-storage/pool test coverage and T014
-> hardware verification are partial. Pixiv, final hardware acceptance, and the
-> 0.0.2 version bump remain open.
+> **Status**: Released as `v0.0.2` on 2026-09-21. Plugin, Yande
+> authentication/scoring, Favorites, and Pools are included; review blockers for
+> storage, credential evidence, plugin lookup, query ownership, Safe Mode
+> defaults, and inline action errors are repaired. Secure-storage/pool test
+> coverage and T014 hardware verification remain partial. Pixiv and final
+> hardware acceptance remain open as follow-up work.
 > **Active Feature Spec**: [002 Account Manager Center](../specs/002-account-manager/spec.md)
 > **Tasks**: [002 Tasks](../specs/002-account-manager/tasks.md)
 > **Design Inspiration**: Mihon / Tachiyomi `Tracker` & `TrackerManager` plugin architecture

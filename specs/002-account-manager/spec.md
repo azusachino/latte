@@ -4,11 +4,11 @@
 
 **Created**: 2026-09-20
 
-**Status**: Slices 1-4 have source implementations locally, with the review
+**Status**: Released as `v0.0.2` with Slices 1-4 implemented and the review
 blockers around encrypted storage, credential evidence, plugin lookup, query
 ownership, Safe Mode defaults, and inline action errors repaired. Secure-storage
-tests, T014 hardware verification, pool behavior coverage, Slice 5 (Pixiv),
-and Slice 6 (release) remain open -- see `tasks.md`.
+tests, T014 hardware verification, pool behavior coverage, and Slice 5 (Pixiv)
+remain open as follow-up work -- see `tasks.md`.
 
 **Inspiration**: Mihon / Tachiyomi `Tracker` & `TrackerManager` plugin architecture (`eu.kanade.tachiyomi.data.track.*`).
 

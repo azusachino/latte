@@ -45,7 +45,7 @@ object OkHttpProvider {
                 }
                 .addInterceptor { chain ->
                     val request = chain.request().newBuilder()
-                        .header("User-Agent", "Mozilla/5.0 (Android; Mobile; Latte/0.0.1)")
+                        .header("User-Agent", "Mozilla/5.0 (Android; Mobile; Latte/0.0.2)")
                         .build()
                     chain.proceed(request)
                 }
@@ -70,7 +70,7 @@ object OkHttpProvider {
                         .dns(customDns)
                         .addInterceptor { chain ->
                             val request = chain.request().newBuilder()
-                                .header("User-Agent", "Mozilla/5.0 (Android; Mobile; Latte/0.0.1)")
+                                .header("User-Agent", "Mozilla/5.0 (Android; Mobile; Latte/0.0.2)")
                                 .build()
                             chain.proceed(request)
                         }
