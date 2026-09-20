@@ -18,7 +18,7 @@ and Slice 6 (release) remain open -- see `tasks.md`.
 
 Latte adopts the proven plugin architecture from Mihon's tracking subsystem. Instead of hardcoding site logins into centralized controllers or UI screens, each art platform is an encapsulated **`SitePlugin`** (or `PlatformAccount`) that owns its identity, authentication strategy, secure storage, and network hooks.
 
-```
+```text
 ┌──────────────────────────────────────────────────────────┐
 │             AccountManagerScreen / Settings              │
 │        (Mihon TrackingPreferenceWidget style)            │
@@ -94,10 +94,12 @@ interface SitePlugin {
 
 As the owner, I navigate to Settings → "Accounts" (or Account Manager).
 I see a clean list of supported platform plugins:
+
 - **yande.re**: Shows logo, title, and status ("Not connected" or "azusachino" with green checkmark).
 - **Pixiv**: Shows logo, title, and status ("Not connected" or "Configured").
 
 Tapping an unauthenticated plugin opens that plugin's specific login flow:
+
 - Yande opens a `PluginLoginDialog` (Username + Password with visibility toggle).
 - Pixiv opens the OAuth2 / token configuration flow.
 
@@ -106,6 +108,7 @@ Tapping an authenticated plugin opens a dialog showing profile details and a "Si
 **Why this priority**: Core modular foundation. Mirrors Mihon's intuitive `SettingsTrackingScreen` and `TrackingPreferenceWidget`.
 
 **Acceptance Scenarios**:
+
 1. **Given** no accounts logged in, **When** opening Account Center, **Then** all plugins display an unauthenticated state with a "Sign In" action.
 2. **Given** yande.re plugin selected, **When** submitting username and password, **Then** `YandePlugin` hashes the password with `SHA1("choujin-steiner--$password--")`, verifies against yande.re, persists in `EncryptedSharedPreferences`, and updates status to logged in.
 3. **Given** an invalid password, **When** logging in, **Then** an inline error is displayed in the dialog without crashing or dismissing.
@@ -120,6 +123,7 @@ As an authenticated yande.re user, I can rate posts from 0 to 3 stars in the pos
 **Why this priority**: Directly exercises the `SCORING` and `FAVORITES` capabilities of `YandePlugin`.
 
 **Acceptance Scenarios**:
+
 1. **Given** `YandePlugin.isLoggedIn == true`, **When** viewing post detail, **Then** an interactive 0–3 star rating bar and Favorite icon button are displayed.
 2. **Given** rating 3 stars or tapping Favorite, **When** `YandePlugin.setScore(postId, 3)` completes, **Then** the UI reflects the score with a subtle confirmation.
 3. **Given** `YandePlugin.isLoggedIn == false`, **When** tapping rating stars, **Then** the app prompts to sign in to yande.re via the plugin login dialog.
@@ -137,6 +141,7 @@ from live-device feedback, per this project's device-first-thin-slices
 practice. The post-hoc addition is recorded in `tasks.md`.
 
 **Acceptance Scenarios**:
+
 1. **Given** the Pools tab, **When** it loads, **Then** it lists pools via `GET /pool.json`, each row showing a cover thumbnail (lazily fetched from the pool's first post), its id, post count, and a lock badge if private.
 2. **Given** the Pools tab, **When** using the app bar's search action, **Then** it searches pools by name (`GET /pool.json?query=`) instead of post tags -- the same search entry point is contextual per tab, not a second search UI.
 3. **Given** a pool row is tapped, **When** its posts load, **Then** they render via the existing post-search feed using `pool:<id>` as the tag (verified to return the same order as `pool/show.json`), with the app bar title showing `#<id> · <name>` (ellipsized on overflow) and a back arrow returning to the Pools tab.
@@ -150,6 +155,7 @@ As the owner, I can configure a Pixiv account in Account Center. `PixivPlugin` s
 **Why this priority**: Validates the multi-platform plugin architecture with a second real-world provider ahead of milestone 0.0.3.
 
 **Acceptance Scenarios**:
+
 1. **Given** Account Center, **When** selecting Pixiv, **Then** Pixiv-specific authentication (OAuth2 PKCE / token entry) is available.
 2. **Given** Pixiv configured, **When** any request targeting `*.pximg.net` occurs, **Then** `PixivPlugin.applyHeaders` injects `Referer: https://app-api.pixiv.net/` to prevent HTTP 403 Forbidden.
 

@@ -3,6 +3,7 @@
 > **Status**: Active execution roadmap  
 > **Updated**: 2026-09-21
 > **Source Documents**:
+>
 > - [002 Active Feature Spec](../specs/002-account-manager/spec.md)
 > - [Spec Kit evaluation](spec-kit-evaluation.md)
 > **Historical context**: [code review & parity analysis](review/2026-09-20-code-review-and-parity.md)
@@ -13,7 +14,7 @@
 
 Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenticated, multi-platform personal art workstation (`0.0.2` and `0.0.3`). This roadmap establishes the sequence of milestones, architectural requirements, UX standards, and cache policies.
 
-```
+```text
 0.0.1 (Delivered) ──> 0.0.2 (Auth, Scoring & UX Hardening) ──> 0.0.3 (Pixiv Multi-Platform)
   • Yande browse        • Yande login & password hash             • Pixiv OAuth2 PKCE
   • Masonry feed        • 0–3 scoring & Add to Favorite           • Referer header injection
@@ -32,12 +33,12 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
 > inline action errors are repaired. Secure-storage/pool test coverage and T014
 > hardware verification are partial. Pixiv, final hardware acceptance, and the
 > 0.0.2 version bump remain open.
-
 > **Active Feature Spec**: [002 Account Manager Center](../specs/002-account-manager/spec.md)
 > **Tasks**: [002 Tasks](../specs/002-account-manager/tasks.md)
 > **Design Inspiration**: Mihon / Tachiyomi `Tracker` & `TrackerManager` plugin architecture
 
 ### 1. Mihon-Style Plugin Subsystem (`SitePlugin` & `SitePluginManager`)
+
 - **Plugin Architecture**:
   - Each platform is an encapsulated `SitePlugin` implementing identity, `AuthType` (`CREDENTIALS`, `OAUTH2`), capabilities (`SCORING`, `FAVORITES`, `REFERER_INJECT`), login/logout lifecycle, and header hooks.
   - `SitePluginManager` maintains the plugin registry and exposes `loggedInPluginsFlow()`.
@@ -52,6 +53,7 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
   - One-tap sign-out permanently purges credentials and session state.
 
 ### 2. Yande.re Authentication & Scoring
+
 - **Credential Verification**:
   - Verify credentials against yande.re before persisting account.
 - **Personal Scoring & Favorites**:
@@ -73,6 +75,7 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
     `specs/002-account-manager/spec.md` User Story 4.
 
 ### 3. Pixiv Platform Foundation
+
 - **OAuth2 Token Management**:
   - Token lifecycle management (access token, refresh token, expiry) in `PixivPlugin`.
 - **Network Interceptor**:
@@ -80,6 +83,7 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
   - Prepares the network layer for milestone 0.0.3 multi-platform browsing.
 
 ### 4. UX Hardening (Principle VI)
+
 - Early thin-slice hardware verification on OnePlus 8 (`0cadf428`).
 - Smooth dialog/IME interactions and quiet inline error states.
 
@@ -88,6 +92,7 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
 ## Milestone 0.0.3: Pixiv Platform Support
 
 ### 1. Architectural Adjustments
+
 - **Custom HTTP Headers for Media (`Referer`)**:
   - Pixiv images on `i.pximg.net` return HTTP 403 Forbidden without `Referer: https://app-api.pixiv.net/`.
   - Implement `PixivPlugin.applyHeaders` and route matching requests through
@@ -102,6 +107,7 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
     the selected plugin advertises the capability.
 
 ### 2. Pixiv Adapter & OAuth2 PKCE
+
 - Implement `PixivPlugin` implementing `SitePlugin` and register it only after
   its deterministic and device acceptance receipts pass.
 - Handle OAuth2 PKCE token exchange (`access_token` and `refresh_token`) and automated token refresh interceptor.

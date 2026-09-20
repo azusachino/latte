@@ -15,14 +15,16 @@ mise install
 Run the complete local gate before opening a pull request:
 
 ```bash
+make md-format
 make check
 make lint
 make validate
 ```
 
 The live Yande verification is opt-in; automated tests use doubles and do not
-require a live account. `make check` runs unit tests; `make lint` and
-`make validate` provide the separate lint and debug-APK checks.
+require a live account. `make check` runs Markdown checks and unit tests;
+`make lint` and `make validate` provide the separate Android lint and debug-APK
+checks. Run `make md-format` to apply the configured Markdown formatting.
 Do not add credentials, private URLs, generated build output, or downloaded
 post media to the repository.
 

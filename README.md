@@ -40,11 +40,14 @@ Popular / Newest / Favorites / Pools / Search -> YandeApi -> Staggered Grid
 
 ## Development
 
-Latte uses the Java runtime pinned in `.mise.toml`:
+Latte uses the Gradle, Java, Android SDK, and Markdown tooling pinned in
+`.mise.toml`:
 
 ```bash
 mise install
-make check     # Run unit tests
+make check     # Run Markdown checks and unit tests
+make md-format # Apply Markdown formatting
+make lint      # Run Android lint
 make validate  # Run tests and assemble debug APK
 make install   # Install debug APK to connected device
 make dev       # Install and launch via ADB

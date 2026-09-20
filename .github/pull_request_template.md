@@ -1,3 +1,5 @@
+# Pull Request
+
 ## Summary
 
 <!-- What user-visible or repository-level result does this PR deliver? -->
@@ -5,7 +7,8 @@
 ## Verification
 
 - [ ] `make check`
-- [ ] `mise exec -- flutter build apk --debug` (when Android code or assets change)
+- [ ] `make lint`
+- [ ] `make validate` (when Android code or assets change)
 - [ ] Device or visual smoke test (when UI or platform behavior changes)
 
 ## Review notes

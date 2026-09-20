@@ -1,0 +1,18 @@
+[global]
+disable = ["MD013"]
+exclude = [
+  ".agents",
+  ".git",
+  ".gradle",
+  ".specify/assessments",
+  ".specify/extensions",
+  ".specify/templates",
+  "app/build",
+  "build",
+  "docs/acceptance",
+  "docs/research",
+  "docs/review",
+  "specs/001-yandere-core-journey",
+  "tasks",
+]
+respect-gitignore = true
