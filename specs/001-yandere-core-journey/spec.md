@@ -110,6 +110,11 @@ without changing the original file.
 4. **Given** media resolution, transfer, or device storage fails, **When** the
    save terminates, **Then** Latte removes incomplete output and reports a
    retryable or terminal failure without losing the current post.
+5. **Given** a variant was saved successfully, **When** the owner terminates
+   and relaunches Latte before repeating the same save, **Then** the Android
+   save boundary finds the deterministic site/post/variant identity in
+   `Pictures/Latte`, returns `Already saved` with its content URI, album, and
+   display name, and leaves the original bytes unchanged.
 
 ### Deferred capability - authenticated personal score
 
@@ -177,8 +182,12 @@ already presentation metadata and MUST NOT be treated as the owner's vote.
 - **FR-015**: Latte MUST save completed images into a user-visible Latte album
   or directory and report the resulting album, display name, and a
   system-openable content reference; no filesystem path is promised.
-- **FR-016**: Latte MUST use deterministic, collision-resistant filenames and
-  MUST return an existing-file outcome instead of overwriting.
+- **FR-016**: Latte MUST derive a deterministic, collision-resistant save
+  identity from site, remote post, selected variant, and known checksum/display
+  name; it MUST query published Android MediaStore entries under `Pictures/Latte`
+  before transfer and re-check immediately before publication. A matching entry
+  MUST return `Already saved` with its content URI, album, and display name
+  without overwriting, including after app restart or process death.
 - **FR-017**: Latte MUST remove or hide incomplete output after a failed save or
   interrupted publication. User-initiated save cancellation is deferred.
 - **FR-018**: Latte MUST accept a deterministic substitute site for acceptance

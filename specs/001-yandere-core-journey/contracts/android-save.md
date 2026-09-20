@@ -3,9 +3,10 @@
 ## Authority boundary
 
 Flutter supplies validated bytes or a temporary app-owned file descriptor plus
-the deterministic display name, MIME type, and relative Latte album. It cannot
-supply an arbitrary filesystem path. Android owns MediaStore insertion,
-publication, collision detection, cleanup, and returned content URI.
+the deterministic site/post/variant identity, known checksum/display name, MIME
+type, and relative Latte album. It cannot supply an arbitrary filesystem path.
+Android owns MediaStore lookup, insertion, publication, collision detection,
+cleanup, and returned content URI.
 
 ## Operation
 
@@ -21,7 +22,11 @@ publishImage(displayName, mimeType, temporarySource) -> SaveResult
   flushed successfully.
 - Failure or interrupted publication deletes the pending item and temporary
   source.
-- An existing deterministic target returns `existing` without overwriting.
+- Before transfer, query published entries under `Pictures/Latte` by the
+  deterministic identity; immediately before publication, query again to close
+  the concurrent-save race. An existing target returns `Already saved` with its
+  content URI, album, and display name without overwriting. This remains true
+  after app restart or process death; session memory is not authoritative.
 - Returned locations contain a content URI, `Pictures/Latte` album, and display
   name, never a raw filesystem path.
 - Platform exceptions map to retryable or terminal failure without leaking
@@ -31,6 +36,7 @@ publishImage(displayName, mimeType, temporarySource) -> SaveResult
 
 - Dart contract tests use a fake `PublicImageStore` boundary.
 - Kotlin tests cover metadata, pending publication, collision, and cleanup.
-- Android integration acceptance saves one fixture image, locates/opens it, and
-  repeats the operation to prove non-overwrite behavior.
+- Android integration acceptance saves one fixture image, records its bytes,
+  terminates/relaunches the app, repeats the operation, and proves an
+  `Already saved` result with the same URI/metadata and unchanged bytes.
 - This fixture-backed device spike is a blocking gate before Story 3 UI work.

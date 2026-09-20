@@ -131,8 +131,9 @@ and prove the original bytes remain unchanged.
 ### Blocking save feasibility
 
 - [ ] T023 [US3] Write a failing Android MediaStore spike test under
-  `android/app/src/androidTest/`, then prove fixture publication, duplicate
-  detection, and failed-write cleanup on API 29+; record the result in
+  `android/app/src/androidTest/`, then prove fixture publication, deterministic
+  site/post/variant duplicate detection after terminate/relaunch, unchanged
+  bytes, and failed-write cleanup on API 29+; record the result in
   `docs/acceptance/feasibility.md` before save UI work.
 
 ### Tests for User Story 3
@@ -149,7 +150,8 @@ and prove the original bytes remain unchanged.
 ### Implementation for User Story 3
 
 - [ ] T027 [US3] Implement the Dart save port and foreground controller in
-  `lib/src/platform/` and `lib/src/features/save/` until T024 passes.
+  `lib/src/platform/` and `lib/src/features/save/` until T024 passes; the port
+  must treat MediaStore lookup, not session memory, as duplicate authority.
 - [ ] T028 [US3] Implement the narrow Kotlin MediaStore channel under
   `android/app/src/main/kotlin/` until T025 passes.
 - [ ] T029 [US3] Implement the Material 3 variant bottom sheet and save states

@@ -50,7 +50,9 @@ and evidence boundaries before implementation
 - [ ] CHK014 Fixture-backed timing and behavior are deterministic while live
   yande.re timing remains a recorded observation. [Spec §SC-002]
 - [ ] CHK015 A content URI plus album and display name is an acceptable save
-  result; no filesystem path or user cancel action is promised. [Spec §FR-014]
+  result, and MediaStore lookup proves restart-safe `Already saved` behavior
+  without overwrite; no filesystem path or user cancel action is promised.
+  [Spec §FR-015–FR-017]
 - [ ] CHK016 The Spec Kit evaluation captures both defects prevented and the
   workflow's maintenance cost before deciding whether to retain it. [Spec §SC-008]
 

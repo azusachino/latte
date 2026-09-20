@@ -103,6 +103,10 @@ response bodies, cookies, or credentials.
 ## Save request and result
 
 - `SaveRequest`: `PostRef` plus `MediaVariant.id`.
+- Save identity is deterministic from site ID, remote post ID, variant ID, and
+  known checksum/display-name inputs. It is resolved against published
+  `Pictures/Latte` MediaStore entries rather than session memory, so restart or
+  process death does not lose duplicate knowledge.
 - `ResolvedMedia`: adapter-private validated HTTPS source, expected metadata,
   and deterministic filename inputs.
 - `SaveProgress`: received bytes and optional total; one foreground save exists.

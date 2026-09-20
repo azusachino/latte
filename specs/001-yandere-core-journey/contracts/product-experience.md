@@ -59,6 +59,10 @@ community score is read-only in this milestone; authenticated `Your score` from
 - Completion reports the public Latte album and provides a system-supported
   open/view action.
 - Existing-file, retryable, and terminal outcomes use distinct copy.
+- Duplicate detection is authoritative across restart: query published
+  `Pictures/Latte` MediaStore entries before transfer and re-check before
+  publication; show `Already saved` with the existing content URI/album/name and
+  never overwrite bytes.
 
 ## Material 3 design language
 
