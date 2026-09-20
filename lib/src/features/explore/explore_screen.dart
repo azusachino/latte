@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../domain/explore_state.dart';
@@ -499,17 +500,10 @@ double _aspectRatio(PostSummary post) {
 }
 
 class _RemoteArtwork extends StatefulWidget {
-  const _RemoteArtwork({
-    required this.post,
-    required this.adapter,
-    this.fit = BoxFit.cover,
-    this.variantId,
-  });
+  const _RemoteArtwork({required this.post, required this.adapter});
 
   final PostSummary post;
   final SiteAdapter adapter;
-  final BoxFit fit;
-  final MediaVariantId? variantId;
 
   @override
   State<_RemoteArtwork> createState() => _RemoteArtworkState();
@@ -528,8 +522,7 @@ class _RemoteArtworkState extends State<_RemoteArtwork> {
   @override
   void didUpdateWidget(covariant _RemoteArtwork oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.post.reference != widget.post.reference ||
-        oldWidget.variantId != widget.variantId) {
+    if (oldWidget.post.reference != widget.post.reference) {
       _start();
     }
   }
@@ -537,7 +530,7 @@ class _RemoteArtworkState extends State<_RemoteArtwork> {
   @override
   Widget build(BuildContext context) {
     final preview = widget.post.preview;
-    if (preview == null && widget.variantId == null) {
+    if (preview == null) {
       return const _ArtworkPlaceholder();
     }
     return FutureBuilder<ResolvedMedia>(
@@ -558,7 +551,7 @@ class _RemoteArtworkState extends State<_RemoteArtwork> {
                   if (thumbnail != null)
                     Image.network(
                       thumbnail.toString(),
-                      fit: widget.fit,
+                      fit: BoxFit.cover,
                       semanticLabel:
                           'Artwork ${widget.post.reference.remoteId}',
                       errorBuilder: (_, _, _) => const SizedBox.shrink(),
@@ -566,7 +559,7 @@ class _RemoteArtworkState extends State<_RemoteArtwork> {
                   if (source != null)
                     Image.network(
                       source.toString(),
-                      fit: widget.fit,
+                      fit: BoxFit.cover,
                       semanticLabel:
                           'Artwork ${widget.post.reference.remoteId}',
                       frameBuilder:
@@ -593,13 +586,10 @@ class _RemoteArtworkState extends State<_RemoteArtwork> {
 
   void _start() {
     final preview = widget.post.preview;
-    final variantId = widget.variantId ?? preview?.id;
-    _media = variantId == null
+    _media = preview == null
         ? null
-        : widget.adapter.resolveMedia(widget.post.reference, variantId);
-    _thumbnail = widget.variantId == null || preview == null
-        ? _media
         : widget.adapter.resolveMedia(widget.post.reference, preview.id);
+    _thumbnail = _media;
   }
 }
 
@@ -801,10 +791,9 @@ class _DetailImagePager extends StatefulWidget {
 }
 
 class _DetailImagePagerState extends State<_DetailImagePager> {
-  late final PageController _pageController = PageController(
+  late final ExtendedPageController _pageController = ExtendedPageController(
     initialPage: widget.index,
   );
-  var _pinching = false;
 
   @override
   void didUpdateWidget(covariant _DetailImagePager oldWidget) {
@@ -828,39 +817,190 @@ class _DetailImagePagerState extends State<_DetailImagePager> {
   }
 
   @override
-  Widget build(BuildContext context) => PageView.builder(
+  Widget build(BuildContext context) => KeyedSubtree(
     key: const ValueKey('detail-pager'),
-    controller: _pageController,
-    physics: _pinching ? const NeverScrollableScrollPhysics() : null,
-    itemCount: widget.state.posts.length,
-    onPageChanged: (page) {
-      if (page == widget.index) return;
-      widget.controller.openAdjacentDetail(page - widget.index);
-    },
-    itemBuilder: (context, page) {
-      final post = page == widget.index
-          ? widget.detail.summary
-          : widget.state.posts[page];
-      return ColoredBox(
-        color: Theme.of(context).colorScheme.surface,
-        child: _DetailZoomImage(
-          onPinchActive: (active) {
-            if (!mounted || _pinching == active) return;
-            setState(() => _pinching = active);
-          },
-          child: _RemoteArtwork(
-            post: post,
-            adapter: widget.adapter,
-            fit: BoxFit.contain,
-            variantId: page == widget.index
-                ? _detailImageVariant(widget.detail.media)
-                : null,
-          ),
-        ),
-      );
-    },
+    child: ExtendedImageGesturePageView.builder(
+      controller: _pageController,
+      itemCount: widget.state.posts.length,
+      onPageChanged: (page) {
+        if (page == widget.index) return;
+        widget.controller.openAdjacentDetail(page - widget.index);
+      },
+      itemBuilder: (context, page) {
+        final post = page == widget.index
+            ? widget.detail.summary
+            : widget.state.posts[page];
+        return _DetailZoomArtwork(
+          key: const ValueKey('detail-zoom'),
+          post: post,
+          adapter: widget.adapter,
+          variantId: page == widget.index
+              ? _detailImageVariant(widget.detail.media)
+              : null,
+        );
+      },
+    ),
   );
 }
+
+class _DetailZoomArtwork extends StatefulWidget {
+  const _DetailZoomArtwork({
+    required this.post,
+    required this.adapter,
+    this.variantId,
+    super.key,
+  });
+
+  final PostSummary post;
+  final SiteAdapter adapter;
+  final MediaVariantId? variantId;
+
+  @override
+  State<_DetailZoomArtwork> createState() => _DetailZoomArtworkState();
+}
+
+class _DetailZoomArtworkState extends State<_DetailZoomArtwork> {
+  late final GlobalKey<ExtendedImageGestureState> _gestureKey =
+      GlobalKey<ExtendedImageGestureState>();
+  Future<ResolvedMedia>? _media;
+  Future<ResolvedMedia>? _thumbnail;
+
+  @override
+  void initState() {
+    super.initState();
+    _start();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _gestureKey.currentState?.reset();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _DetailZoomArtwork oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.post.reference != widget.post.reference ||
+        oldWidget.variantId != widget.variantId) {
+      _start();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final preview = widget.post.preview;
+    if (preview == null && widget.variantId == null) {
+      return const _ArtworkPlaceholder();
+    }
+    return FutureBuilder<ResolvedMedia>(
+      future: _media,
+      builder: (context, snapshot) {
+        final source = snapshot.data?.source;
+        return FutureBuilder<ResolvedMedia>(
+          future: _thumbnail,
+          builder: (context, thumbnailSnapshot) {
+            final thumbnail = thumbnailSnapshot.data?.source;
+            if (source == null) {
+              return _DetailLoadingArtwork(
+                source: thumbnail,
+                label: 'Artwork ${widget.post.reference.remoteId}',
+              );
+            }
+            return _buildDetailImage(
+              source: source,
+              thumbnail: thumbnail,
+              label: 'Artwork ${widget.post.reference.remoteId}',
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _start() {
+    final preview = widget.post.preview;
+    final variantId = widget.variantId ?? preview?.id;
+    _media = variantId == null
+        ? null
+        : widget.adapter.resolveMedia(widget.post.reference, variantId);
+    _thumbnail = widget.variantId == null || preview == null
+        ? _media
+        : widget.adapter.resolveMedia(widget.post.reference, preview.id);
+  }
+
+  Widget _buildDetailImage({
+    required Uri source,
+    required Uri? thumbnail,
+    required String label,
+  }) {
+    Widget? loadStateChanged(ExtendedImageState state) {
+      if (state.extendedImageLoadState == LoadState.completed) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _gestureKey.currentState?.reset();
+        });
+        return null;
+      }
+      return _DetailLoadingArtwork(source: thumbnail, label: label);
+    }
+
+    GestureConfig gestureConfig(ExtendedImageState _) => GestureConfig(
+      inPageView: true,
+      initialScale: 1,
+      minScale: 1,
+      maxScale: 4,
+      animationMaxScale: 4.5,
+      cacheGesture: false,
+      initialAlignment: InitialAlignment.center,
+    );
+    if (source.scheme == 'asset') {
+      return ExtendedImage.asset(
+        _assetName(source),
+        key: const ValueKey('detail-high-quality-image'),
+        fit: BoxFit.contain,
+        mode: ExtendedImageMode.gesture,
+        extendedImageGestureKey: _gestureKey,
+        initGestureConfigHandler: gestureConfig,
+        loadStateChanged: loadStateChanged,
+      );
+    }
+    return ExtendedImage.network(
+      source.toString(),
+      key: const ValueKey('detail-high-quality-image'),
+      fit: BoxFit.contain,
+      mode: ExtendedImageMode.gesture,
+      cache: true,
+      extendedImageGestureKey: _gestureKey,
+      initGestureConfigHandler: gestureConfig,
+      loadStateChanged: loadStateChanged,
+    );
+  }
+}
+
+class _DetailLoadingArtwork extends StatelessWidget {
+  const _DetailLoadingArtwork({required this.source, required this.label});
+
+  final Uri? source;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    if (source == null) return const _ArtworkPlaceholder();
+    if (source!.scheme == 'asset') {
+      return Image.asset(
+        _assetName(source!),
+        fit: BoxFit.contain,
+        semanticLabel: label,
+        errorBuilder: (_, _, _) => const _ArtworkPlaceholder(),
+      );
+    }
+    return Image.network(
+      source!.toString(),
+      fit: BoxFit.contain,
+      semanticLabel: label,
+      errorBuilder: (_, _, _) => const _ArtworkPlaceholder(),
+    );
+  }
+}
+
+String _assetName(Uri uri) =>
+    uri.path.startsWith('/') ? uri.path.substring(1) : uri.path;
 
 MediaVariantId? _detailImageVariant(List<MediaVariant> variants) {
   for (final candidate in const [
@@ -872,68 +1012,6 @@ MediaVariantId? _detailImageVariant(List<MediaVariant> variants) {
     if (variants.any((variant) => variant.id == candidate)) return candidate;
   }
   return null;
-}
-
-class _DetailZoomImage extends StatefulWidget {
-  const _DetailZoomImage({required this.child, required this.onPinchActive});
-
-  final Widget child;
-  final ValueChanged<bool> onPinchActive;
-
-  @override
-  State<_DetailZoomImage> createState() => _DetailZoomImageState();
-}
-
-class _DetailZoomImageState extends State<_DetailZoomImage> {
-  final _pointers = <int, Offset>{};
-  var _pinching = false;
-  var _scale = 1.0;
-  var _gestureStartScale = 1.0;
-  var _initialDistance = 0.0;
-
-  void _handlePointerDown(PointerDownEvent event) {
-    _pointers[event.pointer] = event.position;
-    if (_pointers.length != 2 || _pinching) return;
-    _pinching = true;
-    _gestureStartScale = _scale;
-    _initialDistance = _distance();
-    widget.onPinchActive(true);
-  }
-
-  void _handlePointerMove(PointerMoveEvent event) {
-    if (!_pointers.containsKey(event.pointer)) return;
-    _pointers[event.pointer] = event.position;
-    if (!_pinching || _pointers.length != 2 || _initialDistance <= 0) return;
-    final nextScale = (_gestureStartScale * _distance() / _initialDistance)
-        .clamp(1.0, 4.0);
-    if (nextScale == _scale) return;
-    setState(() => _scale = nextScale);
-  }
-
-  void _handlePointerEnd(PointerEvent event) {
-    _pointers.remove(event.pointer);
-    if (_pinching && _pointers.length < 2) {
-      _pinching = false;
-      widget.onPinchActive(false);
-      if (_scale < 1.01) setState(() => _scale = 1.0);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) => Listener(
-    key: const ValueKey('detail-zoom'),
-    behavior: HitTestBehavior.opaque,
-    onPointerDown: _handlePointerDown,
-    onPointerMove: _handlePointerMove,
-    onPointerUp: _handlePointerEnd,
-    onPointerCancel: _handlePointerEnd,
-    child: Transform.scale(scale: _scale, child: widget.child),
-  );
-
-  double _distance() {
-    final points = _pointers.values.toList(growable: false);
-    return (points[0] - points[1]).distance;
-  }
 }
 
 class _DetailInspectSheet extends StatefulWidget {

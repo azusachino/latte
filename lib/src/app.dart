@@ -1,16 +1,28 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'design/latte_theme.dart';
 import 'features/explore/explore_controller.dart';
 import 'features/explore/explore_screen.dart';
 import 'features/settings/settings_screen.dart';
+import 'features/settings/latte_preferences.dart';
 import 'sites/site_adapter.dart';
+import 'sites/site_registry.dart';
 import 'sites/yandere/yandere_adapter.dart';
 
 class LatteApp extends StatefulWidget {
-  const LatteApp({this.adapter, super.key});
+  const LatteApp({
+    this.adapter,
+    this.siteRegistry,
+    this.preferences,
+    super.key,
+  });
 
   final SiteAdapter? adapter;
+  final SiteRegistry? siteRegistry;
+  final LattePreferences? preferences;
 
   @override
   State<LatteApp> createState() => _LatteAppState();
@@ -18,6 +30,7 @@ class LatteApp extends StatefulWidget {
 
 class _LatteAppState extends State<LatteApp> {
   late final ExploreController _controller;
+  late final LattePreferences _preferences;
   final _navigatorKey = GlobalKey<NavigatorState>();
   var _themeMode = ThemeMode.system;
   int? _columnCount;
@@ -25,7 +38,11 @@ class _LatteAppState extends State<LatteApp> {
   @override
   void initState() {
     super.initState();
-    _controller = ExploreController(adapter: widget.adapter ?? YandeAdapter());
+    final adapter =
+        widget.adapter ?? widget.siteRegistry?.defaultAdapter ?? YandeAdapter();
+    _controller = ExploreController(adapter: adapter);
+    _preferences = widget.preferences ?? LattePreferences();
+    unawaited(_loadPreferences());
   }
 
   @override
@@ -52,16 +69,44 @@ class _LatteAppState extends State<LatteApp> {
             MaterialPageRoute<void>(
               builder: (_) => SettingsScreen(
                 themeMode: _themeMode,
-                onThemeModeChanged: (mode) => setState(() => _themeMode = mode),
+                onThemeModeChanged: (mode) {
+                  setState(() => _themeMode = mode);
+                  unawaited(_preferences.saveThemeMode(mode));
+                },
                 columnCount: _columnCount,
-                onColumnCountChanged: (value) =>
-                    setState(() => _columnCount = value),
+                onOpenDownloadNotifications: () {
+                  unawaited(
+                    const MethodChannel('com.azusachino.latte/download')
+                        .invokeMethod<void>('openDownloadNotifications'),
+                  );
+                },
+                onColumnCountChanged: (value) {
+                  setState(() => _columnCount = value);
+                  unawaited(_preferences.saveColumnCount(value));
+                },
               ),
             ),
           );
         },
       ),
     );
+  }
+
+  Future<void> _loadPreferences() async {
+    try {
+      final values = await Future.wait<Object?>([
+        _preferences.loadThemeMode(),
+        _preferences.loadColumnCount(),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _themeMode = values[0]! as ThemeMode;
+        _columnCount = values[1] as int?;
+      });
+    } on Exception {
+      // Widget tests and first-run platform initialization may not expose a
+      // preferences channel yet; in-memory defaults remain usable.
+    }
   }
 }
 

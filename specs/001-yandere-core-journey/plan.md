@@ -45,11 +45,12 @@ bounded page size at or below the site's documented limit of 100
 
 **Constraints**: anonymous/read-only remote use except local saves; all returned
 ratings remain visible and opaque expressions are not rewritten; no
-database/background queue/authentication or personal scoring; no arbitrary URL
-or path authority from widgets; one bounded retry for retryable reads
+database/user-visible queue/authentication or personal scoring; no arbitrary URL
+or path authority from widgets; durable native saves use WorkManager; one
+bounded retry for retryable reads
 
 **Scale/Scope**: one owner, one production site, three product screens, one
-active feed/search result set, one foreground save at a time
+active feed/search result set, and multiple independent native save tasks
 
 ## Constitution Check
 
@@ -102,7 +103,7 @@ lib/
     │   └── yandere/            # site policy and production adapter
     ├── features/
 │   ├── explore/            # Popular/Newest, search, detail/pager flow
-    │   └── save/               # foreground save use case
+    │   └── save/               # background save boundary
     └── platform/               # public-image save port
 
 android/app/src/main/kotlin/    # MediaStore bridge only

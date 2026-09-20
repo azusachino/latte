@@ -6,6 +6,7 @@ class SettingsScreen extends StatefulWidget {
     required this.onThemeModeChanged,
     required this.columnCount,
     required this.onColumnCountChanged,
+    this.onOpenDownloadNotifications,
     super.key,
   });
 
@@ -13,6 +14,7 @@ class SettingsScreen extends StatefulWidget {
   final ValueChanged<ThemeMode> onThemeModeChanged;
   final int? columnCount;
   final ValueChanged<int?> onColumnCountChanged;
+  final VoidCallback? onOpenDownloadNotifications;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -86,6 +88,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
               ],
             ),
+          ),
+          const Divider(),
+          const ListTile(
+            leading: Icon(Icons.download_outlined),
+            title: Text('Download quality'),
+            subtitle: Text('Best available quality'),
+            trailing: Icon(Icons.check),
+          ),
+          ListTile(
+            leading: const Icon(Icons.notifications_outlined),
+            title: const Text('Download notifications'),
+            subtitle: const Text('Managed by Android system settings'),
+            onTap: widget.onOpenDownloadNotifications,
           ),
         ],
       ),

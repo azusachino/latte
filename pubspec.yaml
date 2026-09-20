@@ -32,6 +32,8 @@ dependencies:
     sdk: flutter
 
   http: ^1.5.0
+  extended_image: ^10.1.0
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:
@@ -49,6 +51,9 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  assets:
+    - assets/branding/latte-icon.png
+    - assets/branding/latte-icon.svg
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

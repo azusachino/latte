@@ -25,6 +25,11 @@ There is no Safe Mode filter, policy toggle, or rating-driven query rewrite. The
 aggregate community score is read-only in this milestone; authenticated `Your
 score` from 0 through 3 is a later distinct capability.
 
+The selected site comes from a site registry. Explore, detail, and download
+consume the required site adapter contract only; optional site actions appear
+only when the selected adapter exposes the matching capability port. This keeps
+Yande.re first without making it the shared product model for future platforms.
+
 ## Explore screen
 
 - Material 3 top app bar: Latte title, one labelled search action, and a

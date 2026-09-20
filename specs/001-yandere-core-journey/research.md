@@ -39,8 +39,8 @@
 - **Decision**: Use Flutter SDK navigation and explicit feature controllers
   with immutable observable states for the three-screen milestone.
 - **Rationale**: The active product has one feed/search state, one detail, and
-  one foreground save. A framework would choose architecture before complexity
-  exists and weaken the constitution's dependency gate.
+  a native background save boundary. A framework would choose architecture
+  before complexity exists and weaken the constitution's dependency gate.
 - **Alternatives considered**: Riverpod, Bloc, Provider, declarative router.
 
 ## Decision: Material 3 is the product design baseline
@@ -72,16 +72,19 @@
 - **Sources**: <https://docs.flutter.dev/platform-integration/platform-channels>
   and <https://developer.android.com/training/data-storage/shared/media>
 
-## Decision: keep Moebooru below the yande.re adapter
+## Decision: keep Moebooru below the yande.re adapter and keep site capabilities separate
 
 - **Decision**: Shared Moebooru request/decoder helpers are private
-  implementation composition. The product depends on `SiteAdapter`, not a
-  Moebooru superclass or registry/plugin SDK.
-- **Rationale**: Dreamland proves site policy diverges and that a broad
-  capability catalog can precede real consumers. Latte extracts only the post
-  query/media behavior exercised by yande.re and a deterministic test adapter.
-- **Alternatives considered**: one nullable `BooruApi`; generic plugin registry;
-  copy all Dreamland capability ports.
+  implementation composition. The product depends on a narrow `SiteAdapter`,
+  a small adapter registry, and separate optional capability ports modelled
+  after Dreamland's `SiteAdapter` accessors.
+- **Rationale**: Dreamland proves site policy diverges. Latte therefore keeps
+  query/detail/media as the required core and adds optional ports only for
+  verified cross-site operations; unsupported behavior is absent rather than
+  faked. This is the abstraction boundary required for the next platform
+  without copying Dreamland's Rust runtime wholesale.
+- **Alternatives considered**: one nullable `BooruApi`; a Yande superclass;
+  copy all Dreamland capability ports before Latte has consumers.
 - **Sources**: `vendor/dreamland/docs/adr/0010-solid-layer-boundaries.md` and
   `docs/research/2026-09-20-dart-moebooru-yandere.md`
 
@@ -100,6 +103,8 @@
 
 ## Deferred decisions
 
-Authentication, favorites, pools, saved-query persistence, background work,
-tag suggestions, a second production adapter, and non-Android targets receive
-no implementation decision in this feature.
+Authentication, favorites, pools, saved-query persistence, tag suggestions, a
+second production adapter, and non-Android targets receive no implementation
+decision in this feature. Native background saves are implemented here because
+the owner explicitly requires restart-safe transfer and concurrent independent
+downloads; a user-visible queue/history remains deferred.

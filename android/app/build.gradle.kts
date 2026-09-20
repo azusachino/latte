@@ -4,6 +4,10 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+dependencies {
+    implementation("androidx.work:work-runtime-ktx:2.10.1")
+}
+
 android {
     namespace = "com.azusachino.latte"
     compileSdk = flutter.compileSdkVersion

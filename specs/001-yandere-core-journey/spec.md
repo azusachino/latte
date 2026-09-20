@@ -117,8 +117,9 @@ without changing the original file.
    are saved again, **Then** Latte reports the existing result and leaves the
    file unchanged.
 4. **Given** media resolution, transfer, or device storage fails, **When** the
-   save terminates, **Then** Latte removes incomplete output and reports a
-   retryable or terminal failure without losing the current post.
+   save terminates, **Then** Latte keeps incomplete output hidden and reports a
+   retryable or terminal failure without losing the current post; a later
+   worker run can resume the pending transfer.
 5. **Given** a variant was saved successfully, **When** the owner terminates
    and relaunches Latte before repeating the same save, **Then** the Android
    save boundary finds the deterministic site/post/variant identity in
@@ -203,13 +204,15 @@ already presentation metadata and MUST NOT be treated as the owner's vote.
   before transfer and re-check immediately before publication. A matching entry
   MUST return `Already saved` with its content URI, album, and display name
   without overwriting, including after app restart or process death.
-- **FR-017**: Latte MUST remove or hide incomplete output after a failed save or
-  interrupted publication. User-initiated save cancellation is deferred.
+- **FR-017**: Latte MUST keep incomplete output hidden after a failed save or
+  interrupted publication and MUST resume it from the durable pending item when
+  the worker runs again. User-initiated save cancellation is deferred.
 - **FR-018**: Latte MUST accept a deterministic substitute site for acceptance
   tests without changing discovery, search, detail, or save presentation.
 - **FR-019**: Latte MUST NOT expose authenticated personal scoring, favorites,
-  pools, uploads, persistent history, background queues, or another production
-  site in this milestone.
+  pools, uploads, persistent history, a user-visible download queue, or another
+  production site in this milestone. Native background transfer is required for
+  saves and may run multiple independent tasks.
 - **FR-020**: Latte MUST record a dated, redacted live receipt before claiming
   yande.re or Android support.
 - **FR-021**: Feature implementation MUST remain blocked until a Dart transport
@@ -230,6 +233,13 @@ already presentation metadata and MUST NOT be treated as the owner's vote.
 - **FR-025**: Authenticated personal scoring from 0 through 3 MUST remain a
   documented roadmap capability, distinct from aggregate score and local
   download, and MUST NOT appear as a non-functional control in this milestone.
+
+- **FR-026**: Latte MUST keep the required site adapter boundary limited to
+  query, post lookup, and media resolution. Optional operations MUST use
+  separate capability ports discovered from the selected adapter; adding a
+  second platform MUST NOT require Yande-specific branches in shared explore,
+  detail, settings, or download code. Unsupported capabilities MUST remain
+  absent from the UI.
 
 ### Key Entities
 

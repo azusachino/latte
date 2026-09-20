@@ -20,8 +20,9 @@ publishImage(displayName, mimeType, temporarySource) -> SaveResult
 - Target collection is public images under a Latte-relative album.
 - A pending MediaStore item becomes visible only after all bytes are written and
   flushed successfully.
-- Failure or interrupted publication deletes the pending item and temporary
-  source.
+- A failed or interrupted transfer keeps its MediaStore row pending and hidden;
+  a later WorkManager run resumes it with an HTTP range request when the server
+  supports ranges. It is never published as partial media.
 - Before transfer, query published entries under `Pictures/Latte` by the
   deterministic identity; immediately before publication, query again to close
   the concurrent-save race. An existing target returns `Already saved` with its
@@ -31,6 +32,9 @@ publishImage(displayName, mimeType, temporarySource) -> SaveResult
   name, never a raw filesystem path.
 - Platform exceptions map to retryable or terminal failure without leaking
   stack traces into UI copy.
+- The worker uses unique work per deterministic save identity, keeps duplicate
+  requests from starting a second transfer, and allows different identities to
+  progress concurrently.
 
 ## Contract evidence
 

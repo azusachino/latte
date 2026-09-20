@@ -29,6 +29,24 @@ anchor/window identity; the adapter owns their route and query mapping.
 revalidates reference, variant, scheme, and allowed host immediately before
 transfer.
 
+## Capability boundary
+
+The core interface is intentionally small. Optional platform behavior is
+represented by separate capability ports, collected through
+`SiteCapabilitiesProvider`, rather than nullable methods on `SiteAdapter` or a
+Yande-specific superclass. Current ports include tag suggestions, related
+tags, authentication, remote favorites, browser routes, and authenticated
+personal scoring.
+
+The application discovers these ports from the adapter's runtime capability
+provider. It renders an operation only when the corresponding port exists and
+has a verified implementation. The personal-score port is roadmap-only in this
+milestone and must not appear in the UI. A future platform can therefore add a
+site adapter and only implement the capabilities that its API supports.
+
+`LatteSiteRegistry` owns the set of adapters and rejects duplicate site IDs;
+exploration remains site-neutral and receives one selected `SiteAdapter`.
+
 ## Success rules
 
 - Returned posts belong to `descriptor.id`.

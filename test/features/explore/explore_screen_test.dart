@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latte/src/app.dart';
@@ -185,25 +186,30 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.bySemanticsLabel('Post zoom'));
     await tester.pumpAndSettle();
-
-    final zoomSurface = find.byKey(const ValueKey('detail-zoom'));
-    final rect = tester.getRect(zoomSurface);
-    final first = await tester.createGesture(pointer: 1);
-    final second = await tester.createGesture(pointer: 2);
-    await first.down(rect.center - const Offset(80, 0));
-    await second.down(rect.center + const Offset(80, 0));
-    await tester.pump();
-    await first.moveTo(rect.center - const Offset(160, 0));
-    await second.moveTo(rect.center + const Offset(160, 0));
-    await tester.pump();
-
-    final transform = tester.widget<Transform>(
-      find.descendant(of: zoomSurface, matching: find.byType(Transform)),
+    final image = tester.widget<ExtendedImage>(
+      find.byKey(const ValueKey('detail-high-quality-image')),
     );
-    expect(transform.transform.getMaxScaleOnAxis(), greaterThan(1));
-
-    await first.up();
-    await second.up();
+    await tester.runAsync(
+      () => precacheImage(
+        image.image,
+        tester.element(find.byKey(const ValueKey('detail-high-quality-image'))),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final loadedImage = tester.widget<ExtendedImage>(
+      find.byKey(const ValueKey('detail-high-quality-image')),
+    );
+    final gestureKey =
+        loadedImage.extendedImageGestureKey!
+            as GlobalKey<ExtendedImageGestureState>;
+    gestureKey.currentState!.handleScaleStart(
+      ScaleStartDetails(focalPoint: Offset.zero),
+    );
+    gestureKey.currentState!.handleScaleUpdate(
+      ScaleUpdateDetails(focalPoint: Offset.zero, scale: 2, pointerCount: 2),
+    );
+    await tester.pumpAndSettle();
+    expect(gestureKey.currentState?.gestureDetails?.totalScale, greaterThan(1));
   });
 
   testWidgets('shows loading, empty, and failure states with actionable copy', (
@@ -435,6 +441,6 @@ class WidgetAdapter implements SiteAdapter {
   ) async => ResolvedMedia(
     reference: reference,
     variant: MediaVariant(id: variant),
-    source: Uri.parse('https://fake.test/${reference.remoteId}/$variant.jpg'),
+    source: Uri(scheme: 'asset', path: 'assets/branding/latte-icon.png'),
   );
 }

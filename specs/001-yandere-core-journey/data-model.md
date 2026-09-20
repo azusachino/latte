@@ -6,8 +6,9 @@ platform payloads are private boundary types and are not domain entities.
 ## Site identity
 
 - `SiteId`: non-empty stable string; first production value is `yandere`.
-- `SiteDescriptor`: ID and display name only. It does not advertise unused
-  capabilities in this milestone.
+- `SiteDescriptor`: ID and display name only. Optional behavior is exposed by
+  separate adapter capability ports, never by pretending that every site has
+  the same API.
 
 ## Post reference
 
@@ -109,7 +110,8 @@ response bodies, cookies, or credentials.
   process death does not lose duplicate knowledge.
 - `ResolvedMedia`: adapter-private validated HTTPS source, expected metadata,
   and deterministic filename inputs.
-- `SaveProgress`: received bytes and optional total; one foreground save exists.
+- `SaveProgress`: received bytes and optional total for one durable background
+  task. Multiple independent save tasks may run concurrently.
 - `SaveResult`: `completed(contentUri, album, displayName) |
   existing(contentUri, album, displayName) | retryableFailure |
   terminalFailure`.
@@ -121,4 +123,6 @@ idle -> resolving -> transferring -> publishing -> completed | existing | failed
 ```
 
 Only `publishing` may expose the completed object to Android MediaStore.
-Failure or interruption before completion removes app-owned temporary bytes.
+Failure or interruption keeps the MediaStore item pending and hidden so a later
+worker run can resume it; terminal cleanup is allowed only when the pending
+identity is invalid or a published collision wins.

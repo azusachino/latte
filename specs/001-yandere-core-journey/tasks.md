@@ -250,7 +250,7 @@ control.
 
 - [x] T041 Reconcile the product contract, feature specification, research
   interpretation, and task acceptance around the owner-approved UX boundary.
-- [ ] T042 Write failing Explore widget tests for the Material top app bar,
+- [x] T042 Write failing Explore widget tests for the Material top app bar,
   Popular/Newest tab row, Settings action and column-density preference,
   period/date FAB surface, and responsive staggered feed; implement that shell
   without changing query state.
@@ -263,3 +263,24 @@ control.
 - [ ] T044 Re-record reviewed compact/expanded light/dark goldens and perform
   the connected-device visual and gesture acceptance against the pinned
   reference UX. Run `make check` after the slice is complete.
+
+## Phase 9: Cross-site seam and durable saves
+
+The first adapter remains Yande.re, but the application boundary is now ready
+for another image-board platform without adding Yande branches to shared UI or
+download code.
+
+- [x] T045 Add a site registry and Dreamland-shaped optional capability ports for
+  tag suggestions, related tags, authentication, favorites, browser routes,
+  and authenticated personal scoring. Keep personal scoring roadmap-only and
+  cover registry uniqueness/provider discovery with tests.
+- [x] T046 Replace the activity-owned download executor with WorkManager unique
+  work, grouped native progress/completion notifications, duplicate handling,
+  HTTP range resume through pending MediaStore rows, and Android notification
+  settings access.
+- [x] T047 Persist the implemented global theme/column settings, document the
+  Yande-derived settings mapping, redraw the launcher source icon as SVG, and
+  provide an Android vector launcher resource.
+- [ ] T048 Complete connected-device acceptance for restart-resume, concurrent
+  notification stacking, notification open/view, vector launcher rendering,
+  and the reference UX/gesture comparison before calling the slice released.

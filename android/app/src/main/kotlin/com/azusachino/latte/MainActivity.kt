@@ -1,56 +1,38 @@
 package com.azusachino.latte
 
 import android.Manifest
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
-import android.content.ContentUris
-import android.content.ContentValues
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
+import android.content.Intent
 import android.os.Build
-import android.provider.MediaStore
+import android.provider.Settings
+import androidx.core.content.ContextCompat
+import androidx.work.BackoffPolicy
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
+import androidx.work.WorkManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
-import java.util.concurrent.ArrayBlockingQueue
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.RejectedExecutionException
-import java.util.concurrent.ThreadFactory
-import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
 
 class MainActivity : FlutterActivity() {
     private val channelName = "com.azusachino.latte/download"
-    private val album = "Pictures/Latte"
-    private val notificationChannelId = "latte_downloads"
-    private val notificationGroup = "latte_downloads"
     private val notificationPermissionRequestCode = 4001
-    private val downloadThreadId = AtomicInteger()
-    private val downloadExecutor = ThreadPoolExecutor(
-        3,
-        3,
-        0L,
-        TimeUnit.MILLISECONDS,
-        ArrayBlockingQueue<Runnable>(24),
-        ThreadFactory { runnable ->
-            Thread(runnable, "Latte-download-${downloadThreadId.incrementAndGet()}")
-        },
-    )
-    private val activeTasks = ConcurrentHashMap<String, DownloadTask>()
-
-    override fun onCreate(savedInstanceState: android.os.Bundle?) {
-        super.onCreate(savedInstanceState)
-        createDownloadNotificationChannel()
-    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
             .setMethodCallHandler { call, result ->
+                if (call.method == "openDownloadNotifications") {
+                    startActivity(
+                        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                            putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                        },
+                    )
+                    result.success(null)
+                    return@setMethodCallHandler
+                }
                 if (call.method != "saveImage") {
                     result.notImplemented()
                     return@setMethodCallHandler
@@ -64,81 +46,57 @@ class MainActivity : FlutterActivity() {
                     return@setMethodCallHandler
                 }
 
-                val task = DownloadTask(
-                    key = displayName,
-                    sourceUrl = sourceUrl,
-                    displayName = displayName,
-                    mimeType = mimeType,
-                    notificationId = displayName.hashCode() and Int.MAX_VALUE,
-                )
-                if (activeTasks.putIfAbsent(task.key, task) != null) {
-                    result.success(
-                        mapOf(
-                            "status" to "already_running",
-                            "album" to album,
-                            "displayName" to displayName,
-                        ),
-                    )
-                    return@setMethodCallHandler
-                }
-
                 requestNotificationPermission()
-                showDownloadStarted(task.notificationId, task.displayName)
-                try {
-                    downloadExecutor.execute(task)
-                    result.success(
-                        mapOf(
-                            "status" to "started",
-                            "album" to album,
-                            "displayName" to displayName,
-                        ),
-                    )
-                } catch (error: RejectedExecutionException) {
-                    activeTasks.remove(task.key, task)
-                    getSystemService(NotificationManager::class.java).cancel(task.notificationId)
-                    result.error(
-                        "queue_full",
-                        "Latte already has too many downloads queued",
-                        null,
-                    )
-                }
-            }
-    }
+                val workManager = WorkManager.getInstance(applicationContext)
+                val uniqueName = DownloadWorker.uniqueWorkName(displayName)
+                val workInfos = workManager.getWorkInfosForUniqueWork(uniqueName)
+                workInfos.addListener(
+                    {
+                        val active = runCatching {
+                            workInfos.get().any { !it.state.isFinished }
+                        }.getOrDefault(false)
+                        if (active) {
+                            result.success(
+                                mapOf(
+                                    "status" to "already_running",
+                                    "album" to DownloadWorker.album,
+                                    "displayName" to displayName,
+                                ),
+                            )
+                            return@addListener
+                        }
 
-    private inner class DownloadTask(
-        val key: String,
-        private val sourceUrl: String,
-        val displayName: String,
-        private val mimeType: String,
-        val notificationId: Int,
-    ) : Runnable {
-        override fun run() {
-            try {
-                val receipt = saveImage(sourceUrl, displayName, mimeType, notificationId)
-                showDownloadResult(notificationId, receipt, mimeType)
-            } catch (error: Exception) {
-                showDownloadFailure(
-                    notificationId,
-                    displayName,
-                    error.message ?: "Image save failed",
+                        val request = OneTimeWorkRequestBuilder<DownloadWorker>()
+                            .setInputData(
+                                DownloadWorker.inputData(
+                                    sourceUrl = sourceUrl,
+                                    displayName = displayName,
+                                    mimeType = mimeType,
+                                ),
+                            )
+                            .setBackoffCriteria(
+                                BackoffPolicy.EXPONENTIAL,
+                                10,
+                                TimeUnit.SECONDS,
+                            )
+                            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                            .build()
+                        workManager.enqueueUniqueWork(
+                            uniqueName,
+                            ExistingWorkPolicy.KEEP,
+                            request,
+                        )
+                        result.success(
+                            mapOf(
+                                "status" to "started",
+                                "album" to DownloadWorker.album,
+                                "displayName" to displayName,
+                            ),
+                        )
+                    },
+                    ContextCompat.getMainExecutor(applicationContext),
                 )
-            } finally {
-                activeTasks.remove(key, this)
             }
-        }
-    }
-
-    private fun createDownloadNotificationChannel() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        getSystemService(NotificationManager::class.java).createNotificationChannel(
-            NotificationChannel(
-                notificationChannelId,
-                "Downloads",
-                NotificationManager.IMPORTANCE_LOW,
-            ).apply {
-                description = "Latte image downloads"
-            },
-        )
     }
 
     private fun requestNotificationPermission() {
@@ -149,194 +107,6 @@ class MainActivity : FlutterActivity() {
                 arrayOf(Manifest.permission.POST_NOTIFICATIONS),
                 notificationPermissionRequestCode,
             )
-        }
-    }
-
-    private fun notificationBuilder(
-        notificationId: Int,
-        title: String,
-        text: String,
-        contentUri: String? = null,
-        mimeType: String? = null,
-    ): Notification.Builder {
-        val contentIntent = if (!contentUri.isNullOrBlank() && !mimeType.isNullOrBlank()) {
-            Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(Uri.parse(contentUri), mimeType)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-        } else {
-            Intent(this, MainActivity::class.java)
-        }
-        return Notification.Builder(this, notificationChannelId)
-            .setSmallIcon(applicationInfo.icon)
-            .setContentTitle(title)
-            .setContentText(text)
-            .setContentIntent(
-                PendingIntent.getActivity(
-                    this,
-                    notificationId,
-                    contentIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                ),
-            )
-            .setGroup(notificationGroup)
-            .setOnlyAlertOnce(true)
-    }
-
-    private fun showDownloadStarted(notificationId: Int, displayName: String) {
-        val notification = notificationBuilder(notificationId, "Downloading image", displayName)
-            .setOngoing(true)
-            .setProgress(0, 0, true)
-            .build()
-        getSystemService(NotificationManager::class.java).notify(notificationId, notification)
-    }
-
-    private fun showDownloadProgress(
-        notificationId: Int,
-        displayName: String,
-        bytesCopied: Long,
-        totalBytes: Long,
-    ) {
-        val hasTotal = totalBytes > 0
-        val progress = if (hasTotal) {
-            (bytesCopied.toDouble() / totalBytes * 100).toInt().coerceIn(0, 100)
-        } else {
-            0
-        }
-        val notification = notificationBuilder(notificationId, "Downloading image", displayName)
-            .setOngoing(true)
-            .setProgress(100, progress, !hasTotal)
-            .build()
-        getSystemService(NotificationManager::class.java).notify(notificationId, notification)
-    }
-
-    private fun showDownloadResult(
-        notificationId: Int,
-        receipt: Map<String, String>,
-        mimeType: String,
-    ) {
-        val alreadySaved = receipt["status"] == "already_saved"
-        val displayName = receipt["displayName"] ?: "Latte image"
-        val savedAlbum = receipt["album"] ?: album
-        val title = if (alreadySaved) "Image already saved" else "Image saved"
-        val text = if (alreadySaved) {
-            "Already saved: $displayName · $savedAlbum"
-        } else {
-            "$displayName · $savedAlbum"
-        }
-        val notification = notificationBuilder(
-            notificationId,
-            title,
-            text,
-            receipt["contentUri"],
-            mimeType,
-        )
-            .setAutoCancel(true)
-            .build()
-        getSystemService(NotificationManager::class.java).notify(notificationId, notification)
-    }
-
-    private fun showDownloadFailure(notificationId: Int, displayName: String, message: String) {
-        val notification = notificationBuilder(
-            notificationId,
-            "Image download failed",
-            "$displayName · $message",
-        )
-            .setAutoCancel(true)
-            .build()
-        getSystemService(NotificationManager::class.java).notify(notificationId, notification)
-    }
-
-    private fun saveImage(
-        sourceUrl: String,
-        displayName: String,
-        mimeType: String,
-        notificationId: Int,
-    ): Map<String, String> {
-        val resolver = contentResolver
-        val existing = resolver.query(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            arrayOf(MediaStore.Images.Media._ID),
-            "${MediaStore.Images.Media.DISPLAY_NAME} = ? AND " +
-                "${MediaStore.Images.Media.RELATIVE_PATH} = ? AND " +
-                "${MediaStore.Images.Media.IS_PENDING} = 0",
-            arrayOf(displayName, "$album/"),
-            null,
-        )?.use { cursor ->
-            if (cursor.moveToFirst()) {
-                ContentUris.withAppendedId(
-                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                    cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)),
-                ).toString()
-            } else {
-                null
-            }
-        }
-        if (existing != null) {
-            return mapOf(
-                "status" to "already_saved",
-                "contentUri" to existing,
-                "album" to album,
-                "displayName" to displayName,
-            )
-        }
-
-        val values = ContentValues().apply {
-            put(MediaStore.Images.Media.DISPLAY_NAME, displayName)
-            put(MediaStore.Images.Media.MIME_TYPE, mimeType)
-            put(MediaStore.Images.Media.RELATIVE_PATH, "$album/")
-            put(MediaStore.Images.Media.IS_PENDING, 1)
-        }
-        val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-            ?: error("Latte could not create a MediaStore item")
-        try {
-            val connection = java.net.URL(sourceUrl).openConnection().apply {
-                connectTimeout = 8_000
-                readTimeout = 20_000
-                setRequestProperty("User-Agent", "Latte/1.0")
-            }
-            connection.getInputStream().use { input ->
-                resolver.openOutputStream(uri)?.use { output ->
-                    val buffer = ByteArray(16 * 1024)
-                    val totalBytes = connection.contentLengthLong
-                    var bytesCopied = 0L
-                    var lastUpdateNanos = 0L
-                    while (true) {
-                        val count = input.read(buffer)
-                        if (count < 0) break
-                        output.write(buffer, 0, count)
-                        bytesCopied += count
-                        val now = System.nanoTime()
-                        if (
-                            bytesCopied == totalBytes ||
-                            now - lastUpdateNanos >= 250_000_000L
-                        ) {
-                            showDownloadProgress(
-                                notificationId,
-                                displayName,
-                                bytesCopied,
-                                totalBytes,
-                            )
-                            lastUpdateNanos = now
-                        }
-                    }
-                } ?: error("Latte could not open the MediaStore item")
-            }
-            resolver.update(
-                uri,
-                ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING, 0) },
-                null,
-                null,
-            )
-            return mapOf(
-                "status" to "completed",
-                "contentUri" to uri.toString(),
-                "album" to album,
-                "displayName" to displayName,
-            )
-        } catch (error: Exception) {
-            resolver.delete(uri, null, null)
-            throw error
         }
     }
 }

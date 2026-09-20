@@ -19,8 +19,9 @@ and evidence boundaries before implementation
   FR-010]
 - [ ] CHK004 Authenticated 0–3 personal scoring remains a later distinct slice
   from the read-only aggregate score. [Spec deferred capability]
-- [ ] CHK005 Authentication, favorites, pools, uploads, history, background
-  queues, second sites, and non-Android targets are correctly deferred.
+- [ ] CHK005 Authentication, favorites, pools, uploads, history, user-visible
+  queues, second sites, and non-Android targets are correctly deferred; native
+  background transfer remains covered by the save contract.
   [Spec §FR-018]
 
 ## Material 3 experience
