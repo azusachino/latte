@@ -878,9 +878,16 @@ class _DetailImagePagerState extends State<_DetailImagePager> {
     initialPage: widget.index,
   );
   final _gestureKeys = <int, GlobalKey<ExtendedImageGestureState>>{};
+  final _prefetchedReferences = <PostRef>{};
   Offset? _pointerDown;
   var _activePointers = 0;
   var _hadMultiplePointers = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _schedulePrefetch();
+  }
 
   @override
   void didUpdateWidget(covariant _DetailImagePager oldWidget) {
@@ -894,6 +901,10 @@ class _DetailImagePagerState extends State<_DetailImagePager> {
           curve: Curves.easeOut,
         );
       }
+    }
+    if (oldWidget.index != widget.index ||
+        oldWidget.state.posts.length != widget.state.posts.length) {
+      _schedulePrefetch();
     }
   }
 
@@ -961,6 +972,40 @@ class _DetailImagePagerState extends State<_DetailImagePager> {
   GlobalKey<ExtendedImageGestureState> _gestureKeyFor(int page) =>
       _gestureKeys.putIfAbsent(page, GlobalKey<ExtendedImageGestureState>.new);
 
+  void _schedulePrefetch() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_prefetchAdjacent());
+    });
+  }
+
+  Future<void> _prefetchAdjacent() async {
+    final candidates = [
+      for (
+        var page = widget.index + 1;
+        page < widget.state.posts.length && page <= widget.index + 3;
+        page++
+      )
+        widget.state.posts[page],
+    ].where((post) => _prefetchedReferences.add(post.reference));
+    await Future.wait(candidates.map(_prefetchPost));
+  }
+
+  Future<void> _prefetchPost(PostSummary post) async {
+    try {
+      final detail = await widget.adapter.getPost(post.reference);
+      final variantId = _detailImageVariant(detail.media);
+      if (variantId == null) return;
+      final media = await widget.adapter.resolveMedia(
+        post.reference,
+        variantId,
+      );
+      if (!mounted) return;
+      await precacheImage(_imageProvider(media.source), context);
+    } on Object {
+      // Prefetch is opportunistic; the detail page still loads on demand.
+    }
+  }
+
   void _handleFallbackSwipe(Offset start, Offset end) {
     if (!_pageController.hasClients ||
         _pageController.page?.round() != widget.index) {
@@ -976,6 +1021,11 @@ class _DetailImagePagerState extends State<_DetailImagePager> {
     if (nextIndex < 0 || nextIndex >= widget.state.posts.length) return;
     unawaited(widget.controller.openAdjacentDetail(amount));
   }
+}
+
+ImageProvider<Object> _imageProvider(Uri source) {
+  if (source.scheme == 'asset') return AssetImage(_assetName(source));
+  return ExtendedNetworkImageProvider(source.toString(), cache: true);
 }
 
 class _DetailZoomArtwork extends StatefulWidget {

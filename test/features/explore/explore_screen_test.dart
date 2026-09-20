@@ -268,6 +268,39 @@ void main() {
     expect(controller.state.selectedReference?.remoteId, 'swipe-second');
   });
 
+  testWidgets('prefetches the next three loaded detail images', (tester) async {
+    final items = [
+      post('prefetch-0'),
+      post('prefetch-1'),
+      post('prefetch-2'),
+      post('prefetch-3'),
+      post('prefetch-4'),
+    ];
+    final adapter = WidgetAdapter(posts: items);
+    final controller = ExploreController(adapter: adapter);
+    await tester.pumpWidget(app(controller));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.bySemanticsLabel('Post prefetch-0'));
+    await tester.pumpAndSettle();
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pumpAndSettle();
+
+    expect(
+      adapter.detailRequests.map((reference) => reference.remoteId),
+      containsAll(<String>[
+        'prefetch-0',
+        'prefetch-1',
+        'prefetch-2',
+        'prefetch-3',
+      ]),
+    );
+    expect(
+      adapter.detailRequests.map((reference) => reference.remoteId),
+      isNot(contains('prefetch-4')),
+    );
+  });
+
   testWidgets('supports two-finger image zoom without taking pager swipes', (
     tester,
   ) async {
@@ -541,6 +574,7 @@ class WidgetAdapter implements SiteAdapter {
   final bool _error;
   final Completer<PostPage>? _pending;
   final queries = <PostQuery>[];
+  final detailRequests = <PostRef>[];
 
   @override
   SiteDescriptor get descriptor =>
@@ -560,17 +594,20 @@ class WidgetAdapter implements SiteAdapter {
   }
 
   @override
-  Future<PostDetail> getPost(PostRef reference) async => PostDetail(
-    summary: _posts.singleWhere((post) => post.reference == reference),
-    media: const [
-      MediaVariant(
-        id: MediaVariantId.jpeg,
-        width: 1200,
-        height: 800,
-        extension: 'jpg',
-      ),
-    ],
-  );
+  Future<PostDetail> getPost(PostRef reference) async {
+    detailRequests.add(reference);
+    return PostDetail(
+      summary: _posts.singleWhere((post) => post.reference == reference),
+      media: const [
+        MediaVariant(
+          id: MediaVariantId.jpeg,
+          width: 1200,
+          height: 800,
+          extension: 'jpg',
+        ),
+      ],
+    );
+  }
 
   @override
   Future<ResolvedMedia> resolveMedia(
