@@ -124,14 +124,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun applySafeMode(tags: String?): String? {
-        if (!preferences.safeMode.value) return tags?.ifBlank { null }
-        return if (tags.isNullOrBlank()) {
-            "rating:safe"
-        } else if (!tags.contains("rating:")) {
-            "$tags rating:safe"
-        } else {
-            tags
-        }
+        return YandeApi.safeModeTags(tags, preferences.safeMode.value)
     }
 
     fun cycleColumns(): Int {
@@ -413,14 +406,14 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun openPool(pool: PoolSummary) {
-        search(tags = "pool:${pool.id}", poolName = "#${pool.id} · ${pool.displayName}")
+        search(tags = YandeApi.poolTags(pool.id), poolName = "#${pool.id} · ${pool.displayName}")
     }
 
     fun loadFavoritesInitial(username: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(favoritesFeed = it.favoritesFeed.copy(isLoading = true, error = null, page = 1)) }
             try {
-                val posts = api.getPosts(page = 1, tags = applySafeMode("vote:3:$username"))
+                val posts = api.getPosts(page = 1, tags = applySafeMode(YandeApi.favoriteTags(username)))
                 _uiState.update {
                     it.copy(
                         favoritesFeed = it.favoritesFeed.copy(
@@ -451,7 +444,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val nextPage = feed.page + 1
             try {
-                val newPosts = api.getPosts(page = nextPage, tags = applySafeMode("vote:3:$username"))
+                val newPosts = api.getPosts(page = nextPage, tags = applySafeMode(YandeApi.favoriteTags(username)))
                 _uiState.update {
                     it.copy(
                         favoritesFeed = it.favoritesFeed.copy(
@@ -472,7 +465,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             _uiState.update { it.copy(favoritesFeed = it.favoritesFeed.copy(isRefreshing = true, error = null)) }
             try {
-                val posts = api.getPosts(page = 1, tags = applySafeMode("vote:3:$username"))
+                val posts = api.getPosts(page = 1, tags = applySafeMode(YandeApi.favoriteTags(username)))
                 _uiState.update {
                     it.copy(
                         favoritesFeed = it.favoritesFeed.copy(
@@ -575,7 +568,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         if (_uiState.value.poolCovers.containsKey(poolId)) return
         viewModelScope.launch {
             try {
-                val posts = api.getPosts(page = 1, limit = 1, tags = "pool:$poolId")
+                val posts = api.getPosts(page = 1, limit = 1, tags = YandeApi.poolTags(poolId))
                 val coverUrl = posts.firstOrNull()?.previewUrl ?: return@launch
                 _uiState.update { it.copy(poolCovers = it.poolCovers + (poolId to coverUrl)) }
             } catch (e: Exception) {

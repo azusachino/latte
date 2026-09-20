@@ -1,6 +1,6 @@
 package com.azusachino.latte.plugin.yande
 
-import com.azusachino.latte.data.network.PersistentCookieJar
+import com.azusachino.latte.data.network.SessionCookieStore
 import com.azusachino.latte.plugin.AuthType
 import com.azusachino.latte.plugin.PluginCapability
 import com.azusachino.latte.plugin.SitePlugin
@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.IOException
@@ -18,7 +19,7 @@ import java.io.IOException
 class YandePlugin(
     private val storage: PluginStorage,
     private val httpClient: OkHttpClient,
-    private val cookieJar: PersistentCookieJar? = null,
+    private val cookieJar: SessionCookieStore? = null,
     private val baseUrl: String = "https://yande.re",
 ) : SitePlugin {
 
@@ -68,17 +69,17 @@ class YandePlugin(
                 .header("Referer", "$baseUrl/user/login")
                 .build()
 
-            val response = httpClient.newCall(request).execute()
-            if (!response.isSuccessful && response.code != 302 && response.code != 303) {
-                return@withContext Result.failure(IOException("Login failed with HTTP ${response.code}"))
+            httpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful && response.code != 302 && response.code != 303) {
+                    return@withContext Result.failure(IOException("Login failed with HTTP ${response.code}"))
+                }
             }
 
-            // 3. Verify session via cookies or user check
-            val userId = cookieJar?.getCookieValue("yande.re", "user_id")
-            val hasSession = userId != null && userId.toIntOrNull() != 0
-
-            // If cookieJar didn't find it directly, verify credentials via user query
-            if (!hasSession && !verifyUserSession(username)) {
+            // A public user lookup cannot prove that these credentials are valid.
+            // Only accept the authenticated session cookie set by the login response.
+            val userId = cookieJar?.getCookieValue(baseUrl.toHttpUrl().host, "user_id")
+            val hasSession = userId?.toLongOrNull()?.let { it > 0 } == true
+            if (!hasSession) {
                 return@withContext Result.failure(IllegalArgumentException("Invalid username or password"))
             }
 
@@ -110,10 +111,10 @@ class YandePlugin(
                 .header("Accept", "application/json")
                 .build()
 
-            val response = httpClient.newCall(request).execute()
-            if (!response.isSuccessful) return@withContext null
-
-            val body = response.body?.string().orEmpty()
+            val body = httpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@withContext null
+                response.body?.string().orEmpty()
+            }
             val favoritedUsers = FAVORITED_USERS_REGEX.find(body)
                 ?.groupValues?.get(1)
                 ?.split(",")
@@ -161,16 +162,17 @@ class YandePlugin(
                 .header("Referer", "$baseUrl/post/show/$postId")
                 .build()
 
-            val response = httpClient.newCall(request).execute()
-            if (response.isSuccessful) {
-                if (score == 0) {
-                    userScores.remove(postId)
+            httpClient.newCall(request).execute().use { response ->
+                if (response.isSuccessful) {
+                    if (score == 0) {
+                        userScores.remove(postId)
+                    } else {
+                        userScores[postId] = score
+                    }
+                    Result.success(Unit)
                 } else {
-                    userScores[postId] = score
+                    Result.failure(IOException("Vote failed with HTTP ${response.code}"))
                 }
-                Result.success(Unit)
-            } else {
-                Result.failure(IOException("Vote failed with HTTP ${response.code}"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -184,24 +186,12 @@ class YandePlugin(
             .build()
 
         return try {
-            val response = httpClient.newCall(request).execute()
-            val html = response.body?.string() ?: return null
-            extractCsrfToken(html).also { cachedCsrfToken = it }
+            httpClient.newCall(request).execute().use { response ->
+                val html = response.body?.string() ?: return null
+                extractCsrfToken(html).also { cachedCsrfToken = it }
+            }
         } catch (e: Exception) {
             null
-        }
-    }
-
-    private fun verifyUserSession(username: String): Boolean {
-        val request = Request.Builder()
-            .url("$baseUrl/user.json?name=$username")
-            .build()
-
-        return try {
-            val response = httpClient.newCall(request).execute()
-            response.isSuccessful && (response.body?.string()?.contains(username) == true)
-        } catch (e: Exception) {
-            false
         }
     }
 

@@ -2,14 +2,20 @@ package com.azusachino.latte.data.network
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
 import java.util.concurrent.ConcurrentHashMap
 
-class PersistentCookieJar(context: Context) : CookieJar {
-    private val prefs: SharedPreferences =
-        context.getSharedPreferences("latte_cookie_jar", Context.MODE_PRIVATE)
+interface SessionCookieStore : CookieJar {
+    fun getCookieValue(host: String, name: String): String?
+    fun clear()
+}
+
+class PersistentCookieJar(context: Context) : SessionCookieStore {
+    private val prefs: SharedPreferences = createEncryptedPrefs(context)
     private val memoryStore = ConcurrentHashMap<String, MutableMap<String, Cookie>>()
 
     init {
@@ -23,7 +29,7 @@ class PersistentCookieJar(context: Context) : CookieJar {
         val now = System.currentTimeMillis()
 
         for (cookie in cookies) {
-            if (cookie.expiresAt <= now) {
+            if (cookie.isExpired(now)) {
                 hostCookies.remove(cookie.name)
             } else {
                 hostCookies[cookie.name] = cookie
@@ -40,20 +46,20 @@ class PersistentCookieJar(context: Context) : CookieJar {
 
         for ((storedHost, cookies) in memoryStore) {
             if (hostMatches(storedHost, host)) {
-                val validCookies = cookies.values.filter { it.expiresAt > now }
+                val validCookies = cookies.values.filter { !it.isExpired(now) }
                 result.addAll(validCookies)
             }
         }
         return result
     }
 
-    fun getCookieValue(host: String, name: String): String? {
+    override fun getCookieValue(host: String, name: String): String? {
         val now = System.currentTimeMillis()
-        return memoryStore[host]?.get(name)?.takeIf { it.expiresAt > now }?.value
+        return memoryStore[host]?.get(name)?.takeIf { !it.isExpired(now) }?.value
     }
 
     @Synchronized
-    fun clear() {
+    override fun clear() {
         memoryStore.clear()
         prefs.edit().clear().apply()
     }
@@ -86,13 +92,15 @@ class PersistentCookieJar(context: Context) : CookieJar {
                             val secure = parts[4].toBoolean()
                             val httpOnly = parts[5].toBoolean()
 
-                            if (expiresAt > now) {
+                            if (expiresAt == Long.MIN_VALUE || expiresAt > now) {
                                 val builder = Cookie.Builder()
                                     .name(name)
                                     .value(value)
                                     .domain(domain)
                                     .path(path)
-                                    .expiresAt(expiresAt)
+                                if (expiresAt != Long.MIN_VALUE) {
+                                    builder.expiresAt(expiresAt)
+                                }
                                 if (secure) builder.secure()
                                 if (httpOnly) builder.httpOnly()
                                 val cookie = builder.build()
@@ -103,6 +111,41 @@ class PersistentCookieJar(context: Context) : CookieJar {
                 }
                 if (hostCookies.isNotEmpty()) {
                     memoryStore[host] = hostCookies
+                }
+            }
+        }
+    }
+
+    private fun Cookie.isExpired(now: Long): Boolean =
+        expiresAt != Long.MIN_VALUE && expiresAt <= now
+
+    companion object {
+        private const val PREFS_FILE_NAME = "latte_cookie_jar"
+
+        private fun createEncryptedPrefs(context: Context): SharedPreferences {
+            fun create(): SharedPreferences {
+                val masterKey = MasterKey.Builder(context)
+                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                    .build()
+
+                return EncryptedSharedPreferences.create(
+                    context,
+                    PREFS_FILE_NAME,
+                    masterKey,
+                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+                )
+            }
+
+            return try {
+                create()
+            } catch (firstFailure: Exception) {
+                // Remove the legacy/plaintext file, then retry only with encrypted storage.
+                context.deleteSharedPreferences(PREFS_FILE_NAME)
+                try {
+                    create()
+                } catch (secondFailure: Exception) {
+                    throw IllegalStateException("Unable to initialize encrypted cookie storage", secondFailure)
                 }
             }
         }

@@ -2,7 +2,6 @@ package com.azusachino.latte.plugin.storage
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
@@ -50,7 +49,6 @@ class SecurePluginStorage(context: Context) : PluginStorage {
     private fun buildKey(pluginId: String, key: String): String = "$pluginId:$key"
 
     companion object {
-        private const val TAG = "SecurePluginStorage"
         private const val PREFS_FILE_NAME = "latte_secure_plugin_prefs"
 
         private fun createEncryptedPrefs(context: Context): SharedPreferences {
@@ -67,7 +65,6 @@ class SecurePluginStorage(context: Context) : PluginStorage {
                     EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
                 )
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to initialize EncryptedSharedPreferences, resetting corrupted keys", e)
                 try {
                     context.deleteSharedPreferences(PREFS_FILE_NAME)
                     val masterKey = MasterKey.Builder(context)
@@ -82,8 +79,7 @@ class SecurePluginStorage(context: Context) : PluginStorage {
                         EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
                     )
                 } catch (e2: Exception) {
-                    Log.e(TAG, "Fallback to standard private preferences after Keystore failure", e2)
-                    context.getSharedPreferences(PREFS_FILE_NAME, Context.MODE_PRIVATE)
+                    throw IllegalStateException("Unable to initialize encrypted plugin storage", e2)
                 }
             }
         }

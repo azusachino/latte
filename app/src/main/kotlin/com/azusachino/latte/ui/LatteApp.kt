@@ -110,7 +110,7 @@ fun LatteApp(
                             posts = posts,
                             initialIndex = screen.initialIndex,
                             downloadManager = downloadManager,
-                            sitePlugin = yandePlugin,
+                            pluginManager = sitePluginManager,
                             onBack = {
                                 currentScreen = Screen.Explore
                             },

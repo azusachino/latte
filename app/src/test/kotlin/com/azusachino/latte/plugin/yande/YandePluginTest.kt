@@ -1,14 +1,16 @@
 package com.azusachino.latte.plugin.yande
 
+import com.azusachino.latte.data.network.SessionCookieStore
 import com.azusachino.latte.plugin.storage.PluginStorage
 import kotlinx.coroutines.test.runTest
+import okhttp3.Cookie
+import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -56,13 +58,28 @@ class YandePluginTest {
         }
     }
 
+    private class InMemoryCookieStore : SessionCookieStore {
+        private val cookies = mutableMapOf<String, String>()
+
+        override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
+            cookies.forEach { cookie -> this.cookies[cookie.name] = cookie.value }
+        }
+
+        override fun loadForRequest(url: HttpUrl): List<Cookie> = emptyList()
+
+        override fun getCookieValue(host: String, name: String): String? = cookies[name]
+
+        override fun clear() {
+            cookies.clear()
+        }
+    }
+
     @Test
     fun testYandePasswordHasher() {
-        val hash = YandePasswordHasher.hash("password")
-        assertNotNull(hash)
-        assertEquals(40, hash.length) // SHA-1 is 40 hex chars
-        // Verify deterministic output
-        assertEquals(hash, YandePasswordHasher.hash("password"))
+        assertEquals(
+            "b3c976b76ba4505518baa3dd35fd5d335069963c",
+            YandePasswordHasher.hash("password"),
+        )
     }
 
     @Test
@@ -145,9 +162,59 @@ class YandePluginTest {
     }
 
     @Test
-    fun testFavoritesQueryFormat() {
-        val username = "testuser"
-        val expectedQuery = "vote:3:$username"
-        assertEquals("vote:3:testuser", expectedQuery)
+    fun loginPersistsCredentialsOnlyAfterAuthenticatedSessionCookie() = runTest {
+        val storage = InMemoryStorage()
+        val cookieStore = InMemoryCookieStore()
+        val loginHttpClient = httpClient.newBuilder().cookieJar(cookieStore).build()
+        mockServer.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                "<meta name=\"csrf-token\" content=\"login-token\">",
+            ),
+        )
+        mockServer.enqueue(
+            MockResponse().setResponseCode(302)
+                .addHeader("Set-Cookie", "user_id=42; Path=/"),
+        )
+
+        val plugin = YandePlugin(
+            storage = storage,
+            httpClient = loginHttpClient,
+            cookieJar = cookieStore,
+            baseUrl = mockServer.url("/").toString().removeSuffix("/"),
+        )
+
+        val result = plugin.login(mapOf("username" to "alice", "password" to "password"))
+
+        assertTrue(result.isSuccess)
+        assertTrue(plugin.isLoggedIn)
+        assertEquals("alice", storage.get("yande.re", "username"))
+        assertEquals(2, mockServer.requestCount)
+    }
+
+    @Test
+    fun loginRejectsResponseWithoutAuthenticatedSessionCookie() = runTest {
+        val storage = InMemoryStorage()
+        val cookieStore = InMemoryCookieStore()
+        val loginHttpClient = httpClient.newBuilder().cookieJar(cookieStore).build()
+        mockServer.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                "<meta name=\"csrf-token\" content=\"login-token\">",
+            ),
+        )
+        mockServer.enqueue(MockResponse().setResponseCode(200).setBody("alice"))
+
+        val plugin = YandePlugin(
+            storage = storage,
+            httpClient = loginHttpClient,
+            cookieJar = cookieStore,
+            baseUrl = mockServer.url("/").toString().removeSuffix("/"),
+        )
+
+        val result = plugin.login(mapOf("username" to "alice", "password" to "wrong"))
+
+        assertTrue(result.isFailure)
+        assertFalse(plugin.isLoggedIn)
+        assertNull(storage.get("yande.re", "username"))
+        assertEquals(2, mockServer.requestCount)
     }
 }

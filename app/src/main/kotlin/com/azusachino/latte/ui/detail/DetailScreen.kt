@@ -81,6 +81,7 @@ import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.model.PostRating
 import com.azusachino.latte.plugin.PluginCapability
 import com.azusachino.latte.plugin.SitePlugin
+import com.azusachino.latte.plugin.SitePluginManager
 import com.azusachino.latte.ui.common.ToastManager
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -96,7 +97,7 @@ fun DetailScreen(
     downloadManager: DownloadManager,
     onBack: () -> Unit,
     onTagClick: (String) -> Unit = {},
-    sitePlugin: SitePlugin? = null,
+    pluginManager: SitePluginManager,
     onRequireLogin: (SitePlugin) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -110,15 +111,17 @@ fun DetailScreen(
     var showControls by remember { mutableStateOf(true) }
     var showInspectSheet by remember { mutableStateOf(false) }
     var localScores by remember { mutableStateOf(mapOf<Long, Int>()) }
+    var inlineActionError by remember { mutableStateOf<String?>(null) }
 
     val currentPost = posts.getOrNull(pagerState.currentPage)
+    val currentPlugin = currentPost?.let { pluginManager.get(it.siteId) }
 
     // The site never tells the app "you already scored this post" up front --
     // recover a favorite (score 3) set in a prior session or on the web.
-    LaunchedEffect(currentPost?.id, sitePlugin?.isLoggedIn) {
+    LaunchedEffect(currentPost?.id, currentPlugin?.isLoggedIn) {
         val post = currentPost
-        if (post != null && sitePlugin != null && sitePlugin.isLoggedIn && sitePlugin.getScore(post.id) == null) {
-            sitePlugin.refreshScore(post.id)?.let { refreshed ->
+        if (post != null && currentPlugin != null && currentPlugin.isLoggedIn && currentPlugin.getScore(post.id) == null) {
+            currentPlugin.refreshScore(post.id)?.let { refreshed ->
                 localScores = localScores + (post.id to refreshed)
             }
         }
@@ -238,14 +241,25 @@ fun DetailScreen(
                 modifier = Modifier.fillMaxWidth(),
                 color = Color.Black.copy(alpha = 0.65f),
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .navigationBarsPadding()
                         .padding(horizontal = 20.dp, vertical = 14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    inlineActionError?.let { message ->
+                        Text(
+                            text = message,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.padding(bottom = 8.dp),
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                     // Details button: elegant pill with icon & resolution
                     FilledTonalButton(
                         onClick = { showInspectSheet = true },
@@ -274,28 +288,30 @@ fun DetailScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        if (sitePlugin != null && sitePlugin.capabilities.contains(PluginCapability.FAVORITES)) {
-                            val isPluginLoggedIn by sitePlugin.isLoggedInFlow.collectAsState(initial = sitePlugin.isLoggedIn)
-                            val currentScore = localScores[currentPost?.id] ?: sitePlugin.getScore(currentPost?.id ?: 0L) ?: 0
+                        if (currentPlugin != null && currentPlugin.capabilities.contains(PluginCapability.FAVORITES)) {
+                            val isPluginLoggedIn by currentPlugin.isLoggedInFlow.collectAsState(initial = currentPlugin.isLoggedIn)
+                            val post = currentPost
+                            val currentScore = localScores[post.id] ?: currentPlugin.getScore(post.id) ?: 0
                             val isFavorited = currentScore == 3
 
                             FilledTonalIconButton(
                                 onClick = {
                                     if (!isPluginLoggedIn) {
-                                        onRequireLogin(sitePlugin)
-                                    } else if (currentPost != null) {
+                                        onRequireLogin(currentPlugin)
+                                    } else {
                                         scope.launch {
                                             val targetScore = if (isFavorited) 0 else 3
-                                            val result = sitePlugin.setScore(currentPost.id, targetScore)
+                                            val result = currentPlugin.setScore(post.id, targetScore)
                                             if (result.isSuccess) {
-                                                localScores = localScores + (currentPost.id to targetScore)
+                                                inlineActionError = null
+                                                localScores = localScores + (post.id to targetScore)
                                                 if (targetScore == 3) {
                                                     ToastManager.showSuccess("Added to favorites")
                                                 } else {
                                                     ToastManager.showInfo("Removed from favorites")
                                                 }
                                             } else {
-                                                ToastManager.showInfo("Failed to update favorite: ${result.exceptionOrNull()?.message}")
+                                                inlineActionError = "Failed to update favorite: ${result.exceptionOrNull()?.message.orEmpty()}"
                                             }
                                         }
                                     }
@@ -328,10 +344,11 @@ fun DetailScreen(
                                                 ToastManager.showWarning("Download already running")
                                             }
                                             is DownloadResult.Started -> {
+                                                inlineActionError = null
                                                 ToastManager.showSuccess("Download started: ${result.displayName}")
                                             }
                                             is DownloadResult.Failed -> {
-                                                ToastManager.showInfo("Failed: ${result.message}")
+                                                inlineActionError = "Failed to save image: ${result.message}"
                                             }
                                         }
                                     }
@@ -356,6 +373,7 @@ fun DetailScreen(
                                 fontSize = 14.sp,
                             )
                         }
+                    }
                     }
                 }
             }
@@ -399,10 +417,19 @@ fun DetailScreen(
                         },
                     )
 
+                    inlineActionError?.let { message ->
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = message,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+
                     // Personal Rating (0-3 stars)
-                    if (sitePlugin != null && sitePlugin.capabilities.contains(PluginCapability.SCORING)) {
-                        val isPluginLoggedIn by sitePlugin.isLoggedInFlow.collectAsState(initial = sitePlugin.isLoggedIn)
-                        val currentScore = localScores[currentPost.id] ?: sitePlugin.getScore(currentPost.id) ?: 0
+                    if (currentPlugin != null && currentPlugin.capabilities.contains(PluginCapability.SCORING)) {
+                        val isPluginLoggedIn by currentPlugin.isLoggedInFlow.collectAsState(initial = currentPlugin.isLoggedIn)
+                        val currentScore = localScores[currentPost.id] ?: currentPlugin.getScore(currentPost.id) ?: 0
 
                         Spacer(modifier = Modifier.height(16.dp))
                         PersonalRatingSection(
@@ -410,8 +437,9 @@ fun DetailScreen(
                             isLoggedIn = isPluginLoggedIn,
                             onRate = { newScore ->
                                 scope.launch {
-                                    val result = sitePlugin.setScore(currentPost.id, newScore)
+                                    val result = currentPlugin.setScore(currentPost.id, newScore)
                                     if (result.isSuccess) {
+                                        inlineActionError = null
                                         localScores = localScores + (currentPost.id to newScore)
                                         when (newScore) {
                                             0 -> ToastManager.showInfo("Rating removed")
@@ -419,12 +447,12 @@ fun DetailScreen(
                                             else -> ToastManager.showSuccess("Rated $newScore star${if (newScore > 1) "s" else ""}")
                                         }
                                     } else {
-                                        ToastManager.showInfo("Failed to submit rating: ${result.exceptionOrNull()?.message}")
+                                        inlineActionError = "Failed to submit rating: ${result.exceptionOrNull()?.message.orEmpty()}"
                                     }
                                 }
                             },
                             onLoginRequest = {
-                                onRequireLogin(sitePlugin)
+                                onRequireLogin(currentPlugin)
                             },
                         )
                     }

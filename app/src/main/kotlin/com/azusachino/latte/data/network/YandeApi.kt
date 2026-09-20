@@ -86,6 +86,23 @@ class YandeApi(private val baseUrl: String = "https://yande.re") {
             executeGetPools(urlBuilder.build().toString())
         }
 
+    companion object {
+        fun favoriteTags(username: String): String = "vote:3:${username.trim()}"
+
+        fun poolTags(poolId: Long): String = "pool:$poolId"
+
+        fun safeModeTags(tags: String?, enabled: Boolean): String? {
+            if (!enabled) return tags?.ifBlank { null }
+            return if (tags.isNullOrBlank()) {
+                "rating:safe"
+            } else if (!tags.contains("rating:")) {
+                "$tags rating:safe"
+            } else {
+                tags
+            }
+        }
+    }
+
     private fun executeGetPosts(urlString: String): List<Post> {
         val request = Request.Builder()
             .url(urlString)
