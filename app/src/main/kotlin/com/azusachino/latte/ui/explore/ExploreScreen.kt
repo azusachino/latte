@@ -67,6 +67,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -280,6 +281,7 @@ fun ExploreScreen(
                     onPostClick = onPostClick,
                     onLoadMore = { viewModel.loadMoreSearch() },
                     onRetry = { viewModel.search(uiState.searchTags) },
+                    onRefresh = { viewModel.search(uiState.searchTags) },
                 )
             } else {
                 HorizontalPager(
@@ -302,6 +304,7 @@ fun ExploreScreen(
                                 onPostClick = onPostClick,
                                 onLoadMore = { viewModel.loadMorePopular() },
                                 onRetry = { viewModel.loadPopularInitial() },
+                                onRefresh = { viewModel.refreshPopular() },
                                 modifier = Modifier.weight(1f),
                             )
                         }
@@ -313,6 +316,7 @@ fun ExploreScreen(
                             onPostClick = onPostClick,
                             onLoadMore = { viewModel.loadMoreNewest() },
                             onRetry = { viewModel.loadNewestInitial() },
+                            onRefresh = { viewModel.refreshNewest() },
                         )
                     }
                 }
@@ -321,6 +325,7 @@ fun ExploreScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FeedGrid(
     feed: FeedState,
@@ -329,6 +334,7 @@ private fun FeedGrid(
     onPostClick: (Int) -> Unit,
     onLoadMore: () -> Unit,
     onRetry: () -> Unit,
+    onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val shouldLoadMore by remember {
@@ -345,63 +351,69 @@ private fun FeedGrid(
         }
     }
 
-    when {
-        feed.isLoading && feed.posts.isEmpty() -> {
-            Box(
-                modifier = modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator()
+    PullToRefreshBox(
+        isRefreshing = feed.isRefreshing,
+        onRefresh = onRefresh,
+        modifier = modifier.fillMaxSize(),
+    ) {
+        when {
+            feed.isLoading && feed.posts.isEmpty() -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
             }
-        }
-        feed.error != null && feed.posts.isEmpty() -> {
-            Box(
-                modifier = modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = feed.error,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    IconButton(onClick = onRetry) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Retry")
+            feed.error != null && feed.posts.isEmpty() -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = feed.error,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        IconButton(onClick = onRetry) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Retry")
+                        }
                     }
                 }
             }
-        }
-        else -> {
-            LazyVerticalStaggeredGrid(
-                columns = StaggeredGridCells.Fixed(columnCount),
-                state = gridState,
-                contentPadding = PaddingValues(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalItemSpacing = 4.dp,
-                modifier = modifier.fillMaxSize(),
-            ) {
-                itemsIndexed(
-                    items = feed.posts,
-                    key = { _, post -> post.id },
-                ) { index, post ->
-                    PostGridItem(
-                        post = post,
-                        onClick = { onPostClick(index) },
-                    )
-                }
+            else -> {
+                LazyVerticalStaggeredGrid(
+                    columns = StaggeredGridCells.Fixed(columnCount),
+                    state = gridState,
+                    contentPadding = PaddingValues(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalItemSpacing = 4.dp,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    itemsIndexed(
+                        items = feed.posts,
+                        key = { _, post -> post.id },
+                    ) { index, post ->
+                        PostGridItem(
+                            post = post,
+                            onClick = { onPostClick(index) },
+                        )
+                    }
 
-                if (feed.isLoadingMore) {
-                    item(span = StaggeredGridItemSpan.FullLine) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                    if (feed.isLoadingMore) {
+                        item(span = StaggeredGridItemSpan.FullLine) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                            }
                         }
                     }
                 }
