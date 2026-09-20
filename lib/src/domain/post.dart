@@ -1,6 +1,8 @@
+import 'popular_query.dart';
+
 enum PostRating { safe, questionable, explicit, unknown }
 
-enum PostQuerySource { discovery, tagSearch }
+enum PostQuerySource { discovery, popular, tagSearch }
 
 enum MediaVariantId { preview, sample, jpeg, original }
 
@@ -140,30 +142,46 @@ class PostDetail {
 class PostQuery {
   const PostQuery.discovery({this.continuation})
     : source = PostQuerySource.discovery,
+      expression = null,
+      popularQuery = null;
+
+  PostQuery.popular(this.popularQuery, {this.continuation})
+    : source = PostQuerySource.popular,
       expression = null;
 
   PostQuery.tagSearch(String expression, {this.continuation})
     : source = PostQuerySource.tagSearch,
-      expression = _validatedExpression(expression);
+      expression = _validatedExpression(expression),
+      popularQuery = null;
 
   final PostQuerySource source;
   final String? expression;
+  final PopularQuery? popularQuery;
   final String? continuation;
 
-  PostQuery withContinuation(String? value) =>
-      source == PostQuerySource.discovery
-      ? PostQuery.discovery(continuation: value)
-      : PostQuery.tagSearch(expression!, continuation: value);
+  PostQuery withContinuation(String? value) => switch (source) {
+    PostQuerySource.discovery => PostQuery.discovery(continuation: value),
+    PostQuerySource.popular => PostQuery.popular(
+      popularQuery!,
+      continuation: value,
+    ),
+    PostQuerySource.tagSearch => PostQuery.tagSearch(
+      expression!,
+      continuation: value,
+    ),
+  };
 
   @override
   bool operator ==(Object other) =>
       other is PostQuery &&
       other.source == source &&
       other.expression == expression &&
+      other.popularQuery == popularQuery &&
       other.continuation == continuation;
 
   @override
-  int get hashCode => Object.hash(source, expression, continuation);
+  int get hashCode =>
+      Object.hash(source, expression, popularQuery, continuation);
 }
 
 class PostPage {
