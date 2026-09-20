@@ -96,6 +96,9 @@ fun LatteApp(
                             onOpenSettings = {
                                 currentScreen = Screen.Settings
                             },
+                            onRequireLogin = { plugin ->
+                                activeLoginPlugin = plugin
+                            },
                         )
                     }
                     is Screen.Detail -> {

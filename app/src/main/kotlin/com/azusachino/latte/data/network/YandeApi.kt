@@ -1,7 +1,9 @@
 package com.azusachino.latte.data.network
 
+import com.azusachino.latte.data.model.PoolSummary
 import com.azusachino.latte.data.model.PopularPeriod
 import com.azusachino.latte.data.model.Post
+import com.azusachino.latte.data.model.YandePoolDto
 import com.azusachino.latte.data.model.YandePostDto
 import com.azusachino.latte.data.model.toDomain
 import kotlinx.coroutines.Dispatchers
@@ -68,6 +70,22 @@ class YandeApi(private val baseUrl: String = "https://yande.re") {
         posts.firstOrNull()
     }
 
+    // Pool posts are reached through the regular post search via `pool:<id>`
+    // (verified live: matches pool/show.json's post order exactly), so
+    // viewing a pool's contents reuses the existing search feed/grid --
+    // this only needs to list/search pools themselves.
+    suspend fun getPools(query: String? = null, page: Int = 1): List<PoolSummary> =
+        withContext(Dispatchers.IO) {
+            val urlBuilder = "$baseUrl/pool.json".toHttpUrl().newBuilder()
+                .addQueryParameter("page", page.toString())
+
+            if (!query.isNullOrBlank()) {
+                urlBuilder.addQueryParameter("query", query)
+            }
+
+            executeGetPools(urlBuilder.build().toString())
+        }
+
     private fun executeGetPosts(urlString: String): List<Post> {
         val request = Request.Builder()
             .url(urlString)
@@ -81,6 +99,22 @@ class YandeApi(private val baseUrl: String = "https://yande.re") {
 
         val body = response.body?.string().orEmpty()
         val dtos = json.decodeFromString<List<YandePostDto>>(body)
+        return dtos.map { it.toDomain() }
+    }
+
+    private fun executeGetPools(urlString: String): List<PoolSummary> {
+        val request = Request.Builder()
+            .url(urlString)
+            .header("Accept", "application/json")
+            .build()
+
+        val response = OkHttpProvider.client.newCall(request).execute()
+        if (!response.isSuccessful) {
+            throw IOException("Unexpected HTTP response: ${response.code} ${response.message}")
+        }
+
+        val body = response.body?.string().orEmpty()
+        val dtos = json.decodeFromString<List<YandePoolDto>>(body)
         return dtos.map { it.toDomain() }
     }
 }

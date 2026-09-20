@@ -21,6 +21,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
@@ -41,14 +44,15 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ViewAgenda
 import androidx.compose.material.icons.filled.ViewColumn
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -89,6 +93,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.azusachino.latte.data.model.PoolSummary
 import com.azusachino.latte.data.model.PopularPeriod
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.plugin.SitePlugin
@@ -105,14 +110,16 @@ fun ExploreScreen(
     onPostClick: (index: Int) -> Unit,
     onOpenSettings: () -> Unit,
     sitePlugin: SitePlugin? = null,
+    onRequireLogin: (SitePlugin) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val columnCount by viewModel.columnCount.collectAsState()
     val popularGridState = rememberLazyStaggeredGridState()
     val newestGridState = rememberLazyStaggeredGridState()
+    val favoritesGridState = rememberLazyStaggeredGridState()
     val searchGridState = rememberLazyStaggeredGridState()
-    val pagerState = rememberPagerState(initialPage = uiState.selectedTab) { 2 }
+    val pagerState = rememberPagerState(initialPage = uiState.selectedTab) { 4 }
     val coroutineScope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
 
@@ -121,6 +128,7 @@ fun ExploreScreen(
 
     LaunchedEffect(pagerState.currentPage) {
         viewModel.selectTab(pagerState.currentPage)
+        searchQuery = if (pagerState.currentPage == 3) uiState.poolsFeed.query else uiState.searchTags
     }
 
     LaunchedEffect(uiState.selectedTab) {
@@ -141,16 +149,12 @@ fun ExploreScreen(
         modifier = modifier.fillMaxSize(),
         topBar = {
             Column(modifier = Modifier.fillMaxWidth()) {
-                val isFavActive = sitePlugin?.let {
-                    it.isLoggedIn && !it.getDisplayUsername().isNullOrBlank() && uiState.searchTags == "vote:3:${it.getDisplayUsername()}"
-                } == true
-
                 TopAppBar(
                     title = {
                         Text(
-                            text = if (isFavActive) "My Favorites"
-                            else if (uiState.searchTags.isNotBlank()) uiState.searchTags
-                            else "Latte",
+                            text = uiState.activePoolName
+                                ?: if (uiState.searchTags.isNotBlank()) uiState.searchTags
+                                else "Latte",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
                         )
                     },
@@ -200,7 +204,10 @@ fun ExploreScreen(
                     },
                 )
 
-                // Expandable Search Bar
+                // Expandable Search Bar -- searches pools while the Pools tab is
+                // active and no pool is open yet, otherwise searches post tags.
+                val isPoolsSearch = pagerState.currentPage == 3 && uiState.searchTags.isBlank()
+
                 AnimatedVisibility(
                     visible = isSearchExpanded,
                     enter = expandVertically() + fadeIn(),
@@ -215,20 +222,30 @@ fun ExploreScreen(
                             value = searchQuery,
                             onValueChange = { searchQuery = it },
                             modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("Search tags, e.g. genshin_impact") },
+                            placeholder = {
+                                Text(if (isPoolsSearch) "Search pools, e.g. genshin_impact" else "Search tags, e.g. genshin_impact")
+                            },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                             keyboardActions = KeyboardActions(
                                 onSearch = {
                                     keyboardController?.hide()
-                                    viewModel.search(searchQuery)
+                                    if (isPoolsSearch) {
+                                        viewModel.loadPoolsInitial(searchQuery)
+                                    } else {
+                                        viewModel.search(searchQuery)
+                                    }
                                 },
                             ),
                             trailingIcon = {
                                 if (searchQuery.isNotBlank()) {
                                     IconButton(onClick = {
                                         searchQuery = ""
-                                        viewModel.clearSearch()
+                                        if (isPoolsSearch) {
+                                            viewModel.loadPoolsInitial("")
+                                        } else {
+                                            viewModel.clearSearch()
+                                        }
                                     }) {
                                         Icon(Icons.Default.Close, contentDescription = "Clear")
                                     }
@@ -239,78 +256,28 @@ fun ExploreScreen(
                     }
                 }
 
-                // Front page tabs: Popular vs Newest (hidden during search)
+                // Front page tabs: Popular / Newest / Favorites / Pools (hidden during search)
                 if (uiState.searchTags.isBlank()) {
+                    val tabTitles = listOf("Popular", "Newest", "Favorites", "Pools")
                     TabRow(
                         selectedTabIndex = pagerState.currentPage,
                         containerColor = MaterialTheme.colorScheme.surface,
                     ) {
-                        Tab(
-                            selected = pagerState.currentPage == 0,
-                            onClick = {
-                                coroutineScope.launch {
-                                    pagerState.animateScrollToPage(0)
-                                }
-                            },
-                            text = {
-                                Text(
-                                    text = "Popular",
-                                    fontWeight = if (pagerState.currentPage == 0) FontWeight.Bold else FontWeight.Normal,
-                                )
-                            },
-                        )
-                        Tab(
-                            selected = pagerState.currentPage == 1,
-                            onClick = {
-                                coroutineScope.launch {
-                                    pagerState.animateScrollToPage(1)
-                                }
-                            },
-                            text = {
-                                Text(
-                                    text = "Newest",
-                                    fontWeight = if (pagerState.currentPage == 1) FontWeight.Bold else FontWeight.Normal,
-                                )
-                            },
-                        )
-                    }
-                }
-
-                // My Favorites quick chip if logged in
-                if (sitePlugin != null) {
-                    val isPluginLoggedIn by sitePlugin.isLoggedInFlow.collectAsState(initial = sitePlugin.isLoggedIn)
-                    val username = sitePlugin.getDisplayUsername()
-                    if (isPluginLoggedIn && !username.isNullOrBlank()) {
-                        val favQuery = "vote:3:$username"
-                        val isFavSelected = uiState.searchTags == favQuery
-
-                        if (uiState.searchTags.isBlank() || isFavSelected) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                FilterChip(
-                                    selected = isFavSelected,
-                                    onClick = {
-                                        if (isFavSelected) {
-                                            viewModel.clearSearch()
-                                        } else {
-                                            viewModel.search(favQuery)
-                                        }
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = if (isFavSelected) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(16.dp),
-                                            tint = if (isFavSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    },
-                                    label = { Text("My Favorites") },
-                                )
-                            }
+                        tabTitles.forEachIndexed { index, title ->
+                            Tab(
+                                selected = pagerState.currentPage == index,
+                                onClick = {
+                                    coroutineScope.launch {
+                                        pagerState.animateScrollToPage(index)
+                                    }
+                                },
+                                text = {
+                                    Text(
+                                        text = title,
+                                        fontWeight = if (pagerState.currentPage == index) FontWeight.Bold else FontWeight.Normal,
+                                    )
+                                },
+                            )
                         }
                     }
                 }
@@ -329,44 +296,68 @@ fun ExploreScreen(
                     columnCount = columnCount,
                     onPostClick = onPostClick,
                     onLoadMore = { viewModel.loadMoreSearch() },
-                    onRetry = { viewModel.search(uiState.searchTags) },
-                    onRefresh = { viewModel.search(uiState.searchTags) },
+                    onRetry = { viewModel.search(uiState.searchTags, uiState.activePoolName) },
+                    onRefresh = { viewModel.search(uiState.searchTags, uiState.activePoolName) },
                 )
             } else {
                 HorizontalPager(
                     state = pagerState,
                     modifier = Modifier.fillMaxSize(),
                 ) { page ->
-                    if (page == 0) {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            PopularControls(
-                                period = uiState.popularPeriod,
-                                date = uiState.popularDate,
-                                onPeriodSelect = { viewModel.selectPopularPeriod(it) },
-                                onShiftDate = { viewModel.shiftPopularDate(it) },
-                                onPickDate = { viewModel.setPopularDate(it) },
-                            )
+                    when (page) {
+                        0 -> {
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                PopularControls(
+                                    period = uiState.popularPeriod,
+                                    date = uiState.popularDate,
+                                    onPeriodSelect = { viewModel.selectPopularPeriod(it) },
+                                    onShiftDate = { viewModel.shiftPopularDate(it) },
+                                    onPickDate = { viewModel.setPopularDate(it) },
+                                )
+                                FeedGrid(
+                                    feed = uiState.popularFeed,
+                                    gridState = popularGridState,
+                                    columnCount = columnCount,
+                                    onPostClick = onPostClick,
+                                    onLoadMore = { viewModel.loadMorePopular() },
+                                    onRetry = { viewModel.loadPopularInitial() },
+                                    onRefresh = { viewModel.refreshPopular() },
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                        }
+                        1 -> {
                             FeedGrid(
-                                feed = uiState.popularFeed,
-                                gridState = popularGridState,
+                                feed = uiState.newestFeed,
+                                gridState = newestGridState,
                                 columnCount = columnCount,
                                 onPostClick = onPostClick,
-                                onLoadMore = { viewModel.loadMorePopular() },
-                                onRetry = { viewModel.loadPopularInitial() },
-                                onRefresh = { viewModel.refreshPopular() },
-                                modifier = Modifier.weight(1f),
+                                onLoadMore = { viewModel.loadMoreNewest() },
+                                onRetry = { viewModel.loadNewestInitial() },
+                                onRefresh = { viewModel.refreshNewest() },
                             )
                         }
-                    } else {
-                        FeedGrid(
-                            feed = uiState.newestFeed,
-                            gridState = newestGridState,
-                            columnCount = columnCount,
-                            onPostClick = onPostClick,
-                            onLoadMore = { viewModel.loadMoreNewest() },
-                            onRetry = { viewModel.loadNewestInitial() },
-                            onRefresh = { viewModel.refreshNewest() },
-                        )
+                        2 -> {
+                            FavoritesTabContent(
+                                sitePlugin = sitePlugin,
+                                feed = uiState.favoritesFeed,
+                                gridState = favoritesGridState,
+                                columnCount = columnCount,
+                                onPostClick = onPostClick,
+                                onRequireLogin = onRequireLogin,
+                                onLoadMore = { username -> viewModel.loadMoreFavorites(username) },
+                                onRetry = { username -> viewModel.loadFavoritesInitial(username) },
+                                onRefresh = { username -> viewModel.refreshFavorites(username) },
+                            )
+                        }
+                        else -> {
+                            PoolsTabContent(
+                                feed = uiState.poolsFeed,
+                                onQueryChange = { query -> viewModel.loadPoolsInitial(query) },
+                                onLoadMore = { viewModel.loadMorePools() },
+                                onPoolClick = { pool -> viewModel.openPool(pool) },
+                            )
+                        }
                     }
                 }
             }
@@ -466,6 +457,198 @@ private fun FeedGrid(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FavoritesTabContent(
+    sitePlugin: SitePlugin?,
+    feed: FeedState,
+    gridState: LazyStaggeredGridState,
+    columnCount: Int,
+    onPostClick: (Int) -> Unit,
+    onRequireLogin: (SitePlugin) -> Unit,
+    onLoadMore: (username: String) -> Unit,
+    onRetry: (username: String) -> Unit,
+    onRefresh: (username: String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (sitePlugin == null) return
+
+    val isLoggedIn by sitePlugin.isLoggedInFlow.collectAsState(initial = sitePlugin.isLoggedIn)
+    val username = sitePlugin.getDisplayUsername()
+
+    if (!isLoggedIn || username.isNullOrBlank()) {
+        Box(
+            modifier = modifier.fillMaxSize().padding(24.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = Icons.Default.FavoriteBorder,
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Sign in to see your favorites",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = { onRequireLogin(sitePlugin) }) {
+                    Text("Sign in")
+                }
+            }
+        }
+        return
+    }
+
+    LaunchedEffect(username) {
+        onRetry(username)
+    }
+
+    FeedGrid(
+        feed = feed,
+        gridState = gridState,
+        columnCount = columnCount,
+        onPostClick = onPostClick,
+        onLoadMore = { onLoadMore(username) },
+        onRetry = { onRetry(username) },
+        onRefresh = { onRefresh(username) },
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun PoolsTabContent(
+    feed: PoolListState,
+    onQueryChange: (String) -> Unit,
+    onLoadMore: () -> Unit,
+    onPoolClick: (PoolSummary) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val listState = rememberLazyListState()
+
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val totalItems = listState.layoutInfo.totalItemsCount
+            val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.maxOfOrNull { it.index } ?: 0
+            totalItems > 0 && lastVisibleIndex >= totalItems - 5
+        }
+    }
+
+    LaunchedEffect(shouldLoadMore) {
+        if (shouldLoadMore) onLoadMore()
+    }
+
+    LaunchedEffect(Unit) {
+        onQueryChange(feed.query)
+    }
+
+    Column(modifier = modifier.fillMaxSize()) {
+        when {
+            feed.isLoading && feed.pools.isEmpty() -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+            feed.error != null && feed.pools.isEmpty() -> {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(24.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = feed.error,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        IconButton(onClick = { onQueryChange(feed.query) }) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Retry")
+                        }
+                    }
+                }
+            }
+            feed.pools.isEmpty() -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "No pools found",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            else -> {
+                LazyColumn(
+                    state = listState,
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    items(items = feed.pools, key = { it.id }) { pool ->
+                        PoolListItem(pool = pool, onClick = { onPoolClick(pool) })
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    if (feed.isLoadingMore) {
+                        item {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PoolListItem(
+    pool: PoolSummary,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = pool.displayName,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "${pool.postCount} post${if (pool.postCount == 1) "" else "s"}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (!pool.isPublic) {
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = "Private pool",
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
