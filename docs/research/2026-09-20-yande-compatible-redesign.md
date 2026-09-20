@@ -25,7 +25,7 @@ Evidence used:
   `PopularActivity`, `PreviewActivity`, and `UserActivity` links below are the
   primary local references.
 - Latte's current boundaries are recorded in
-  [`product-experience.md`](../../specs/001-yandere-core-journey/contracts/product-experience.md#L3-L96)
+  [`product-experience.md`](../../specs/001-yandere-core-journey/contracts/product-experience.md#information-architecture)
   and its current Explore/Detail implementation is in
   [`explore_screen.dart`](../../lib/src/features/explore/explore_screen.dart#L117-L169).
 - The current official pages were checked for route drift. The live
@@ -145,7 +145,7 @@ not a good template for Latte:
 These are presentation debts, not reasons to discard compatibility. Latte's
 current contract already calls for Material 3, compact/expanded adaptive detail,
 accessible semantics, and explicit content by default
-([`product-experience.md`](../../specs/001-yandere-core-journey/contracts/product-experience.md#L57-L86)).
+([`product-experience.md`](../../specs/001-yandere-core-journey/contracts/product-experience.md#material-3-design-language)).
 
 ## 4. Proposed Material 3 information architecture
 

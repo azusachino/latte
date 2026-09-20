@@ -205,28 +205,30 @@ and prove the original bytes remain unchanged.
 center: Popular day/week/month → masonry exploration → detail/pager → download.
 Authenticated 0–3 personal scoring remains a later specification.
 
-- [ ] T035 [P] Write replacement domain, adapter, controller, and widget tests
+- [x] T035 [P] Write replacement domain, adapter, controller, and widget tests
   proving there is no Safe Mode/filter/policy-conflict path and that explicit
   ratings and opaque expressions remain unchanged. Remove the superseded
   production policy code only after the tests are observed red.
-- [ ] T036 [P] Write failing `PopularPeriod`, anchor/window identity, UTC
+- [x] T036 [P] Write failing `PopularPeriod`, anchor/window identity, UTC
   normalization, and serialization tests in `test/domain/popular_query_test.dart`,
   then implement the smallest immutable Popular query values in
   `lib/src/domain/`.
-- [ ] T037 [P] Write failing yande.re Popular mapping tests against a reviewed
+- [x] T037 [P] Write failing yande.re Popular mapping tests against a reviewed
   fixture and request capture, then map day/week/month queries to the verified
   adapter-owned `order:score` and date-window expression without leaking wire
   syntax to the UI.
-- [ ] T038 Write failing controller tests for Popular period/anchor switching,
+- [x] T038 Write failing controller tests for Popular period/anchor switching,
   restoration after detail/back, duplicate-page append, and stale response
   rejection, then implement those transitions in the Explore controller.
-- [ ] T039 Write failing Explore widget tests for Popular/Newest navigation,
+- [x] T039 Write failing Explore widget tests for Popular/Newest navigation,
   visible Day/Week/Month controls, readable anchor/window navigation, compact
   aggregate score/rating/dimensions semantics, and 48dp targets. Implement the
   Material 3 responsive aspect-preserving masonry-like surface and detail pager.
-- [ ] T040 Add reviewed compact/expanded light/dark Popular goldens and run the
+- [x] T040 Add reviewed compact/expanded light/dark Popular goldens and run the
   focused Popular story target, `make check`, `rumdl`, `git diff --check`, and
   the Android build/install/launch receipt on device `0cadf428` when connected.
+  Active-spec Markdown is clean under `rumdl`; the repository-wide run still
+  reports pre-existing issues in vendored Spec Kit skill/template Markdown.
 
 ### Popular-first checkpoint
 
