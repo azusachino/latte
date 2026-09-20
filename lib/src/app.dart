@@ -1,9 +1,36 @@
 import 'package:flutter/material.dart';
 
 import 'design/latte_theme.dart';
+import 'features/explore/explore_controller.dart';
+import 'features/explore/explore_screen.dart';
+import 'sites/site_adapter.dart';
+import 'sites/yandere/yandere_adapter.dart';
 
-class LatteApp extends StatelessWidget {
-  const LatteApp({super.key});
+class LatteApp extends StatefulWidget {
+  const LatteApp({this.adapter, super.key});
+
+  final SiteAdapter? adapter;
+
+  @override
+  State<LatteApp> createState() => _LatteAppState();
+}
+
+class _LatteAppState extends State<LatteApp> {
+  late final ExploreController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = ExploreController(adapter: widget.adapter ?? YandeAdapter());
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    final adapter = _controller.adapter;
+    if (adapter case YandeAdapter()) adapter.close();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -12,7 +39,7 @@ class LatteApp extends StatelessWidget {
       theme: LatteTheme.light(),
       darkTheme: LatteTheme.dark(),
       themeMode: ThemeMode.system,
-      home: const LatteShell(body: SizedBox.shrink()),
+      home: ExploreScreen(controller: _controller),
     );
   }
 }
