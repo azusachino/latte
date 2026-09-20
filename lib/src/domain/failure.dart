@@ -33,3 +33,12 @@ class SiteFailure {
   @override
   int get hashCode => Object.hash(kind, retryable, message, retryAfter);
 }
+
+class SiteFailureException implements Exception {
+  const SiteFailureException(this.failure);
+
+  final SiteFailure failure;
+
+  @override
+  String toString() => 'SiteFailureException(${failure.kind})';
+}
