@@ -21,15 +21,21 @@ Dart transport and Android target checks pass.
 `docs/PROJECT-SPEC.md` and `tasks/` are retained as historical inputs. The
 active feature directory is the execution source of truth.
 
-## Proposed first slice
+## Active first journey
 
 ```text
-yande.re fixture -> Yande adapter -> normalized post page -> Flutter grid
+Popular day/week/month -> Yande adapter -> normalized masonry feed
+  -> image-first detail/pager -> local download
 ```
 
-The first slice is anonymous and read-only: load one page of yande.re posts,
-render it with a token-owned Material 3 theme, and expose honest loading, empty,
-malformed-response, and transport-failure states. Search, detail, and downloads
-follow as separate red-green-refactor slices. Authentication, favorites, pools,
-and a second real site stay out of the first milestone. All ratings are visible
-by default; Safe Mode is an opt-in filter for explicit content.
+The first journey is anonymous and read-only at the remote boundary: load
+Popular results for a visible day/week/month period, render a dense
+aspect-preserving feed with aggregate rating metadata, inspect a post in a
+context-preserving pager, and expose honest loading, empty, malformed-response,
+and transport-failure states. Newest and opaque tag search remain supported
+discovery modes. Local download follows the read-only foundation as the first
+device side effect. Authenticated personal scoring (0–3) is a later distinct
+slice; the displayed aggregate score is never treated as the owner's vote.
+
+All returned ratings, including explicit, remain visible and are carried as
+metadata. Latte has no Safe Mode filter or policy-driven query rewrite.

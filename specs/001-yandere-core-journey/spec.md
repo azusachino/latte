@@ -11,33 +11,38 @@
 
 ## User Scenarios & Testing
 
-### User Story 1 - Discover and inspect art (Priority: P1)
+### User Story 1 - Explore popular art (Priority: P1)
 
-As the owner, I open Latte and see a calm, image-first feed of recent yande.re
-posts. I can continue through the feed and open a post to inspect its image,
-rating, dimensions, source, score, and tags without losing my place.
+As the owner, I open Latte and see Popular by day. I can switch to week or
+month, move through readable anchor periods, scan a dense image-first feed, and
+open a post to inspect its image, rating, dimensions, source, aggregate score,
+and tags without losing my place.
 
-**Why this priority**: Discovery and inspection are the smallest useful product.
-They prove remote access, normalization, visual hierarchy, and navigation before
-search or local side effects are added.
+**Why this priority**: Popular period exploration is the owner's primary daily
+workflow. It proves remote access, query identity, normalization, visual
+hierarchy, and navigation before search or local side effects are added.
 
-**Independent Test**: Start Latte with a deterministic post catalog, browse two
-pages, open a post, return, and observe the same feed position and post order.
+**Independent Test**: Start Latte with deterministic Popular day, week, and month
+pages, switch periods and anchors, browse two pages, open a post, move through
+detail, return, and observe the same period, anchor, feed position, and post
+order.
 
 **Acceptance Scenarios**:
 
-1. **Given** the first page is available, **When** the owner opens Latte,
-   **Then** preview images appear in a scrollable image-first grid with stable
-   post identity; explicit-rated posts are visible because Safe Mode is off by
-   default.
+1. **Given** the first Popular day page is available, **When** the owner opens
+   Latte, **Then** the Explore surface shows Popular with Day selected, a
+   readable anchor period, and preview images in a dense aspect-preserving feed
+   with stable post identity; every returned rating, including explicit, remains
+   visible as metadata.
 2. **Given** the owner reaches the feed boundary, **When** another page is
    available, **Then** Latte appends it without duplicating existing posts or
    replacing the visible feed.
 3. **Given** a card is visible, **When** the owner opens it, **Then** Latte shows
-   the best usable inspection image and all available normalized metadata while
-   clearly omitting unavailable fields.
+   the best usable inspection image in a pager with previous/next navigation,
+   aggregate score, rating, and all available normalized metadata while clearly
+   omitting unavailable fields.
 4. **Given** the detail view is open, **When** the owner returns, **Then** the
-   feed restores the prior position and order.
+   feed restores the prior Popular period, anchor, position, and order.
 5. **Given** the remote site is empty, malformed, throttled, unavailable, or the
    request has no usable network path, **When** a page is requested, **Then**
    Latte shows a truthful, actionable state and never presents failure as an
@@ -45,9 +50,9 @@ pages, open a post, return, and observe the same feed position and post order.
 6. **Given** system light/dark appearance, enlarged text, reduced motion, or a
    changed Android window width, **When** the owner uses the flow, **Then** its
    Material 3 hierarchy remains usable without clipped actions or lost state.
-7. **Given** Safe Mode is enabled, **When** a page contains explicit-rated
-   posts, **Then** Latte omits those posts from discovery and search results and
-   keeps the mode visibly enabled.
+7. **Given** the owner switches Popular from day to week or month, **When** the
+   next page is requested, **Then** the period and anchor/window are part of the
+   query identity and an older response cannot replace the selected period.
 
 ---
 
@@ -106,6 +111,13 @@ without changing the original file.
    save terminates, **Then** Latte removes incomplete output and reports a
    retryable or terminal failure without losing the current post.
 
+### Deferred capability - authenticated personal score
+
+Authenticated personal scoring is intentionally a later distinct slice. A future
+specification may add a signed-in 0–3 score control, including reset-to-zero and
+auth-required states. The read-only aggregate `score` returned with a post is
+already presentation metadata and MUST NOT be treated as the owner's vote.
+
 ### Edge Cases
 
 - A response contains a post without any usable preview or inspection media.
@@ -126,69 +138,68 @@ without changing the original file.
 
 ### Functional Requirements
 
-- **FR-001**: Latte MUST launch into the most recently requested discovery feed
-  for the active session without requiring an account.
+- **FR-001**: Latte MUST launch into Popular by day, or the most recently
+  requested Popular period and anchor in the active session, without requiring
+  an account.
 - **FR-002**: Latte MUST identify every remote post by both site and remote post
   ID and MUST deduplicate by that identity.
-- **FR-003**: Latte MUST present a paged, image-first discovery grid and preserve
-  its order and position across detail navigation during the active session.
-- **FR-004**: Latte MUST show safe, questionable, and explicit-rated content by
-  default. When the owner enables Safe Mode, Latte MUST filter explicit-rated
-  content from discovery and search and MUST prevent opening or saving an
-  explicit-rated post through that mode.
-- **FR-005**: Latte MUST distinguish initial loading, next-page loading, empty,
+- **FR-003**: Latte MUST present Popular day, week, and month as visible
+  discovery choices, with a readable anchor/window control for each selection.
+- **FR-004**: Latte MUST present a paged, image-first, aspect-preserving
+  masonry-like feed for Popular and Newest and MUST preserve its order, period,
+  anchor, and position across detail navigation during the active session.
+- **FR-005**: Latte MUST preserve and display safe, questionable, explicit, and
+  unknown ratings returned by the adapter; it MUST NOT locally filter ratings or
+  rewrite opaque expressions based on rating.
+- **FR-006**: Latte MUST distinguish initial loading, next-page loading, empty,
   no-results, transport-unavailable, throttled, malformed-response,
   remote-unavailable, and retryable states; it MUST NOT claim the device is
   offline when an HTTP failure cannot establish that fact.
-- **FR-006**: Latte MUST stop automatic retry after one bounded retry for an
+- **FR-007**: Latte MUST stop automatic retry after one bounded retry for an
   explicitly retryable read and MUST offer owner-initiated retry afterward.
-- **FR-007**: Latte MUST display only normalized metadata and MUST omit missing
+- **FR-008**: Latte MUST display only normalized metadata and MUST omit missing
   optional values rather than inventing replacements.
-- **FR-008**: Latte MUST keep remote wire fields, base URLs, status codes,
+- **FR-009**: Latte MUST keep remote wire fields, base URLs, status codes,
   content rules, and page mechanics out of product presentation concepts.
-- **FR-009**: Latte MUST accept the owner's complete yande.re tag expression as
-  site-owned syntax and MUST preserve spaces, negative terms, and meta-tags. A
-  query that requests explicit content MUST return a policy-conflict result only
-  when Safe Mode is enabled; default mode MUST preserve the expression.
-- **FR-010**: Latte MUST reset result pagination when search intent changes and
+- **FR-010**: Latte MUST accept the owner's complete yande.re tag expression as
+  site-owned syntax and MUST preserve spaces, negative terms, meta-tags, and
+  rating terms exactly; it MUST NOT add exclusions or return a local policy
+  conflict.
+- **FR-011**: Latte MUST reset result pagination when search intent changes and
   MUST prevent a superseded response from replacing current results.
-- **FR-011**: Latte MUST restore the prior discovery state when a search is
+- **FR-012**: Latte MUST restore the prior discovery state when a search is
   cleared during the same session.
-- **FR-012**: Latte MUST expose only media variants actually available for a
+- **FR-013**: Latte MUST expose only media variants actually available for a
   post and MUST label them with known quality, dimensions, and size.
-- **FR-013**: A save request MUST originate from a normalized post reference and
+- **FR-014**: A save request MUST originate from a normalized post reference and
   selected variant; the presentation layer MUST NOT supply an arbitrary remote
   URL as download authority.
-- **FR-014**: Latte MUST save completed images into a user-visible Latte album
+- **FR-015**: Latte MUST save completed images into a user-visible Latte album
   or directory and report the resulting album, display name, and a
   system-openable content reference; no filesystem path is promised.
-- **FR-015**: Latte MUST use deterministic, collision-resistant filenames and
+- **FR-016**: Latte MUST use deterministic, collision-resistant filenames and
   MUST return an existing-file outcome instead of overwriting.
-- **FR-016**: Latte MUST remove or hide incomplete output after a failed save or
+- **FR-017**: Latte MUST remove or hide incomplete output after a failed save or
   interrupted publication. User-initiated save cancellation is deferred.
-- **FR-017**: Latte MUST accept a deterministic substitute site for acceptance
+- **FR-018**: Latte MUST accept a deterministic substitute site for acceptance
   tests without changing discovery, search, detail, or save presentation.
-- **FR-018**: Latte MUST NOT expose authentication, favorites, pools, uploads,
-  persistent history, background queues, or another production site in this
-  milestone.
-- **FR-019**: Latte MUST record a dated, redacted live receipt before claiming
+- **FR-019**: Latte MUST NOT expose authenticated personal scoring, favorites,
+  pools, uploads, persistent history, background queues, or another production
+  site in this milestone.
+- **FR-020**: Latte MUST record a dated, redacted live receipt before claiming
   yande.re or Android support.
-- **FR-020**: Feature implementation MUST remain blocked until a Dart transport
+- **FR-021**: Feature implementation MUST remain blocked until a Dart transport
   probe fetches and decodes the anonymous post route and a stock Android build
   runs on an emulator or device.
-- **FR-021**: Latte MUST use Material 3 components and semantic color,
+- **FR-022**: Latte MUST use Material 3 components and semantic color,
   typography, shape, elevation, spacing, and motion roles for owner-facing
   Android UI; visual styling MUST NOT be duplicated as arbitrary widget values.
-- **FR-022**: Latte MUST support system light and dark appearance, text scaling,
+- **FR-023**: Latte MUST support system light and dark appearance, text scaling,
   reduced motion, and compact through expanded Android window widths without
   hiding or clipping the core browse, search, detail, and save actions.
-- **FR-023**: Every interactive Material surface MUST expose a semantic label,
+- **FR-024**: Every interactive Material surface MUST expose a semantic label,
   visible focus/pressed/disabled state, and a target of at least 48 by 48
   logical pixels; status MUST never be communicated by color or motion alone.
-- **FR-024**: Latte MUST expose Safe Mode as an opt-in Material 3 filter with a
-  clear selected/unselected state. Changing the mode MUST replace the active
-  content intent from the beginning and MUST NOT leave explicit-rated results
-  visible while the mode is enabled.
 
 ### Key Entities
 
@@ -199,6 +210,9 @@ without changing the original file.
 - **Post Detail**: A post summary plus inspection metadata and available media
   variants.
 - **Tag Query**: The owner's opaque site expression and its active result state.
+- **Popular Query**: A normalized period (`day`, `week`, or `month`), UTC anchor,
+  derived window, page, and adapter-owned continuation. Period and anchor/window
+  are part of query identity.
 - **Continuation**: Adapter-owned information required to request another page.
 - **Media Variant**: One available preview, sample, JPEG, or original resource
   with known quality metadata.
@@ -210,7 +224,8 @@ without changing the original file.
 
 ### Measurable Outcomes
 
-- **SC-001**: The owner completes launch → browse → inspect → save on the first
+- **SC-001**: The owner completes launch → Popular period browse → inspect →
+  save on the first
   supported Android device in under two minutes without prior instruction.
 - **SC-002**: Discovery and search show their first usable content or a truthful
   terminal state within five seconds in at least 19 of 20 fixture-backed Android
@@ -242,9 +257,11 @@ without changing the original file.
   future decisions.
 - Network access is required for remote discovery and media; transport failure
   preserves the current in-memory view and does not imply an offline catalog.
-- All ratings, including explicit, are visible by default for this owner-only
-  client. Safe Mode is an opt-in filter for owners who do not want explicit
-  content in the active browse or search result.
+- All returned ratings, including explicit, are visible for this owner-only
+  client. Latte does not provide a Safe Mode filter or rating-driven query
+  rewrite.
+- Authenticated personal scoring from 0 through 3 is deferred to a later
+  specification and remains distinct from the read-only aggregate score.
 - A user-visible Latte album/directory is preferable to asking for a destination
   on every save.
 - yande.re remains an external dependency with no availability or compatibility

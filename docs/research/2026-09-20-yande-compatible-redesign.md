@@ -1,8 +1,10 @@
 # Yande-compatible redesign: UX learning study
 
 Date: 2026-09-20  
-Status: read-only research for the Latte redesign; no product or
-implementation spec changes
+Status: read-only research for the Latte redesign. The owner decision recorded
+below supersedes the earlier Safe Mode recommendation in this evidence note;
+the observed reference behavior remains historical evidence, not a product
+requirement.
 
 ## Scope and evidence boundary
 
@@ -296,3 +298,18 @@ Acceptance scenarios:
   the live site returns. The product default remains explicit-visible with
   optional Safe Mode, but adapter filtering must be based on observed fields,
   not guessed tag names.
+
+## 8. Owner decision after the learning session
+
+On 2026-09-20 the owner selected the primary loop as **Popular by day/week/month
+→ masonry exploration → image-first detail/pager → download**. Latte will keep
+the selected period and anchor/window visible and restorable, preserve aggregate
+rating/score metadata, and expose Popular and Newest as the primary discovery
+modes.
+
+The owner explicitly removed Safe Mode. All returned ratings, including
+explicit, remain visible; Latte must not add a rating filter, policy toggle,
+policy-conflict error, or query rewrite. Authenticated personal scoring from 0
+through 3 is a later distinct slice and is not part of the current
+implementation turn. This decision updates the active Spec Kit artifacts while
+leaving the installed-app observations above intact as compatibility evidence.

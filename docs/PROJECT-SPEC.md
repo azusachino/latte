@@ -2,7 +2,8 @@
 
 > Historical input, superseded on 2026-09-20 by
 > `specs/001-yandere-core-journey/spec.md`. Do not maintain this as a parallel
-> execution specification.
+> execution specification. Its earlier Safe Mode decision is retained only as
+> history; the active contract keeps all returned ratings visible.
 
 Status: draft for owner review. Implementation is not approved by this document.
 

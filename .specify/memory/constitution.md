@@ -51,16 +51,18 @@ speculative abstractions.
 
 - The first supported product target is Android and the first remote site is
   yande.re; other targets remain unclaimed until separately accepted.
-- The first milestone is anonymous browse, tag-expression search, post detail,
-  media selection, and local save. Authentication, favorites, pools, uploads,
+- The first milestone is anonymous Popular/Newest browse, visible day/week/month
+  period selection, tag-expression search, post detail, media selection, and
+  local save. Authenticated personal scoring, favorites, pools, uploads,
   persistent history, and background work require later specifications.
 - Remote JSON and media responses MUST be treated as untrusted input. Allowed
   origins, schemes, sizes, and destination ownership MUST be validated at the
   adapter or storage boundary.
 - Credentials, cookies, private media, and raw response dumps MUST NOT enter
   source control, fixtures, logs, ordinary preferences, or UI state.
-- Content policy MUST be explicit in the active spec and enforced before media
-  is displayed or saved.
+- The first milestone MUST preserve and display every returned rating, including
+  explicit, without a local content filter or query rewrite. Any later content
+  policy requires an explicit specification and acceptance evidence.
 - Owner-facing Android UI MUST use Material 3 components and semantic theme
   roles as the product design baseline. Custom components require an unmet
   product need, accessibility evidence, and widget or screenshot acceptance;
@@ -105,4 +107,8 @@ in the active plan's Complexity Tracking table with the simpler alternative and
 why it fails. Repeated or permanent exceptions require a constitution amendment
 rather than silent drift.
 
-**Version**: 1.1.0 | **Ratified**: 2026-09-20 | **Last Amended**: 2026-09-20
+**Version**: 1.1.1 | **Ratified**: 2026-09-20 | **Last Amended**: 2026-09-20
+
+Version 1.1.1 records the owner's decision that all returned ratings remain
+visible and that authenticated 0–3 personal scoring is deferred to a later
+specification; it does not change the governance principles.

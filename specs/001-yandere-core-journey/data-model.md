@@ -22,8 +22,8 @@ platform payloads are private boundary types and are not domain entities.
 - `tags`: ordered normalized strings preserving site spelling.
 - `preview`: optional usable `MediaVariant`.
 - `score`, `width`, `height`, `source`, `createdAt`: optional.
-- Explicit-rated summaries are valid presentation data in default mode. Safe
-  Mode filters them before presentation and before a save request is accepted.
+- Every rating, including explicit, is valid presentation data. The first
+  milestone does not filter or rewrite posts based on rating.
 - A summary without usable preview media may be omitted from the grid but remains
   a structured adapter result for diagnostics.
 
@@ -43,15 +43,24 @@ platform payloads are private boundary types and are not domain entities.
 - Remote location is adapter-private. Domain and UI carry the variant ID and
   descriptive metadata, not download authority.
 
-## Post query
+## Discovery query
 
-- `source`: `discovery | tagSearch`.
+- `source`: `newest | tagSearch` for the existing paged feed and search paths.
 - `expression`: required for tag search; trimmed but otherwise opaque.
-- `contentPolicy`: `all` by default, or `safe` when Safe Mode is enabled. `all`
-  preserves all normalized ratings; `safe` filters explicit-rated posts and
-  rejects explicit-content query intent.
 - `continuation`: optional adapter-owned value.
 - Control characters and empty submitted searches are invalid.
+
+## Popular query
+
+- `period`: normalized `day | week | month`.
+- `anchor`: a UTC calendar date selected by the owner.
+- `window`: the period-derived inclusive UTC start/end dates. A day window has
+  one date; week and month windows are calendar windows containing `anchor`.
+- `page`: the adapter-owned page number or continuation position.
+- Period and anchor/window together form query identity and survive detail/back
+  navigation. They are not encoded into a widget-local label.
+- The yande.re adapter maps the normalized value to its verified opaque query;
+  common code does not construct site tags.
 
 ## Post page
 
@@ -67,7 +76,7 @@ States are mutually exclusive:
 ```text
 initial -> initialLoading -> content | empty | failure
 content -> nextPageLoading -> content | endReached | nextPageFailure
-content <-> detail
+  content <-> detail/pager
 content -> replacingQuery -> content | noResults | failure
 search content -> discovery content (clear query)
 ```

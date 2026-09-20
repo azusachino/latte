@@ -34,7 +34,9 @@
 ## Notes
 
 - Product decisions made from the assessment handoff and owner follow-up:
-  Android-first; all ratings visible by default; opt-in Safe Mode filters
-  explicit content; images save to a user-visible Latte album/directory.
+  Android-first; Popular day/week/month is the primary discovery journey; all
+  ratings remain visible with no Safe Mode filter or query rewrite; images save
+  to a user-visible Latte album/directory; authenticated 0–3 personal scoring is
+  deferred to a later slice.
 - The transport and Android build gates remain functional requirements rather
   than unresolved clarifications.

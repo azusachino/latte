@@ -3,6 +3,9 @@
 > Historical input, superseded on 2026-09-20 by
 > `specs/001-yandere-core-journey/tasks.md`. Do not execute this checklist.
 
+The active Popular-first decision and removal of Safe Mode are recorded only in
+the Spec Kit feature directory; these proposals retain their original wording.
+
 These tasks are proposals, not authorization to implement. Each implementation
 task is a vertical red-green slice and should touch no more than five files.
 

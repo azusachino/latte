@@ -38,12 +38,13 @@ does not call yande.re.
 ## Story acceptance
 
 ```bash
-make test-story STORY=discover
+make test-story STORY=popular
 make test-story STORY=search
 make test-story STORY=save
 ```
 
-- `discover`: two fixture pages, detail/back position, and all read failures.
+- `popular`: day/week/month query identity, anchor switching, two fixture pages,
+  detail/pager/back position, and all read failures.
 - `search`: opaque positive/negative/meta terms, replacement races, no-results,
   and clear-to-discovery.
 - `save`: variant choice, progress, MediaStore publication, repeat-save
@@ -65,7 +66,8 @@ media, device identifiers, account data, cookies, or credentials.
 
 ## Expected milestone result
 
-On the accepted Android target, the owner can open Latte, browse all ratings by
-default, optionally enable Safe Mode to filter explicit posts, search an opaque
-tag expression, inspect a post, save one chosen variant to the public Latte
-album, and repeat without overwrite.
+On the accepted Android target, the owner can open Latte, browse Popular by
+day/week/month with all returned ratings visible, search an opaque tag
+expression, inspect a post in context, save one chosen variant to the public
+Latte album, and repeat without overwrite. Authenticated 0–3 personal scoring
+is intentionally deferred.

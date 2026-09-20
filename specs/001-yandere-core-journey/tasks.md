@@ -5,6 +5,11 @@
 **Tests**: TDD is mandatory. For every story, the named tests must be observed
 failing before the corresponding implementation task begins.
 
+Tasks T001–T034 retain the original feasibility, foundation, and search history;
+their completed checkboxes and wording are not rewritten. The owner's 2026-09-20
+UX decision supersedes the historical Safe Mode portions. T035 onward is the
+active Popular-first implementation graph.
+
 ## Phase 1: Setup and feasibility
 
 **Purpose**: Prove the toolchain and remote read before product architecture.
@@ -173,7 +178,9 @@ and prove the original bytes remain unchanged.
 
 - T001–T004 are blocking feasibility work.
 - T005–T009 establish shared contracts and must finish before any user story.
-- Stories execute sequentially by value: US1 → US2 → save feasibility → US3.
+- The historical stories remain recorded in their original order. The active
+  Popular-first graph is T035 → T036/T037 → T038 → T039 → T040; the save slice
+  follows its feasibility gate after the Popular foundation.
 - Within a story, every test task must be observed red before implementation.
 - T030–T034 depend on all selected stories; live acceptance is never part of
   deterministic `make check`.
@@ -182,11 +189,49 @@ and prove the original bytes remain unchanged.
 
 | Requirement | Tasks |
 | --- | --- |
-| FR-001–FR-008, FR-010–FR-011, FR-017 | T005–T016, T030 |
-| FR-009 | T017, T020 |
-| FR-012–FR-016 | T023–T029 |
-| FR-018 | T006, T009, T033 |
-| FR-019–FR-020 | T001–T004, T023, T032 |
-| FR-021–FR-024 | T007, T012, T015–T016, T019, T026, T029–T031 |
-| SC-001–SC-007, SC-009 | T016, T022–T032, T034 |
+| FR-001–FR-005, FR-008–FR-012 | T035–T039 |
+| FR-006–FR-007, FR-020–FR-021 | T001–T004, T040 |
+| FR-013–FR-018 | T023–T029 |
+| FR-019 | T006, T009, T033, T040 |
+| FR-022–FR-024 | T007, T012, T015–T016, T019, T039–T040 |
+| SC-001–SC-007, SC-009 | T016, T022–T032, T040 |
 | SC-008 | T033 |
+
+## Phase 7: Popular-first redesign and compatibility correction
+
+**Purpose**: Make the owner's actual discovery journey the active product
+center: Popular day/week/month → masonry exploration → detail/pager → download.
+Authenticated 0–3 personal scoring remains a later specification.
+
+- [ ] T035 [P] Write replacement domain, adapter, controller, and widget tests
+  proving there is no Safe Mode/filter/policy-conflict path and that explicit
+  ratings and opaque expressions remain unchanged. Remove the superseded
+  production policy code only after the tests are observed red.
+- [ ] T036 [P] Write failing `PopularPeriod`, anchor/window identity, UTC
+  normalization, and serialization tests in `test/domain/popular_query_test.dart`,
+  then implement the smallest immutable Popular query values in
+  `lib/src/domain/`.
+- [ ] T037 [P] Write failing yande.re Popular mapping tests against a reviewed
+  fixture and request capture, then map day/week/month queries to the verified
+  adapter-owned `order:score` and date-window expression without leaking wire
+  syntax to the UI.
+- [ ] T038 Write failing controller tests for Popular period/anchor switching,
+  restoration after detail/back, duplicate-page append, and stale response
+  rejection, then implement those transitions in the Explore controller.
+- [ ] T039 Write failing Explore widget tests for Popular/Newest navigation,
+  visible Day/Week/Month controls, readable anchor/window navigation, compact
+  aggregate score/rating/dimensions semantics, and 48dp targets. Implement the
+  Material 3 responsive aspect-preserving masonry-like surface and detail pager.
+- [ ] T040 Add reviewed compact/expanded light/dark Popular goldens and run the
+  focused Popular story target, `make check`, `rumdl`, `git diff --check`, and
+  the Android build/install/launch receipt on device `0cadf428` when connected.
+
+### Popular-first checkpoint
+
+- Popular day/week/month and anchor/window are stable query identity.
+- Explicit ratings remain visible; no Safe Mode UI, policy filter, or query
+  rewrite exists.
+- Popular and Newest are visible primary modes; the masonry feed preserves
+  aspect ratio and existing content while paging.
+- Detail/back preserves context and supports previous/next within the loaded
+  feed. Download and authenticated scoring remain separately staged.

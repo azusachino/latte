@@ -9,15 +9,16 @@ and evidence boundaries before implementation
 
 ## Product fit
 
-- [ ] CHK001 The browse → inspect → save journey is the right first useful
-  product, with search as the only additional milestone capability. [Scope]
+- [ ] CHK001 The Popular day/week/month → masonry browse → inspect/pager → save
+  journey is the right first useful product, with Newest and search as
+  additional discovery modes. [Scope]
 - [ ] CHK002 Android API 29+ and yande.re-only are acceptable first support
   claims. [Assumption]
-- [ ] CHK003 Showing explicit content by default while offering Safe Mode as an
-  opt-in filter matches the intended owner experience. [Spec §FR-004]
-- [ ] CHK004 In Safe Mode, rejecting explicit-content query conflicts is
-  preferable to silently rewriting the owner's expression; default mode keeps
-  the expression unchanged. [Spec §FR-009]
+- [ ] CHK003 Showing all returned ratings, including explicit, with no local
+  filter or query rewrite matches the intended owner experience. [Spec §FR-005,
+  FR-010]
+- [ ] CHK004 Authenticated 0–3 personal scoring remains a later distinct slice
+  from the read-only aggregate score. [Spec deferred capability]
 - [ ] CHK005 Authentication, favorites, pools, uploads, history, background
   queues, second sites, and non-Android targets are correctly deferred.
   [Spec §FR-018]
@@ -29,8 +30,9 @@ and evidence boundaries before implementation
 - [ ] CHK007 The quiet, image-led theme direction gives artwork priority and
   avoids decorative gradients, heavy shadows, and arbitrary rounding.
   [Product contract §Material 3 design language]
-- [ ] CHK008 Explore, SearchBar, image grid, Detail, variant bottom sheet, and
-  save progress form a coherent component hierarchy. [Product contract]
+- [ ] CHK008 Explore mode/period controls, SearchBar, masonry feed, Detail/pager,
+  variant bottom sheet, and save progress form a coherent component hierarchy.
+  [Product contract]
 - [ ] CHK009 Compact and expanded layouts preserve the same information
   architecture without adding speculative navigation. [Spec §FR-022]
 - [ ] CHK010 Light/dark appearance, 200% text, reduced motion, semantics, focus

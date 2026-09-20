@@ -8,12 +8,14 @@
 
 ## Summary
 
-Deliver Latte's first finishable Android journey: anonymously browse yande.re,
-search its opaque tag syntax, inspect normalized post/media details, and save one
-variant into a public Latte image album. Use one Flutter package, a narrow
-site-neutral adapter consumed by feature controllers, private Moebooru/yande.re
-wire decoding, Android MediaStore behind a save port, a token-owned Material 3
-experience, and strict vertical TDD.
+Deliver Latte's first finishable Android journey: anonymously explore yande.re
+Popular by day, week, and month, move through readable anchor windows, scan a
+dense aspect-preserving feed, inspect normalized post/media details in a
+context-preserving pager, and save one variant into a public Latte image album.
+Newest and opaque tag search remain discovery modes. Use one Flutter package, a
+narrow site-neutral adapter consumed by feature controllers, private
+Moebooru/yande.re wire decoding, Android MediaStore behind a save port, a
+token-owned Material 3 experience, and strict vertical TDD.
 
 ## Technical Context
 
@@ -41,10 +43,10 @@ host bridge for public image publication
 seconds on stable broadband; no fixture-backed interaction stall over 100 ms;
 bounded page size at or below the site's documented limit of 100
 
-**Constraints**: anonymous/read-only remote use except local saves; all ratings
-are visible by default and opt-in Safe Mode filters explicit content; no
-database/background queue/authentication; no arbitrary URL or path authority from
-widgets; one bounded retry for retryable reads
+**Constraints**: anonymous/read-only remote use except local saves; all returned
+ratings remain visible and opaque expressions are not rewritten; no
+database/background queue/authentication or personal scoring; no arbitrary URL
+or path authority from widgets; one bounded retry for retryable reads
 
 **Scale/Scope**: one owner, one production site, three product screens, one
 active feed/search result set, one foreground save at a time
@@ -99,7 +101,7 @@ lib/
     │   ├── moebooru/           # private common wire/query mechanics
     │   └── yandere/            # site policy and production adapter
     ├── features/
-    │   ├── explore/            # discovery, search, detail flow
+│   ├── explore/            # Popular/Newest, search, detail/pager flow
     │   └── save/               # foreground save use case
     └── platform/               # public-image save port
 
@@ -120,4 +122,6 @@ MediaStore implementation. There is no packages workspace or repository layer.
 
 ## Complexity Tracking
 
-No constitution violation requires justification.
+No constitution violation requires justification. Authenticated 0–3 personal
+scoring is deliberately deferred to a later specification and is not represented
+by the aggregate `PostSummary.score` field.

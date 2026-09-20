@@ -3,6 +3,9 @@
 > Historical input, superseded on 2026-09-20 by the plan and task graph in
 > `specs/001-yandere-core-journey/`.
 
+The active Popular-first decision and removal of Safe Mode are recorded only in
+the Spec Kit feature directory; this file remains historical context.
+
 Status: proposed. Do not implement until the owner approves
 `docs/PROJECT-SPEC.md`, including its test seams and first host target.
 

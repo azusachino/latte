@@ -22,19 +22,20 @@ abstract interface class SiteAdapter {
 }
 ```
 
-`queryPosts` accepts discovery or opaque tag-search intent and an optional
-adapter-owned continuation. `getPost` may implement lookup by any verified site
-mechanism. `resolveMedia` revalidates reference, variant, scheme, and allowed
-host immediately before transfer.
+`queryPosts` accepts Newest or opaque tag-search intent and an optional
+adapter-owned continuation. Popular queries carry a normalized period and
+anchor/window identity; the adapter owns their route and query mapping.
+`getPost` may implement lookup by any verified site mechanism. `resolveMedia`
+revalidates reference, variant, scheme, and allowed host immediately before
+transfer.
 
 ## Success rules
 
 - Returned posts belong to `descriptor.id`.
-- Default mode permits all normalized ratings, including explicit. When Safe Mode
-  is active, explicit-rated posts are filtered before the production adapter
-  returns presentation data.
-- A Safe Mode query that explicitly requests explicit-rated content returns a
-  structured policy conflict; default mode preserves the owner's expression.
+- All normalized ratings, including explicit, are returned and preserved.
+- Opaque tag expressions, including rating terms, are forwarded exactly as
+  entered after the domain's whitespace validation; the adapter does not append
+  exclusions or manufacture a policy-conflict result.
 - Page order matches the site result after invalid/duplicate items are handled.
 - Missing optional metadata stays absent.
 - Continuation is opaque outside the adapter.
