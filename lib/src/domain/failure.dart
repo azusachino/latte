@@ -1,5 +1,6 @@
 enum SiteFailureKind {
   invalidRequest,
+  policyConflict,
   transportUnavailable,
   throttled,
   remoteUnavailable,

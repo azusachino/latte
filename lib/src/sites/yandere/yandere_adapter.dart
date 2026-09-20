@@ -29,6 +29,17 @@ class YandeAdapter implements SiteAdapter {
 
   @override
   Future<PostPage> queryPosts(PostQuery query) async {
+    if (query.contentPolicy == ContentPolicy.safe &&
+        query.source == PostQuerySource.tagSearch &&
+        _requestsExplicitContent(query.expression!)) {
+      throw const SiteFailureException(
+        SiteFailure(
+          kind: SiteFailureKind.policyConflict,
+          retryable: false,
+          message: 'Safe Mode cannot search for explicit content',
+        ),
+      );
+    }
     final parameters = <String, String>{'limit': '$_limit'};
     if (query.continuation != null) parameters['page'] = query.continuation!;
     if (query.source == PostQuerySource.tagSearch) {
@@ -220,4 +231,20 @@ class YandeAdapter implements SiteAdapter {
       source.scheme == 'https' &&
       (source.host == _baseUri.host ||
           source.host.endsWith('.${_baseUri.host}'));
+
+  static bool _requestsExplicitContent(String expression) {
+    for (final token in expression.toLowerCase().split(RegExp(r'\s+'))) {
+      if (token.startsWith('-') || !token.startsWith('rating:')) continue;
+      final rating = token.substring('rating:'.length);
+      if (rating == 'e' ||
+          rating == 'explicit' ||
+          rating == '>e' ||
+          rating == '>=e' ||
+          rating == '>explicit' ||
+          rating == '>=explicit') {
+        return true;
+      }
+    }
+    return false;
+  }
 }
