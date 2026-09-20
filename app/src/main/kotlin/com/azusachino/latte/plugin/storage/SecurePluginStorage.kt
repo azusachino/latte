@@ -6,29 +6,37 @@ import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
-class SecurePluginStorage(context: Context) {
+interface PluginStorage {
+    fun save(pluginId: String, key: String, value: String)
+    fun get(pluginId: String, key: String): String?
+    fun remove(pluginId: String, key: String)
+    fun clearPlugin(pluginId: String)
+    fun getAll(pluginId: String): Map<String, String> = emptyMap()
+}
+
+class SecurePluginStorage(context: Context) : PluginStorage {
     private val prefs: SharedPreferences = createEncryptedPrefs(context)
 
-    fun save(pluginId: String, key: String, value: String) {
+    override fun save(pluginId: String, key: String, value: String) {
         prefs.edit().putString(buildKey(pluginId, key), value).apply()
     }
 
-    fun get(pluginId: String, key: String): String? {
+    override fun get(pluginId: String, key: String): String? {
         return prefs.getString(buildKey(pluginId, key), null)
     }
 
-    fun remove(pluginId: String, key: String) {
+    override fun remove(pluginId: String, key: String) {
         prefs.edit().remove(buildKey(pluginId, key)).apply()
     }
 
-    fun clearPlugin(pluginId: String) {
+    override fun clearPlugin(pluginId: String) {
         val prefix = "$pluginId:"
         val editor = prefs.edit()
         prefs.all.keys.filter { it.startsWith(prefix) }.forEach { editor.remove(it) }
         editor.apply()
     }
 
-    fun getAll(pluginId: String): Map<String, String> {
+    override fun getAll(pluginId: String): Map<String, String> {
         val prefix = "$pluginId:"
         val result = mutableMapOf<String, String>()
         for ((k, v) in prefs.all) {

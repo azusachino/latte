@@ -33,5 +33,7 @@ interface SitePlugin {
     suspend fun setScore(postId: Long, score: Int): Result<Unit> =
         Result.failure(UnsupportedOperationException("Scoring not supported by $name"))
 
+    fun getScore(postId: Long): Int? = null
+
     fun applyHeaders(builder: Request.Builder, url: String) {}
 }

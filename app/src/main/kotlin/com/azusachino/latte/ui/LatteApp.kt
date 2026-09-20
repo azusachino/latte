@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.azusachino.latte.data.download.DownloadManager
 import com.azusachino.latte.ui.common.ToastHost
+import com.azusachino.latte.ui.common.ToastManager
 import com.azusachino.latte.ui.detail.DetailScreen
 import com.azusachino.latte.ui.explore.ExploreScreen
 import com.azusachino.latte.ui.explore.ExploreViewModel
@@ -48,6 +49,7 @@ fun LatteApp(
     val sitePluginManager = remember { com.azusachino.latte.plugin.SitePluginManager(listOf(yandePlugin)) }
 
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Explore) }
+    var activeLoginPlugin by remember { mutableStateOf<com.azusachino.latte.plugin.SitePlugin?>(null) }
 
     LatteTheme(themeMode = themeMode) {
         Box(modifier = modifier.fillMaxSize()) {
@@ -72,6 +74,7 @@ fun LatteApp(
                     is Screen.Explore -> {
                         ExploreScreen(
                             viewModel = exploreViewModel,
+                            sitePlugin = yandePlugin,
                             onPostClick = { index ->
                                 currentScreen = Screen.Detail(index)
                             },
@@ -89,12 +92,16 @@ fun LatteApp(
                             posts = posts,
                             initialIndex = screen.initialIndex,
                             downloadManager = downloadManager,
+                            sitePlugin = yandePlugin,
                             onBack = {
                                 currentScreen = Screen.Explore
                             },
                             onTagClick = { tag ->
                                 exploreViewModel.search(tag)
                                 currentScreen = Screen.Explore
+                            },
+                            onRequireLogin = { plugin ->
+                                activeLoginPlugin = plugin
                             },
                         )
                     }
@@ -124,6 +131,18 @@ fun LatteApp(
                         )
                     }
                 }
+            }
+
+            // Global Login Dialog
+            activeLoginPlugin?.let { plugin ->
+                com.azusachino.latte.ui.account.PluginLoginDialog(
+                    plugin = plugin,
+                    onDismissRequest = { activeLoginPlugin = null },
+                    onLoginSuccess = {
+                        activeLoginPlugin = null
+                        ToastManager.showSuccess("Signed in to ${plugin.name}")
+                    },
+                )
             }
 
             // Stacking, full-width toasts over all screens

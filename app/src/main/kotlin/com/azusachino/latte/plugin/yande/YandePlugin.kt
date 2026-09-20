@@ -4,7 +4,7 @@ import com.azusachino.latte.data.network.PersistentCookieJar
 import com.azusachino.latte.plugin.AuthType
 import com.azusachino.latte.plugin.PluginCapability
 import com.azusachino.latte.plugin.SitePlugin
-import com.azusachino.latte.plugin.storage.SecurePluginStorage
+import com.azusachino.latte.plugin.storage.PluginStorage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,7 +16,7 @@ import okhttp3.Request
 import java.io.IOException
 
 class YandePlugin(
-    private val storage: SecurePluginStorage,
+    private val storage: PluginStorage,
     private val httpClient: OkHttpClient,
     private val cookieJar: PersistentCookieJar? = null,
     private val baseUrl: String = "https://yande.re",
@@ -94,10 +94,15 @@ class YandePlugin(
         }
     }
 
+    private val userScores = mutableMapOf<Long, Int>()
+
+    override fun getScore(postId: Long): Int? = userScores[postId]
+
     override fun logout() {
         storage.clearPlugin(id)
         cachedUsername = null
         cachedCsrfToken = null
+        userScores.clear()
         cookieJar?.clear()
         _isLoggedIn.value = false
     }
@@ -126,6 +131,11 @@ class YandePlugin(
 
             val response = httpClient.newCall(request).execute()
             if (response.isSuccessful) {
+                if (score == 0) {
+                    userScores.remove(postId)
+                } else {
+                    userScores[postId] = score
+                }
                 Result.success(Unit)
             } else {
                 Result.failure(IOException("Vote failed with HTTP ${response.code}"))

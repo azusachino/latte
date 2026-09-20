@@ -41,6 +41,8 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -89,6 +91,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.azusachino.latte.data.model.PopularPeriod
 import com.azusachino.latte.data.model.Post
+import com.azusachino.latte.plugin.SitePlugin
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -101,6 +104,7 @@ fun ExploreScreen(
     viewModel: ExploreViewModel,
     onPostClick: (index: Int) -> Unit,
     onOpenSettings: () -> Unit,
+    sitePlugin: SitePlugin? = null,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -137,10 +141,16 @@ fun ExploreScreen(
         modifier = modifier.fillMaxSize(),
         topBar = {
             Column(modifier = Modifier.fillMaxWidth()) {
+                val isFavActive = sitePlugin?.let {
+                    it.isLoggedIn && !it.getDisplayUsername().isNullOrBlank() && uiState.searchTags == "vote:3:${it.getDisplayUsername()}"
+                } == true
+
                 TopAppBar(
                     title = {
                         Text(
-                            text = if (uiState.searchTags.isNotBlank()) uiState.searchTags else "Latte",
+                            text = if (isFavActive) "My Favorites"
+                            else if (uiState.searchTags.isNotBlank()) uiState.searchTags
+                            else "Latte",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
                         )
                     },
@@ -263,6 +273,45 @@ fun ExploreScreen(
                                 )
                             },
                         )
+                    }
+                }
+
+                // My Favorites quick chip if logged in
+                if (sitePlugin != null) {
+                    val isPluginLoggedIn by sitePlugin.isLoggedInFlow.collectAsState(initial = sitePlugin.isLoggedIn)
+                    val username = sitePlugin.getDisplayUsername()
+                    if (isPluginLoggedIn && !username.isNullOrBlank()) {
+                        val favQuery = "vote:3:$username"
+                        val isFavSelected = uiState.searchTags == favQuery
+
+                        if (uiState.searchTags.isBlank() || isFavSelected) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                FilterChip(
+                                    selected = isFavSelected,
+                                    onClick = {
+                                        if (isFavSelected) {
+                                            viewModel.clearSearch()
+                                        } else {
+                                            viewModel.search(favQuery)
+                                        }
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = if (isFavSelected) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                            tint = if (isFavSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    },
+                                    label = { Text("My Favorites") },
+                                )
+                            }
+                        }
                     }
                 }
             }
