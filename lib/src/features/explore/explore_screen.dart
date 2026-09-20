@@ -679,7 +679,18 @@ class _ArtworkPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     return ColoredBox(
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      child: const Center(child: Icon(Icons.image_outlined)),
+      child: const Center(
+        child: SizedBox.square(
+          dimension: 18,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border.fromBorderSide(
+                BorderSide(color: Colors.black87, width: 2),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
