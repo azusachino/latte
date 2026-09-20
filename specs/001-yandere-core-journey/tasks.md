@@ -30,22 +30,24 @@ APK launches on an API 29+ target.
 
 **Purpose**: Establish public seams and Material baseline shared by all stories.
 
-- [ ] T005 [P] Write equality, content-policy, Safe Mode, and state tests in
+- [x] T005 [P] Write equality, content-policy, Safe Mode, and state tests in
   `test/domain/post_test.dart` and `test/domain/explore_state_test.dart` before
   implementing normalized values in `lib/src/domain/`.
-- [ ] T006 [P] Write adapter contract tests in
+- [x] T006 [P] Write adapter contract tests in
   `test/contract/site_adapter_contract_test.dart` using
   `test/support/fake_site_adapter.dart`, then define
   `lib/src/sites/site_adapter.dart`.
-- [ ] T007 [P] Write theme and responsive-shell widget tests in
+- [x] T007 [P] Write theme and responsive-shell widget tests in
   `test/design/latte_theme_test.dart`, then implement semantic Material 3 roles
   in `lib/src/design/latte_theme.dart` and `lib/src/app.dart`.
-- [ ] T008 Add checked-in provenance-labelled yande.re JSON fixtures under
+- [x] T008 Add checked-in provenance-labelled yande.re JSON fixtures under
   `test/fixtures/yandere/`, excluding cookies, raw headers, and unreviewed data.
-- [ ] T009 Configure `make format`, `make analyze`, `make test`, and `make check`
-  so deterministic repository gates never call yande.re.
+- [x] T009 Configure `make format`, `make analyze`, `make test`, and `make check`
+  so deterministic repository gates never call yande.re. The Makefile now
+  documents that only the opt-in `probe` target performs live access.
 
-**Checkpoint**: Public contracts, theme roles, and deterministic gates are green.
+**Checkpoint**: Public contracts, theme roles, reviewed fixtures, and
+deterministic gates are green.
 
 ## Phase 3: User Story 1 - Discover and inspect art (Priority: P1) MVP
 

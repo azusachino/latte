@@ -3,6 +3,9 @@ DART := mise exec -- dart
 
 .PHONY: format analyze test check doctor dev probe
 
+# `test` runs only checked-in tests and injected HTTP doubles. Live yande.re
+# access is limited to the opt-in `probe` target.
+
 format:
 	$(DART) format --output=none --set-exit-if-changed .
 
