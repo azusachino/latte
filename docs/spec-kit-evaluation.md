@@ -153,3 +153,36 @@ inconsistency actionable. It has therefore earned a provisional **keep, with
 smaller maintenance scope** decision for 0.0.1. Do not call the experiment a
 full success yet: maintenance percentage, end-to-end acceptance, and whether
 the custom checklist adds value still need the next review pass.
+
+## Final 0.0.1 Milestone Verdict (2026-09-20)
+
+Following the merge of PR #1 and the release of tag `v0.0.1`, the Spec Kit
+evaluation for milestone 0.0.1 is complete.
+
+### Decision Rubric Evaluation
+
+| Outcome | Result | Verdict | Evidence |
+| --- | --- | --- | --- |
+| Pre-code defect detection | 8 boundary defects found early (transport offline distinction, MediaStore URI vs path, save cancellation removal, etc.) | **Keep** | Found material defects in system/API boundaries before code. |
+| Traceability | FR-to-task mapping was thorough initially, but became brittle during live hardware testing. | **Simplify** | Manual repair was required once mobile usability feedback arrived. |
+| Change propagation | High friction across 25+ files (`spec.md`, `constitution.md`, `contracts/`, `checklists/`, `tasks.md`). | **Simplify** | Changing a single UI decision forced edits across multiple spec layers. |
+| Agent execution | Produced false certainty on UI/UX; paper invariants had to be abandoned on physical hardware. | **Remove (for UI)** | Tactile mobile ergonomics (transitions, gestures, safe mode) were undiscoverable on paper. |
+| Maintenance cost | Over 25% of milestone effort was consumed by artifact maintenance and cross-checking. | **Remove / Simplify** | Exceeded the 15% budget; starved live hardware execution. |
+
+### Final Decision: SIMPLIFY / DOWNSIZE
+
+Spec Kit is **downsized to a lightweight, mobile-first workflow** for future milestones:
+
+1. **What is retained**:
+   - The project constitution (`.specify/memory/constitution.md`) as the high-level boundary and invariant guard.
+   - A single feature `spec.md` with prioritized user stories, acceptance criteria, and clear architecture seams.
+   - A flat `tasks.md` for execution tracking and red-green slices.
+   - Deterministic contract tests and automated gates (`make check`).
+
+2. **What is removed / prohibited**:
+   - Multi-file artifact sprawl (separate contract fragments, custom requirements checklists, duplicate historical plans, multi-document analysis graphs).
+   - Upfront negative UI invariants (e.g. forbidding Safe Mode or metadata tables before real device testing).
+
+3. **Adopted Rule: Device-First Ergonomics**:
+   - Tactile ergonomics, transitions, gesture expectations, and ambient safety cannot be finalized in markdown.
+   - Every milestone must deliver a runnable APK to physical hardware early. Real-device receipts are required before closing UI journeys.

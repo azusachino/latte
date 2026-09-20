@@ -40,59 +40,68 @@ absent or reported honestly; it MUST NOT be simulated as success.
 
 ### V. Simplicity Is a Gate
 
-Latte MUST remain one Flutter package until a concrete second production
-adapter or independently released component proves a split is necessary. New
-dependencies, databases, queues, background services, generic plugin systems,
-and code generation require a written need in the active plan. Standard Dart or
-Flutter facilities and small explicit types take precedence over frameworks and
-speculative abstractions.
+Latte is a native Android application built with Kotlin and Jetpack Compose. It
+MUST remain a single cohesive Android module (`app`) until a concrete second
+production component proves a split is necessary. Standard Kotlin, Coroutines,
+Jetpack Compose facilities, and small explicit types take precedence over
+external frameworks and speculative abstractions.
+
+### VI. Device-First Ergonomics Over Paper Invariants
+
+For client and mobile applications, tactile ergonomics, gestures, thumb reach,
+screen density, transition choreography, and ambient safety (such as Safe Mode)
+are empirical discoveries that emerge from physical hardware interaction. They
+MUST NOT be locked as negative invariants on paper before running code. An
+executable thin slice (a runnable APK installed on a physical test device) MUST
+be deployed early in each milestone to validate usability before finalizing UI
+specifications.
 
 ## Product and Safety Constraints
 
-- The first supported product target is Android and the first remote site is
-  yande.re; other targets remain unclaimed until separately accepted.
+- The first supported product target is Android (Kotlin + Jetpack Compose) and
+  the first remote site is yande.re; other targets remain unclaimed until
+  separately accepted.
 - The first milestone is anonymous Popular/Newest browse, visible day/week/month
   period selection, tag-expression search, post detail, media selection, and
-  local save. Authenticated personal scoring, favorites, pools, uploads,
-  persistent history, and background work require later specifications.
+  local save via WorkManager. Authenticated personal scoring, favorites, pools,
+  uploads, and persistent history require later specifications.
 - Remote JSON and media responses MUST be treated as untrusted input. Allowed
   origins, schemes, sizes, and destination ownership MUST be validated at the
   adapter or storage boundary.
 - Credentials, cookies, private media, and raw response dumps MUST NOT enter
   source control, fixtures, logs, ordinary preferences, or UI state.
-- The first milestone MUST preserve and display every returned rating, including
-  explicit, without a local content filter or query rewrite. Any later content
-  policy requires an explicit specification and acceptance evidence.
+- Safe Mode MUST be supported as a user-configurable setting (defaulting to safe
+  content) that filters or rewrites queries to protect the owner in shared
+  environments.
 - Owner-facing Android UI MUST use Material 3 components and semantic theme
   roles as the product design baseline. Custom components require an unmet
   product need, accessibility evidence, and widget or screenshot acceptance;
   Material styling MUST NOT leak into domain or site-adapter contracts.
+- Post detail MUST provide a structured metadata table (rating, score, dimensions,
+  source) and enlarged, thumb-friendly clickable tag chips.
+- Interactive UI MUST support standard touch expectations: smooth tab
+  transitions with stable app bar height, pull-to-refresh on paged feeds, and
+  quiet inline error states instead of intrusive toasts.
 - Layouts MUST respond to available window width, text scaling, system light or
   dark mode, and reduced-motion preferences without losing the core journey.
 
-## Spec-Driven Delivery
+## Spec-Driven Delivery (Downsized for Mobile)
 
-Each initiative follows assessment when feasibility is uncertain, then one
-Spec Kit feature directory through `specify -> clarify -> plan -> checklist ->
-tasks -> analyze -> implement -> converge`. The active `specs/<feature>/`
-directory is the execution source of truth. Earlier `docs/PROJECT-SPEC.md` and
-`tasks/` artifacts are historical inputs and MUST NOT be maintained as parallel
-plans after the first Spec Kit feature is accepted.
+Spec Kit is streamlined for mobile client development to eliminate
+synchronization overhead and avoid document drift:
 
-Before implementation:
-
-1. the specification quality checklist MUST pass;
-2. owner-owned custom requirements checklists MUST be reviewed;
-3. the plan MUST pass the constitution gate before and after design;
-4. every functional requirement and buildable success criterion MUST map to at
-   least one task;
-5. `$speckit-analyze` MUST report no critical issue; and
-6. feasibility gates named in the plan MUST pass before dependent story work.
-
-After implementation, `$speckit-converge` and the repository gate MUST pass.
-Artifact churn, defects caught before coding, escaped requirement changes, and
-time spent maintaining the workflow MUST be recorded for the first milestone so
-the owner can decide whether to retain, simplify, or remove Spec Kit.
+1. **Lightweight Feature Artifacts**: Each feature uses a single `spec.md`
+   (defining user stories, acceptance criteria, and architectural boundaries)
+   paired with a flat `tasks.md`. Multi-file document sprawl (redundant custom
+   checklists, separate contract fragments, duplicate historical plans) is
+   prohibited for client features.
+2. **Early Hardware Slice**: Implementation begins with a thin runnable slice
+   deployed to physical hardware to verify gestures and tactile ergonomics
+   before expanding the task graph.
+3. **Empirical UX Validation**: Hardware acceptance receipts on a physical device
+   are required before declaring user journeys complete.
+4. **Automated Quality Gates**: Each feature must pass unit/contract tests,
+   `make check`, and final convergence before release.
 
 ## Governance
 
@@ -107,8 +116,10 @@ in the active plan's Complexity Tracking table with the simpler alternative and
 why it fails. Repeated or permanent exceptions require a constitution amendment
 rather than silent drift.
 
-**Version**: 1.1.1 | **Ratified**: 2026-09-20 | **Last Amended**: 2026-09-20
+**Version**: 2.0.0 | **Ratified**: 2026-09-20 | **Last Amended**: 2026-09-20
 
-Version 1.1.1 records the owner's decision that all returned ratings remain
-visible and that authenticated 0–3 personal scoring is deferred to a later
-specification; it does not change the governance principles.
+Version 2.0.0 amends the constitution following the 0.0.1 release: it reflects
+the native Android (Kotlin/Compose) stack, adds Principle VI (Device-First
+Ergonomics), recognizes Safe Mode and metadata tables as core product
+constraints, and downsizes Spec Kit to a lightweight, single-spec mobile
+workflow.
