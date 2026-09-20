@@ -295,3 +295,23 @@ download code.
   notification stacking, notification open/view, owner-approved launcher
   rendering, and the reference UX/gesture comparison before calling the slice
   released.
+
+## Phase 10: UI Polish, Parity & Settings Rework
+
+- [x] T049 Remove bottom-right `q/e score` badge overlay from `PostGridItem` and
+  silence column toggle toast notifications for a cleaner browsing experience.
+- [x] T050 Update Popular feed to use `order:score date:...` queries against
+  `/post.json` for Moebooru infinite-scrolling parity.
+- [x] T051 Fix Popular/Newest tab transition by moving `PopularControls` inside
+  `HorizontalPager` page 0, keeping `topBar` height static and eliminating
+  abrupt header layout jumps.
+- [x] T052 Add Safe Mode toggle in Settings with persistence via `LattePreferences`
+  and automatic `rating:safe` tag query filtering across Popular, Newest, and Search.
+- [x] T053 Standardize date formatting across DatePicker headline and all Popular
+  period ranges (Day, Week, Month, Year) to consistent `yyyy-MM-dd`.
+- [x] T054 Replace inspect sheet metadata with a structured `MetadataTable`
+  supporting clickable author search (`user:<author>`), dimension ratio,
+  color-coded ratings, and external source link.
+- [x] T055 Implement deterministic 16-color tag palette chips with comfortable
+  touch targets and instant tag search on tap.
+

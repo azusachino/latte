@@ -2,55 +2,50 @@
 
 [![CI](https://github.com/azusachino/latte/actions/workflows/ci.yml/badge.svg)](https://github.com/azusachino/latte/actions/workflows/ci.yml)
 
-Latte is an early Dart/Flutter image-board client. Its first supported site is
-[yande.re](https://yande.re/); its application boundary is designed so another
-site can be added without teaching the UI that site's wire format, pagination,
-authentication, or download rules.
+Latte is a modern native Android image-board client built with Kotlin, Jetpack
+Compose, Material 3, and Coil 3. Its first supported site is
+[yande.re](https://yande.re/); its architecture cleanly isolates network models,
+domain entities, and the presentation layer.
 
-The active rewrite contract is recorded in Spec Kit artifacts. Material 3 is the
-visual implementation layer; Yande remains the authority for component
-composition, workflow, dataflow, and gestures.
+The active product contract is recorded in Spec Kit artifacts under `specs/`.
+Material 3 is the visual foundation, preserving the essential Moebooru/Yande
+discovery workflow, dataflow, and gestures.
 
 ## Start here
 
 - [Feasibility decision](.specify/assessments/latte-yandere-client/decision.md)
 - [Active product specification](specs/001-yandere-core-journey/spec.md)
-- [Product and Material 3 contract](specs/001-yandere-core-journey/contracts/product-experience.md)
 - [Technical plan](specs/001-yandere-core-journey/plan.md)
+- [Tasks & implementation record](specs/001-yandere-core-journey/tasks.md)
 - [Spec Kit evaluation](docs/spec-kit-evaluation.md)
 - [Research](docs/research/2026-09-20-dart-moebooru-yandere.md)
 
-`docs/PROJECT-SPEC.md` and `tasks/` are retained as historical inputs. The
-active feature directory is the execution source of truth.
-
-## Active first journey
+## Core journey & features
 
 ```text
-Popular day/week/month -> Yande adapter -> normalized masonry feed
-  -> image-first detail/pager -> local download
+Popular / Newest / Search -> YandeApi -> Staggered Grid
+  -> Detail Pager (Zoomable) -> Table Metadata & Tags -> WorkManager Download
 ```
 
-The first journey is anonymous and read-only at the remote boundary: load
-Popular results for a visible day/week/month period, render a dense
-thumbnail-only aspect-preserving feed, inspect a post in a
-context-preserving pager, and expose honest loading, empty, malformed-response,
-and transport-failure states. Newest and opaque tag search remain supported
-discovery modes. Local download follows the read-only foundation as the first
-device side effect. Authenticated personal scoring (0–3) is a later distinct
-slice; the displayed aggregate score is never treated as the owner's vote.
-
-Ratings remain adapter/search metadata but are not rendered in the Latte UI.
-Latte has no Safe Mode filter or policy-driven query rewrite.
+- **Discovery Feeds**: Popular (Day, Week, Month, Year with `yyyy-MM-dd` date navigation) and Newest feeds with smooth horizontal tab swiping.
+- **Infinite Scrolling**: Moebooru-parity continuous scrolling for Popular (`order:score date:...`), Newest, and Search.
+- **Clean Image Grid**: Staggered cards preserving aspect ratio, with 1, 2, or 3 column density cycling.
+- **Image-First Detail Pager**: Full-screen zoomable viewer with memory-cached preview transitions.
+- **Table-Style Metadata**: Clean key-value information sheet displaying resolution, color-coded rating, score, date (`yyyy-MM-dd HH:mm`), file size, and clickable author search.
+- **Colorful Tag Chips**: Deterministic 16-color palette with comfortable touch targets; tap any tag to immediately search.
+- **Safe Mode**: User-configurable toggle under Settings (default: off) that applies `rating:safe` across all feeds.
+- **Reliable Saves**: Background downloads via Android WorkManager into `Pictures/Latte` with duplicate prevention and notifications.
 
 ## Development
 
-Latte uses the Flutter version pinned in `.mise.toml`:
+Latte uses the Java runtime pinned in `.mise.toml`:
 
 ```bash
 mise install
-mise exec -- flutter pub get
-make check
-mise exec -- flutter build apk --debug
+make check     # Run unit tests
+make validate  # Run tests and assemble debug APK
+make install   # Install debug APK to connected device
+make dev       # Install and launch via ADB
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution workflow and

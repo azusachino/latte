@@ -3,6 +3,15 @@
 build/
 app/build/
 local.properties
+captures/
+.cxx/
+*.apk
+*.aab
+*.hprof
+
+# Kotlin & Linter
+.kotlin/
+.rumdl_cache/
 
 # Miscellaneous
 *.class

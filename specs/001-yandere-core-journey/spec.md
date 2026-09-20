@@ -171,8 +171,9 @@ already presentation metadata and MUST NOT be treated as the owner's vote.
   retain accessible previous/next controls, and route Android platform back from
   detail to the preserved feed instead of exiting the root activity.
 - **FR-005**: Latte MUST preserve and display safe, questionable, explicit, and
-  unknown ratings returned by the adapter; it MUST NOT locally filter ratings or
-  rewrite opaque expressions based on rating.
+  unknown ratings returned by the adapter. A user-configurable Safe Mode toggle
+  in Settings allows filtering feeds for safe content (`rating:safe`), disabled
+  by default.
 - **FR-006**: Latte MUST distinguish initial loading, next-page loading, empty,
   no-results, transport-unavailable, throttled, malformed-response,
   remote-unavailable, and retryable states; it MUST NOT claim the device is
