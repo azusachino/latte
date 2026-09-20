@@ -141,56 +141,120 @@ class _ExploreScaffold extends StatelessWidget {
       key: ValueKey(popular),
       length: 2,
       initialIndex: popular ? 0 : 1,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Latte'),
-          actions: [
-            IconButton(
-              onPressed: onSearch,
-              icon: const Icon(Icons.search),
-              tooltip: 'Search',
-              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-            ),
-            IconButton(
-              onPressed: onSettings,
-              icon: const Icon(Icons.settings_outlined),
-              tooltip: 'Settings',
-              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-            ),
-          ],
-          bottom: TabBar(
-            key: const ValueKey('explore-tabs'),
-            tabs: const [
-              Tab(text: 'Popular'),
-              Tab(text: 'Newest'),
-            ],
-            onTap: (index) {
-              if (index == 0) {
-                controller.loadPopular();
-              } else {
-                controller.loadDiscovery();
-              }
-            },
+      child: _ExploreTabScaffold(
+        controller: controller,
+        state: state,
+        columnCount: columnCount,
+        scrollController: scrollController,
+        searchView: searchView,
+        onSearch: onSearch,
+        onSettings: onSettings,
+      ),
+    );
+  }
+}
+
+class _ExploreTabScaffold extends StatefulWidget {
+  const _ExploreTabScaffold({
+    required this.controller,
+    required this.state,
+    required this.columnCount,
+    required this.scrollController,
+    required this.searchView,
+    this.onSearch,
+    this.onSettings,
+  });
+
+  final ExploreController controller;
+  final ExploreState state;
+  final int? columnCount;
+  final ScrollController scrollController;
+  final SearchView searchView;
+  final VoidCallback? onSearch;
+  final VoidCallback? onSettings;
+
+  @override
+  State<_ExploreTabScaffold> createState() => _ExploreTabScaffoldState();
+}
+
+class _ExploreTabScaffoldState extends State<_ExploreTabScaffold> {
+  double _horizontalDragDelta = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final popular = _isPopular(widget.state);
+    final isSearch = widget.state.query?.source == PostQuerySource.tagSearch;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(isSearch ? 'Search results' : 'Latte'),
+        actions: [
+          IconButton(
+            onPressed: widget.onSearch,
+            icon: const Icon(Icons.search),
+            tooltip: 'Search',
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
           ),
-        ),
-        body: LayoutBuilder(
+          IconButton(
+            onPressed: widget.onSettings,
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Settings',
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+          ),
+        ],
+        bottom: isSearch
+            ? null
+            : TabBar(
+                key: const ValueKey('explore-tabs'),
+                tabs: const [
+                  Tab(text: 'Popular'),
+                  Tab(text: 'Newest'),
+                ],
+                onTap: (index) =>
+                    _selectExploreTab(context, widget.controller, index),
+              ),
+      ),
+      body: GestureDetector(
+        onHorizontalDragStart: isSearch
+            ? null
+            : (_) => _horizontalDragDelta = 0,
+        onHorizontalDragUpdate: isSearch
+            ? null
+            : (details) {
+                _horizontalDragDelta += details.primaryDelta ?? 0;
+              },
+        onHorizontalDragEnd: isSearch
+            ? null
+            : (details) {
+                final velocity = details.primaryVelocity ?? 0;
+                final direction = velocity.abs() > 300
+                    ? velocity
+                    : _horizontalDragDelta;
+                final tabController = DefaultTabController.of(context);
+                if (direction < -80 && tabController.index == 0) {
+                  _selectExploreTab(context, widget.controller, 1);
+                } else if (direction > 80 && tabController.index == 1) {
+                  _selectExploreTab(context, widget.controller, 0);
+                }
+                _horizontalDragDelta = 0;
+              },
+        child: LayoutBuilder(
           builder: (context, constraints) {
             final expanded = constraints.maxWidth >= 600;
-            final columns = columnCount ?? (expanded ? 4 : 2);
+            final columns = widget.columnCount ?? (expanded ? 4 : 2);
             return KeyedSubtree(
               key: ValueKey(expanded ? 'expanded-explore' : 'compact-explore'),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  searchView,
+                  widget.searchView,
                   Expanded(
                     child: RepaintBoundary(
                       key: const ValueKey('explore-golden-content'),
                       child: _ExploreBody(
-                        controller: controller,
-                        state: state,
+                        controller: widget.controller,
+                        state: widget.state,
                         columnCount: columns,
-                        scrollController: scrollController,
+                        scrollController: widget.scrollController,
                       ),
                     ),
                   ),
@@ -199,15 +263,30 @@ class _ExploreScaffold extends StatelessWidget {
             );
           },
         ),
-        floatingActionButton: popular
-            ? FloatingActionButton(
-                onPressed: () => _showPopularPeriodSheet(context, controller),
-                tooltip: 'Choose popular period',
-                child: const Icon(Icons.calendar_today_outlined),
-              )
-            : null,
       ),
+      floatingActionButton: popular
+          ? FloatingActionButton(
+              onPressed: () =>
+                  _showPopularPeriodSheet(context, widget.controller),
+              tooltip: 'Choose popular period',
+              child: const Icon(Icons.calendar_today_outlined),
+            )
+          : null,
     );
+  }
+}
+
+void _selectExploreTab(
+  BuildContext context,
+  ExploreController controller,
+  int index,
+) {
+  final tabController = DefaultTabController.of(context);
+  if (tabController.index != index) tabController.animateTo(index);
+  if (index == 0) {
+    controller.loadPopular();
+  } else {
+    controller.loadDiscovery();
   }
 }
 
@@ -766,7 +845,11 @@ class _DetailBody extends StatelessWidget {
         adapter: adapter,
         index: index,
       ),
-      _DetailInspectSheet(detail: detail, downloadService: downloadService),
+      _DetailInspectSheet(
+        detail: detail,
+        downloadService: downloadService,
+        onTagSelected: controller.search,
+      ),
     ],
   );
 }
@@ -794,6 +877,10 @@ class _DetailImagePagerState extends State<_DetailImagePager> {
   late final ExtendedPageController _pageController = ExtendedPageController(
     initialPage: widget.index,
   );
+  final _gestureKeys = <int, GlobalKey<ExtendedImageGestureState>>{};
+  Offset? _pointerDown;
+  var _activePointers = 0;
+  var _hadMultiplePointers = false;
 
   @override
   void didUpdateWidget(covariant _DetailImagePager oldWidget) {
@@ -813,46 +900,96 @@ class _DetailImagePagerState extends State<_DetailImagePager> {
   @override
   void dispose() {
     _pageController.dispose();
+    _gestureKeys.clear();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) => KeyedSubtree(
     key: const ValueKey('detail-pager'),
-    child: ExtendedImageGesturePageView.builder(
-      controller: _pageController,
-      itemCount: widget.state.posts.length,
-      onPageChanged: (page) {
-        if (page == widget.index) return;
-        widget.controller.openAdjacentDetail(page - widget.index);
+    child: Listener(
+      behavior: HitTestBehavior.opaque,
+      onPointerDown: (event) {
+        if (_activePointers == 0) _pointerDown = event.position;
+        if (_activePointers > 0) _hadMultiplePointers = true;
+        _activePointers++;
       },
-      itemBuilder: (context, page) {
-        final post = page == widget.index
-            ? widget.detail.summary
-            : widget.state.posts[page];
-        return _DetailZoomArtwork(
-          key: const ValueKey('detail-zoom'),
-          post: post,
-          adapter: widget.adapter,
-          variantId: page == widget.index
-              ? _detailImageVariant(widget.detail.media)
-              : null,
-        );
+      onPointerUp: (event) {
+        _activePointers = (_activePointers - 1).clamp(0, 10).toInt();
+        if (_activePointers == 0) {
+          final start = _pointerDown;
+          _pointerDown = null;
+          final hadMultiplePointers = _hadMultiplePointers;
+          _hadMultiplePointers = false;
+          if (!hadMultiplePointers && start != null) {
+            _handleFallbackSwipe(start, event.position);
+          }
+        }
       },
+      onPointerCancel: (_) {
+        _activePointers = 0;
+        _pointerDown = null;
+        _hadMultiplePointers = false;
+      },
+      child: ExtendedImageGesturePageView.builder(
+        controller: _pageController,
+        itemCount: widget.state.posts.length,
+        onPageChanged: (page) {
+          if (page == widget.index) return;
+          widget.controller.openAdjacentDetail(page - widget.index);
+        },
+        itemBuilder: (context, page) {
+          final post = page == widget.index
+              ? widget.detail.summary
+              : widget.state.posts[page];
+          return _DetailZoomArtwork(
+            key: ValueKey(
+              'detail-zoom-${post.reference.siteId.value}-${post.reference.remoteId}',
+            ),
+            gestureKey: _gestureKeyFor(page),
+            post: post,
+            adapter: widget.adapter,
+            variantId: page == widget.index
+                ? _detailImageVariant(widget.detail.media)
+                : null,
+          );
+        },
+      ),
     ),
   );
+
+  GlobalKey<ExtendedImageGestureState> _gestureKeyFor(int page) =>
+      _gestureKeys.putIfAbsent(page, GlobalKey<ExtendedImageGestureState>.new);
+
+  void _handleFallbackSwipe(Offset start, Offset end) {
+    if (!_pageController.hasClients ||
+        _pageController.page?.round() != widget.index) {
+      return;
+    }
+    final delta = end - start;
+    if (delta.dx.abs() < 100 || delta.dx.abs() <= delta.dy.abs()) return;
+    final gestureDetails =
+        _gestureKeys[widget.index]?.currentState?.gestureDetails;
+    if ((gestureDetails?.totalScale ?? 1) > 1) return;
+    final amount = delta.dx < 0 ? 1 : -1;
+    final nextIndex = widget.index + amount;
+    if (nextIndex < 0 || nextIndex >= widget.state.posts.length) return;
+    unawaited(widget.controller.openAdjacentDetail(amount));
+  }
 }
 
 class _DetailZoomArtwork extends StatefulWidget {
   const _DetailZoomArtwork({
     required this.post,
     required this.adapter,
+    required this.gestureKey,
     this.variantId,
     super.key,
   });
 
   final PostSummary post;
   final SiteAdapter adapter;
+  final GlobalKey<ExtendedImageGestureState> gestureKey;
   final MediaVariantId? variantId;
 
   @override
@@ -860,8 +997,6 @@ class _DetailZoomArtwork extends StatefulWidget {
 }
 
 class _DetailZoomArtworkState extends State<_DetailZoomArtwork> {
-  late final GlobalKey<ExtendedImageGestureState> _gestureKey =
-      GlobalKey<ExtendedImageGestureState>();
   Future<ResolvedMedia>? _media;
   Future<ResolvedMedia>? _thumbnail;
 
@@ -870,7 +1005,7 @@ class _DetailZoomArtworkState extends State<_DetailZoomArtwork> {
     super.initState();
     _start();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _gestureKey.currentState?.reset();
+      if (mounted) widget.gestureKey.currentState?.reset();
     });
   }
 
@@ -933,7 +1068,7 @@ class _DetailZoomArtworkState extends State<_DetailZoomArtwork> {
     Widget? loadStateChanged(ExtendedImageState state) {
       if (state.extendedImageLoadState == LoadState.completed) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _gestureKey.currentState?.reset();
+          if (mounted) widget.gestureKey.currentState?.reset();
         });
         return null;
       }
@@ -955,7 +1090,7 @@ class _DetailZoomArtworkState extends State<_DetailZoomArtwork> {
         key: const ValueKey('detail-high-quality-image'),
         fit: BoxFit.contain,
         mode: ExtendedImageMode.gesture,
-        extendedImageGestureKey: _gestureKey,
+        extendedImageGestureKey: widget.gestureKey,
         initGestureConfigHandler: gestureConfig,
         loadStateChanged: loadStateChanged,
       );
@@ -966,7 +1101,7 @@ class _DetailZoomArtworkState extends State<_DetailZoomArtwork> {
       fit: BoxFit.contain,
       mode: ExtendedImageMode.gesture,
       cache: true,
-      extendedImageGestureKey: _gestureKey,
+      extendedImageGestureKey: widget.gestureKey,
       initGestureConfigHandler: gestureConfig,
       loadStateChanged: loadStateChanged,
     );
@@ -1018,10 +1153,12 @@ class _DetailInspectSheet extends StatefulWidget {
   const _DetailInspectSheet({
     required this.detail,
     required this.downloadService,
+    required this.onTagSelected,
   });
 
   final PostDetail detail;
   final DownloadService downloadService;
+  final Future<void> Function(String tag) onTagSelected;
 
   @override
   State<_DetailInspectSheet> createState() => _DetailInspectSheetState();
@@ -1111,7 +1248,12 @@ class _DetailInspectSheetState extends State<_DetailInspectSheet> {
                   spacing: 8,
                   runSpacing: 8,
                   children: widget.detail.summary.tags
-                      .map((tag) => Chip(label: Text(tag)))
+                      .map(
+                        (tag) => _DetailTagChip(
+                          tag: tag,
+                          onPressed: () => unawaited(widget.onTagSelected(tag)),
+                        ),
+                      )
                       .toList(),
                 ),
               ],
@@ -1124,21 +1266,44 @@ class _DetailInspectSheetState extends State<_DetailInspectSheet> {
 
   void _saveBestVariant() {
     if (widget.detail.media.isEmpty) return;
-    unawaited(
-      widget.downloadService
-          .save(
-            reference: widget.detail.summary.reference,
-            variant: _bestVariant(widget.detail.media),
-          )
-          .then<void>(
-            (_) {},
-            onError: (_) {
-              // Native Android reports transfer outcomes through notifications.
-            },
-          ),
-    );
+    unawaited(_startDownload());
+  }
+
+  Future<void> _startDownload() async {
+    try {
+      final receipt = await widget.downloadService.save(
+        reference: widget.detail.summary.reference,
+        variant: _bestVariant(widget.detail.media),
+      );
+      if (!mounted) return;
+      _showDownloadMessage(_downloadMessage(receipt));
+    } on Object {
+      if (!mounted) return;
+      _showDownloadMessage('Download could not be started.');
+    }
+  }
+
+  void _showDownloadMessage(String message) {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+        ),
+      );
   }
 }
+
+String _downloadMessage(DownloadReceipt receipt) => switch (receipt.status) {
+  DownloadStatus.started => 'Download started in the background.',
+  DownloadStatus.alreadyRunning => 'This image is already downloading.',
+  DownloadStatus.alreadySaved => 'Image already saved.',
+  DownloadStatus.completed => 'Image saved.',
+};
 
 class _DetailActions extends StatelessWidget {
   const _DetailActions({
@@ -1212,6 +1377,67 @@ class _Fact extends StatelessWidget {
       child: Chip(label: Text('$label  $value')),
     );
   }
+}
+
+class _DetailTagChip extends StatelessWidget {
+  const _DetailTagChip({required this.tag, required this.onPressed});
+
+  final String tag;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = _tagColors(context, tag);
+    return Tooltip(
+      message: 'Search tag $tag',
+      child: ActionChip(
+        key: ValueKey('detail-tag-$tag'),
+        label: Text(tag),
+        onPressed: onPressed,
+        backgroundColor: colors.background,
+        labelStyle: TextStyle(color: colors.foreground),
+        side: BorderSide(color: colors.border),
+      ),
+    );
+  }
+}
+
+class _TagColors {
+  const _TagColors({
+    required this.background,
+    required this.foreground,
+    required this.border,
+  });
+
+  final Color background;
+  final Color foreground;
+  final Color border;
+}
+
+_TagColors _tagColors(BuildContext context, String tag) {
+  final scheme = Theme.of(context).colorScheme;
+  final palette = [
+    _TagColors(
+      background: scheme.primaryContainer,
+      foreground: scheme.onPrimaryContainer,
+      border: scheme.primary,
+    ),
+    _TagColors(
+      background: scheme.secondaryContainer,
+      foreground: scheme.onSecondaryContainer,
+      border: scheme.secondary,
+    ),
+    _TagColors(
+      background: scheme.tertiaryContainer,
+      foreground: scheme.onTertiaryContainer,
+      border: scheme.tertiary,
+    ),
+  ];
+  var hash = 17;
+  for (final unit in tag.codeUnits) {
+    hash = (hash * 31 + unit) & 0x7fffffff;
+  }
+  return palette[hash % palette.length];
 }
 
 class _LoadingState extends StatelessWidget {

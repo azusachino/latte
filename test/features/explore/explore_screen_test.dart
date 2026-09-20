@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latte/src/app.dart';
 import 'package:latte/src/design/latte_theme.dart';
@@ -99,6 +100,36 @@ void main() {
     expect(find.byKey(const ValueKey('explore-columns-3')), findsOneWidget);
   });
 
+  testWidgets('swipes between Popular and Newest feeds', (tester) async {
+    final controller = ExploreController(
+      adapter: WidgetAdapter(posts: [post('tab-swipe')]),
+    );
+    await tester.pumpWidget(app(controller));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Newest'));
+    await tester.pumpAndSettle();
+    expect(controller.state.query?.source, PostQuerySource.discovery);
+
+    await tester.tap(find.text('Popular'));
+    await tester.pumpAndSettle();
+    expect(controller.state.query?.source, PostQuerySource.popular);
+
+    await tester.drag(
+      find.byKey(const ValueKey('explore-grid')),
+      const Offset(-400, 0),
+    );
+    await tester.pumpAndSettle();
+    expect(controller.state.query?.source, PostQuerySource.discovery);
+
+    await tester.drag(
+      find.byKey(const ValueKey('explore-grid')),
+      const Offset(400, 0),
+    );
+    await tester.pumpAndSettle();
+    expect(controller.state.query?.source, PostQuerySource.popular);
+  });
+
   testWidgets('gallery cards expose only image semantics', (tester) async {
     final item = post(
       'scored',
@@ -114,6 +145,32 @@ void main() {
     expect(find.bySemanticsLabel('Post scored'), findsOneWidget);
     expect(find.text('score 17'), findsNothing);
     expect(find.text('1200 × 800'), findsNothing);
+  });
+
+  testWidgets('acknowledges a background download in the app', (tester) async {
+    const channel = MethodChannel('com.azusachino.latte/download');
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      return <String, Object?>{
+        'status': 'started',
+        'album': 'Pictures/Latte',
+        'displayName': 'latte_fake_download_jpeg.jpg',
+      };
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+
+    final controller = ExploreController(
+      adapter: WidgetAdapter(posts: [post('download')]),
+    );
+    await tester.pumpWidget(app(controller));
+    await tester.pumpAndSettle();
+    await tester.tap(find.bySemanticsLabel('Post download'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Download'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Download started in the background.'), findsOneWidget);
   });
 
   testWidgets('detail pager keeps Popular context and moves between posts', (
@@ -257,6 +314,40 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('explore-grid')), findsOneWidget);
     expect(find.bySemanticsLabel('Post detail'), findsOneWidget);
+  });
+
+  testWidgets('detail tags launch the shared tag search workflow', (
+    tester,
+  ) async {
+    final item = post('tagged-detail', tags: const ['artist', 'blue_eyes']);
+    final controller = ExploreController(adapter: WidgetAdapter(posts: [item]));
+    await tester.pumpWidget(app(controller));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.bySemanticsLabel('Post tagged-detail'));
+    await tester.pumpAndSettle();
+    await tester.drag(
+      find.byKey(const ValueKey('detail-inspect-sheet')),
+      const Offset(0, -300),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('detail-tag-artist')), findsOneWidget);
+    expect(find.byTooltip('Search tag artist'), findsOneWidget);
+    final chip = tester.widget<ActionChip>(
+      find.byKey(const ValueKey('detail-tag-artist')),
+    );
+    expect(chip.backgroundColor, isNotNull);
+
+    await tester.tap(find.byKey(const ValueKey('detail-tag-artist')));
+    await tester.pumpAndSettle();
+
+    expect(controller.state.query?.source, PostQuerySource.tagSearch);
+    expect(controller.state.query?.expression, 'artist');
+    expect(find.byKey(const ValueKey('explore-grid')), findsOneWidget);
+    expect(find.byKey(const ValueKey('explore-detail')), findsNothing);
+    expect(find.byKey(const ValueKey('explore-tabs')), findsNothing);
+    expect(find.text('Search results'), findsOneWidget);
   });
 
   testWidgets('platform back from detail restores the discovery grid', (

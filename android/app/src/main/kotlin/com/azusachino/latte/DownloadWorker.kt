@@ -8,6 +8,7 @@ import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
@@ -31,6 +32,7 @@ class DownloadWorker(
 ) : CoroutineWorker(appContext, workerParams) {
     private val displayName = inputData.getString(KEY_DISPLAY_NAME).orEmpty()
     private val notificationId = displayName.hashCode() and Int.MAX_VALUE
+    private val resultNotificationId = notificationId xor RESULT_NOTIFICATION_MASK
 
     override suspend fun getForegroundInfo(): ForegroundInfo {
         createNotificationChannel()
@@ -40,6 +42,7 @@ class DownloadWorker(
                 .setOngoing(true)
                 .setProgress(0, 0, true)
                 .build(),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
         )
     }
 
@@ -246,7 +249,7 @@ class DownloadWorker(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         return Notification.Builder(applicationContext, notificationChannelId)
-            .setSmallIcon(applicationContext.applicationInfo.icon)
+            .setSmallIcon(android.R.drawable.stat_sys_download)
             .setContentTitle(title)
             .setContentText(text)
             .setContentIntent(pendingIntent)
@@ -286,7 +289,7 @@ class DownloadWorker(
         }
         val pendingIntent = PendingIntent.getActivity(
             applicationContext,
-            notificationId,
+            resultNotificationId,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
@@ -294,7 +297,7 @@ class DownloadWorker(
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .build()
-        notify(notification)
+        notify(resultNotificationId, notification)
     }
 
     private fun showDownloadFailure(message: String) {
@@ -304,12 +307,16 @@ class DownloadWorker(
         )
             .setAutoCancel(true)
             .build()
-        notify(notification)
+        notify(resultNotificationId, notification)
     }
 
     private fun notify(notification: Notification) {
+        notify(notificationId, notification)
+    }
+
+    private fun notify(id: Int, notification: Notification) {
         applicationContext.getSystemService(NotificationManager::class.java)
-            .notify(notificationId, notification)
+            .notify(id, notification)
     }
 
     private data class DownloadReceipt(
@@ -321,6 +328,7 @@ class DownloadWorker(
         const val album = "Pictures/Latte"
         private const val notificationChannelId = "latte_downloads"
         private const val notificationGroup = "latte_downloads"
+        private const val RESULT_NOTIFICATION_MASK = 0x40000000
         private const val KEY_SOURCE_URL = "source_url"
         private const val KEY_DISPLAY_NAME = "display_name"
         private const val KEY_MIME_TYPE = "mime_type"
