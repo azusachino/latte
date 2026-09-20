@@ -95,21 +95,21 @@ discovery.
 
 ### Tests for User Story 2
 
-- [ ] T017 [P] [US2] Write failing query preservation and Safe Mode explicit-policy
+- [x] T017 [P] [US2] Write failing query preservation and Safe Mode explicit-policy
   conflict tests in `test/sites/yandere/yandere_search_test.dart`.
-- [ ] T018 [P] [US2] Write failing replacement-race, no-results, and
+- [x] T018 [P] [US2] Write failing replacement-race, no-results, and
   clear-to-discovery tests in `test/features/explore/search_controller_test.dart`.
-- [ ] T019 [US2] Write failing Material `SearchAnchor` semantics, focus, submit,
+- [x] T019 [US2] Write failing Material `SearchAnchor` semantics, focus, submit,
   clear, overflow, and error-state tests in
   `test/features/explore/search_view_test.dart`.
 
 ### Implementation for User Story 2
 
-- [ ] T020 [US2] Implement yande.re query construction and content-policy
+- [x] T020 [US2] Implement yande.re query construction and content-policy
   conflict mapping in `lib/src/sites/yandere/` until T017 passes.
-- [ ] T021 [US2] Add search intent/state transitions to
+- [x] T021 [US2] Add search intent/state transitions to
   `lib/src/features/explore/explore_controller.dart` until T018 passes.
-- [ ] T022 [US2] Integrate Material search behavior in
+- [x] T022 [US2] Integrate Material search behavior in
   `lib/src/features/explore/` until T019 passes; run `make test-story
   STORY=search` and `make check`.
 
