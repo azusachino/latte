@@ -59,26 +59,26 @@ conditions, return, and observe the same ordered feed and position.
 
 ### Tests for User Story 1
 
-- [ ] T010 [P] [US1] Write failing yande.re query/decoder and content-policy
+- [x] T010 [P] [US1] Write failing yande.re query/decoder and content-policy
   tests in `test/sites/yandere/yandere_adapter_test.dart`.
-- [ ] T011 [P] [US1] Write failing discovery pagination, deduplication, stale
+- [x] T011 [P] [US1] Write failing discovery pagination, deduplication, stale
   response, and failure-state tests in
   `test/features/explore/explore_controller_test.dart`.
-- [ ] T012 [P] [US1] Write failing semantics, loading, empty, error, grid,
+- [x] T012 [P] [US1] Write failing semantics, loading, empty, error, grid,
   detail/back, light/dark, 200% text, reduced-motion, and compact/expanded tests
   in `test/features/explore/explore_screen_test.dart`.
 
 ### Implementation for User Story 1
 
-- [ ] T013 [US1] Implement private Moebooru parsing and yande.re policy in
+- [x] T013 [US1] Implement private Moebooru parsing and yande.re policy in
   `lib/src/sites/moebooru/` and `lib/src/sites/yandere/` until T010 passes.
-- [ ] T014 [US1] Implement immutable discovery/detail state and stale-request
+- [x] T014 [US1] Implement immutable discovery/detail state and stale-request
   rejection in `lib/src/features/explore/explore_controller.dart` until T011
   passes.
-- [ ] T015 [US1] Implement Material 3 Explore and Detail widgets in
+- [x] T015 [US1] Implement Material 3 Explore and Detail widgets in
   `lib/src/features/explore/` using theme roles and constraint-based layouts
   until T012 passes.
-- [ ] T016 [US1] Add reviewed golden baselines for key compact/expanded and
+- [x] T016 [US1] Add reviewed golden baselines for key compact/expanded and
   light/dark states under `test/goldens/explore/`; run `make test-story
   STORY=discover` and `make check`.
 
