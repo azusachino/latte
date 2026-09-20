@@ -44,9 +44,9 @@
 - [x] **T012**: Create `PluginProfileDialog` for logged-in state (shows username, active capabilities, and "Sign Out" button).
 - [x] **T013**: Create `AccountManagerScreen` and link it under "Accounts" in `SettingsScreen`.
 - [ ] **T014**: **Hardware Verification**: Deploy debug APK to OnePlus 8 (`0cadf428`):
-  - Test Mihon-style preference widget rendering.
-  - Test keyboard IME, password toggle, and live Yande login.
-  - Test app kill and restart: credentials remain securely restored.
+  - [x] Test Mihon-style preference widget rendering.
+  - [x] Test keyboard IME (fixed a real focus-advance bug, see `9d8ee22`) and password toggle.
+  - [ ] Test live Yande login and app kill/restart credential persistence — needs a real yande.re test account, not yet run.
 
 ---
 
