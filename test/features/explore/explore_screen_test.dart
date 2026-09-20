@@ -4,6 +4,7 @@ import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:toastification/toastification.dart';
 import 'package:latte/src/app.dart';
 import 'package:latte/src/design/latte_theme.dart';
 import 'package:latte/src/domain/popular_query.dart';
@@ -147,7 +148,7 @@ void main() {
     expect(find.text('1200 × 800'), findsNothing);
   });
 
-  testWidgets('starts a background download without an in-app toast', (
+  testWidgets('acknowledges a background download with LatteToast', (
     tester,
   ) async {
     const channel = MethodChannel('com.azusachino.latte/download');
@@ -170,13 +171,18 @@ void main() {
     await tester.tap(find.bySemanticsLabel('Post download'));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Download'));
+    await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const ValueKey('download-toast')), findsNothing);
-    expect(find.byKey(const ValueKey('download-snackbar')), findsNothing);
+    expect(find.byKey(const ValueKey('latte-toast-pill')), findsOneWidget);
+    expect(find.text('Downloading in background...'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
   });
 
-  testWidgets('offers a retry for an already saved image', (tester) async {
+  testWidgets('offers a retry dialog for an already saved image', (
+    tester,
+  ) async {
     const channel = MethodChannel('com.azusachino.latte/download');
     final messenger =
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
@@ -184,7 +190,7 @@ void main() {
     messenger.setMockMethodCallHandler(channel, (call) async {
       force = call.arguments is Map && call.arguments['force'] == true;
       return <String, Object?>{
-        'status': 'already_saved',
+        'status': force ? 'started' : 'already_saved',
         'album': 'Pictures/Latte',
         'displayName': 'latte_fake_download_jpeg.jpg',
       };
@@ -201,11 +207,19 @@ void main() {
     await tester.tap(find.byTooltip('Download'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Image already saved. Download again?'), findsOneWidget);
+    expect(find.text('Already saved'), findsOneWidget);
+    expect(
+      find.text(
+        'This image is already in Pictures/Latte. Do you want to download it again?',
+      ),
+      findsOneWidget,
+    );
     expect(find.text('Download again'), findsOneWidget);
     await tester.tap(find.text('Download again'));
-    await tester.pumpAndSettle();
+    await tester.pump();
     expect(force, isTrue);
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
   });
 
   testWidgets('detail pager keeps Popular context and moves between posts', (
@@ -527,12 +541,80 @@ void main() {
 
     expect(scrollController.offset, closeTo(before, 0.1));
   });
+
+  testWidgets('detail drag handle expands the inspect sheet', (tester) async {
+    final item = post('drag-handle-test', tags: const ['tag1', 'tag2']);
+    final controller = ExploreController(adapter: WidgetAdapter(posts: [item]));
+    await tester.pumpWidget(app(controller));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.bySemanticsLabel('Post drag-handle-test'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('detail-drag-handle')), findsOneWidget);
+    expect(find.byTooltip('Expand details'), findsOneWidget);
+
+    await tester.drag(
+      find.byKey(const ValueKey('detail-drag-handle')),
+      const Offset(0, -300),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Collapse details'), findsOneWidget);
+  });
+
+  testWidgets('swipe right in search results returns to discovery feed', (
+    tester,
+  ) async {
+    final item = post('search-swipe', tags: const ['landscape']);
+    final controller = ExploreController(adapter: WidgetAdapter(posts: [item]));
+    await tester.pumpWidget(app(controller));
+    await tester.pumpAndSettle();
+
+    await controller.search('landscape');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Search results'), findsOneWidget);
+    expect(find.byTooltip('Back to discovery'), findsOneWidget);
+
+    await tester.drag(
+      find.byKey(const ValueKey('explore-grid')),
+      const Offset(400, 0),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Search results'), findsNothing);
+    expect(find.byKey(const ValueKey('explore-tabs')), findsOneWidget);
+    expect(controller.state.query?.source, isNot(PostQuerySource.tagSearch));
+  });
+
+  testWidgets('back button in search results returns to discovery feed', (
+    tester,
+  ) async {
+    final item = post('search-back', tags: const ['portrait']);
+    final controller = ExploreController(adapter: WidgetAdapter(posts: [item]));
+    await tester.pumpWidget(app(controller));
+    await tester.pumpAndSettle();
+
+    await controller.search('portrait');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Search results'), findsOneWidget);
+    await tester.tap(find.byTooltip('Back to discovery'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Search results'), findsNothing);
+    expect(find.byKey(const ValueKey('explore-tabs')), findsOneWidget);
+    expect(controller.state.query?.source, isNot(PostQuerySource.tagSearch));
+  });
 }
 
-MaterialApp app(ExploreController controller) => MaterialApp(
-  theme: LatteTheme.light(),
-  darkTheme: LatteTheme.dark(),
-  home: ExploreScreen(controller: controller),
+Widget app(ExploreController controller) => ToastificationWrapper(
+  child: MaterialApp(
+    theme: LatteTheme.light(),
+    darkTheme: LatteTheme.dark(),
+    home: ExploreScreen(controller: controller),
+  ),
 );
 
 PostSummary post(

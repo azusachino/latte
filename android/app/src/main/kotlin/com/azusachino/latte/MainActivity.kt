@@ -59,7 +59,6 @@ class MainActivity : FlutterActivity() {
                             workInfos.get().any { !it.state.isFinished }
                         }.getOrDefault(false)
                         if (active) {
-                            showDownloadToast("It's already in the download queue. Please wait.")
                             result.success(
                                 mapOf(
                                     "status" to "already_running",
@@ -104,7 +103,6 @@ class MainActivity : FlutterActivity() {
                             ExistingWorkPolicy.KEEP,
                             request,
                         )
-                        showDownloadToast("Downloading has started. Please wait.")
                         result.success(
                             mapOf(
                                 "status" to "started",
@@ -127,9 +125,5 @@ class MainActivity : FlutterActivity() {
                 notificationPermissionRequestCode,
             )
         }
-    }
-
-    private fun showDownloadToast(message: String) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 }

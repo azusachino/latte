@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:toastification/toastification.dart';
+
 import 'design/latte_theme.dart';
 import 'features/explore/explore_controller.dart';
 import 'features/explore/explore_screen.dart';
@@ -55,39 +57,41 @@ class _LatteAppState extends State<LatteApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: _navigatorKey,
-      title: 'Latte',
-      theme: LatteTheme.light(),
-      darkTheme: LatteTheme.dark(),
-      themeMode: _themeMode,
-      home: ExploreScreen(
-        controller: _controller,
-        columnCount: _columnCount,
-        onSettings: () {
-          _navigatorKey.currentState?.push<void>(
-            MaterialPageRoute<void>(
-              builder: (_) => SettingsScreen(
-                themeMode: _themeMode,
-                onThemeModeChanged: (mode) {
-                  setState(() => _themeMode = mode);
-                  unawaited(_preferences.saveThemeMode(mode));
-                },
-                columnCount: _columnCount,
-                onOpenDownloadNotifications: () {
-                  unawaited(
-                    const MethodChannel('com.azusachino.latte/download')
-                        .invokeMethod<void>('openDownloadNotifications'),
-                  );
-                },
-                onColumnCountChanged: (value) {
-                  setState(() => _columnCount = value);
-                  unawaited(_preferences.saveColumnCount(value));
-                },
+    return ToastificationWrapper(
+      child: MaterialApp(
+        navigatorKey: _navigatorKey,
+        title: 'Latte',
+        theme: LatteTheme.light(),
+        darkTheme: LatteTheme.dark(),
+        themeMode: _themeMode,
+        home: ExploreScreen(
+          controller: _controller,
+          columnCount: _columnCount,
+          onSettings: () {
+            _navigatorKey.currentState?.push<void>(
+              MaterialPageRoute<void>(
+                builder: (_) => SettingsScreen(
+                  themeMode: _themeMode,
+                  onThemeModeChanged: (mode) {
+                    setState(() => _themeMode = mode);
+                    unawaited(_preferences.saveThemeMode(mode));
+                  },
+                  columnCount: _columnCount,
+                  onOpenDownloadNotifications: () {
+                    unawaited(
+                      const MethodChannel('com.azusachino.latte/download')
+                          .invokeMethod<void>('openDownloadNotifications'),
+                    );
+                  },
+                  onColumnCountChanged: (value) {
+                    setState(() => _columnCount = value);
+                    unawaited(_preferences.saveColumnCount(value));
+                  },
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

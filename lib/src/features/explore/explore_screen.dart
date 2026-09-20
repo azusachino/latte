@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 
+import '../../design/latte_toast.dart';
 import '../../domain/explore_state.dart';
 import '../../domain/failure.dart';
 import '../../domain/popular_query.dart';
@@ -187,6 +188,13 @@ class _ExploreTabScaffoldState extends State<_ExploreTabScaffold> {
     return Scaffold(
       appBar: AppBar(
         title: Text(isSearch ? 'Search results' : 'Latte'),
+        leading: isSearch
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                tooltip: 'Back to discovery',
+                onPressed: widget.controller.clearSearch,
+              )
+            : null,
         actions: [
           IconButton(
             onPressed: widget.onSearch,
@@ -214,29 +222,30 @@ class _ExploreTabScaffoldState extends State<_ExploreTabScaffold> {
               ),
       ),
       body: GestureDetector(
-        onHorizontalDragStart: isSearch
-            ? null
-            : (_) => _horizontalDragDelta = 0,
-        onHorizontalDragUpdate: isSearch
-            ? null
-            : (details) {
-                _horizontalDragDelta += details.primaryDelta ?? 0;
-              },
-        onHorizontalDragEnd: isSearch
-            ? null
-            : (details) {
-                final velocity = details.primaryVelocity ?? 0;
-                final direction = velocity.abs() > 300
-                    ? velocity
-                    : _horizontalDragDelta;
-                final tabController = DefaultTabController.of(context);
-                if (direction < -80 && tabController.index == 0) {
-                  _selectExploreTab(context, widget.controller, 1);
-                } else if (direction > 80 && tabController.index == 1) {
-                  _selectExploreTab(context, widget.controller, 0);
-                }
-                _horizontalDragDelta = 0;
-              },
+        onHorizontalDragStart: (_) => _horizontalDragDelta = 0,
+        onHorizontalDragUpdate: (details) {
+          _horizontalDragDelta += details.primaryDelta ?? 0;
+        },
+        onHorizontalDragEnd: (details) {
+          final velocity = details.primaryVelocity ?? 0;
+          final direction = velocity.abs() > 300
+              ? velocity
+              : _horizontalDragDelta;
+          if (isSearch) {
+            if (direction > 80) {
+              widget.controller.clearSearch();
+            }
+            _horizontalDragDelta = 0;
+            return;
+          }
+          final tabController = DefaultTabController.of(context);
+          if (direction < -80 && tabController.index == 0) {
+            _selectExploreTab(context, widget.controller, 1);
+          } else if (direction > 80 && tabController.index == 1) {
+            _selectExploreTab(context, widget.controller, 0);
+          }
+          _horizontalDragDelta = 0;
+        },
         child: LayoutBuilder(
           builder: (context, constraints) {
             final expanded = constraints.maxWidth >= 600;
@@ -628,16 +637,16 @@ class _RemoteArtworkState extends State<_RemoteArtwork> {
                 fit: StackFit.expand,
                 children: [
                   if (thumbnail != null)
-                    Image.network(
-                      thumbnail.toString(),
+                    Image(
+                      image: _imageProvider(thumbnail),
                       fit: BoxFit.cover,
                       semanticLabel:
                           'Artwork ${widget.post.reference.remoteId}',
                       errorBuilder: (_, _, _) => const SizedBox.shrink(),
                     ),
                   if (source != null)
-                    Image.network(
-                      source.toString(),
+                    Image(
+                      image: _imageProvider(source),
                       fit: BoxFit.cover,
                       semanticLabel:
                           'Artwork ${widget.post.reference.remoteId}',
@@ -1253,8 +1262,8 @@ class _DetailInspectSheetState extends State<_DetailInspectSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final peekSize = (66 / MediaQuery.sizeOf(context).height)
-        .clamp(0.035, 0.16)
+    final peekSize = (88 / MediaQuery.sizeOf(context).height)
+        .clamp(0.06, 0.20)
         .toDouble();
     final metadata = <_MetadataEntry>[
       if (widget.detail.summary.width != null &&
@@ -1287,8 +1296,21 @@ class _DetailInspectSheetState extends State<_DetailInspectSheet> {
           clipBehavior: Clip.antiAlias,
           child: ListView(
             controller: scrollController,
-            padding: const EdgeInsets.fromLTRB(16, 5, 16, 24),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
             children: [
+              Center(
+                child: Container(
+                  key: const ValueKey('detail-drag-handle'),
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(top: 8, bottom: 8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant
+                        .withAlpha(100),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
               _DetailActions(
                 variants: widget.detail.media,
                 onDownload: _saveBestVariant,
@@ -1347,43 +1369,49 @@ class _DetailInspectSheetState extends State<_DetailInspectSheet> {
       );
       if (!mounted) return;
       if (receipt.status == DownloadStatus.alreadySaved) {
-        _showAlreadySavedMessage();
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Already saved'),
+            content: const Text(
+              'This image is already in Pictures/Latte. Do you want to download it again?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Download again'),
+              ),
+            ],
+          ),
+        );
+        if (confirm == true) {
+          unawaited(_startDownload(force: true));
+        }
+      } else if (receipt.status == DownloadStatus.alreadyRunning) {
+        LatteToast.show(
+          context,
+          message: 'Already in the download queue',
+          type: ToastType.info,
+        );
+      } else {
+        LatteToast.show(
+          context,
+          message: 'Downloading in background...',
+          type: ToastType.info,
+        );
       }
     } on Object {
       if (!mounted) return;
-      _showDownloadMessage('Download could not be started.');
-    }
-  }
-
-  void _showAlreadySavedMessage() {
-    _showDownloadMessage(
-      'Image already saved. Download again?',
-      action: SnackBarAction(
-        label: 'Download again',
-        onPressed: () => unawaited(_startDownload(force: true)),
-      ),
-    );
-  }
-
-  void _showDownloadMessage(String message, {SnackBarAction? action}) {
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    if (messenger == null) return;
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          key: const ValueKey('download-snackbar'),
-          content: Text(message),
-          behavior: SnackBarBehavior.floating,
-          margin: EdgeInsets.fromLTRB(
-            16,
-            0,
-            16,
-            MediaQuery.paddingOf(context).bottom + 176,
-          ),
-          action: action,
-        ),
+      LatteToast.show(
+        context,
+        message: 'Download could not be started',
+        type: ToastType.error,
       );
+    }
   }
 }
 
