@@ -31,6 +31,7 @@ sealed interface Screen {
     data object Explore : Screen
     data class Detail(val initialIndex: Int) : Screen
     data object Settings : Screen
+    data object AccountManager : Screen
 }
 
 @Composable
@@ -42,6 +43,10 @@ fun LatteApp(
     val downloadManager = remember { DownloadManager(context) }
     val themeMode by exploreViewModel.preferences.themeMode.collectAsState()
 
+    val pluginStorage = remember { com.azusachino.latte.plugin.storage.SecurePluginStorage(context) }
+    val yandePlugin = remember { com.azusachino.latte.plugin.yande.YandePlugin(pluginStorage, com.azusachino.latte.data.network.OkHttpProvider.client, com.azusachino.latte.data.network.OkHttpProvider.cookieJar) }
+    val sitePluginManager = remember { com.azusachino.latte.plugin.SitePluginManager(listOf(yandePlugin)) }
+
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Explore) }
 
     LatteTheme(themeMode = themeMode) {
@@ -51,15 +56,7 @@ fun LatteApp(
                 label = "ScreenTransition",
                 transitionSpec = {
                     when {
-                        targetState is Screen.Detail -> {
-                            (slideInHorizontally { width -> width } + fadeIn())
-                                .togetherWith(slideOutHorizontally { width -> -width / 3 } + fadeOut())
-                        }
-                        initialState is Screen.Detail -> {
-                            (slideInHorizontally { width -> -width / 3 } + fadeIn())
-                                .togetherWith(slideOutHorizontally { width -> width } + fadeOut())
-                        }
-                        targetState is Screen.Settings -> {
+                        targetState is Screen.Detail || targetState is Screen.Settings || targetState is Screen.AccountManager -> {
                             (slideInHorizontally { width -> width } + fadeIn())
                                 .togetherWith(slideOutHorizontally { width -> -width / 3 } + fadeOut())
                         }
@@ -109,6 +106,20 @@ fun LatteApp(
                             preferences = exploreViewModel.preferences,
                             onBack = {
                                 currentScreen = Screen.Explore
+                            },
+                            onOpenAccountManager = {
+                                currentScreen = Screen.AccountManager
+                            },
+                        )
+                    }
+                    is Screen.AccountManager -> {
+                        BackHandler {
+                            currentScreen = Screen.Settings
+                        }
+                        com.azusachino.latte.ui.account.AccountManagerScreen(
+                            pluginManager = sitePluginManager,
+                            onBack = {
+                                currentScreen = Screen.Settings
                             },
                         )
                     }
