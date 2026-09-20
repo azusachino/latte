@@ -33,9 +33,11 @@ class ResolvedMedia {
     required this.reference,
     required this.variant,
     required this.source,
+    this.headers = const {},
   });
 
   final PostRef reference;
   final MediaVariant variant;
   final Uri source;
+  final Map<String, String> headers;
 }

@@ -47,6 +47,7 @@ class MethodChannelDownloadStore implements DownloadStore {
         'displayName': displayName,
         'mimeType': _mimeType(media.variant.extension),
         'force': force,
+        'headers': media.headers,
       },
     );
     if (result == null) {

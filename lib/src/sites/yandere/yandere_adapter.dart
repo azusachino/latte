@@ -34,6 +34,7 @@ class YandeAdapter implements SiteAdapter {
     if (query.continuation != null) parameters['page'] = query.continuation!;
     switch (query.source) {
       case PostQuerySource.discovery:
+      case PostQuerySource.subscribed:
         break;
       case PostQuerySource.popular:
         parameters['tags'] = _popularTags(query.popularQuery!);

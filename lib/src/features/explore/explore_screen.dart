@@ -1020,7 +1020,10 @@ class _DetailImagePagerState extends State<_DetailImagePager> {
         variantId,
       );
       if (!mounted) return;
-      await precacheImage(_imageProvider(media.source), context);
+      await precacheImage(
+        _imageProvider(media.source, headers: media.headers),
+        context,
+      );
     } on Object {
       // Prefetch is opportunistic; the detail page still loads on demand.
     }
@@ -1043,9 +1046,16 @@ class _DetailImagePagerState extends State<_DetailImagePager> {
   }
 }
 
-ImageProvider<Object> _imageProvider(Uri source) {
+ImageProvider<Object> _imageProvider(
+  Uri source, {
+  Map<String, String>? headers,
+}) {
   if (source.scheme == 'asset') return AssetImage(_assetName(source));
-  return ExtendedNetworkImageProvider(source.toString(), cache: true);
+  return ExtendedNetworkImageProvider(
+    source.toString(),
+    headers: headers,
+    cache: true,
+  );
 }
 
 class _DetailZoomArtwork extends StatefulWidget {
@@ -1111,6 +1121,7 @@ class _DetailZoomArtworkState extends State<_DetailZoomArtwork> {
             return _buildDetailImage(
               source: source,
               thumbnail: thumbnail,
+              headers: snapshot.data?.headers,
               label: 'Artwork ${widget.post.reference.remoteId}',
             );
           },
@@ -1134,6 +1145,7 @@ class _DetailZoomArtworkState extends State<_DetailZoomArtwork> {
     required Uri source,
     required Uri? thumbnail,
     required String label,
+    Map<String, String>? headers,
   }) {
     Widget? loadStateChanged(ExtendedImageState state) {
       if (state.extendedImageLoadState == LoadState.completed) {
@@ -1167,6 +1179,7 @@ class _DetailZoomArtworkState extends State<_DetailZoomArtwork> {
     }
     return ExtendedImage.network(
       source.toString(),
+      headers: headers,
       key: const ValueKey('detail-high-quality-image'),
       fit: BoxFit.contain,
       mode: ExtendedImageMode.gesture,

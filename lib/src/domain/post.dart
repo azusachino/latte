@@ -2,7 +2,7 @@ import 'popular_query.dart';
 
 enum PostRating { safe, questionable, explicit, unknown }
 
-enum PostQuerySource { discovery, popular, tagSearch }
+enum PostQuerySource { discovery, popular, tagSearch, subscribed }
 
 enum MediaVariantId { preview, sample, jpeg, original }
 
@@ -154,6 +154,11 @@ class PostQuery {
       expression = _validatedExpression(expression),
       popularQuery = null;
 
+  const PostQuery.subscribed({this.continuation})
+    : source = PostQuerySource.subscribed,
+      expression = null,
+      popularQuery = null;
+
   final PostQuerySource source;
   final String? expression;
   final PopularQuery? popularQuery;
@@ -169,6 +174,7 @@ class PostQuery {
       expression!,
       continuation: value,
     ),
+    PostQuerySource.subscribed => PostQuery.subscribed(continuation: value),
   };
 
   @override

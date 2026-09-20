@@ -129,12 +129,20 @@ class DownloadWorker(
         val url = URL(sourceUrl)
         require(url.protocol == "https") { "Image source must use HTTPS" }
         var offset = pendingSize(resolver, uri)
+        val headersJson = inputData.getString(KEY_HEADERS)
+        val headers = if (!headersJson.isNullOrBlank()) {
+            val json = org.json.JSONObject(headersJson)
+            json.keys().asSequence().associateWith { json.getString(it) }
+        } else {
+            emptyMap()
+        }
 
         while (true) {
             val connection = (url.openConnection() as HttpURLConnection).apply {
                 connectTimeout = 8_000
                 readTimeout = 20_000
                 setRequestProperty("User-Agent", "Latte/1.0")
+                headers.forEach { (k, v) -> setRequestProperty(k, v) }
                 if (offset > 0) setRequestProperty("Range", "bytes=$offset-")
             }
             try {
@@ -361,6 +369,7 @@ class DownloadWorker(
         private const val KEY_SOURCE_URL = "source_url"
         private const val KEY_DISPLAY_NAME = "display_name"
         private const val KEY_MIME_TYPE = "mime_type"
+        private const val KEY_HEADERS = "headers"
         private const val MAX_RETRY_COUNT = 2
 
         fun uniqueWorkName(displayName: String): String = "latte-download-$displayName"
@@ -369,10 +378,12 @@ class DownloadWorker(
             sourceUrl: String,
             displayName: String,
             mimeType: String,
+            headers: Map<String, String> = emptyMap(),
         ): Data = workDataOf(
             KEY_SOURCE_URL to sourceUrl,
             KEY_DISPLAY_NAME to displayName,
             KEY_MIME_TYPE to mimeType,
+            KEY_HEADERS to org.json.JSONObject(headers).toString(),
         )
     }
 }

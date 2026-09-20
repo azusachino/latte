@@ -70,6 +70,37 @@ void main() {
 
     expect(receipt.status, DownloadStatus.alreadyRunning);
   });
+
+  test('forwards custom HTTP headers to native download store', () async {
+    const channel = MethodChannel('latte.test/download-headers');
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    Map<Object?, Object?>? capturedArgs;
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      capturedArgs = call.arguments as Map<Object?, Object?>?;
+      return <String, Object?>{
+        'status': 'started',
+        'album': 'Pictures/Latte',
+        'displayName': 'latte_pixiv_12345_original.jpg',
+      };
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+
+    final media = ResolvedMedia(
+      reference: const PostRef(siteId: SiteId('pixiv'), remoteId: '12345'),
+      variant: const MediaVariant(
+        id: MediaVariantId.original,
+        extension: 'jpg',
+      ),
+      source: Uri.parse('https://i.pximg.net/img-original/img/12345.jpg'),
+      headers: const {'Referer': 'https://app-api.pixiv.net/'},
+    );
+
+    await MethodChannelDownloadStore(channel: channel)
+        .save(media: media, displayName: 'latte_pixiv_12345_original.jpg');
+
+    expect(capturedArgs?['headers'], {'Referer': 'https://app-api.pixiv.net/'});
+  });
 }
 
 ResolvedMedia _resolvedMedia() => ResolvedMedia(

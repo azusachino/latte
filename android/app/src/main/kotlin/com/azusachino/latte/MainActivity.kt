@@ -44,6 +44,7 @@ class MainActivity : FlutterActivity() {
                 val displayName = call.argument<String>("displayName")
                 val mimeType = call.argument<String>("mimeType")
                 val force = call.argument<Boolean>("force") == true
+                val headers = call.argument<Map<String, String>>("headers") ?: emptyMap()
                 if (sourceUrl == null || displayName == null || mimeType == null) {
                     result.error("invalid_request", "Download arguments are incomplete", null)
                     return@setMethodCallHandler
@@ -89,6 +90,7 @@ class MainActivity : FlutterActivity() {
                                     sourceUrl = sourceUrl,
                                     displayName = displayName,
                                     mimeType = mimeType,
+                                    headers = headers,
                                 ),
                             )
                             .setBackoffCriteria(
