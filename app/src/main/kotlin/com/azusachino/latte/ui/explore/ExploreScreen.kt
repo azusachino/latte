@@ -91,6 +91,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.azusachino.latte.data.model.PoolSummary
@@ -156,6 +157,8 @@ fun ExploreScreen(
                                 ?: if (uiState.searchTags.isNotBlank()) uiState.searchTags
                                 else "Latte",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     },
                     navigationIcon = {
@@ -297,7 +300,7 @@ fun ExploreScreen(
                     onPostClick = onPostClick,
                     onLoadMore = { viewModel.loadMoreSearch() },
                     onRetry = { viewModel.search(uiState.searchTags, uiState.activePoolName) },
-                    onRefresh = { viewModel.search(uiState.searchTags, uiState.activePoolName) },
+                    onRefresh = { viewModel.refreshSearch() },
                 )
             } else {
                 HorizontalPager(
@@ -353,9 +356,12 @@ fun ExploreScreen(
                         else -> {
                             PoolsTabContent(
                                 feed = uiState.poolsFeed,
+                                covers = uiState.poolCovers,
                                 onQueryChange = { query -> viewModel.loadPoolsInitial(query) },
                                 onLoadMore = { viewModel.loadMorePools() },
+                                onRefresh = { viewModel.refreshPools() },
                                 onPoolClick = { pool -> viewModel.openPool(pool) },
+                                onNeedCover = { poolId -> viewModel.loadPoolCover(poolId) },
                             )
                         }
                     }
@@ -522,12 +528,16 @@ private fun FavoritesTabContent(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PoolsTabContent(
     feed: PoolListState,
+    covers: Map<Long, String>,
     onQueryChange: (String) -> Unit,
     onLoadMore: () -> Unit,
+    onRefresh: () -> Unit,
     onPoolClick: (PoolSummary) -> Unit,
+    onNeedCover: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -583,22 +593,33 @@ private fun PoolsTabContent(
                 }
             }
             else -> {
-                LazyColumn(
-                    state = listState,
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                PullToRefreshBox(
+                    isRefreshing = feed.isRefreshing,
+                    onRefresh = onRefresh,
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    items(items = feed.pools, key = { it.id }) { pool ->
-                        PoolListItem(pool = pool, onClick = { onPoolClick(pool) })
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                    if (feed.isLoadingMore) {
-                        item {
-                            Box(
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                    LazyColumn(
+                        state = listState,
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        items(items = feed.pools, key = { it.id }) { pool ->
+                            PoolListItem(
+                                pool = pool,
+                                coverUrl = covers[pool.id],
+                                onClick = { onPoolClick(pool) },
+                                onNeedCover = { onNeedCover(pool.id) },
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                        if (feed.isLoadingMore) {
+                            item {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                                }
                             }
                         }
                     }
@@ -611,9 +632,15 @@ private fun PoolsTabContent(
 @Composable
 private fun PoolListItem(
     pool: PoolSummary,
+    coverUrl: String?,
     onClick: () -> Unit,
+    onNeedCover: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    LaunchedEffect(pool.id) {
+        if (coverUrl == null) onNeedCover()
+    }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -625,19 +652,36 @@ private fun PoolListItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surface),
+            ) {
+                if (coverUrl != null) {
+                    AsyncImage(
+                        model = coverUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = pool.displayName,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "${pool.postCount} post${if (pool.postCount == 1) "" else "s"}",
+                    text = "#${pool.id} · ${pool.postCount} post${if (pool.postCount == 1) "" else "s"}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

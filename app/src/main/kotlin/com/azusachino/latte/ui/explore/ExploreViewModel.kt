@@ -44,6 +44,7 @@ data class ExploreUiState(
     val favoritesFeed: FeedState = FeedState(),
     val searchFeed: FeedState = FeedState(),
     val poolsFeed: PoolListState = PoolListState(),
+    val poolCovers: Map<Long, String> = emptyMap(),
     val searchTags: String = "",
     val activePoolName: String? = null,
     val popularPeriod: PopularPeriod = PopularPeriod.DAY,
@@ -385,8 +386,34 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         _uiState.update { it.copy(searchTags = "", searchFeed = FeedState(), activePoolName = null) }
     }
 
+    fun refreshSearch() {
+        val state = _uiState.value
+        if (state.searchTags.isBlank()) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(searchFeed = it.searchFeed.copy(isRefreshing = true, error = null)) }
+            try {
+                val posts = api.getPosts(page = 1, tags = applySafeMode(state.searchTags))
+                _uiState.update {
+                    it.copy(
+                        searchFeed = it.searchFeed.copy(
+                            posts = posts,
+                            isRefreshing = false,
+                            page = 1,
+                            hasMore = posts.isNotEmpty(),
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(searchFeed = it.searchFeed.copy(isRefreshing = false, error = e.message ?: "Failed to refresh"))
+                }
+            }
+        }
+    }
+
     fun openPool(pool: PoolSummary) {
-        search(tags = "pool:${pool.id}", poolName = pool.displayName)
+        search(tags = "pool:${pool.id}", poolName = "#${pool.id} · ${pool.displayName}")
     }
 
     fun loadFavoritesInitial(username: String) {
@@ -512,6 +539,47 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(poolsFeed = it.poolsFeed.copy(isLoadingMore = false)) }
+            }
+        }
+    }
+
+    fun refreshPools() {
+        val query = _uiState.value.poolsFeed.query
+        viewModelScope.launch {
+            _uiState.update { it.copy(poolsFeed = it.poolsFeed.copy(isRefreshing = true, error = null)) }
+            try {
+                val pools = api.getPools(query = query.ifBlank { null }, page = 1)
+                _uiState.update {
+                    it.copy(
+                        poolsFeed = it.poolsFeed.copy(
+                            pools = pools,
+                            isRefreshing = false,
+                            page = 1,
+                            hasMore = pools.isNotEmpty(),
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(poolsFeed = it.poolsFeed.copy(isRefreshing = false, error = e.message ?: "Failed to refresh"))
+                }
+            }
+        }
+    }
+
+    // Pool list rows show a cover thumbnail (the pool's first post) and the
+    // pool's own id -- pool.json has no cover field, so this is a lazy
+    // one-shot fetch per pool id, cached so scrolling a row back into view
+    // doesn't refetch it.
+    fun loadPoolCover(poolId: Long) {
+        if (_uiState.value.poolCovers.containsKey(poolId)) return
+        viewModelScope.launch {
+            try {
+                val posts = api.getPosts(page = 1, limit = 1, tags = "pool:$poolId")
+                val coverUrl = posts.firstOrNull()?.previewUrl ?: return@launch
+                _uiState.update { it.copy(poolCovers = it.poolCovers + (poolId to coverUrl)) }
+            } catch (e: Exception) {
+                // Best-effort: the row just shows no thumbnail.
             }
         }
     }
