@@ -17,14 +17,25 @@ class ExploreScreen extends StatefulWidget {
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
+  late final ScrollController _scrollController;
+  var _wasDetail = false;
+  var _savedScrollOffset = 0.0;
+
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && widget.controller.state.status == ExploreStatus.initial) {
         widget.controller.loadDiscovery();
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -39,12 +50,27 @@ class _ExploreScreenState extends State<ExploreScreen> {
           ExploreStatus.detailFailure => true,
           _ => false,
         };
+        if (isDetail && !_wasDetail && _scrollController.hasClients) {
+          _savedScrollOffset = _scrollController.offset;
+        }
+        if (!isDetail && _wasDetail) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted || !_scrollController.hasClients) return;
+            final position = _scrollController.position;
+            final offset = _savedScrollOffset
+                .clamp(0.0, position.maxScrollExtent)
+                .toDouble();
+            _scrollController.jumpTo(offset);
+          });
+        }
+        _wasDetail = isDetail;
         final child = isDetail
             ? _DetailScaffold(controller: widget.controller, state: state)
             : _ExploreScaffold(
                 controller: widget.controller,
                 state: state,
                 onSearch: widget.onSearch,
+                scrollController: _scrollController,
               );
         final reducedMotion = MediaQuery.disableAnimationsOf(context);
         return AnimatedSwitcher(
@@ -62,11 +88,13 @@ class _ExploreScaffold extends StatelessWidget {
   const _ExploreScaffold({
     required this.controller,
     required this.state,
+    required this.scrollController,
     this.onSearch,
   });
 
   final ExploreController controller;
   final ExploreState state;
+  final ScrollController scrollController;
   final VoidCallback? onSearch;
 
   @override
@@ -112,7 +140,11 @@ class _ExploreScaffold extends StatelessWidget {
                     const SizedBox(height: 12),
                   ],
                   Expanded(
-                    child: _ExploreBody(controller: controller, state: state),
+                    child: _ExploreBody(
+                      controller: controller,
+                      state: state,
+                      scrollController: scrollController,
+                    ),
                   ),
                 ],
               ),
@@ -141,10 +173,15 @@ class _SafeModeChip extends StatelessWidget {
 }
 
 class _ExploreBody extends StatelessWidget {
-  const _ExploreBody({required this.controller, required this.state});
+  const _ExploreBody({
+    required this.controller,
+    required this.state,
+    required this.scrollController,
+  });
 
   final ExploreController controller;
   final ExploreState state;
+  final ScrollController scrollController;
 
   @override
   Widget build(BuildContext context) {
@@ -170,6 +207,7 @@ class _ExploreBody extends StatelessWidget {
       ExploreStatus.endReached => _GridState(
         controller: controller,
         state: state,
+        scrollController: scrollController,
       ),
       ExploreStatus.detailLoading ||
       ExploreStatus.detail ||
@@ -179,10 +217,15 @@ class _ExploreBody extends StatelessWidget {
 }
 
 class _GridState extends StatelessWidget {
-  const _GridState({required this.controller, required this.state});
+  const _GridState({
+    required this.controller,
+    required this.state,
+    required this.scrollController,
+  });
 
   final ExploreController controller;
   final ExploreState state;
+  final ScrollController scrollController;
 
   @override
   Widget build(BuildContext context) {
@@ -203,6 +246,7 @@ class _GridState extends StatelessWidget {
       },
       child: GridView.builder(
         key: const ValueKey('explore-grid'),
+        controller: scrollController,
         padding: const EdgeInsets.only(bottom: 24),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: expanded ? 4 : 2,

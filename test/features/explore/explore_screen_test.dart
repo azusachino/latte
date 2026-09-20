@@ -120,6 +120,34 @@ void main() {
     expect(find.text('Safe Mode'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('restores the feed scroll position after detail back', (
+    tester,
+  ) async {
+    final items = List<PostSummary>.generate(20, (index) => post('$index'));
+    final controller = ExploreController(adapter: WidgetAdapter(posts: items));
+    await tester.pumpWidget(app(controller));
+    await tester.pumpAndSettle();
+
+    await tester.drag(
+      find.byKey(const ValueKey('explore-grid')),
+      const Offset(0, -500),
+    );
+    await tester.pump();
+    final scrollable = tester.state<ScrollableState>(find.byType(Scrollable));
+    final before = scrollable.position.pixels;
+    expect(before, greaterThan(0));
+
+    await controller.openDetail(items.first.reference);
+    await tester.pumpAndSettle();
+    controller.closeDetail();
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.state<ScrollableState>(find.byType(Scrollable)).position.pixels,
+      closeTo(before, 0.1),
+    );
+  });
 }
 
 MaterialApp app(ExploreController controller) => MaterialApp(
