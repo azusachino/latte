@@ -12,6 +12,9 @@ enum ExploreStatus {
   endReached,
   nextPageFailure,
   failure,
+  detailLoading,
+  detail,
+  detailFailure,
 }
 
 class ExploreState {
@@ -21,6 +24,8 @@ class ExploreState {
     this.posts = const [],
     this.next,
     this.failure,
+    this.selectedReference,
+    this.detail,
   });
 
   const ExploreState.initial() : this._(status: ExploreStatus.initial);
@@ -83,11 +88,48 @@ class ExploreState {
   const ExploreState.failure(PostQuery query, SiteFailure failure)
     : this._(status: ExploreStatus.failure, query: query, failure: failure);
 
+  factory ExploreState.detailLoading(ExploreState content, PostRef reference) {
+    return ExploreState._(
+      status: ExploreStatus.detailLoading,
+      query: content.query,
+      posts: content.posts,
+      next: content.next,
+      selectedReference: reference,
+    );
+  }
+
+  factory ExploreState.detail(ExploreState content, PostDetail detail) {
+    return ExploreState._(
+      status: ExploreStatus.detail,
+      query: content.query,
+      posts: content.posts,
+      next: content.next,
+      selectedReference: detail.summary.reference,
+      detail: detail,
+    );
+  }
+
+  factory ExploreState.detailFailure(
+    ExploreState content,
+    SiteFailure failure,
+  ) {
+    return ExploreState._(
+      status: ExploreStatus.detailFailure,
+      query: content.query,
+      posts: content.posts,
+      next: content.next,
+      selectedReference: content.selectedReference,
+      failure: failure,
+    );
+  }
+
   final ExploreStatus status;
   final PostQuery? query;
   final List<PostSummary> posts;
   final String? next;
   final SiteFailure? failure;
+  final PostRef? selectedReference;
+  final PostDetail? detail;
 
   @override
   bool operator ==(Object other) =>
@@ -96,11 +138,20 @@ class ExploreState {
       other.query == query &&
       _listEquals(other.posts, posts) &&
       other.next == next &&
-      other.failure == failure;
+      other.failure == failure &&
+      other.selectedReference == selectedReference &&
+      other.detail == detail;
 
   @override
-  int get hashCode =>
-      Object.hash(status, query, Object.hashAll(posts), next, failure);
+  int get hashCode => Object.hash(
+    status,
+    query,
+    Object.hashAll(posts),
+    next,
+    failure,
+    selectedReference,
+    detail,
+  );
 }
 
 bool _listEquals<T>(List<T> left, List<T> right) {
