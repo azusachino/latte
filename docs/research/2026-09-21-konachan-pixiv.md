@@ -18,10 +18,10 @@ The conclusions are:
    line clients or automated browsers. Latte should detect this response and
    offer a browser fallback, not attempt to capture, forge, or transplant
    `cf_clearance`.
-2. **Treat `konachan.net` as a separate source, not a transparent mirror.** Its
-   Moebooru JSON API was live during the probe, but the two sites report
-   different post counts. A future `.net` entry can be useful, but the exact
-   origin must remain part of site and download identity.
+2. **Do not substitute `konachan.net` for `konachan.com`.** The owner has
+   confirmed that `.net` is a different, safe-mode-shaped site rather than the
+   `.com` collection. Its successful response is therefore not evidence for a
+   `.com` adapter and it is out of scope for this slice.
 3. **Use `pixiv.cat` as an image transport only.** Its documented URL grammar
    resolves a Pixiv work ID and optional page number to an image, and its live
    response correctly returned the origin filename and content type. It does
@@ -70,6 +70,21 @@ cookies or browser automation:
 This is a transport result, not proof that every user or every network sees
 the same challenge. It is enough to reject an implementation that assumes an
 OkHttp request can always decode `.com` JSON.
+
+The reproducible experiment is [`konachan-com-probe.sh`](../../scripts/experiments/konachan-com-probe.sh)
+and runs with:
+
+```text
+make experiment-konachan
+```
+
+It makes six bounded requests: HTML and JSON routes with the default client,
+an Android-shaped user-agent, and a desktop browser-shaped user-agent. It does
+not retain cookies, follow redirects, solve a challenge, rotate a proxy, or
+retry. On 2026-09-21 at 11:20 JST, all six requests returned HTTP 403 with
+`content-type: text/html`, `server: cloudflare`, and
+`cf-mitigated: challenge`. Changing only `Accept` or `User-Agent` did not
+change the classification.
 
 The [Konachan API help](https://konachan.com/help/api) describes a Moebooru
 API compatible with Danbooru 1.13.0. It documents JSON responses via the
@@ -131,26 +146,14 @@ probe confirms that the endpoint is returning JSON to the target device/network.
 The implementation should keep the failure state useful when that condition
 drifts again.
 
-### 1.3 Why `.net` must be explicit
+### 1.3 Why `.net` is excluded
 
-During the same probe, `.net` served the Moebooru API and returned post `408710`
-with an original URL on `konachan.net`. However, the home pages reported
-different collection sizes: `.com` showed 334,522 posts while `.net` showed
-213,068. That is enough evidence that the two origins cannot be treated as
-interchangeable aliases without further owner confirmation.
-
-If Latte supports `.net`, model it as a separately selectable source:
-
-```text
-site key: konachan.net
-origin:   https://konachan.net
-API:      /post.json, /pool.json, /pool/show.json, ...
-assets:   use the URLs returned by that origin
-```
-
-The post/download identity must include the origin, not only the numeric post
-ID. A post `408710` on `.net` and a post with the same ID on `.com` must not
-collide in caches, detail routes, or MediaStore duplicate checks.
+The earlier `.net` response must not be used as a fallback or fixture for this
+work. The owner has clarified that it is not the same website as `.com` and is
+effectively a safe-mode façade. Latte therefore has no `.net` product route,
+adapter, or download identity in this specification. If that site is studied
+later, it needs its own source decision and evidence rather than a Konachan.com
+alias.
 
 ### 1.4 Konachan first slice
 
@@ -160,12 +163,9 @@ The smallest useful Konachan slice is:
    optional fields Latte already normalizes for yande.re.
 2. Add a response classifier that distinguishes JSON, an ordinary HTTP error,
    and `BrowserRequired`; never surface the challenge HTML as a parser error.
-3. Add `.net` only as an explicit source if the owner wants that collection;
-   verify list, tag search, post lookup, and one returned media URL before UI
-   work depends on it.
-4. Add the `.com` browser fallback state and an actionable retry after the
+3. Add the `.com` browser fallback state and an actionable retry after the
    user returns to Latte.
-5. Keep scoring, favorites, pools, and account login out of this slice until
+4. Keep scoring, favorites, pools, and account login out of this slice until
    the anonymous browse/detail/download path is green.
 
 Suggested verification gates:
@@ -173,7 +173,7 @@ Suggested verification gates:
 - fixture: a 403 challenge body maps to `BrowserRequired`;
 - fixture: a valid post array maps to normalized posts without dropping
   optional media URLs;
-- opt-in live check: `.net` returns JSON and its asset URL is reachable;
+- opt-in live check: `.com` returns JSON to the target device/network;
 - device check: `.com` challenge state has a readable browser action and does
   not offer a misleading native retry loop.
 
@@ -339,9 +339,8 @@ No production implementation should start until these decisions are accepted:
 
 ### Konachan first
 
-1. Decide whether Latte wants `konachan.com`, `konachan.net`, or both as
-   separately named sources. The current evidence does not support silently
-   substituting `.net` for `.com`.
+1. Keep the source identity as `konachan.com`; do not substitute or expose
+   `konachan.net` in the Konachan.com flow.
 2. Add a protocol fixture and `BrowserRequired` transport result before adding
    UI or account behavior.
 3. Implement anonymous list/detail/download for the chosen origin. Keep the
@@ -355,7 +354,9 @@ No production implementation should start until these decisions are accepted:
    restriction, and media variant.
 2. Build a read-only metadata adapter spike against the currently selected
    App API route, with explicit token-required and upstream-drift errors.
-3. Build and test the `pixiv.cat` image resolver independently of metadata.
+3. Build and test the `pixiv.cat` image resolver independently of metadata;
+   preserve the original Pixiv URL for canonical sharing and use the proxy
+   only at image-load/download time.
 4. Ship the illustration feed/detail/download experience with proxy fallback.
 5. Treat login, bookmarks, following, comments, rankings beyond the verified
    mode, ugoira, and novels as separately gated capabilities.
