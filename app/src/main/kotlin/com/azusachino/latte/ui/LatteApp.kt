@@ -41,7 +41,7 @@ sealed interface Screen {
     data object Explore : Screen
     data class AuthorWorks(val authorId: Long? = null, val authorName: String = "") : Screen
     data class TagSearch(val query: String) : Screen
-    data class Detail(val posts: List<Post>, val initialIndex: Int) : Screen
+    data class Detail(val posts: List<Post>, val initialIndex: Int, val initialPageIndex: Int = 0) : Screen
     data object Settings : Screen
     data object AccountManager : Screen
 }
@@ -62,6 +62,12 @@ internal data class ScreenStack(
     } else {
         this
     }
+
+    fun replaceTop(screen: Screen): ScreenStack = if (screens.isNotEmpty()) {
+        copy(screens = screens.dropLast(1) + screen)
+    } else {
+        copy(screens = listOf(screen))
+    }
 }
 
 private val Screen.stateKey: String
@@ -69,7 +75,7 @@ private val Screen.stateKey: String
         is Screen.Explore -> "explore"
         is Screen.AuthorWorks -> "author-works:${authorId ?: authorName}"
         is Screen.TagSearch -> "tag-search:${query}"
-        is Screen.Detail -> "detail:${posts.getOrNull(initialIndex)?.workIdentity ?: initialIndex}"
+        is Screen.Detail -> "detail:${posts.getOrNull(initialIndex)?.workIdentity ?: initialIndex}:$initialPageIndex"
         is Screen.Settings -> "settings"
         is Screen.AccountManager -> "account-manager"
     }
@@ -212,16 +218,19 @@ fun LatteApp(
                             DetailScreen(
                                 posts = screen.posts,
                                 initialIndex = screen.initialIndex,
+                                initialPageIndex = screen.initialPageIndex,
                                 downloadManager = downloadManager,
                                 pluginManager = sitePluginManager,
                                 onBack = {
                                     popNavigation()
                                 },
-                                onTagClick = { tag ->
+                                onTagClick = { tag, postIndex, pageIndex ->
                                     exploreViewModel.search(tag)
-                                    navigation = navigation.push(Screen.TagSearch(query = tag))
+                                    navigation = navigation
+                                        .replaceTop(screen.copy(initialIndex = postIndex, initialPageIndex = pageIndex))
+                                        .push(Screen.TagSearch(query = tag))
                                 },
-                                onAuthorClick = { post ->
+                                onAuthorClick = { post, postIndex, pageIndex ->
                                     if (post.platform == PlatformId.PIXIV && post.authorId != null) {
                                         exploreViewModel.loadPixivUserWorks(post.authorId, post.author.orEmpty())
                                     } else {
@@ -229,12 +238,14 @@ fun LatteApp(
                                             exploreViewModel.search("user:$it")
                                         }
                                     }
-                                    navigation = navigation.push(
-                                        Screen.AuthorWorks(
-                                            authorId = post.authorId,
-                                            authorName = post.author.orEmpty(),
-                                        ),
-                                    )
+                                    navigation = navigation
+                                        .replaceTop(screen.copy(initialIndex = postIndex, initialPageIndex = pageIndex))
+                                        .push(
+                                            Screen.AuthorWorks(
+                                                authorId = post.authorId,
+                                                authorName = post.author.orEmpty(),
+                                            ),
+                                        )
                                 },
                                 onRequireLogin = { plugin ->
                                     activeLoginPlugin = plugin

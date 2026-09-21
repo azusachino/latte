@@ -250,7 +250,7 @@ class PixivApi(
                     response.code == 401 || response.code == 403 ||
                         (response.code == 400 && body.contains("oauth", ignoreCase = true)) ||
                         body.contains("invalid_token", ignoreCase = true) -> ReadResult.AuthRequired
-                    response.code == 408 || response.code == 429 || response.code in 500..599 ->
+                    response.code == 408 || response.code == 429 ->
                         ReadResult.RateLimited(response.header("Retry-After")?.toLongOrNull())
                     !response.isSuccessful -> ReadResult.TransportFailure(
                         "Pixiv $operation failed with HTTP ${response.code}",

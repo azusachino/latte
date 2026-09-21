@@ -715,19 +715,26 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
 
     private fun applyPixivResult(kind: PixivFeedKind, result: PixivFeedResult, isAppend: Boolean) {
         when (result) {
-            is PixivFeedResult.Success -> updatePixivFeed(kind) {
+            is PixivFeedResult.Success -> {
                 val visibleItems = filterPixivPosts(result.page.items, preferences.safeMode.value)
-                it.copy(
-                    posts = if (isAppend) it.posts + visibleItems else visibleItems,
-                    isLoading = false,
-                    isLoadingMore = false,
-                    isRefreshing = false,
-                    error = null,
-                    authRequired = false,
-                    page = if (isAppend) it.page + 1 else 1,
-                    hasMore = result.page.nextCursor != null,
-                    nextCursor = result.page.nextCursor,
-                )
+                val hasMore = result.page.nextCursor != null
+                val shouldContinue = visibleItems.isEmpty() && hasMore
+                updatePixivFeed(kind) {
+                    it.copy(
+                        posts = if (isAppend) it.posts + visibleItems else visibleItems,
+                        isLoading = false,
+                        isLoadingMore = false,
+                        isRefreshing = false,
+                        error = null,
+                        authRequired = false,
+                        page = if (isAppend) it.page + 1 else 1,
+                        hasMore = hasMore,
+                        nextCursor = result.page.nextCursor,
+                    )
+                }
+                if (shouldContinue) {
+                    loadMorePixiv(kind)
+                }
             }
             PixivFeedResult.Empty -> updatePixivFeed(kind) {
                 it.copy(

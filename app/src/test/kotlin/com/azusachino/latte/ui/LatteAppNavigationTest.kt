@@ -42,6 +42,29 @@ class LatteAppNavigationTest {
     }
 
     @Test
+    fun authorWorksBackRestoresExactDetailWorkAndMultiPageIndex() {
+        val initialDetail = Screen.Detail(posts = emptyList(), initialIndex = 0, initialPageIndex = 0)
+        var navigation = ScreenStack().push(initialDetail)
+
+        // User swiped to post 3, advanced to page 2 (index 2 of multi-page), and opened author works
+        val authorWorks = Screen.AuthorWorks(authorId = 42L, authorName = "Artist")
+        navigation = navigation
+            .replaceTop(initialDetail.copy(initialIndex = 3, initialPageIndex = 2))
+            .push(authorWorks)
+
+        assertEquals(authorWorks, navigation.current)
+        assertEquals(3, navigation.size)
+
+        navigation = navigation.pop()
+        val restored = navigation.current as Screen.Detail
+        assertEquals(3, restored.initialIndex)
+        assertEquals(2, restored.initialPageIndex)
+
+        navigation = navigation.pop()
+        assertEquals(Screen.Explore, navigation.current)
+    }
+
+    @Test
     fun tagSearchBackReturnsToTheDetailScreen() {
         val detail = Screen.Detail(posts = emptyList(), initialIndex = 0)
         var navigation = ScreenStack()
@@ -52,6 +75,24 @@ class LatteAppNavigationTest {
         navigation = navigation.pop()
 
         assertEquals(detail, navigation.current)
+    }
+
+    @Test
+    fun tagSearchBackRestoresExactDetailWorkAndMultiPageIndex() {
+        val initialDetail = Screen.Detail(posts = emptyList(), initialIndex = 1, initialPageIndex = 0)
+        var navigation = ScreenStack().push(initialDetail)
+
+        // User navigated to page 4 within post 1, then opened tag search
+        navigation = navigation
+            .replaceTop(initialDetail.copy(initialIndex = 1, initialPageIndex = 4))
+            .push(Screen.TagSearch(query = "citlali"))
+
+        assertEquals(Screen.TagSearch(query = "citlali"), navigation.current)
+        navigation = navigation.pop()
+
+        val restored = navigation.current as Screen.Detail
+        assertEquals(1, restored.initialIndex)
+        assertEquals(4, restored.initialPageIndex)
     }
 
     @Test

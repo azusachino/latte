@@ -107,10 +107,11 @@ import kotlin.math.abs
 fun DetailScreen(
     posts: List<Post>,
     initialIndex: Int,
+    initialPageIndex: Int = 0,
     downloadManager: DownloadManager,
     onBack: () -> Unit,
-    onTagClick: (String) -> Unit = {},
-    onAuthorClick: (Post) -> Unit = {},
+    onTagClick: (tag: String, postIndex: Int, pageIndex: Int) -> Unit = { _, _, _ -> },
+    onAuthorClick: (post: Post, postIndex: Int, pageIndex: Int) -> Unit = { _, _, _ -> },
     pluginManager: SitePluginManager,
     onRequireLogin: (SitePlugin) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -128,14 +129,18 @@ fun DetailScreen(
     var localScores by remember { mutableStateOf(mapOf<Long, Int>()) }
     var localBookmarks by remember { mutableStateOf(mapOf<String, Boolean>()) }
     var inlineActionError by remember { mutableStateOf<String?>(null) }
-    var pixivPageIndex by remember { mutableStateOf(0) }
+    var pixivPageIndex by rememberSaveable { mutableStateOf(initialPageIndex) }
 
     val currentPost = detailPosts.getOrNull(pagerState.currentPage)
+    var activePostId by rememberSaveable { mutableStateOf(currentPost?.id) }
     val displayPost = currentPost?.forPage(pixivPageIndex)
     val currentPlugin = currentPost?.let { pluginManager.get(it.platform) }
 
     LaunchedEffect(currentPost?.siteId, currentPost?.id) {
-        pixivPageIndex = 0
+        if (currentPost?.id != activePostId) {
+            activePostId = currentPost?.id
+            pixivPageIndex = 0
+        }
         inlineActionError = null
     }
 
@@ -585,7 +590,7 @@ fun DetailScreen(
                         post = displayPost ?: currentPost,
                         onAuthorClick = { author ->
                             showInspectSheet = false
-                            onAuthorClick(displayPost ?: currentPost)
+                            onAuthorClick(displayPost ?: currentPost, pagerState.currentPage, pixivPageIndex)
                         },
                         onSourceClick = { url ->
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
@@ -663,7 +668,7 @@ fun DetailScreen(
                                 tag = tag,
                                 onClick = {
                                     showInspectSheet = false
-                                    onTagClick(tag)
+                                    onTagClick(tag, pagerState.currentPage, pixivPageIndex)
                                 },
                             )
                         }

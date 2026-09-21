@@ -55,6 +55,10 @@ class PixivApiTest {
         )
         val result = api().load(PixivFeedRequest(PixivFeedKind.FOLLOWED_UPDATES))
         assertEquals(PixivFeedResult.RateLimited(17), result)
+
+        server.enqueue(MockResponse().setResponseCode(503))
+        val serverError = api().load(PixivFeedRequest(PixivFeedKind.FOLLOWED_UPDATES))
+        assertTrue(serverError is PixivFeedResult.TransportFailure)
     }
 
     @Test

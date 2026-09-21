@@ -181,4 +181,28 @@ class ExplorePlatformStateTest {
         assertEquals(listOf(post1), restoredAuthorState.posts)
         assertEquals(1L, restoredAuthorState.pixivAuthorId)
     }
+
+    @Test
+    fun safeModeFilteringAllItemsRetainsEmptyVisibleListForCursorContinuation() {
+        val explicit1 = Post(
+            id = 1,
+            platform = PlatformId.PIXIV,
+            rating = PostRating.EXPLICIT,
+            tags = emptyList(),
+            score = 0,
+            author = "Artist",
+            source = null,
+            createdAt = null,
+            width = 1,
+            height = 1,
+            previewUrl = "exp1",
+            sampleUrl = "exp1",
+            jpegUrl = null,
+            originalUrl = "exp1",
+            variants = emptyList(),
+        )
+        val explicit2 = explicit1.copy(id = 2)
+        val filtered = filterPixivPosts(listOf(explicit1, explicit2), safeMode = true)
+        assertTrue(filtered.isEmpty())
+    }
 }
