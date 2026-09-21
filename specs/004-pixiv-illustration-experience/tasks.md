@@ -31,7 +31,7 @@ stable Pixiv identity; malformed and transport responses render explicit errors.
 
 - [x] T006 [P] [US1] Add mapper and identity tests for Pixiv artwork/page normalization in `app/src/test/kotlin/com/azusachino/latte/data/model/PixivArtworkTest.kt`
 - [x] T007 [P] [US1] Add MockWebServer tests for daily ranking, detail mapping, opaque `next_url`, malformed JSON, and upstream status classification in `app/src/test/kotlin/com/azusachino/latte/data/network/PixivApiTest.kt`
-- [x] T008 [P] [US1] Add Pixiv.Cat resolver tests for page zero, page greater than zero, HTTPS host validation, content type, filename, non-image response, and retryable failure in `app/src/test/kotlin/com/azusachino/latte/data/network/PixivCatResolverTest.kt`
+- [x] T008 [P] [US1] Add Pixiv media resolver tests for official URL retention, `i.pixiv.re` path-preserving fallback, `pixiv.cat` page zero/page greater than zero, HTTPS host validation, content type, filename, non-image response, and retryable failure in `app/src/test/kotlin/com/azusachino/latte/data/network/PixivCatResolverTest.kt`
 - [x] T009 [US1] Add detail/save identity coverage for a multi-page Pixiv work in `app/src/test/kotlin/com/azusachino/latte/data/download/PixivDownloadIdentityTest.kt`
 
 ### Implementation
@@ -60,13 +60,13 @@ tag each produce the same Pixiv grid/detail flow with opaque continuation.
 
 ## Phase 5: User Story 3 — Connect Pixiv and use personal feeds (P2)
 
-**Independent test**: Token import persists encrypted session fields; followed
-and Favorites require auth; refresh invalidation signs out; bookmark mutation
-updates only after a successful response.
+**Independent test**: Browser OAuth and advanced token import persist encrypted
+session fields; followed and Favorites require auth; refresh invalidation signs
+out; bookmark mutation updates only after a successful response.
 
 ### Tests first
 
-- [x] T020 [P] [US3] Add token import, encrypted persistence, refresh success, refresh failure, logout, and auth-state tests in `app/src/test/kotlin/com/azusachino/latte/plugin/pixiv/PixivPluginTest.kt`
+- [x] T020 [P] [US3] Add browser OAuth/token import, encrypted persistence, refresh success, refresh failure, logout, and auth-state tests in `app/src/test/kotlin/com/azusachino/latte/plugin/pixiv/PixivPluginTest.kt`
 - [x] T021 [P] [US3] Add followed/Favorites/bookmark request and typed-error tests in `app/src/test/kotlin/com/azusachino/latte/data/network/PixivApiTest.kt`
 
 ### Implementation
@@ -116,6 +116,11 @@ approved `Platforms & accounts` cards/actions.
 - [x] T034 Run `make check`, inspect `git diff --check`, and record fixture/test evidence in this task file
 - [x] T035 Build and install a debug APK with `make validate` and `make install`, then record the physical-device Explore/platform-switch/detail receipt before declaring the journey complete (Explore, Yande detail, Pixiv browser OAuth exchange, authenticated Popular/Following/Favorites rendering, platform picker, and Platforms & accounts verified on the connected OnePlus 8; author works and Pixiv Safe Mode are also verified; bookmark toggle, completed download, duplicate-save warning, Following detail-back position restoration, and loading-image fallback states are verified live)
 
+## Phase 8: Post-acceptance image transport hardening
+
+- [x] T039 [US1] Prefer official Pixiv medium/full image URLs with the required Referer for previews and detail, retain `i.pixiv.re` and `pixiv.cat` fallbacks, and cover the candidate order in `app/src/main/kotlin/com/azusachino/latte/data/model/PixivArtwork.kt`, `app/src/main/kotlin/com/azusachino/latte/data/model/Post.kt`, `app/src/main/kotlin/com/azusachino/latte/data/network/OkHttpProvider.kt`, and `app/src/test/kotlin/com/azusachino/latte/data/model/PixivArtworkTest.kt`
+- [x] T040 [US1] Preserve the originating detail destination when opening Pixiv author works, then return through the author feed to the same work/page on Back in `app/src/main/kotlin/com/azusachino/latte/ui/LatteApp.kt` and `app/src/test/kotlin/com/azusachino/latte/ui/LatteAppNavigationTest.kt`
+
 ## Dependencies and execution order
 
 - Setup → Foundational → US1 → US2 → US3 → US4 → Polish.
@@ -140,7 +145,7 @@ approved `Platforms & accounts` cards/actions.
 ## Evidence
 
 - `make check` passed on 2026-09-21: rumdl found no Markdown issues and the
-  full `testDebugUnitTest` suite passed with 41 tests and no failures.
+  full `testDebugUnitTest` suite passed with no failures.
 - The browser OAuth exchange, verifier persistence across plugin recreation,
   refresh/retry, failed-refresh invalidation, platform capability/status, and
   multi-page download identity tests pass with MockWebServer or pure unit
@@ -166,6 +171,11 @@ approved `Platforms & accounts` cards/actions.
 - The cancellation regression test drives the production Pixiv result-apply
   seam with a deliberately late response and proves a canceled request cannot
   update feed state.
+- The navigation regression test drives `Following -> detail -> author works`
+  and proves Back returns to the original detail destination before the feed.
+- The post-fix device smoke repeated `Following -> detail -> author works` on
+  the connected OnePlus 8: the first Back restored the detail screen and the
+  second Back restored the Pixiv feed tabs.
 - The connected-device regression pass scrolled deep into Pixiv Following,
   opened a work, returned with Android Back, and observed the same visible
   viewport. It also opened a card while its thumbnail was still loading and
@@ -174,8 +184,15 @@ approved `Platforms & accounts` cards/actions.
   `invalid_request` OAuth message. PixEz's login-first interceptor and the
   device probe agree that native-client Popular is authenticated; the public
   website's separate ranking route is research-only because the workstation
-  returned JSON while Android received HTML. `i.pixiv.cat` is used for
-  path-preserving image transport, with the `pixiv.cat` ID/page form retained
-  as a fallback. A same-day probe returned HTTP 500 from `i.pixiv.cat` but HTTP
-  200 from the ID route, so the reverse proxy is documented as preferred rather
-  than assumed healthy.
+  returned JSON while Android received HTML. Official `i.pximg.net` medium
+  previews and original detail URLs are now tried first with
+  `Referer: https://app-api.pixiv.net/`; `i.pixiv.re` is the path-preserving
+  fallback and the `pixiv.cat` ID/page form is the final fallback. A same-day
+  probe returned HTTP 500 from the documented `i.pixiv.cat` path but HTTP 200
+  from the ID route and `i.pixiv.re`, so the implementation does not depend on
+  `i.pixiv.cat` availability.
+- After the direct-source transport change, `make check` and `lintDebug` passed;
+  the debug APK was installed on the connected OnePlus 8. A device smoke
+  capture showed a populated Pixiv grid shortly after switching platforms and
+  the same populated state after the loading window, without an image-error
+  flash.

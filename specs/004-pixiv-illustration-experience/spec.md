@@ -5,8 +5,8 @@
 **Created**: 2026-09-21
 
 **Status**: Implemented through fixture, auth, author-work, Safe Mode, live
-personal-feed/bookmark/download device acceptance, and request-cancellation
-regression gates
+personal-feed/bookmark/download device acceptance, direct-image transport,
+cache re-entry, and request-cancellation regression gates
 
 **Supersedes**: Pixiv portions of
 [`003-konachan-pixiv`](../003-konachan-pixiv/spec.md)
@@ -54,7 +54,10 @@ Acceptance scenarios:
 4. Given the author row is selected in detail metadata, when the author has a
    Pixiv user ID, then Latte requests `/v1/user/illusts` and renders that
    author's illustration works as a query-labelled feed.
-5. Given the ranking response is malformed or unavailable, when the feed loads,
+5. Given author works were opened from detail, when Back is used, then Latte
+   returns to the same detail work/page before returning to the originating
+   feed on the next Back action.
+6. Given the ranking response is malformed or unavailable, when the feed loads,
    then Latte shows a typed error state and never renders fabricated artwork.
 
 ### User Story 2 — Search Pixiv illustrations (P1)
@@ -177,21 +180,23 @@ clears and reloads the active Pixiv feed, search, or author-work state.
 
 ### Image boundary
 
-`i.pixiv.cat` and `pixiv.cat` are image transports, not the Pixiv metadata or
-account API. A
+Pixiv image hosts are transport concerns, not the Pixiv metadata or account
+API. A
 Pixiv work page retains:
 
 - the Pixiv work ID and zero-based page index;
 - the original image URL when supplied by metadata;
 - the canonical Pixiv web URL;
-- a resolver reference for the selected image host.
+- stable direct, proxy, and fallback media candidates.
 
-When metadata supplies an `i.pximg.net` URL, the default resolver rewrites only
-the host to `i.pixiv.cat`, preserving the original path and query. When no
-origin URL is available, it falls back to the `pixiv.cat/<work-id>-<page>` URL
-grammar. It trusts response `Content-Type` and `Content-Disposition` for
-decoding and filenames. It does not store or use a Pixiv.Cat service refresh
-token in Latte.
+When metadata supplies an `i.pximg.net` URL, the official URL is the first
+candidate: grid previews use the supplied medium/large/original URL and detail
+retains the full original URL. The shared OkHttp provider adds
+`Referer: https://app-api.pixiv.net/` for official Pixiv image/static hosts.
+The path-preserving `i.pixiv.re` URL is the next candidate, followed by the
+`pixiv.cat/<work-id>-<page>` ID/page route. The resolver trusts response
+`Content-Type` and `Content-Disposition` for decoding and filenames. It does
+not store or use a Pixiv.Cat service refresh token in Latte.
 
 ## Capability map
 
@@ -200,7 +205,7 @@ token in Latte.
 | `pixiv-artwork` | Normalized work, artist, page, tag, restriction, and media identity | — |
 | `pixiv-account` | Browser/token auth flows, session state, secure persistence, and account-required gating | — |
 | `pixiv-feeds` | Popular, followed-update, favorites, search, and search-support contracts plus opaque paging | `pixiv-artwork`, `pixiv-account` |
-| `pixiv-transport` | `i.pixiv.cat` host rewriting, `pixiv.cat` fallback resolution, and response filename/type handling | `pixiv-artwork` |
+| `pixiv-transport` | Official Pixiv image headers, `i.pixiv.re` path-preserving fallback, `pixiv.cat` ID/page fallback, and response filename/type handling | `pixiv-artwork` |
 | `pixiv-explore` | Platform switcher, feed tabs, feed detail pager, page controls, bookmark actions, and local save handoff | `pixiv-artwork`, `pixiv-account`, `pixiv-feeds`, `pixiv-transport` |
 
 Build order: `pixiv-artwork` → fixture-backed `pixiv-account`,
@@ -236,8 +241,10 @@ data class ArtworkPage(
     val width: Int,
     val height: Int,
     val originalUrl: String?,
-    val previewUrl: String?,
+    val previewUrl: String,
     val mediaRef: MediaRef,
+    val proxyUrl: String?,
+    val fallbackUrl: String?,
 )
 ```
 
@@ -378,14 +385,15 @@ sealed interface FeedLoadResult {
 ### Image resolution
 
 ```text
-ArtworkPage.mediaRef
-  -> PixivCatResolver(workId, pageIndex)
-  -> actual response type and filename
+ArtworkPage.previewUrl / mediaRef.url
+  -> official i.pximg.net URL with Referer
+  -> i.pixiv.re path-preserving fallback
+  -> pixiv.cat ID/page fallback
   -> Coil / WorkManager
 ```
 
-The original metadata URL is retained for sharing and diagnostics. The first
-slice does not expose custom mirrors or direct-origin fallback. A transport
+The original metadata URL is retained for sharing, stable media identity, and
+diagnostics. The first slice does not expose custom mirrors. A transport
 failure offers retry and open-in-Pixiv rather than silently switching to an
 unverified host.
 
@@ -419,8 +427,9 @@ unverified host.
 2. Fixture/error tests distinguish empty, auth-required, rate-limited,
    malformed, upstream-drift, and transport failure states.
 3. Artwork/page/media identities remain stable across proxy URL changes.
-4. Pixiv.Cat resolver tests cover page zero, page greater than zero, response
-   content type, filename, non-image response, and retryable failure.
+4. Pixiv media resolver tests cover official URL retention, `i.pixiv.re`
+   path-preserving fallback, `pixiv.cat` page zero/page greater than zero,
+   response content type, filename, non-image response, and retryable failure.
 5. Explore/detail tests prove that switching source does not lose feed context,
    page position, or local-save identity.
 6. Platform switching restores per-platform feed/search state, cancels stale

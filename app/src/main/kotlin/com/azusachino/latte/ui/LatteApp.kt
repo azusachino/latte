@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import com.azusachino.latte.BuildConfig
+import com.azusachino.latte.data.model.Post
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.azusachino.latte.data.download.DownloadManager
 import com.azusachino.latte.ui.common.ToastHost
@@ -37,14 +38,33 @@ import com.azusachino.latte.ui.theme.LatteTheme
 
 sealed interface Screen {
     data object Explore : Screen
-    data class Detail(val initialIndex: Int) : Screen
+    data object AuthorWorks : Screen
+    data class Detail(val posts: List<Post>, val initialIndex: Int) : Screen
     data object Settings : Screen
     data object AccountManager : Screen
+}
+
+internal data class ScreenStack(
+    val screens: List<Screen> = listOf(Screen.Explore),
+) {
+    val current: Screen
+        get() = screens.last()
+
+    fun push(screen: Screen): ScreenStack = copy(screens = screens + screen)
+
+    fun pop(): ScreenStack = if (screens.size > 1) {
+        copy(screens = screens.dropLast(1))
+    } else {
+        this
+    }
+
+    fun root(): ScreenStack = copy(screens = listOf(Screen.Explore))
 }
 
 private val Screen.navDepth: Int
     get() = when (this) {
         is Screen.Explore -> 0
+        is Screen.AuthorWorks -> 2
         is Screen.Detail -> 1
         is Screen.Settings -> 1
         is Screen.AccountManager -> 2
@@ -53,7 +73,8 @@ private val Screen.navDepth: Int
 private val Screen.stateKey: String
     get() = when (this) {
         is Screen.Explore -> "explore"
-        is Screen.Detail -> "detail:$initialIndex"
+        is Screen.AuthorWorks -> "author-works"
+        is Screen.Detail -> "detail:${posts.getOrNull(initialIndex)?.workIdentity ?: initialIndex}"
         is Screen.Settings -> "settings"
         is Screen.AccountManager -> "account-manager"
     }
@@ -100,14 +121,18 @@ fun LatteApp(
         exploreViewModel.configurePixiv(pixivPlugin.api)
     }
 
-    var currentScreen by remember { mutableStateOf<Screen>(Screen.Explore) }
+    var navigation by remember { mutableStateOf(ScreenStack()) }
     var activeLoginPlugin by remember { mutableStateOf<com.azusachino.latte.plugin.SitePlugin?>(null) }
     val saveableStateHolder = rememberSaveableStateHolder()
 
     LatteTheme(themeMode = themeMode, palette = palette) {
         Box(modifier = modifier.fillMaxSize()) {
+            BackHandler(enabled = navigation.screens.size > 1) {
+                navigation = navigation.pop()
+            }
+
             AnimatedContent(
-                targetState = currentScreen,
+                targetState = navigation.current,
                 label = "ScreenTransition",
                 transitionSpec = {
                     if (targetState.navDepth >= initialState.navDepth) {
@@ -122,16 +147,21 @@ fun LatteApp(
             ) { screen ->
                 saveableStateHolder.SaveableStateProvider(screen.stateKey) {
                     when (screen) {
-                        is Screen.Explore -> {
+                        is Screen.Explore, is Screen.AuthorWorks -> {
                             ExploreScreen(
                                 viewModel = exploreViewModel,
                                 sitePlugin = yandePlugin,
                                 pixivPlugin = pixivPlugin,
                                 onPostClick = { index ->
-                                    currentScreen = Screen.Detail(index)
+                                    navigation = navigation.push(
+                                        Screen.Detail(
+                                            posts = exploreViewModel.uiState.value.posts,
+                                            initialIndex = index,
+                                        ),
+                                    )
                                 },
                                 onOpenSettings = {
-                                    currentScreen = Screen.Settings
+                                    navigation = navigation.push(Screen.Settings)
                                 },
                                 onRequireLogin = { plugin ->
                                     activeLoginPlugin = plugin
@@ -139,21 +169,17 @@ fun LatteApp(
                             )
                         }
                         is Screen.Detail -> {
-                            BackHandler {
-                                currentScreen = Screen.Explore
-                            }
-                            val posts = exploreViewModel.uiState.collectAsState().value.posts
                             DetailScreen(
-                                posts = posts,
+                                posts = screen.posts,
                                 initialIndex = screen.initialIndex,
                                 downloadManager = downloadManager,
                                 pluginManager = sitePluginManager,
                                 onBack = {
-                                    currentScreen = Screen.Explore
+                                    navigation = navigation.pop()
                                 },
                                 onTagClick = { tag ->
                                     exploreViewModel.search(tag)
-                                    currentScreen = Screen.Explore
+                                    navigation = navigation.root()
                                 },
                                 onAuthorClick = { post ->
                                     if (post.siteId == "pixiv" && post.authorId != null) {
@@ -163,7 +189,7 @@ fun LatteApp(
                                             exploreViewModel.search("user:$it")
                                         }
                                     }
-                                    currentScreen = Screen.Explore
+                                    navigation = navigation.push(Screen.AuthorWorks)
                                 },
                                 onRequireLogin = { plugin ->
                                     activeLoginPlugin = plugin
@@ -171,27 +197,21 @@ fun LatteApp(
                             )
                         }
                         is Screen.Settings -> {
-                            BackHandler {
-                                currentScreen = Screen.Explore
-                            }
                             SettingsScreen(
                                 preferences = exploreViewModel.preferences,
                                 onBack = {
-                                    currentScreen = Screen.Explore
+                                    navigation = navigation.pop()
                                 },
                                 onOpenAccountManager = {
-                                    currentScreen = Screen.AccountManager
+                                    navigation = navigation.push(Screen.AccountManager)
                                 },
                             )
                         }
                         is Screen.AccountManager -> {
-                            BackHandler {
-                                currentScreen = Screen.Settings
-                            }
                             com.azusachino.latte.ui.account.AccountManagerScreen(
                                 pluginManager = sitePluginManager,
                                 onBack = {
-                                    currentScreen = Screen.Settings
+                                    navigation = navigation.pop()
                                 },
                             )
                         }

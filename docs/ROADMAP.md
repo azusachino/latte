@@ -21,7 +21,7 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
   • Masonry feed        • 0–3 scoring & Add to Favorite           • Referer header injection
   • Detail pager        • Search swipe-back & sheet drag fix      • 1:N multi-page illusts
   • WorkManager save    • Clean dialog for already-saved          • Subscribed updates feed
-                        • Unified cache manager in settings       • Ranking modes
+                        • Unified cache manager in settings       • Search and author works
 ```
 
 ---
@@ -32,8 +32,8 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
 > authentication/scoring, Favorites, and Pools are included; review blockers for
 > storage, credential evidence, plugin lookup, query ownership, Safe Mode
 > defaults, and inline action errors are repaired. Secure-storage/pool test
-> coverage and T014 hardware verification remain partial. Pixiv and final
-> hardware acceptance remain open as follow-up work.
+> coverage and T014 hardware verification remain partial. Pixiv and its final
+> hardware acceptance are tracked in the 0.0.3 milestone below.
 > **Active Feature Spec**: [002 Account Manager Center](../specs/002-account-manager/spec.md)
 > **Tasks**: [002 Tasks](../specs/002-account-manager/tasks.md)
 > **Design Inspiration**: Mihon / Tachiyomi `Tracker` & `TrackerManager` plugin architecture
@@ -103,9 +103,12 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
 ### 1. Architectural Adjustments
 
 - **Pixiv image proxy transport**:
-  - Pixiv images on `i.pximg.net` return HTTP 403 Forbidden without a Pixiv Referer; prefer rewriting the host to `i.pixiv.cat` while preserving the original path, with the ID/page resolver as fallback.
-  - Implement `PixivPlugin.applyHeaders` and route matching requests through
-    `SitePluginManager` and the OkHttp provider.
+  - Pixiv images on `i.pximg.net` return HTTP 403 Forbidden without a Pixiv
+    Referer; use the supplied official medium/original URL first with
+    `Referer: https://app-api.pixiv.net/`, then `i.pixiv.re` as a
+    path-preserving fallback, and `pixiv.cat` ID/page resolution last.
+  - Keep this policy in the shared OkHttp provider and media resolver rather
+    than in Compose or account-management UI.
 - **1:N Multi-Page Artworks (`IllustPage`)**:
   - Pixiv illusts can contain multiple pages (`page_count >= 1`).
   - Extend the Kotlin post/media model with a site-owned multi-page mapping
@@ -118,11 +121,11 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
 
 ### 2. Pixiv Adapter & OAuth2 PKCE
 
-- Implement `PixivPlugin` implementing `SitePlugin` and register it only after
-  its deterministic and device acceptance receipts pass.
+- Implemented `PixivPlugin` as a `SitePlugin` and registered it after its
+  deterministic and device acceptance receipts passed.
 - Handle OAuth2 PKCE token exchange (`access_token` and `refresh_token`) and automated token refresh interceptor.
-- Map Pixiv ranking modes (`day`, `week`, `month`, `rookie`, `r18`) to the
-  shared post-query seam without adding Pixiv conditions to Compose screens.
+- The verified Popular surface uses the daily ranking operation. Additional
+  Pixiv ranking modes remain a follow-up and are not advertised by 0.0.3.
 
 ---
 

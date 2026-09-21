@@ -28,6 +28,9 @@
   cannot flash `Image unavailable` while another candidate is loading.
 - Settled exploration tabs immediately so rapid switches cannot leave the
   pager between feeds while adjacent grids are composing.
+- Preserved the originating detail screen when opening Pixiv author works;
+  Back now returns through author works to the same detail page before the
+  source feed, including during animated transitions.
 - Followed PixEz's direct Pixiv image transport: use official medium URLs for
   grid previews with the required Referer, retain full URLs for detail, and
   keep `i.pixiv.re` plus the ID resolver as fallbacks.

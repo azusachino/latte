@@ -8,7 +8,8 @@
 Implement Pixiv as a bounded second source inside Latte's existing Android
 application. The first vertical slice normalizes Pixiv illustration responses
 into the existing grid/detail/save journey, resolves page media through
-Pixiv.Cat, and keeps protocol errors explicit. Search, account-scoped feeds,
+official Pixiv URLs with `i.pixiv.re` and `pixiv.cat` fallbacks, and keeps
+protocol errors explicit. Search, account-scoped feeds,
 bookmark mutation, author works, Safe Mode filtering, platform switching, and
 the redesigned account screen are then added behind the same seams.
 
@@ -36,16 +37,19 @@ MediaStore/WorkManager for local image saves; no new database
 
 **Performance Goals**: Preserve existing grid/detail behavior; avoid blocking
 the main thread; cancel stale source requests; keep platform transitions short
-and reduced-motion safe
+and reduced-motion safe. Pixiv image candidates must try the official preview
+or original URL before proxy fallbacks, and the device smoke receipt must show
+a populated grid shortly after a platform switch without a transient
+`Image unavailable` state.
 
 **Constraints**: Treat all Pixiv responses as untrusted; keep original and
-proxy media identities separate; never persist a Pixiv password or Pixiv.Cat
-service token; do not implement Konachan in this feature
+direct/proxy media identities separate; never persist a Pixiv password or
+Pixiv.Cat service token; do not implement Konachan in this feature
 
 **Scale/Scope**: One owner, one active account per platform, four Pixiv feed
 entry points plus a bounded author-works feed, fixture-backed protocol
-coverage, and a bounded live metadata/auth spike before advertising account
-feeds as verified
+coverage, plus a bounded live metadata/auth and physical-device acceptance
+receipt for the supported account feeds
 
 ## Constitution Check
 
@@ -57,9 +61,10 @@ feeds as verified
   begins with a failing JUnit or MockWebServer test; `make check` is the slice
   gate.
 - **III — Site Policy in Adapters**: Pass. Pixiv paths, response mapping,
-  cursors, auth headers, and Pixiv.Cat URL resolution stay out of Compose.
+  cursors, auth headers, and media candidate resolution stay out of Compose.
 - **IV — Evidence Before Claims**: Pass. Fixtures prove deterministic behavior;
-  live Pixiv access remains explicitly gated and opt-in.
+  live Pixiv access and the direct-image transport have fixture, test, and
+  physical-device receipts.
 - **V — Simplicity**: Pass. Work remains in the existing `app` module and uses
   Kotlin/Compose/OkHttp facilities already present.
 - **VI — Device-First Ergonomics**: Pass with an explicit gate. The first
@@ -109,14 +114,15 @@ app/src/test/kotlin/com/azusachino/latte/
 2. Ship fixture-backed Pixiv Popular/detail/page transport and connect it to
    the existing Explore grid/detail/save flow.
 3. Add Pixiv search, autocomplete, trending tags, and opaque cursor paging.
-4. Add encrypted token import, refresh/session invalidation, followed and
-   Favorites feeds, and bookmark mutation.
+4. Add browser-first OAuth/PKCE, advanced encrypted token import,
+   refresh/session invalidation, followed and Favorites feeds, and bookmark
+   mutation.
 5. Add the author-works action and apply the global Safe Mode contract across
    normalized Pixiv results.
 6. Add the platform picker, platform-local state restoration, and redesigned
    account manager.
 7. Run the live/auth spike, install a debug APK on hardware, and complete the
-   project gates. Keep unverified live behavior visibly gated.
+   project gates. Record any remaining unverified live route explicitly.
 
 ## Complexity Tracking
 

@@ -252,15 +252,31 @@ and continues through opaque cursors after a fully filtered page. Cache
 candidate retention and tri-state auth resolution are recorded as correctness
 constraints rather than UI anecdotes.
 
-`make check` passes with 41 unit tests and no Markdown issues. `make validate`
+`make check` passes with no unit-test failures and no Markdown issues. `make validate`
 and the unlocked OnePlus 8 receipt cover the browser OAuth exchange, real
 Popular/Following/Favorites images, author-work navigation, image-cache
 re-entry, Pixiv Safe Mode reload, bookmark toggle round-trip, WorkManager save
 completion, duplicate-save prevention, and Following detail-back position
-restoration. Grid and detail image failures now expose a retryable state, while
-Pixiv display candidates prefer the path-preserving proxy before the ID/page
-fallback. The production Pixiv request seam also has a cancellation regression
-test proving that a late response from a canceled job cannot update feed state.
+restoration. Grid and detail image failures now expose a retryable state.
+Pixiv display candidates prefer official medium/original URLs with the required
+Referer, then try the path-preserving `i.pixiv.re` proxy and the `pixiv.cat`
+ID/page fallback. The production Pixiv request seam also has a cancellation
+regression test proving that a late response from a canceled job cannot update
+feed state.
 This 0.0.3 slice is **VERIFIED** for the scoped implementation; Konachan
 remains postponed. The active branch is prepared for a 0.0.3 review; no remote
 PR or push is implied by this record.
+
+## 0.0.3 stale-document audit (2026-09-21)
+
+The current-facing roadmap, feature spec, implementation plan, task evidence,
+and research conclusion now agree on the Pixiv image candidate order:
+
+```text
+official i.pximg.net URL + Referer -> i.pixiv.re -> pixiv.cat ID/page
+```
+
+The dated code-review/parity note and the superseded Pixiv portions of
+`specs/003-konachan-pixiv/` remain unchanged as historical records. Their
+earlier proxy-first language is not an active implementation contract; the
+active contract is `specs/004-pixiv-illustration-experience/`.

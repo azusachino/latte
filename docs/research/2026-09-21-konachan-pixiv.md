@@ -23,17 +23,20 @@ The conclusions are:
    confirmed that `.net` is a different, safe-mode-shaped site rather than the
    `.com` collection. Its successful response is therefore not evidence for a
    `.com` adapter and it is out of scope for this slice.
-3. **Use `pixiv.cat` as an image transport only.** Its documented URL grammar
-   resolves a Pixiv work ID and optional page number to an image, and its live
-   response correctly returned the origin filename and content type. It does
-   not provide Pixiv search, user, bookmark, ranking, or detail metadata.
+3. **Use image hosts as transport only.** Official Pixiv image URLs are the
+   first candidate when metadata supplies them, with the required Referer;
+   `i.pixiv.re` preserves the original path as a fallback and `pixiv.cat`
+   resolves a work ID and optional page number as a final fallback. These
+   hosts do not provide Pixiv search, user, bookmark, ranking, or detail
+   metadata.
 4. **Pixiv metadata/authentication is a separate, unstable boundary.** The
    available open clients use Pixiv's private App API and refresh-token flow;
    Pixiv does not publish the App API contract as a stable developer API. The
    Pixiv target is therefore read-only illustration browsing across three
    feeds: ranked popular works, followed-artist updates, and bookmarked
-   illustrations. The latter two require an authenticated account; account
-   acquisition remains a separate spike.
+   illustrations. The latter two require an authenticated account; browser
+   OAuth account acquisition was a separate spike and is now accepted for the
+   bounded 0.0.3 device slice.
 
 5. **Search is part of the first experience.** Illustration search is another
    feed-shaped operation and can reuse the same grid, cursor, and detail flow.
@@ -202,8 +205,10 @@ The [Pixiv.cat home page](https://pixiv.cat/) documents these image URLs:
 
 Its [reverse-proxy page](https://pixiv.cat/reverseproxy.html) documents a
 second, path-preserving form: replace only `i.pximg.net` with
-`i.pixiv.cat`. This is the preferred form when metadata already supplies the
-original Pixiv image URL, because it preserves the exact media path and page.
+`i.pixiv.cat`. At research time this was the preferred form when metadata
+already supplied the original Pixiv image URL, because it preserved the exact
+media path and page. The implementation decision below supersedes that
+proxy-first ordering.
 
 The site explicitly says it is not affiliated with Pixiv and recommends its
 reverse proxy when a client already has the original Pixiv image URL. The
@@ -236,6 +241,17 @@ from the development network returned HTTP 500 from the documented
 `i.pixiv.re` path returned HTTP 200. Latte therefore keeps the ID route as a
 runtime-compatible fallback and does not treat the reverse proxy as a health
 checked guarantee.
+
+### 2.2a Implementation transport decision
+
+The post-research implementation experiment changed the runtime order after
+the probe above. Grid previews now use Pixiv's supplied medium/large/original
+URL first, and detail/download retain the full original URL. The shared
+OkHttp provider adds `Referer: https://app-api.pixiv.net/` for
+`i.pximg.net` and `s.pximg.net`. Failed official requests fall back to the
+path-preserving `i.pixiv.re` URL and then the `pixiv.cat` ID/page URL. This
+keeps the successful direct path fast while retaining the two tested proxy
+routes without depending on `i.pixiv.cat`.
 
 Do not put the Pixiv.cat service's refresh token in Latte. If Latte later uses
 the private App API directly for a user's own account, that is a different
@@ -426,11 +442,11 @@ Loading -> Content(items, nextCursor)
         -> Unavailable(reason)
 ```
 
-Pixiv login is not a password form owned by Latte. The account design needs a
-separate authentication spike for refresh-token acquisition, encrypted
-storage, refresh, logout, and account invalidation. Until that gate passes,
-fixture data can exercise the followed and favorites UI, while live requests
-must surface `AuthRequired` or `Unavailable` honestly.
+Pixiv login is not a password form owned by Latte. The bounded account slice
+completed browser-first OAuth, encrypted session storage, refresh, logout, and
+account invalidation. Live Followed and Favorites requests are enabled only
+after the explicit session gate and surface `AuthRequired` or `Unavailable`
+honestly when the session is absent or the upstream drifts.
 
 ### Image transport
 
@@ -439,18 +455,18 @@ Pixiv metadata and image transport stay separate:
 ```text
 Pixiv work/page metadata
   -> Pixiv media reference (work ID, page index, original URL)
-  -> i.pixiv.cat host-rewritten URL at image-load/download time
-     (pixiv.cat ID/page fallback when the origin path is unavailable)
+  -> official i.pximg.net URL with Referer
+     -> i.pixiv.re path-preserving fallback
+        -> pixiv.cat ID/page fallback
 ```
 
 The Pixiv.Cat backend describes itself as an image proxy and requires its own
 server-side Pixiv refresh token; that token must never enter Latte. See the
 [Pixiv.Cat backend](https://github.com/pixiv-cat/pixivcat-backend). Latte keeps
-the original Pixiv URL for canonical sharing and diagnostics. When an origin
-image URL is available, the default image candidate replaces only
-`i.pximg.net` with `i.pixiv.cat`; the work-ID/page resolver remains a fallback.
-The resolver trusts response `Content-Type` and `Content-Disposition` rather
-than assuming the URL suffix describes the bytes.
+the original Pixiv URL for canonical sharing, stable media identity, and
+diagnostics. The resolver trusts response `Content-Type` and
+`Content-Disposition` rather than assuming the URL suffix describes the
+bytes.
 
 Pixiv-Shaft's image-host design is a useful constraint here: host rewriting is
 applied at image load time, original URLs remain available for sharing, and a
@@ -466,7 +482,8 @@ In scope for this Pixiv experience:
 - autocomplete and trending tags as search-entry support;
 - opaque cursor pagination and refresh/error/empty/auth states;
 - normalized illustration detail with multi-page image viewing;
-- `pixiv.cat` image resolution and original-URL retention;
+- official Pixiv image resolution with Referer, `i.pixiv.re` fallback, and
+  `pixiv.cat` ID/page fallback with original-URL retention;
 - shared Latte local save and restart-safe duplicate behavior;
 - open-in-Pixiv and share actions using the canonical web URL;
 - bookmark/unbookmark from detail after the account mutation gate passes;
@@ -479,10 +496,11 @@ Out of scope:
 - recommendations, full user profiles, follow actions, comments, related works,
   and local query history;
 - novels, manga reader, ugoira playback, and multi-account;
-- custom image mirrors and direct-origin fallback;
+- custom image mirrors and alternate proxies beyond the documented fallback
+  chain;
 - Pixiv password collection or a complete Pixiv account center.
 
-## 4. Implementation gate and order
+## 4. Implementation gate and order (historical plan)
 
 Konachan remains parked. The Pixiv work is gated in this order:
 
@@ -490,14 +508,19 @@ Konachan remains parked. The Pixiv work is gated in this order:
 2. Add fixture-backed mappers for ranking, followed-update, favorites, search,
    search support, detail, bookmark mutation, empty, auth-required, rate-limit,
    malformed, and upstream-drift responses.
-3. Build the `pixiv.cat` resolver independently of metadata and verify actual
-   content type/filename handling.
+3. Build the Pixiv media resolver independently of metadata and verify direct
+   URL retention, `i.pixiv.re` fallback, `pixiv.cat` ID/page content type, and
+   filename handling.
 4. Put the three feed kinds and query-driven search behind the existing Explore
    grid/detail/download flow without introducing a Pixiv-specific navigation
    hierarchy.
 5. Run a bounded authentication spike. Only then connect live account-scoped
    feeds and decide whether the selected App API contract is stable enough for
    a device slice.
+
+The order above has now been completed for the bounded 0.0.3 slice. The active
+transport and acceptance result is recorded in the receipt below and in
+`specs/004-pixiv-illustration-experience/`.
 
 ## 5. 0.0.3 implementation audit receipt (2026-09-21)
 
