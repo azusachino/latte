@@ -1,9 +1,13 @@
 package com.azusachino.latte.plugin
 
+import com.azusachino.latte.plugin.pixiv.PixivPlugin
+import com.azusachino.latte.plugin.storage.PluginStorage
+import com.azusachino.latte.plugin.yande.YandePlugin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -81,5 +85,48 @@ class SitePluginManagerTest {
         val req = reqBuilder.build()
 
         assertEquals("yande.re", req.header("X-Plugin"))
+    }
+
+    @Test
+    fun platformCardsExposeCapabilitiesAndConnectionStatus() {
+        val storage = InMemoryStorage()
+        val yande = YandePlugin(storage, OkHttpClient())
+        val pixiv = PixivPlugin(storage, OkHttpClient())
+        val manager = SitePluginManager(listOf(yande, pixiv))
+
+        assertEquals(
+            setOf(PluginCapability.SCORING, PluginCapability.FAVORITES),
+            manager.get("yande.re")?.capabilities,
+        )
+        assertEquals(
+            setOf(PluginCapability.FAVORITES, PluginCapability.USER_FEED),
+            manager.get("pixiv")?.capabilities,
+        )
+        assertTrue(manager.get("yande.re")?.supportedAuthFlows == setOf(AuthFlow.CREDENTIALS))
+        assertTrue(AuthFlow.BROWSER in (manager.get("pixiv")?.supportedAuthFlows ?: emptySet()))
+        assertTrue(AuthFlow.TOKEN_IMPORT in (manager.get("pixiv")?.supportedAuthFlows ?: emptySet()))
+        assertTrue(manager.loggedInPlugins().isEmpty())
+    }
+
+    private class InMemoryStorage : PluginStorage {
+        private val values = mutableMapOf<String, String>()
+
+        override fun save(pluginId: String, key: String, value: String) {
+            values["$pluginId:$key"] = value
+        }
+
+        override fun get(pluginId: String, key: String): String? = values["$pluginId:$key"]
+
+        override fun remove(pluginId: String, key: String) {
+            values.remove("$pluginId:$key")
+        }
+
+        override fun clearPlugin(pluginId: String) {
+            values.keys.filter { it.startsWith("$pluginId:") }.toList().forEach(values::remove)
+        }
+
+        override fun getAll(pluginId: String): Map<String, String> = values
+            .filterKeys { it.startsWith("$pluginId:") }
+            .mapKeys { it.key.removePrefix("$pluginId:") }
     }
 }

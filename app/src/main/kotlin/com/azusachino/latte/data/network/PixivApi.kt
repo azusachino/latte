@@ -28,6 +28,8 @@ class PixivApi(
     private val httpClient: OkHttpClient = OkHttpProvider.client,
     private val baseUrl: String = "https://app-api.pixiv.net",
     private val sessionProvider: () -> PixivSession? = { null },
+    private val sessionRefresher: (suspend () -> PixivSession?)? = null,
+    private val sessionInvalidator: (() -> Unit)? = null,
 ) {
     private val json = Json {
         ignoreUnknownKeys = true
@@ -97,11 +99,13 @@ class PixivApi(
             }
             val bodyBuilder = FormBody.Builder().add("illust_id", workId.toString())
             if (bookmarked) bodyBuilder.add("restrict", "public")
-            val request = request(baseUrl.toHttpUrl().newBuilder().addPathSegments(path).build())
-                .post(bodyBuilder.build())
-                .build()
+            val url = baseUrl.toHttpUrl().newBuilder().addPathSegments(path).build()
 
-            when (val response = execute(request, "bookmark") { Unit }) {
+            when (val response = execute(
+                requestFactory = { request(url).post(bodyBuilder.build()).build() },
+                operation = "bookmark",
+                decode = { Unit },
+            )) {
                 is ReadResult.Success -> PixivBookmarkResult.Success
                 ReadResult.AuthRequired -> PixivBookmarkResult.AuthRequired
                 is ReadResult.RateLimited -> PixivBookmarkResult.RateLimited(response.retryAfterSeconds)
@@ -219,22 +223,29 @@ class PixivApi(
             }
         }
 
-    private fun <T> executeJson(
+    private suspend fun <T> executeJson(
         url: HttpUrl,
         operation: String,
         decode: (String) -> T,
-    ): ReadResult<T> = execute(request(url).build(), operation, decode)
+    ): ReadResult<T> = execute(
+        requestFactory = { request(url).build() },
+        operation = operation,
+        decode = decode,
+    )
 
-    private fun <T> execute(
-        request: Request,
+    private suspend fun <T> execute(
+        requestFactory: () -> Request,
         operation: String,
         decode: (String) -> T,
+        allowRefresh: Boolean = true,
     ): ReadResult<T> {
-        return try {
-            httpClient.newCall(request).execute().use { response ->
+        val result = try {
+            httpClient.newCall(requestFactory()).execute().use { response ->
                 val body = response.body?.string().orEmpty()
                 when {
-                    response.code == 401 || response.code == 403 -> ReadResult.AuthRequired
+                    response.code == 401 || response.code == 403 ||
+                        (response.code == 400 && body.contains("oauth", ignoreCase = true)) ||
+                        body.contains("invalid_token", ignoreCase = true) -> ReadResult.AuthRequired
                     response.code == 408 || response.code == 429 || response.code in 500..599 ->
                         ReadResult.RateLimited(response.header("Retry-After")?.toLongOrNull())
                     !response.isSuccessful -> ReadResult.TransportFailure(
@@ -250,6 +261,18 @@ class PixivApi(
         } catch (e: IllegalArgumentException) {
             ReadResult.UpstreamDrift(operation)
         }
+
+        if (result !is ReadResult.AuthRequired || !allowRefresh) {
+            if (result is ReadResult.AuthRequired) sessionInvalidator?.invoke()
+            return result
+        }
+
+        val refreshed = runCatching { sessionRefresher?.invoke() }.getOrNull()
+        if (refreshed == null) {
+            sessionInvalidator?.invoke()
+            return ReadResult.AuthRequired
+        }
+        return execute(requestFactory, operation, decode, allowRefresh = false)
     }
 
     private sealed interface ReadResult<out T> {

@@ -31,16 +31,9 @@ class DownloadManager(private val context: Context) {
     suspend fun enqueueDownload(post: Post, preferredVariant: MediaVariant? = null): DownloadResult =
         withContext(Dispatchers.IO) {
             val variant = preferredVariant ?: post.bestVariant
-            val ext = variant.extension ?: if (variant.url.endsWith(".png", ignoreCase = true)) "png" else "jpg"
-            val sourceLabel = if (post.siteId == "yande.re") "yande.re" else post.siteId
-            val pageSuffix = if (post.pageCount > 1) " p${post.pageIndex + 1}" else ""
-            val safeTags = (post.title ?: post.tags.take(4).joinToString(" "))
-                .replace(Regex("[\\\\/:*?\"<>|]"), "_")
-            val displayName = if (safeTags.isNotBlank()) {
-                "$sourceLabel ${post.id}$pageSuffix $safeTags.$ext"
-            } else {
-                "$sourceLabel ${post.id}$pageSuffix.$ext"
-            }
+            val displayName = DownloadIdentity.displayName(post, variant)
+            val ext = variant.extension
+                ?: if (variant.url.endsWith(".png", ignoreCase = true)) "png" else "jpg"
             val mimeType = if (ext == "png") "image/png" else "image/jpeg"
 
             // 1. Check if already saved in MediaStore

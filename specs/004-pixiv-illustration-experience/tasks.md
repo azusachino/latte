@@ -32,7 +32,7 @@ stable Pixiv identity; malformed and transport responses render explicit errors.
 - [x] T006 [P] [US1] Add mapper and identity tests for Pixiv artwork/page normalization in `app/src/test/kotlin/com/azusachino/latte/data/model/PixivArtworkTest.kt`
 - [x] T007 [P] [US1] Add MockWebServer tests for daily ranking, detail mapping, opaque `next_url`, malformed JSON, and upstream status classification in `app/src/test/kotlin/com/azusachino/latte/data/network/PixivApiTest.kt`
 - [x] T008 [P] [US1] Add Pixiv.Cat resolver tests for page zero, page greater than zero, HTTPS host validation, content type, filename, non-image response, and retryable failure in `app/src/test/kotlin/com/azusachino/latte/data/network/PixivCatResolverTest.kt`
-- [ ] T009 [US1] Add detail/save identity coverage for a multi-page Pixiv work in `app/src/test/kotlin/com/azusachino/latte/data/download/PixivDownloadIdentityTest.kt`
+- [x] T009 [US1] Add detail/save identity coverage for a multi-page Pixiv work in `app/src/test/kotlin/com/azusachino/latte/data/download/PixivDownloadIdentityTest.kt`
 
 ### Implementation
 
@@ -66,12 +66,12 @@ updates only after a successful response.
 
 ### Tests first
 
-- [ ] T020 [P] [US3] Add token import, encrypted persistence, refresh success, refresh failure, logout, and auth-state tests in `app/src/test/kotlin/com/azusachino/latte/plugin/pixiv/PixivPluginTest.kt` (token import/logout covered; refresh lifecycle remains)
+- [x] T020 [P] [US3] Add token import, encrypted persistence, refresh success, refresh failure, logout, and auth-state tests in `app/src/test/kotlin/com/azusachino/latte/plugin/pixiv/PixivPluginTest.kt`
 - [x] T021 [P] [US3] Add followed/Favorites/bookmark request and typed-error tests in `app/src/test/kotlin/com/azusachino/latte/data/network/PixivApiTest.kt`
 
 ### Implementation
 
-- [ ] T022 [US3] Implement encrypted Pixiv session storage and refresh-token lifecycle in `app/src/main/kotlin/com/azusachino/latte/plugin/pixiv/PixivPlugin.kt` (encrypted persistence is implemented; automatic refresh still needs client-configuration work)
+- [x] T022 [US3] Implement encrypted Pixiv session storage and refresh-token lifecycle in `app/src/main/kotlin/com/azusachino/latte/plugin/pixiv/PixivPlugin.kt`
 - [x] T023 [US3] Add authenticated followed, Favorites, bookmark, and unbookmark operations to `app/src/main/kotlin/com/azusachino/latte/data/network/PixivApi.kt`
 - [x] T024 [US3] Replace the generic Pixiv password form with browser-first and advanced token-entry flows in `app/src/main/kotlin/com/azusachino/latte/ui/account/PluginLoginDialog.kt`
 - [x] T025 [US3] Connect Pixiv session state, followed/Favorites gating, bookmark mutation, and session-expiry errors to `app/src/main/kotlin/com/azusachino/latte/ui/explore/ExploreViewModel.kt` and `app/src/main/kotlin/com/azusachino/latte/ui/detail/DetailScreen.kt`
@@ -85,7 +85,7 @@ approved `Platforms & accounts` cards/actions.
 ### Tests first
 
 - [ ] T026 [P] [US4] Add platform-local state and stale-request cancellation tests in `app/src/test/kotlin/com/azusachino/latte/ui/explore/ExplorePlatformStateTest.kt` (state isolation covered; cancellation remains integration-only)
-- [ ] T027 [P] [US4] Add plugin-manager capability/status tests for Yande and Pixiv cards in `app/src/test/kotlin/com/azusachino/latte/plugin/SitePluginManagerTest.kt`
+- [x] T027 [P] [US4] Add plugin-manager capability/status tests for Yande and Pixiv cards in `app/src/test/kotlin/com/azusachino/latte/plugin/SitePluginManagerTest.kt`
 
 ### Implementation
 
@@ -125,10 +125,16 @@ approved `Platforms & accounts` cards/actions.
 ## Evidence
 
 - `make check` passed on 2026-09-21: rumdl found no Markdown issues and the
-  full `testDebugUnitTest` suite passed.
+  full `testDebugUnitTest` suite passed with 34 tests and no failures.
+- The browser OAuth exchange, refresh/retry, failed-refresh invalidation,
+  platform capability/status, and multi-page download identity tests pass with
+  MockWebServer or pure unit fixtures. Production OAuth client identifiers are
+  supplied through `LATTE_PIXIV_CLIENT_ID` and `LATTE_PIXIV_CLIENT_SECRET`; no
+  credential is committed to the repository.
 - `make validate` passed and `make install` installed the debug APK on the
   connected OnePlus 8 (`0cadf428`, Android 16).
 - The first device launch exposed stale encrypted cookie preferences; the
   startup recovery path now drops only that cookie cache and recreates it.
-  A relaunch reached `MainActivity` with no fresh Latte crash, but the device
-  was locked, so platform-switch and detail interaction remain unverified.
+  The current relaunch reached the Latte process with no fresh fatal exception,
+  but the device remains on the dreaming lock screen, so platform-switch,
+  browser callback, and detail interaction remain unverified.

@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
+import com.azusachino.latte.BuildConfig
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.azusachino.latte.data.download.DownloadManager
 import com.azusachino.latte.ui.common.ToastHost
@@ -65,7 +66,26 @@ fun LatteApp(
 
     val pluginStorage = remember { com.azusachino.latte.plugin.storage.SecurePluginStorage(context) }
     val yandePlugin = remember { com.azusachino.latte.plugin.yande.YandePlugin(pluginStorage, com.azusachino.latte.data.network.OkHttpProvider.client, com.azusachino.latte.data.network.OkHttpProvider.cookieJar) }
-    val pixivPlugin = remember { com.azusachino.latte.plugin.pixiv.PixivPlugin(pluginStorage, com.azusachino.latte.data.network.OkHttpProvider.client) }
+    val pixivOAuthClient = remember {
+        if (BuildConfig.PIXIV_OAUTH_CLIENT_ID.isNotBlank() && BuildConfig.PIXIV_OAUTH_CLIENT_SECRET.isNotBlank()) {
+            com.azusachino.latte.data.network.PixivOAuthClient(
+                httpClient = com.azusachino.latte.data.network.OkHttpProvider.client,
+                configuration = com.azusachino.latte.data.network.PixivOAuthConfiguration(
+                    clientId = BuildConfig.PIXIV_OAUTH_CLIENT_ID,
+                    clientSecret = BuildConfig.PIXIV_OAUTH_CLIENT_SECRET,
+                ),
+            )
+        } else {
+            null
+        }
+    }
+    val pixivPlugin = remember {
+        com.azusachino.latte.plugin.pixiv.PixivPlugin(
+            storage = pluginStorage,
+            httpClient = com.azusachino.latte.data.network.OkHttpProvider.client,
+            oauthClient = pixivOAuthClient,
+        )
+    }
     val sitePluginManager = remember { com.azusachino.latte.plugin.SitePluginManager(listOf(yandePlugin, pixivPlugin)) }
 
     LaunchedEffect(pixivPlugin.api) {

@@ -2,6 +2,8 @@ package com.azusachino.latte.plugin.pixiv
 
 import com.azusachino.latte.data.network.PixivApi
 import com.azusachino.latte.data.network.PixivBookmarkResult
+import com.azusachino.latte.data.network.PixivOAuthClient
+import com.azusachino.latte.data.network.PixivAuthorizationRequest
 import com.azusachino.latte.data.network.PixivSession
 import com.azusachino.latte.plugin.AuthType
 import com.azusachino.latte.plugin.PluginCapability
@@ -18,6 +20,7 @@ class PixivPlugin(
     private val storage: PluginStorage,
     httpClient: OkHttpClient,
     private val apiBaseUrl: String = "https://app-api.pixiv.net",
+    private val oauthClient: PixivOAuthClient? = null,
 ) : SitePlugin {
     override val id: String = "pixiv"
     override val name: String = "Pixiv"
@@ -29,6 +32,7 @@ class PixivPlugin(
     )
 
     private var session: PixivSession? = loadSession()
+    private var pendingCodeVerifier: String? = null
     private val _isLoggedIn = MutableStateFlow(session?.accessToken?.isNotBlank() == true)
     override val isLoggedIn: Boolean get() = _isLoggedIn.value
     override val isLoggedInFlow: Flow<Boolean> = _isLoggedIn.asStateFlow()
@@ -36,9 +40,30 @@ class PixivPlugin(
         httpClient = httpClient,
         baseUrl = apiBaseUrl,
         sessionProvider = { session },
+        sessionRefresher = { refreshSession() },
+        sessionInvalidator = { invalidateSession() },
     )
 
     override fun getDisplayUsername(): String? = session?.username
+
+    fun beginBrowserLogin(): Result<PixivAuthorizationRequest> {
+        val request = oauthClient?.authorizationRequest()
+        if (request == null) {
+            return Result.failure(IllegalStateException("Pixiv browser login is not configured"))
+        }
+        pendingCodeVerifier = request.codeVerifier
+        return Result.success(request)
+    }
+
+    suspend fun completeBrowserLogin(code: String): Result<Unit> {
+        val verifier = pendingCodeVerifier
+            ?: return Result.failure(IllegalStateException("Pixiv browser login has expired"))
+        val nextSession = oauthClient?.exchangeCode(code, verifier)
+            ?: return Result.failure(IllegalStateException("Pixiv browser sign-in failed"))
+        pendingCodeVerifier = null
+        persistSession(nextSession)
+        return Result.success(Unit)
+    }
 
     override suspend fun login(credentials: Map<String, String>): Result<Unit> = withContext(Dispatchers.IO) {
         val accessToken = credentials[KEY_ACCESS_TOKEN]?.trim()
@@ -52,22 +77,12 @@ class PixivPlugin(
             userId = userId,
             username = credentials[KEY_USERNAME]?.trim()?.takeIf(String::isNotBlank),
         )
-        storage.save(id, KEY_ACCESS_TOKEN, nextSession.accessToken)
-        nextSession.refreshToken?.let { storage.save(id, KEY_REFRESH_TOKEN, it) }
-            ?: storage.remove(id, KEY_REFRESH_TOKEN)
-        nextSession.userId?.let { storage.save(id, KEY_USER_ID, it.toString()) }
-            ?: storage.remove(id, KEY_USER_ID)
-        nextSession.username?.let { storage.save(id, KEY_USERNAME, it) }
-            ?: storage.remove(id, KEY_USERNAME)
-        session = nextSession
-        _isLoggedIn.value = true
+        persistSession(nextSession)
         Result.success(Unit)
     }
 
     override fun logout() {
-        storage.clearPlugin(id)
-        session = null
-        _isLoggedIn.value = false
+        invalidateSession()
     }
 
     override suspend fun setBookmark(postId: Long, bookmarked: Boolean): Result<Unit> =
@@ -78,6 +93,37 @@ class PixivPlugin(
             is PixivBookmarkResult.UpstreamDrift -> Result.failure(IllegalStateException("Pixiv bookmark response changed"))
             is PixivBookmarkResult.TransportFailure -> Result.failure(IllegalStateException(result.message))
         }
+
+    private suspend fun refreshSession(): PixivSession? {
+        val current = session ?: return null
+        val refreshToken = current.refreshToken ?: return null
+        val refreshed = oauthClient?.refresh(refreshToken) ?: return null
+        val nextSession = refreshed.copy(
+            userId = refreshed.userId ?: current.userId,
+            username = refreshed.username ?: current.username,
+        )
+        persistSession(nextSession)
+        return nextSession
+    }
+
+    private fun persistSession(nextSession: PixivSession) {
+        storage.save(id, KEY_ACCESS_TOKEN, nextSession.accessToken)
+        nextSession.refreshToken?.let { storage.save(id, KEY_REFRESH_TOKEN, it) }
+            ?: storage.remove(id, KEY_REFRESH_TOKEN)
+        nextSession.userId?.let { storage.save(id, KEY_USER_ID, it.toString()) }
+            ?: storage.remove(id, KEY_USER_ID)
+        nextSession.username?.let { storage.save(id, KEY_USERNAME, it) }
+            ?: storage.remove(id, KEY_USERNAME)
+        session = nextSession
+        _isLoggedIn.value = true
+    }
+
+    private fun invalidateSession() {
+        storage.clearPlugin(id)
+        pendingCodeVerifier = null
+        session = null
+        _isLoggedIn.value = false
+    }
 
     private fun loadSession(): PixivSession? {
         val accessToken = storage.get(id, KEY_ACCESS_TOKEN)?.takeIf(String::isNotBlank) ?: return null

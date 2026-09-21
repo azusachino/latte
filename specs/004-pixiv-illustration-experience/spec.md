@@ -4,8 +4,9 @@
 
 **Created**: 2026-09-21
 
-**Status**: Implemented through fixture/device-startup gates; Pixiv token refresh,
-live account verification, and unlocked hardware interaction remain pending
+**Status**: Implemented through fixture/auth/device-startup gates; live Pixiv
+account/feed verification, cancellation integration coverage, and unlocked
+hardware interaction remain pending
 
 **Supersedes**: Pixiv portions of
 [`003-konachan-pixiv`](../003-konachan-pixiv/spec.md)

@@ -2,6 +2,11 @@ package com.azusachino.latte.plugin.pixiv
 
 import com.azusachino.latte.plugin.AuthFlow
 import com.azusachino.latte.plugin.storage.PluginStorage
+import com.azusachino.latte.data.network.PixivFeedKind
+import com.azusachino.latte.data.network.PixivFeedRequest
+import com.azusachino.latte.data.network.PixivFeedResult
+import com.azusachino.latte.data.network.PixivOAuthClient
+import com.azusachino.latte.data.network.PixivOAuthConfiguration
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -76,10 +81,132 @@ class PixivPluginTest {
         assertEquals("/v2/illust/bookmark/add", server.takeRequest().path)
     }
 
-    private fun plugin(storage: PluginStorage): PixivPlugin = PixivPlugin(
+    @Test
+    fun expiredAccessTokenRefreshesAndRetriesWithTheNewSession() = runTest {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(400)
+                .setBody("{\"error\":{\"message\":\"OAuth token expired\"}}"),
+        )
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """
+                {"response":{"access_token":"new-access","refresh_token":"new-refresh","user":{"id":42,"name":"artist"}}}
+                """.trimIndent(),
+            ),
+        )
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{\"illusts\":[],\"next_url\":null}"))
+
+        val storage = InMemoryStorage()
+        val plugin = plugin(
+            storage,
+            PixivOAuthClient(
+                OkHttpClient(),
+                PixivOAuthConfiguration(
+                    clientId = "fixture-client",
+                    clientSecret = "fixture-secret",
+                    tokenEndpoint = server.url("/auth/token").toString(),
+                ),
+            ),
+        )
+        plugin.login(
+            mapOf(
+                "access_token" to "old-access",
+                "refresh_token" to "old-refresh",
+                "user_id" to "42",
+            ),
+        )
+
+        assertEquals(
+            PixivFeedResult.Empty,
+            plugin.api.load(PixivFeedRequest(PixivFeedKind.FOLLOWED_UPDATES)),
+        )
+        assertEquals("/v2/illust/follow?restrict=public", server.takeRequest().path)
+        assertEquals("/auth/token", server.takeRequest().path)
+        val retryRequest = server.takeRequest()
+        assertEquals("/v2/illust/follow?restrict=public", retryRequest.path)
+        assertEquals("Bearer new-access", retryRequest.getHeader("Authorization"))
+        assertEquals("new-access", storage.get("pixiv", "access_token"))
+        assertEquals("new-refresh", storage.get("pixiv", "refresh_token"))
+    }
+
+    @Test
+    fun failedRefreshInvalidatesTheAccountAndReturnsAuthRequired() = runTest {
+        server.enqueue(MockResponse().setResponseCode(401))
+        server.enqueue(MockResponse().setResponseCode(400).setBody("{\"error\":{\"message\":\"invalid_grant\"}}"))
+
+        val storage = InMemoryStorage()
+        val plugin = plugin(
+            storage,
+            PixivOAuthClient(
+                OkHttpClient(),
+                PixivOAuthConfiguration(
+                    clientId = "fixture-client",
+                    clientSecret = "fixture-secret",
+                    tokenEndpoint = server.url("/auth/token").toString(),
+                ),
+            ),
+        )
+        plugin.login(mapOf("access_token" to "old-access", "refresh_token" to "old-refresh", "user_id" to "42"))
+
+        assertEquals(
+            PixivFeedResult.AuthRequired,
+            plugin.api.load(PixivFeedRequest(PixivFeedKind.FOLLOWED_UPDATES)),
+        )
+        assertFalse(plugin.isLoggedIn)
+        assertTrue(storage.getAll("pixiv").isEmpty())
+    }
+
+    @Test
+    fun browserAuthorizationExchangesCodeAndPersistsSession() = runTest {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """
+                {"response":{"access_token":"browser-access","refresh_token":"browser-refresh","user":{"id":42,"name":"artist"}}}
+                """.trimIndent(),
+            ),
+        )
+
+        val storage = InMemoryStorage()
+        val plugin = plugin(
+            storage,
+            PixivOAuthClient(
+                OkHttpClient(),
+                PixivOAuthConfiguration(
+                    clientId = "fixture-client",
+                    clientSecret = "fixture-secret",
+                    tokenEndpoint = server.url("/auth/token").toString(),
+                ),
+            ),
+        )
+
+        val authorization = plugin.beginBrowserLogin().getOrThrow()
+        assertTrue(authorization.url.contains("code_challenge="))
+        assertTrue(authorization.url.contains("client=pixiv-android"))
+
+        assertTrue(plugin.completeBrowserLogin("fixture-code").isSuccess)
+        assertTrue(plugin.isLoggedIn)
+        assertEquals("browser-access", storage.get("pixiv", "access_token"))
+        assertEquals("browser-refresh", storage.get("pixiv", "refresh_token"))
+        assertEquals("artist", plugin.getDisplayUsername())
+
+        val request = server.takeRequest()
+        assertEquals("/auth/token", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("grant_type=authorization_code"))
+        assertTrue(body.contains("code=fixture-code"))
+        assertTrue(body.contains("code_verifier="))
+        assertTrue(body.contains("redirect_uri="))
+    }
+
+    private fun plugin(
+        storage: PluginStorage,
+        oauthClient: PixivOAuthClient? = null,
+    ): PixivPlugin = PixivPlugin(
         storage = storage,
         httpClient = OkHttpClient(),
         apiBaseUrl = server.url("/").toString().trimEnd('/'),
+        oauthClient = oauthClient,
     )
 
     private class InMemoryStorage : PluginStorage {

@@ -18,6 +18,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,6 +39,8 @@ import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.plugin.AuthFlow
 import android.content.Intent
 import android.net.Uri
+import com.azusachino.latte.data.network.PixivOAuthCallbackBus
+import com.azusachino.latte.plugin.pixiv.PixivPlugin
 import kotlinx.coroutines.launch
 
 @Composable
@@ -60,6 +63,31 @@ fun PluginLoginDialog(
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val tokenImport = AuthFlow.TOKEN_IMPORT in plugin.supportedAuthFlows
+    val pixivPlugin = plugin as? PixivPlugin
+
+    LaunchedEffect(pixivPlugin) {
+        if (pixivPlugin == null) return@LaunchedEffect
+        PixivOAuthCallbackBus.callbacks.collect { callbackUri ->
+            val uri = Uri.parse(callbackUri)
+            val error = uri.getQueryParameter("error")
+            val code = uri.getQueryParameter("code")
+            if (error != null) {
+                errorMessage = "Pixiv browser sign-in failed: $error"
+                return@collect
+            }
+            if (code.isNullOrBlank()) return@collect
+
+            isLoading = true
+            errorMessage = null
+            val result = pixivPlugin.completeBrowserLogin(code)
+            isLoading = false
+            if (result.isSuccess) {
+                onLoginSuccess()
+            } else {
+                errorMessage = result.exceptionOrNull()?.message ?: "Pixiv browser sign-in failed"
+            }
+        }
+    }
 
     AlertDialog(
         onDismissRequest = { if (!isLoading) onDismissRequest() },
@@ -68,17 +96,30 @@ fun PluginLoginDialog(
             Column(modifier = Modifier.fillMaxWidth()) {
                 if (tokenImport) {
                     Text(
-                        text = "Pixiv passwords are never collected by Latte. Sign in in your browser, then paste an access token here.",
+                        text = "Pixiv passwords are never collected by Latte. Sign in in your browser, or use token import as an advanced recovery path.",
                         style = MaterialTheme.typography.bodySmall,
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     TextButton(
                         onClick = {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.pixiv.net/login.php")))
+                            if (pixivPlugin == null) {
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.pixiv.net/login.php")))
+                                return@TextButton
+                            }
+                            val request = pixivPlugin.beginBrowserLogin()
+                            if (request.isSuccess) {
+                                runCatching {
+                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(request.getOrThrow().url)))
+                                }.onFailure {
+                                    errorMessage = it.message ?: "Could not open Pixiv sign-in"
+                                }
+                            } else {
+                                errorMessage = request.exceptionOrNull()?.message ?: "Pixiv browser login is unavailable"
+                            }
                         },
                         enabled = !isLoading,
                     ) {
-                        Text("Open Pixiv in browser")
+                        Text("Sign in with Pixiv browser")
                     }
                     OutlinedTextField(
                         value = accessToken,
