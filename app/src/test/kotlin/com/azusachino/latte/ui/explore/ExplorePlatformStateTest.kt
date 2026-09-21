@@ -62,6 +62,14 @@ class ExplorePlatformStateTest {
             ExploreUiState(platform = ExplorePlatform.PIXIV, selectedTab = 2)
                 .pixivFeedToReloadAfterAuthentication(),
         )
+        assertEquals(
+            PixivFeedKind.USER_WORKS,
+            ExploreUiState(
+                platform = ExplorePlatform.PIXIV,
+                pixivAuthorId = 99,
+                pixivAuthorName = "Artist",
+            ).pixivFeedToReloadAfterAuthentication(),
+        )
     }
 
     @Test
@@ -70,5 +78,30 @@ class ExplorePlatformStateTest {
         assertEquals(PixivFeedKind.FOLLOWED_UPDATES, pixivKindForTab(1))
         assertEquals(PixivFeedKind.FAVORITES, pixivKindForTab(2))
         assertEquals(null, pixivKindForTab(3))
+    }
+
+    @Test
+    fun pixivSafeModeKeepsOnlySafeIllustrations() {
+        val safe = Post(
+            id = 1,
+            siteId = "pixiv",
+            rating = PostRating.SAFE,
+            tags = emptyList(),
+            score = 0,
+            author = "Artist",
+            source = null,
+            createdAt = null,
+            width = 1,
+            height = 1,
+            previewUrl = "safe",
+            sampleUrl = "safe",
+            jpegUrl = null,
+            originalUrl = "safe",
+            variants = emptyList(),
+        )
+        val explicit = safe.copy(id = 2, rating = PostRating.EXPLICIT)
+
+        assertEquals(listOf(safe), filterPixivPosts(listOf(safe, explicit), safeMode = true))
+        assertEquals(listOf(safe, explicit), filterPixivPosts(listOf(safe, explicit), safeMode = false))
     }
 }

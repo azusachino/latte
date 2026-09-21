@@ -51,6 +51,7 @@ data class Post(
     val pageIndex: Int = 0,
     val pageCount: Int = 1,
     val pages: List<ArtworkPage> = emptyList(),
+    val authorId: Long? = null,
 ) {
     val aspectRatio: Float
         get() = if (width > 0 && height > 0) width.toFloat() / height.toFloat() else 1f
@@ -116,6 +117,7 @@ fun Post.forPage(index: Int): Post {
         width = page.width,
         height = page.height,
         pageIndex = page.pageIndex,
+        authorId = authorId,
     )
 }
 
@@ -188,5 +190,6 @@ fun YandePostDto.toDomain(): Post {
         jpegUrl = jpegUrl,
         originalUrl = original,
         variants = variants,
+        authorId = null,
     )
 }

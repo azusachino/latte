@@ -105,6 +105,28 @@ class PixivApiTest {
             "/v1/user/bookmarks/illust?user_id=42&restrict=public",
             server.takeRequest().path,
         )
+
+        server.enqueue(MockResponse().setResponseCode(200).setBody(illustrationListJson()))
+        assertTrue(
+            api().load(PixivFeedRequest(PixivFeedKind.USER_WORKS, userId = 99)) is PixivFeedResult.Success,
+        )
+        assertEquals(
+            "/v1/user/illusts?filter=for_android&user_id=99&type=illust",
+            server.takeRequest().path,
+        )
+    }
+
+    @Test
+    fun userWorksRequiresAuthentication() = runBlocking {
+        val anonymousApi = PixivApi(
+            httpClient = OkHttpClient(),
+            baseUrl = server.url("/").toString().trimEnd('/'),
+        )
+
+        assertTrue(
+            anonymousApi.load(PixivFeedRequest(PixivFeedKind.USER_WORKS, userId = 99)) is PixivFeedResult.AuthRequired,
+        )
+        assertEquals(0, server.requestCount)
     }
 
     @Test

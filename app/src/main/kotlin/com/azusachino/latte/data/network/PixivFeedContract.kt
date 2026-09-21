@@ -7,11 +7,13 @@ enum class PixivFeedKind {
     FOLLOWED_UPDATES,
     FAVORITES,
     SEARCH,
+    USER_WORKS,
 }
 
 data class PixivFeedRequest(
     val kind: PixivFeedKind,
     val query: String? = null,
+    val userId: Long? = null,
     val cursor: String? = null,
     val refresh: Boolean = false,
 )

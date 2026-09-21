@@ -49,6 +49,7 @@ class PixivArtworkTest {
         assertEquals(75034219L, artwork.id)
         assertEquals("A study", artwork.title)
         assertEquals("Artist", artwork.author)
+        assertEquals(42L, artwork.authorId)
         assertEquals(listOf("original", "blue_hair"), artwork.tags)
         assertEquals(0, artwork.score)
         assertEquals(321, artwork.bookmarkCount)

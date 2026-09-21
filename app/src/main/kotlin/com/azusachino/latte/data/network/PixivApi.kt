@@ -184,6 +184,14 @@ class PixivApi(
                     .addQueryParameter("merge_plain_keyword_results", "true")
                     .addQueryParameter("word", request.query.trim())
             }
+            PixivFeedKind.USER_WORKS -> {
+                require(session?.accessToken?.isNotBlank() == true) { "Pixiv sign-in required" }
+                require((request.userId ?: 0) > 0) { "Pixiv user id required" }
+                builder.addPathSegments("v1/user/illusts")
+                    .addQueryParameter("filter", "for_android")
+                    .addQueryParameter("user_id", request.userId.toString())
+                    .addQueryParameter("type", "illust")
+            }
         }
         return builder.build()
     }

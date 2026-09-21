@@ -144,6 +144,16 @@ fun LatteApp(
                                 exploreViewModel.search(tag)
                                 currentScreen = Screen.Explore
                             },
+                            onAuthorClick = { post ->
+                                if (post.siteId == "pixiv" && post.authorId != null) {
+                                    exploreViewModel.loadPixivUserWorks(post.authorId, post.author.orEmpty())
+                                } else {
+                                    post.author?.takeIf(String::isNotBlank)?.let {
+                                        exploreViewModel.search("user:$it")
+                                    }
+                                }
+                                currentScreen = Screen.Explore
+                            },
                             onRequireLogin = { plugin ->
                                 activeLoginPlugin = plugin
                             },

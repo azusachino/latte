@@ -100,6 +100,7 @@ fun DetailScreen(
     downloadManager: DownloadManager,
     onBack: () -> Unit,
     onTagClick: (String) -> Unit = {},
+    onAuthorClick: (Post) -> Unit = {},
     pluginManager: SitePluginManager,
     onRequireLogin: (SitePlugin) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -477,7 +478,7 @@ fun DetailScreen(
                         post = displayPost ?: currentPost,
                         onAuthorClick = { author ->
                             showInspectSheet = false
-                            onTagClick("user:$author")
+                            onAuthorClick(displayPost ?: currentPost)
                         },
                         onSourceClick = { url ->
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))

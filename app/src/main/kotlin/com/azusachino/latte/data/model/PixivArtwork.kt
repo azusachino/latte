@@ -160,6 +160,7 @@ fun PixivIllustDto.toPost(): Post {
         ),
         title = title.takeIf(String::isNotBlank),
         canonicalUrl = canonicalUrl(id),
+        authorId = user?.id?.takeIf { it > 0 },
         bookmarkCount = totalBookmarks,
         isBookmarked = isBookmarked,
         pageCount = pages.size,

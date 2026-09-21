@@ -137,6 +137,7 @@ fun ExploreScreen(
     val pixivFollowedGridState = rememberLazyStaggeredGridState()
     val pixivFavoritesGridState = rememberLazyStaggeredGridState()
     val pixivSearchGridState = rememberLazyStaggeredGridState()
+    val pixivUserWorksGridState = rememberLazyStaggeredGridState()
     val tabCount = if (uiState.isPixiv) 3 else 4
     val pagerState = rememberPagerState(initialPage = uiState.selectedTab.coerceAtMost(tabCount - 1)) { tabCount }
     val coroutineScope = rememberCoroutineScope()
@@ -453,12 +454,20 @@ fun ExploreScreen(
         ) {
             if (uiState.isSearch) {
                 FeedGrid(
-                    feed = if (uiState.isPixiv) uiState.pixivSearchFeed else uiState.searchFeed,
-                    gridState = if (uiState.isPixiv) pixivSearchGridState else searchGridState,
+                    feed = when {
+                        !uiState.isPixiv -> uiState.searchFeed
+                        uiState.pixivAuthorId != null -> uiState.pixivUserWorksFeed
+                        else -> uiState.pixivSearchFeed
+                    },
+                    gridState = when {
+                        !uiState.isPixiv -> searchGridState
+                        uiState.pixivAuthorId != null -> pixivUserWorksGridState
+                        else -> pixivSearchGridState
+                    },
                     columnCount = columnCount,
                     onPostClick = onPostClick,
                     onLoadMore = { viewModel.loadMoreSearch() },
-                    onRetry = { viewModel.search(uiState.activeSearchTags, uiState.activePoolName) },
+                    onRetry = { viewModel.retrySearch() },
                     onRefresh = { viewModel.refreshSearch() },
                     onRequireLogin = if (uiState.isPixiv && pixivPlugin != null) {
                         { onRequireLogin(pixivPlugin) }
@@ -618,13 +627,26 @@ private fun FeedGrid(
         }
     }
 
+    LaunchedEffect(feed.posts.size, feed.hasMore, feed.nextCursor, feed.isLoading, feed.isLoadingMore) {
+        if (
+            feed.posts.isEmpty() &&
+            feed.hasMore &&
+            feed.nextCursor != null &&
+            feed.error == null &&
+            !feed.isLoading &&
+            !feed.isLoadingMore
+        ) {
+            onLoadMore()
+        }
+    }
+
     PullToRefreshBox(
         isRefreshing = feed.isRefreshing,
         onRefresh = onRefresh,
         modifier = modifier.fillMaxSize(),
     ) {
         when {
-            feed.isLoading && feed.posts.isEmpty() -> {
+            (feed.isLoading || feed.isLoadingMore) && feed.posts.isEmpty() -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
