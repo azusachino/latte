@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.0.3 - Unreleased
+## 0.0.3 - 2026-09-21
 
 ### Added
 
@@ -10,9 +10,15 @@
 - Added Pixiv author-work navigation from detail metadata and platform-local
   Safe Mode filtering for Pixiv `x_restrict` results.
 - Added the Material 3 platform palette/switcher and source-local feed state.
+- Enabled `android:largeHeap="true"` for image-heavy gallery browsing.
 
 ### Fixed
 
+- Preserved exact work index and multi-page index (`initialPageIndex`) across
+  nested author works and tag search back navigation.
+- Followed continuation cursor automatically when Safe Mode filters all items on
+  a page.
+- Fixed HTTP 5xx errors mapping to `TransportFailure` distinct from 429 rate limits.
 - Preserved successful image candidates when grid cards leave and re-enter the
   viewport, restored the active feed position after detail Back, and resolved
   the authenticated-feed transition without a signed-out flash.
