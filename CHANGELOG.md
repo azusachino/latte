@@ -22,6 +22,8 @@
   not flash `Image unavailable` before the next candidate is tried.
 - Preferred the path-preserving `i.pixiv.cat` candidate before the ID/page
   fallback and retained WebP extensions when constructing Pixiv fallback URLs.
+- Retained Pixiv `large`-only image candidates so Favorites does not collapse
+  to a single failing proxy URL.
 - Kept Pixiv feed navigation separate from page navigation inside a work.
 - Added a directional transition for inner Pixiv page changes so cached images
   do not swap invisibly.

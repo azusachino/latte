@@ -91,8 +91,10 @@ fun PixivIllustDto.toPost(): Post {
             ?.lowercase()
             ?.takeIf { it in setOf("jpg", "jpeg", "png", "gif", "webp") }
             ?: "jpg"
-        val pathProxyUrl = pixivImageProxyUrl(original)
-            ?: pixivImageProxyUrl(urls.medium)
+        val pathProxyUrl = listOfNotNull(original, urls.large, urls.medium)
+            .mapNotNull(::pixivImageProxyUrl)
+            .distinct()
+            .firstOrNull()
         val idProxyUrl = pixivIdProxyUrl(id, index, extension)
         ArtworkPage(
             pageIndex = index,

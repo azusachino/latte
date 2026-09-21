@@ -76,4 +76,26 @@ class PixivArtworkTest {
         assertEquals("pixiv", artwork.workIdentity.sourceId)
         assertEquals("pixiv:75034219:1", artwork.pages[1].identity)
     }
+
+    @Test
+    fun keepsLargeImageAsThePrimaryProxyWhenOriginalAndMediumAreMissing() {
+        val artwork = PixivIllustDto(
+            id = 88000001,
+            imageUrls = PixivImageUrls(
+                large = "https://i.pximg.net/c/600x1200_90/img-master/p0.jpg",
+            ),
+        ).toPost()
+
+        assertEquals(
+            "https://i.pixiv.cat/c/600x1200_90/img-master/p0.jpg",
+            artwork.previewUrl,
+        )
+        assertEquals(
+            listOf(
+                "https://i.pixiv.cat/c/600x1200_90/img-master/p0.jpg",
+                "https://pixiv.cat/88000001.jpg",
+            ),
+            artwork.imageSources,
+        )
+    }
 }
