@@ -1,23 +1,23 @@
 # Konachan and Pixiv research
 
 Date: 2026-09-21
-Status: research complete; implementation remains gated on this note
+Status: research complete; Pixiv scope revised; implementation remains gated
 
 ## Question and conclusion
 
-Latte needs a Konachan source before a Pixiv source. The immediate questions
-are whether the Konachan Cloudflare page can be handled by the native client,
-and whether `pixiv.cat` is enough to make Pixiv a useful experience.
+Latte is pausing Konachan and defining a bounded Pixiv illustration experience.
+The immediate questions are whether `pixiv.cat` can provide the image
+transport, which Pixiv feed capabilities are worth exposing, and how those
+capabilities fit the existing Yande-compatible Explore flow.
 
 The conclusions are:
 
-1. **Do not build a Cloudflare solver.** `konachan.com` is currently returning
+1. **Park Konachan.** `konachan.com` is currently returning
    a Cloudflare Managed Challenge to this workstation's non-browser HTTP
    client, including its JSON endpoint. Cloudflare documents that Challenge
    Pages return HTML for a browser to execute and are not supported by command
-   line clients or automated browsers. Latte should detect this response and
-   offer a browser fallback, not attempt to capture, forge, or transplant
-   `cf_clearance`.
+   line clients or automated browsers. Latte should not make Konachan part of
+   the current implementation milestone.
 2. **Do not substitute `konachan.net` for `konachan.com`.** The owner has
    confirmed that `.net` is a different, safe-mode-shaped site rather than the
    `.com` collection. Its successful response is therefore not evidence for a
@@ -29,9 +29,19 @@ The conclusions are:
 4. **Pixiv metadata/authentication is a separate, unstable boundary.** The
    available open clients use Pixiv's private App API and refresh-token flow;
    Pixiv does not publish the App API contract as a stable developer API. The
-   first Pixiv slice should therefore be read-only and fixture-backed, with an
-   explicit authentication spike before bookmarks, following, comments, or
-   account-scoped feeds.
+   Pixiv target is therefore read-only illustration browsing across three
+   feeds: ranked popular works, followed-artist updates, and bookmarked
+   illustrations. The latter two require an authenticated account; account
+   acquisition remains a separate spike.
+
+5. **Search is part of the first experience.** Illustration search is another
+   feed-shaped operation and can reuse the same grid, cursor, and detail flow.
+   Autocomplete is a small follow-up if the live route is reliable.
+
+6. **Do not build a complete Pixiv client.** Comments, social graphs, novels,
+   manga, ugoira, user profiles, and multi-account behavior are outside this
+   first experience. Remote bookmark/follow mutations are useful but remain a
+   post-authentication gate.
 
 This keeps the work aligned with Latte's existing site-plugin boundary while
 making transport failure, site identity, and local download behavior explicit.
@@ -266,106 +276,165 @@ The lesson is not to reproduce the whole Pixiv product. It is to separate
 metadata, image transport, account mutation, and local download state so one
 unstable boundary does not poison the others.
 
-## 3. Proposed Pixiv experience for Latte
+## 3. Revised Pixiv experience for Latte
 
-Latte should begin with an illustration-first experience rather than a full
-Pixiv clone. Novels, comments, social graphs, and multi-account can follow only
-after the App API/auth contract earns a verified adapter.
-
-### Explore
-
-Use one Pixiv source entry with these initial destinations:
+Latte should present Pixiv as one source with three primary feed destinations
+and a query-driven search feed. This
+preserves the existing Explore grammar while making account requirements clear.
 
 ```text
-Explore
-  ├─ Recommended (auth or contract-dependent; show its unavailable state)
-  ├─ Rankings (day first; date selection after live verification)
-  ├─ Search illustrations / manga / users
-  └─ Bookmarks (authenticated only)
+Pixiv Explore
+  ├─ Popular          ranked illustrations; default daily ranking
+  ├─ Followed updates works from followed artists; account required
+  └─ Favorites        bookmarked illustrations; account required
+  + Search            illustration results; query-driven feed
 ```
 
-The card should be artwork-first and aspect-preserving. Keep the metadata
-quiet but available: title, creator, bookmark count, restriction/content
-marker, page count, and an ugoira marker when applicable. Do not copy the
-Moebooru tag-first interaction wholesale; Pixiv's useful identity is the work
-and artist relationship.
+`Popular` maps to the App API ranking operation, not the broader recommended
+surface. It should start with one verified ranking mode rather than exposing
+Pixiv's complete ranking/date/filter matrix. `Followed updates` maps to the
+followed-illustration feed. `Favorites` maps to the user's bookmarked
+illustrations. PixEz's source shows these as distinct operations rather than a
+single client-side filter: ranking, followed illustrations, and bookmarked
+illustrations have separate routes and pagination behavior in its
+[`api_client.dart`](https://github.com/Notsfsssf/pixez-flutter/blob/master/lib/network/api_client.dart).
 
-Search and ranking are separate query identities. A search result must not
-silently become a popularity-ranked result when the server rejects or limits a
-sort mode. The UI should show the active mode and a retryable unavailable state.
+All three feeds use the same artwork-first staggered grid. The card may show
+title, artist, page count, bookmark count, and a restriction marker when the
+metadata supplies them. It must not invent a score or rating to satisfy the
+Yande-shaped card.
 
-### Detail
+Search is an action in the Explore top bar rather than a fourth permanent tab.
+Submitting a non-empty query replaces the active feed with a query-labelled
+result feed; back returns to the previous feed and its scroll position. The
+first search contract is keyword plus the server's default illustration sort.
+Advanced sort, date, bookmark-count, AI-type, user, and novel search filters
+are later options, not reasons to make the first search screen a form.
 
-Use an image-first pager with these roles:
+The reference clients expose a few useful, relatively small additions:
 
-- page position and swipe between pages of one work;
-- title, creator, tags, restriction, bookmark count, and creation metadata;
-- bookmark/follow actions only when the adapter confirms authentication;
-- related works as a secondary continuation, not as an automatic feed mutation;
-- ugoira play and save as a separate media variant with progress and failure;
-- local download as a device action, separate from remote bookmark state;
-- “Open on Pixiv” for the canonical web experience and account settings.
+| Feature | Evidence | Value | Latte decision |
+| --- | --- | --- | --- |
+| Illustration search | PixEz `/v1/search/illust` | High; useful without a fixed feed | Include in first Pixiv experience |
+| Search suggestions | PixEz `/v2/search/autocomplete` | Medium; reduces query friction | Add after basic search, with local recent-query history if cheap |
+| Ranking period/mode | PixEz ranking `mode` and `date` parameters | Medium; familiar Popular refinement | Daily first; add week/month after live contract verification |
+| Bookmark/unbookmark | PixEz `/v2/illust/bookmark/add` and `/v1/illust/bookmark/delete` | High; makes Favorites actionable | Add after auth and mutation tests pass |
+| Related works | PixEz `/v2/illust/related` | Medium; natural detail continuation | Easy follow-up, not required for first feed slice |
+| Trending tags | PixEz `/v1/trending-tags/illust` | Medium; useful search entry point | Prefer after search; keep out of initial navigation |
+| User profile/follow actions | PixEz user/follow routes | Medium but opens a social graph | Defer with the full-client surface |
 
-Resolve each page's image through the image-host policy:
+This keeps the initial implementation small without making the source feel
+like three disconnected demo tabs: search and, later, one bookmark action give
+the feed set a useful discovery-to-collection loop.
+
+The detail screen keeps Latte's existing image-first pager, but the pager is
+for pages inside one Pixiv work. It exposes title, artist, tags, page position,
+restriction, bookmark count when present, the canonical Pixiv URL, sharing,
+and local download. It does not add comments, related works, user profiles,
+novels, manga, or ugoira in this slice.
+
+### Feed state and authentication
+
+The destinations are one feed state machine with a feed-kind parameter:
 
 ```text
-metadata image URL
-  -> pixiv.cat/<id>[-<page>].<extension> (default proxy)
-  -> pixiv.re or pixiv.nl (user-selected fallback)
-  -> direct origin URL with required Referer (opt-in fallback)
+FeedKind.POPULAR
+FeedKind.FOLLOWED_UPDATES
+FeedKind.FAVORITES
+FeedKind.SEARCH(query)
 ```
 
-The resolver should preserve the server's actual `Content-Type` and filename,
-not trust the nominal extension in the proxy URL. Local duplicate identity
-should include `(pixiv, work ID, page, media variant/origin)`.
+The source owns protocol-specific paging. The UI receives an opaque cursor and
+must not parse Pixiv's `next_url` into an assumed numeric offset. A token
+requirement is a visible state, not an empty feed:
 
-### Authentication and policy
+```text
+Loading -> Content(items, nextCursor)
+        -> Empty
+        -> AuthRequired(action = Sign in to Pixiv)
+        -> RateLimited(retryAfter?)
+        -> Unavailable(reason)
+```
 
-Do not collect a Pixiv password in a Latte-owned form as part of this research
-slice. The private App API and refresh-token flow need a dedicated auth spike.
-For a web login or account-settings action, prefer the system browser/Custom
-Tab; Android documents that third-party authentication should use Custom Tabs
-to keep credentials in the browser context. A token handoff must be explicit
-and testable before it is wired to the native repository.
+Pixiv login is not a password form owned by Latte. The account design needs a
+separate authentication spike for refresh-token acquisition, encrypted
+storage, refresh, logout, and account invalidation. Until that gate passes,
+fixture data can exercise the followed and favorites UI, while live requests
+must surface `AuthRequired` or `Unavailable` honestly.
 
-R18/restriction state is a remote account/content-policy fact. It must not be
-inferred from whether an image proxy returned bytes. Keep content markers,
-account visibility, and local download state separate, as Latte already does
-for the yande.re experience.
+### Image transport
+
+Pixiv metadata and image transport stay separate:
+
+```text
+Pixiv work/page metadata
+  -> Pixiv media reference (work ID, page index, original URL)
+  -> pixiv.cat URL at image-load/download time
+```
+
+The Pixiv.Cat backend describes itself as an image proxy and requires its own
+server-side Pixiv refresh token; that token must never enter Latte. See the
+[Pixiv.Cat backend](https://github.com/pixiv-cat/pixivcat-backend). Latte keeps
+the original Pixiv URL for canonical sharing and diagnostics, but the default
+image candidate is resolved from work ID and page index through `pixiv.cat`.
+The resolver trusts response `Content-Type` and `Content-Disposition` rather
+than assuming the URL suffix describes the bytes.
+
+Pixiv-Shaft's image-host design is a useful constraint here: host rewriting is
+applied at image load time, original URLs remain available for sharing, and a
+proxy must not inherit an unsafe direct-connect TLS bypass. See its
+[`image-host.md`](https://github.com/CeuiLiSA/Pixiv-Shaft/blob/classic/docs/image-host.md).
+
+### Scope boundary
+
+In scope for this Pixiv experience:
+
+- three primary illustration feeds: popular, followed updates, favorites;
+- keyword illustration search as a query-driven feed;
+- opaque cursor pagination and refresh/error/empty/auth states;
+- normalized illustration detail with multi-page image viewing;
+- `pixiv.cat` image resolution and original-URL retention;
+- shared Latte local save and restart-safe duplicate behavior;
+- open-in-Pixiv and share actions using the canonical web URL.
+
+Out of scope:
+
+- remote follow/unfollow mutations;
+- recommendations, user profiles, comments, related works, and trending-tag
+  navigation;
+- novels, manga reader, ugoira playback, and multi-account;
+- custom image mirrors and direct-origin fallback;
+- Pixiv password collection or a complete Pixiv account center.
 
 ## 4. Implementation gate and order
 
-No production implementation should start until these decisions are accepted:
+Konachan remains parked. The Pixiv work is gated in this order:
 
-### Konachan first
+1. Freeze the normalized illustration/page/media model and typed feed states.
+2. Add fixture-backed mappers for ranking, followed-update, favorites, search,
+   detail, empty, auth-required, rate-limit, malformed, and upstream-drift
+   responses.
+3. Build the `pixiv.cat` resolver independently of metadata and verify actual
+   content type/filename handling.
+4. Put the three feed kinds and query-driven search behind the existing Explore
+   grid/detail/download flow without introducing a Pixiv-specific navigation
+   hierarchy.
+5. Run a bounded authentication spike. Only then connect live account-scoped
+   feeds and decide whether the selected App API contract is stable enough for
+   a device slice.
 
-1. Keep the source identity as `konachan.com`; do not substitute or expose
-   `konachan.net` in the Konachan.com flow.
-2. Add a protocol fixture and `BrowserRequired` transport result before adding
-   UI or account behavior.
-3. Implement anonymous list/detail/download for the chosen origin. Keep the
-   Cloudflare browser action as a fallback and verify it on the OnePlus 8.
-4. Only after that slice is green, consider pools, score, favorites, and
-   authenticated mutations.
-
-### Pixiv second
-
-1. Freeze a small normalized model for an illustration, page, artist,
-   restriction, and media variant.
-2. Build a read-only metadata adapter spike against the currently selected
-   App API route, with explicit token-required and upstream-drift errors.
-3. Build and test the `pixiv.cat` image resolver independently of metadata;
-   preserve the original Pixiv URL for canonical sharing and use the proxy
-   only at image-load/download time.
-4. Ship the illustration feed/detail/download experience with proxy fallback.
-5. Treat login, bookmarks, following, comments, rankings beyond the verified
-   mode, ugoira, and novels as separately gated capabilities.
-
-The first acceptance story should be:
+The first useful acceptance story is:
 
 ```text
-choose source -> load a bounded feed -> open work -> page through media
--> inspect creator/tags -> download one page -> return without losing context
+choose Pixiv -> open Popular -> open a work -> page through its illustrations
+-> inspect artist/tags -> download one page -> return without losing context
+```
+
+The account acceptance story is separate:
+
+```text
+sign in -> open Followed updates or Favorites -> refresh -> paginate ->
+open a work -> download -> sign out -> account feeds become AuthRequired
 ```
 
 For both sites, a transport failure must remain distinguishable from an empty

@@ -8,6 +8,11 @@
 
 **Input**: [`Konachan and Pixiv research`](../../docs/research/2026-09-21-konachan-pixiv.md)
 
+> **Scope note**: Konachan is postponed. The Pixiv design in this document is
+> superseded by [`004-pixiv-illustration-experience`](../004-pixiv-illustration-experience/spec.md),
+> which narrows Latte to Popular, Followed updates, Favorites, shared detail,
+> and `pixiv.cat` transport.
+
 ## Product boundary
 
 Latte remains a Yande-compatible image-board client with a site adapter
