@@ -122,12 +122,16 @@ import java.time.format.DateTimeFormatter
 private val YANDE_ACCENT = Color(0xFF3F6F8F)
 private val PIXIV_ACCENT = Color(0xFF0096FA)
 
+internal fun shouldHandleSearchBack(isRootScreen: Boolean, isSearch: Boolean): Boolean =
+    isRootScreen && isSearch
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExploreScreen(
     viewModel: ExploreViewModel,
     onPostClick: (index: Int) -> Unit,
     onOpenSettings: () -> Unit,
+    handleSearchBack: Boolean = true,
     sitePlugin: SitePlugin? = null,
     pixivPlugin: SitePlugin? = null,
     onRequireLogin: (SitePlugin) -> Unit = {},
@@ -173,7 +177,7 @@ fun ExploreScreen(
         }
     }
 
-    BackHandler(enabled = uiState.isSearch) {
+    BackHandler(enabled = shouldHandleSearchBack(handleSearchBack, uiState.isSearch)) {
         viewModel.clearSearch()
     }
 

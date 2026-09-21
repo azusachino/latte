@@ -150,6 +150,7 @@ fun LatteApp(
                         is Screen.Explore, is Screen.AuthorWorks -> {
                             ExploreScreen(
                                 viewModel = exploreViewModel,
+                                handleSearchBack = screen is Screen.Explore,
                                 sitePlugin = yandePlugin,
                                 pixivPlugin = pixivPlugin,
                                 onPostClick = { index ->
