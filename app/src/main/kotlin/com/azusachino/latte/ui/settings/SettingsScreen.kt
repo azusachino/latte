@@ -50,6 +50,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.azusachino.latte.BuildConfig
 import com.azusachino.latte.data.settings.LattePreferences
 import com.azusachino.latte.data.settings.ThemeMode
 import com.azusachino.latte.ui.common.ToastManager
@@ -195,16 +196,16 @@ fun SettingsScreen(
             SettingsRow(
                 icon = Icons.Default.SystemUpdate,
                 title = "Check for Updates",
-                subtitle = "Version 0.0.2",
+                subtitle = "Version ${BuildConfig.VERSION_NAME}",
                 onClick = {
-                    ToastManager.showInfo("You're using the latest version (0.0.2)")
+                    ToastManager.showInfo("You're using the latest version (${BuildConfig.VERSION_NAME})")
                 },
             )
 
             SettingsRow(
                 icon = Icons.Default.Info,
                 title = "About Latte",
-                subtitle = "Version 0.0.2 · Fast native client",
+                subtitle = "Version ${BuildConfig.VERSION_NAME} · Fast native client",
                 onClick = {
                     showAboutDialog = true
                 },
@@ -218,7 +219,7 @@ fun SettingsScreen(
             title = { Text("About Latte") },
             text = {
                 Column {
-                    Text("Latte 0.0.2", fontWeight = FontWeight.Bold)
+                    Text("Latte ${BuildConfig.VERSION_NAME}", fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(4.dp))
                     Text("A fast native Moebooru client for Android.")
                     Spacer(modifier = Modifier.height(12.dp))

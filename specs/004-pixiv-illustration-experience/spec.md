@@ -4,9 +4,9 @@
 
 **Created**: 2026-09-21
 
-**Status**: Implemented through fixture/auth/device-interaction gates; live
-Pixiv account/feed verification and cancellation integration coverage remain
-pending
+**Status**: Implemented through fixture, auth, author-work, Safe Mode, and
+device-interaction gates; live Pixiv personal-feed/bookmark/download
+verification and cancellation integration coverage remain pending
 
 **Supersedes**: Pixiv portions of
 [`003-konachan-pixiv`](../003-konachan-pixiv/spec.md)
@@ -26,6 +26,10 @@ Each destination uses the existing Latte Explore grid, image-first detail
 viewer, and durable local save behavior. Detail swipe moves between neighboring
 feed illustrations; multi-page works use explicit page controls inside the
 viewer. Latte is not becoming a complete Pixiv third-party client.
+
+From detail metadata, the Pixiv author action opens that author's illustration
+works through the existing grid. This is a work feed, not a full artist profile
+or social graph.
 
 Konachan is explicitly postponed and is not part of this implementation gate.
 
@@ -47,7 +51,10 @@ Acceptance scenarios:
    move through the current work's pages and show `Page n of m`.
 3. Given a page is saved, when the download is queued, then the display name
    and duplicate identity use `(pixiv, workId, pageIndex, mediaVariant)`.
-4. Given the ranking response is malformed or unavailable, when the feed loads,
+4. Given the author row is selected in detail metadata, when the author has a
+   Pixiv user ID, then Latte requests `/v1/user/illusts` and renders that
+   author's illustration works as a query-labelled feed.
+5. Given the ranking response is malformed or unavailable, when the feed loads,
    then Latte shows a typed error state and never renders fabricated artwork.
 
 ### User Story 2 — Search Pixiv illustrations (P1)
@@ -157,6 +164,16 @@ capabilities, and Manage / Sign out actions. Platform transport details are
 not account-management UI. `Manage account` opens the platform card; a
 feed-level authentication error may offer direct sign-in for that platform.
 
+### Content safety boundary
+
+Safe Mode is enabled by default. For Yande, the existing adapter adds the
+source-owned `rating:safe` query. For Pixiv, the App API request remains
+unmodified and normalized results are filtered locally to `x_restrict == 0`
+(`PostRating.SAFE`). If a response page is fully filtered, the grid follows
+the opaque continuation cursor until it finds visible work or reaches the end;
+it never turns an upstream page into fabricated content. Toggling Safe Mode
+clears and reloads the active Pixiv feed, search, or author-work state.
+
 ### Image boundary
 
 `i.pixiv.cat` and `pixiv.cat` are image transports, not the Pixiv metadata or
@@ -241,6 +258,7 @@ enum class PixivFeedKind {
     FOLLOWED_UPDATES,
     FAVORITES,
     SEARCH,
+    USER_WORKS,
 }
 
 sealed interface PixivBookmarkResult {
@@ -259,6 +277,7 @@ data class SearchSupport(
 data class FeedRequest(
     val kind: PixivFeedKind,
     val query: String? = null,
+    val userId: Long? = null,
     val cursor: String? = null,
     val refresh: Boolean = false,
 )
@@ -281,6 +300,7 @@ The initial protocol mapping is:
 | Followed updates | Pixiv followed-illustration feed | required |
 | Favorites | Pixiv bookmarked-illustrations feed | required |
 | Search | Pixiv illustration search | upstream-dependent; expose `AuthRequired` honestly |
+| Author works | Pixiv user-illustrations feed (`/v1/user/illusts`) | required in Latte's authenticated App API session |
 
 Bookmark mutations use the active Pixiv account and have the same explicit
 authentication and upstream-failure boundary:
@@ -330,6 +350,8 @@ sealed interface FeedLoadResult {
   distinct.
 - An auth-required state offers a clear Pixiv sign-in action; it does not show
   a fake empty feed or an endless retry loop.
+- Safe Mode applies to Pixiv feed, search, and author-work results after
+  normalization; filtered pages continue through the server cursor.
 - Search accepts a non-empty keyword and reuses the same feed/grid/detail
   contract. The first slice sends only the keyword and uses the verified
   server default sort.
@@ -347,8 +369,10 @@ sealed interface FeedLoadResult {
   active Pixiv account, prompts for sign-in when no valid session exists, and
   reports mutation failure without changing the displayed state optimistically.
 - Local download is separate from remote bookmark state.
-- Comments, related works, artist profiles, novels, manga, and ugoira are not
-  rendered in this feature.
+- The clickable author row opens the author's illustration works; a full
+  artist profile, follow action, and social graph are not rendered.
+- Comments, related works, novels, manga, and ugoira are not rendered in this
+  feature.
 
 ### Image resolution
 
@@ -368,7 +392,8 @@ unverified host.
 
 - Pixiv password collection or an unverified login workaround.
 - Remote follow/unfollow mutations.
-- Recommendations, user profiles, comments, and related works.
+- Recommendations, full user profiles, follow actions, comments, and related
+  works. The bounded author-works feed from detail is included.
 - Novels, manga, ugoira, multi-account, and notification sync.
 - A second Pixiv-specific navigation architecture.
 - Konachan implementation or Cloudflare challenge handling.
@@ -401,4 +426,9 @@ unverified host.
    requests, and preserves detail/page identity.
 7. A bounded live metadata/authentication spike is recorded separately from
    fixture evidence before enabling account feeds on a device.
-8. `make check` passes before any implementation slice is considered green.
+8. Author metadata preserves the numeric Pixiv user ID, the author action
+   requests the user-works endpoint, and the resulting feed uses the existing
+   grid/detail navigation.
+9. Safe Mode keeps only safe normalized Pixiv results, reloads the active feed
+   when toggled, and skips fully filtered pages through opaque cursors.
+10. `make check` passes before any implementation slice is considered green.

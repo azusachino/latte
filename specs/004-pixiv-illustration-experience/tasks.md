@@ -76,6 +76,21 @@ updates only after a successful response.
 - [x] T024 [US3] Replace the generic Pixiv password form with browser-first and advanced token-entry flows in `app/src/main/kotlin/com/azusachino/latte/ui/account/PluginLoginDialog.kt`
 - [x] T025 [US3] Connect Pixiv session state, followed/Favorites gating, bookmark mutation, and session-expiry errors to `app/src/main/kotlin/com/azusachino/latte/ui/explore/ExploreViewModel.kt` and `app/src/main/kotlin/com/azusachino/latte/ui/detail/DetailScreen.kt`
 
+## Phase 5.5: Author works and content safety
+
+**Independent test**: Selecting a Pixiv author from detail opens that author's
+illustration works, while Safe Mode filters Pixiv results and reloads the
+active feed without confusing a filtered page with an upstream empty result.
+
+- [x] T036 [P] Add Pixiv author ID mapping, user-works endpoint coverage, and
+  author-action state coverage in `PixivArtworkTest.kt`, `PixivApiTest.kt`, and
+  `ExplorePlatformStateTest.kt`.
+- [x] T037 [US1] Connect the detail author action to the numeric Pixiv user-works
+  feed and preserve the Yande `user:<name>` search behavior.
+- [x] T038 [US1] Apply the global Safe Mode preference to normalized Pixiv feed,
+  search, and author-work results, continue through opaque cursors after a
+  fully filtered page, and cover the filtering seam with a unit test.
+
 ## Phase 6: User Story 4 — Switch platforms and manage accounts (P2)
 
 **Independent test**: Tapping `Latte` switches between Yande and Pixiv, restores
@@ -84,7 +99,7 @@ approved `Platforms & accounts` cards/actions.
 
 ### Tests first
 
-- [ ] T026 [P] [US4] Add platform-local state and stale-request cancellation tests in `app/src/test/kotlin/com/azusachino/latte/ui/explore/ExplorePlatformStateTest.kt` (state isolation covered; cancellation remains integration-only)
+- [ ] T026 [P] [US4] Add platform-local state and stale-request cancellation tests in `app/src/test/kotlin/com/azusachino/latte/ui/explore/ExplorePlatformStateTest.kt` (state isolation is covered; cancellation remains integration-only)
 - [x] T027 [P] [US4] Add plugin-manager capability/status tests for Yande and Pixiv cards in `app/src/test/kotlin/com/azusachino/latte/plugin/SitePluginManagerTest.kt`
 
 ### Implementation
@@ -99,7 +114,7 @@ approved `Platforms & accounts` cards/actions.
 
 - [x] T033 [P] Add quiet inline error, auth-required, rate-limit, upstream-drift, and transport-failure copy without toast-only recovery in `app/src/main/kotlin/com/azusachino/latte/ui/explore/ExploreScreen.kt` and `app/src/main/kotlin/com/azusachino/latte/ui/detail/DetailScreen.kt`
 - [x] T034 Run `make check`, inspect `git diff --check`, and record fixture/test evidence in this task file
-- [x] T035 Build and install a debug APK with `make validate` and `make install`, then record the physical-device Explore/platform-switch/detail receipt before declaring the journey complete (Explore, Yande detail, Pixiv browser OAuth exchange, authenticated Popular rendering, platform picker, and Platforms & accounts verified on the connected OnePlus 8; Pixiv personal-feed/detail/download acceptance remains a live follow-up)
+- [x] T035 Build and install a debug APK with `make validate` and `make install`, then record the physical-device Explore/platform-switch/detail receipt before declaring the journey complete (Explore, Yande detail, Pixiv browser OAuth exchange, authenticated Popular rendering, platform picker, and Platforms & accounts verified on the connected OnePlus 8; author works and Pixiv Safe Mode are now also verified; live personal-feed/bookmark/download acceptance remains a follow-up)
 
 ## Dependencies and execution order
 
@@ -125,7 +140,7 @@ approved `Platforms & accounts` cards/actions.
 ## Evidence
 
 - `make check` passed on 2026-09-21: rumdl found no Markdown issues and the
-  full `testDebugUnitTest` suite passed with 36 tests and no failures.
+  full `testDebugUnitTest` suite passed with 40 tests and no failures.
 - The browser OAuth exchange, verifier persistence across plugin recreation,
   refresh/retry, failed-refresh invalidation, platform capability/status, and
   multi-page download identity tests pass with MockWebServer or pure unit
@@ -141,6 +156,9 @@ approved `Platforms & accounts` cards/actions.
   actions. The refreshed picker now shows teal Yande `y` and blue Pixiv `p`
   favicon-like badges with a selected check; switching platforms also changes
   the root Material 3 palette used across the app.
+- The same device receipt opened a Pixiv detail Information sheet, followed its
+  Author row into a populated author-works feed, toggled Safe Mode, and returned
+  to a populated filtered Popular feed.
 - The anonymous App API ranking probe returned HTTP 400 with Pixiv's
   `invalid_request` OAuth message. PixEz's login-first interceptor and the
   device probe agree that native-client Popular is authenticated; the public

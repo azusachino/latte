@@ -235,3 +235,27 @@ absent. Keep the downsized artifacts and mark 0.0.2 **RELEASED / PARTIALLY
 VERIFIED**: `v0.0.2` is a real tagged release, but it is not hardware-complete
 or fully spec-verified until T014, the remaining tests, and the final
 acceptance tasks pass.
+
+## 0.0.3 Pixiv implementation audit (2026-09-21)
+
+The current `.specify/feature.json` points to
+`specs/004-pixiv-illustration-experience`, and the prerequisite script resolves
+that feature with no missing documents. The downsized workflow remains the
+active shape: one feature spec, one implementation plan, one flat task record,
+deterministic contract tests, and device receipts.
+
+The audit reconciled the implementation with the artifacts after the device
+pass. Author works are a bounded `/v1/user/illusts` feed reached from the
+detail author row, not a full artist profile. Safe Mode is a global preference:
+Yande uses its source query; Pixiv filters normalized `x_restrict == 0` results
+and continues through opaque cursors after a fully filtered page. Cache
+candidate retention and tri-state auth resolution are recorded as correctness
+constraints rather than UI anecdotes.
+
+`make check` passes with 40 unit tests and no Markdown issues. `make validate`
+and the unlocked OnePlus 8 receipt cover the browser OAuth exchange, real
+Popular images, author-work navigation, image-cache re-entry, and Pixiv Safe
+Mode reload. Live Followed/Favorites/bookmark/download acceptance and stale
+request cancellation integration remain open, so this milestone is **PARTIALLY
+VERIFIED**, not release-complete. The active branch is prepared for a 0.0.3
+review; no remote PR or push is implied by this record.

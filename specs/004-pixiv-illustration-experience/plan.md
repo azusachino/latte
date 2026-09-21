@@ -9,8 +9,8 @@ Implement Pixiv as a bounded second source inside Latte's existing Android
 application. The first vertical slice normalizes Pixiv illustration responses
 into the existing grid/detail/save journey, resolves page media through
 Pixiv.Cat, and keeps protocol errors explicit. Search, account-scoped feeds,
-bookmark mutation, platform switching, and the redesigned account screen are
-then added behind the same seams.
+bookmark mutation, author works, Safe Mode filtering, platform switching, and
+the redesigned account screen are then added behind the same seams.
 
 The implementation follows Latte's downsized Spec Kit convention: this plan
 and one flat `tasks.md` drive the work; the dated research note remains the
@@ -43,8 +43,9 @@ proxy media identities separate; never persist a Pixiv password or Pixiv.Cat
 service token; do not implement Konachan in this feature
 
 **Scale/Scope**: One owner, one active account per platform, four Pixiv feed
-entry points, fixture-backed protocol coverage, and a bounded live metadata/auth
-spike before advertising account feeds as verified
+entry points plus a bounded author-works feed, fixture-backed protocol
+coverage, and a bounded live metadata/auth spike before advertising account
+feeds as verified
 
 ## Constitution Check
 
@@ -110,9 +111,11 @@ app/src/test/kotlin/com/azusachino/latte/
 3. Add Pixiv search, autocomplete, trending tags, and opaque cursor paging.
 4. Add encrypted token import, refresh/session invalidation, followed and
    Favorites feeds, and bookmark mutation.
-5. Add the platform picker, platform-local state restoration, and redesigned
+5. Add the author-works action and apply the global Safe Mode contract across
+   normalized Pixiv results.
+6. Add the platform picker, platform-local state restoration, and redesigned
    account manager.
-6. Run the live/auth spike, install a debug APK on hardware, and complete the
+7. Run the live/auth spike, install a debug APK on hardware, and complete the
    project gates. Keep unverified live behavior visibly gated.
 
 ## Complexity Tracking

@@ -1,6 +1,7 @@
 package com.azusachino.latte.data.network
 
 import android.content.Context
+import com.azusachino.latte.BuildConfig
 import okhttp3.Cache
 import okhttp3.ConnectionPool
 import okhttp3.Dns
@@ -45,7 +46,7 @@ object OkHttpProvider {
                 }
                 .addInterceptor { chain ->
                     val request = chain.request().newBuilder()
-                        .header("User-Agent", "Mozilla/5.0 (Android; Mobile; Latte/0.0.2)")
+                        .header("User-Agent", "Mozilla/5.0 (Android; Mobile; Latte/${BuildConfig.VERSION_NAME})")
                         .build()
                     chain.proceed(request)
                 }
@@ -70,7 +71,7 @@ object OkHttpProvider {
                         .dns(customDns)
                         .addInterceptor { chain ->
                             val request = chain.request().newBuilder()
-                                .header("User-Agent", "Mozilla/5.0 (Android; Mobile; Latte/0.0.2)")
+                                .header("User-Agent", "Mozilla/5.0 (Android; Mobile; Latte/${BuildConfig.VERSION_NAME})")
                                 .build()
                             chain.proceed(request)
                         }

@@ -381,8 +381,20 @@ illustrations in the active feed. If the current Pixiv work has multiple pages,
 explicit previous/next page controls and a visible `Page n of m` label move
 through that work. Title, artist, tags, page position, restriction, bookmark
 count when present, the canonical Pixiv URL, sharing, and local download all
-describe or act on the visible page. It does not add comments, related works,
-user profiles, novels, manga, or ugoira in this slice.
+describe or act on the visible page. Selecting the author row opens the
+author's illustration works through `/v1/user/illusts`; it does not open a
+full profile or social graph. Comments, related works, novels, manga, and
+ugoira remain outside this slice.
+
+### Safe Mode boundary
+
+Safe Mode is enabled by default. Yande keeps its source-owned `rating:safe`
+query behavior. Pixiv does not receive an invented query parameter: Latte
+normalizes `x_restrict == 0` to `PostRating.SAFE` and filters the returned
+items locally. A fully filtered response page advances through its opaque
+`next_url` cursor, and changing the preference clears and reloads the active
+Pixiv feed, search, or author-works state. This is a client display boundary,
+not a claim that the private Pixiv API offers a server-side Safe Mode switch.
 
 ### Feed state and authentication
 
@@ -393,6 +405,7 @@ FeedKind.POPULAR
 FeedKind.FOLLOWED_UPDATES
 FeedKind.FAVORITES
 FeedKind.SEARCH(query)
+FeedKind.USER_WORKS(userId)
 ```
 
 Account-scoped tabs have an explicit three-state UI boundary: resolving auth,
@@ -455,13 +468,15 @@ In scope for this Pixiv experience:
 - `pixiv.cat` image resolution and original-URL retention;
 - shared Latte local save and restart-safe duplicate behavior;
 - open-in-Pixiv and share actions using the canonical web URL;
-- bookmark/unbookmark from detail after the account mutation gate passes.
+- bookmark/unbookmark from detail after the account mutation gate passes;
+- author-works navigation from detail using the numeric Pixiv user ID;
+- global Safe Mode filtering for Pixiv normalized results.
 
 Out of scope:
 
 - remote follow/unfollow mutations;
-- recommendations, user profiles, comments, related works, and local query
-  history;
+- recommendations, full user profiles, follow actions, comments, related works,
+  and local query history;
 - novels, manga reader, ugoira playback, and multi-account;
 - custom image mirrors and direct-origin fallback;
 - Pixiv password collection or a complete Pixiv account center.
@@ -482,6 +497,16 @@ Konachan remains parked. The Pixiv work is gated in this order:
 5. Run a bounded authentication spike. Only then connect live account-scoped
    feeds and decide whether the selected App API contract is stable enough for
    a device slice.
+
+## 5. 0.0.3 implementation audit receipt (2026-09-21)
+
+The connected unlocked OnePlus 8 (`0cadf428`, Android 16) verified the current
+implementation slice after `make dev`: browser-authenticated Pixiv Popular
+rendered real images; returning to a loaded feed reused image cache; the detail
+Information sheet's Author row opened a populated author-works feed; and
+toggling Safe Mode reloaded the Pixiv feed without an auth-state flash. The
+receipt does not close live Followed/Favorites/bookmark/download acceptance or
+the pending cancellation integration test. Konachan remains postponed.
 
 The first useful acceptance story is:
 

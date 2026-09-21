@@ -5,6 +5,7 @@
 > **Source Documents**:
 >
 > - [002 Active Feature Spec](../specs/002-account-manager/spec.md)
+> - [004 Pixiv Feature Spec](../specs/004-pixiv-illustration-experience/spec.md)
 > - [Spec Kit evaluation](spec-kit-evaluation.md)
 > **Historical context**: [code review & parity analysis](review/2026-09-20-code-review-and-parity.md)
 
@@ -90,6 +91,13 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
 ---
 
 ## Milestone 0.0.3: Pixiv Platform Support
+
+> **Status**: Implementation and device audit in progress. Browser OAuth,
+> Popular, search, platform switching, author works, image fallback, cache
+> re-entry, and Pixiv Safe Mode are verified; live Following/Favorites,
+> bookmark/download, and cancellation integration remain open.
+> **Active Feature Spec**: [004 Pixiv Illustration Experience](../specs/004-pixiv-illustration-experience/spec.md)
+> **Tasks**: [004 Tasks](../specs/004-pixiv-illustration-experience/tasks.md)
 
 ### 1. Architectural Adjustments
 
