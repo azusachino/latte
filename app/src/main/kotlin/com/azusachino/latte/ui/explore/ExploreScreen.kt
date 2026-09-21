@@ -861,6 +861,20 @@ private fun PersonalFeedContent(
         return
     }
 
+    LaunchedEffect(isLoggedIn, username, feed.posts.isEmpty(), feed.hasMore, feed.isLoading, feed.error) {
+        if (
+            isLoggedIn == true &&
+            (!needsUsername || !username.isNullOrBlank()) &&
+            feed.posts.isEmpty() &&
+            feed.hasMore &&
+            !feed.isLoading &&
+            !feed.isRefreshing &&
+            feed.error == null
+        ) {
+            onRetry()
+        }
+    }
+
     FeedGrid(
         feed = feed,
         viewModel = viewModel,
