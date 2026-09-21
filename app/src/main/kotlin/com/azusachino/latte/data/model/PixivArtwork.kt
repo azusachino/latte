@@ -176,9 +176,9 @@ private fun pixivImageProxyUrl(url: String?): String? {
     val value = url?.takeIf(String::isNotBlank) ?: return null
     return when {
         value.startsWith("https://i.pximg.net/") -> {
-            "https://i.pixiv.cat/${value.removePrefix("https://i.pximg.net/")}"
+            "https://i.pixiv.re/${value.removePrefix("https://i.pximg.net/")}"
         }
-        value.startsWith("https://i.pixiv.cat/") -> value
+        value.startsWith("https://i.pixiv.re/") -> value
         else -> null
     }
 }

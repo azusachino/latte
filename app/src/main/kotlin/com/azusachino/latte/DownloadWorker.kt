@@ -159,7 +159,7 @@ class DownloadWorker(
                 }
                 if (
                     url.host.equals("pixiv.cat", ignoreCase = true) ||
-                    url.host.equals("i.pixiv.cat", ignoreCase = true)
+                    url.host.equals("i.pixiv.re", ignoreCase = true)
                 ) {
                     when (
                         val pixivResponse = PixivCatResolver().classifyResponse(

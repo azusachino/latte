@@ -20,10 +20,14 @@
   or failed image request cannot leave a grid card or detail viewer blank.
 - Kept fallback attempts in the loading state so a transient proxy failure does
   not flash `Image unavailable` before the next candidate is tried.
-- Preferred the path-preserving `i.pixiv.cat` candidate before the ID/page
+- Preferred the path-preserving `i.pixiv.re` candidate before the ID/page
   fallback and retained WebP extensions when constructing Pixiv fallback URLs.
 - Retained Pixiv `large`-only image candidates so Favorites does not collapse
   to a single failing proxy URL.
+- Kept preview fallback failures in the loading state so a Pixiv proxy miss
+  cannot flash `Image unavailable` while another candidate is loading.
+- Settled exploration tabs immediately so rapid switches cannot leave the
+  pager between feeds while adjacent grids are composing.
 - Kept Pixiv feed navigation separate from page navigation inside a work.
 - Added a directional transition for inner Pixiv page changes so cached images
   do not swap invisibly.

@@ -17,7 +17,7 @@ class PixivCatResolverTest {
     @Test
     fun originalPixivImagePathsUseTheReverseProxyHost() {
         assertEquals(
-            "https://i.pixiv.cat/img-original/img/2018/04/24/01/51/35/68377968_p0.png",
+            "https://i.pixiv.re/img-original/img/2018/04/24/01/51/35/68377968_p0.png",
             resolver.proxyUrl("https://i.pximg.net/img-original/img/2018/04/24/01/51/35/68377968_p0.png"),
         )
     }

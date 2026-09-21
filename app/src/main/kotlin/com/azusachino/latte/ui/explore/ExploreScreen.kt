@@ -158,14 +158,18 @@ fun ExploreScreen(
         isLoggedIn
     } ?: false
 
-    LaunchedEffect(pagerState.currentPage) {
-        viewModel.selectTab(pagerState.currentPage)
-        searchQuery = if (!uiState.isPixiv && pagerState.currentPage == 3) uiState.poolsFeed.query else uiState.activeSearchTags
+    LaunchedEffect(pagerState.settledPage) {
+        viewModel.selectTab(pagerState.settledPage)
+        searchQuery = if (!uiState.isPixiv && pagerState.settledPage == 3) {
+            uiState.poolsFeed.query
+        } else {
+            uiState.activeSearchTags
+        }
     }
 
     LaunchedEffect(uiState.selectedTab) {
         if (pagerState.currentPage != uiState.selectedTab) {
-            pagerState.animateScrollToPage(uiState.selectedTab)
+            pagerState.scrollToPage(uiState.selectedTab)
         }
     }
 
@@ -436,9 +440,7 @@ fun ExploreScreen(
                             Tab(
                                 selected = pagerState.currentPage == index,
                                 onClick = {
-                                    coroutineScope.launch {
-                                        pagerState.animateScrollToPage(index)
-                                    }
+                                    coroutineScope.launch { pagerState.scrollToPage(index) }
                                 },
                                 text = {
                                     Text(

@@ -61,7 +61,7 @@ data class Post(
             ?: variants.firstOrNull {
                 siteId == "pixiv" && (
                     it.id == "pixiv-cat" ||
-                        it.url.startsWith("https://i.pixiv.cat/") ||
+                        it.url.startsWith("https://i.pixiv.re/") ||
                         it.url.startsWith("https://pixiv.cat/")
                     )
             }

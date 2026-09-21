@@ -38,7 +38,7 @@ class PixivCatResolver(
         require(url.scheme == "https" && url.host == "i.pximg.net") {
             "Pixiv image proxy requires an HTTPS i.pximg.net URL"
         }
-        return url.newBuilder().host("i.pixiv.cat").build().toString()
+        return url.newBuilder().host("i.pixiv.re").build().toString()
     }
 
     fun classifyResponse(

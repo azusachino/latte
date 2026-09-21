@@ -236,10 +236,7 @@ fun DetailScreen(
                                             CircularProgressIndicator(color = Color.White)
                                         },
                                         error = {
-                                            Text(
-                                                text = "Image unavailable",
-                                                color = Color.White,
-                                            )
+                                            CircularProgressIndicator(color = Color.White)
                                         },
                                         modifier = Modifier.fillMaxSize(),
                                     )
