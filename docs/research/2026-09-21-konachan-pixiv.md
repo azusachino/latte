@@ -395,6 +395,11 @@ FeedKind.FAVORITES
 FeedKind.SEARCH(query)
 ```
 
+Account-scoped tabs have an explicit three-state UI boundary: resolving auth,
+signed out, and signed in. The resolving state is intentionally not rendered
+as the signed-out sign-in prompt; otherwise a tab transition can flash the
+wrong account state before the plugin flow emits its persisted session.
+
 The source owns protocol-specific paging. The UI receives an opaque cursor and
 must not parse Pixiv's `next_url` into an assumed numeric offset. A token
 requirement is a visible state, not an empty feed:

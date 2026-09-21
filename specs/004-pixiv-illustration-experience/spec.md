@@ -74,11 +74,14 @@ Acceptance scenarios:
 
 1. Given the account is signed out, when Followed or Favorites is selected,
    then Latte shows an explicit sign-in action rather than an empty feed.
-2. Given a valid Pixiv token is available, when account-scoped feeds load, then
+2. Given account state is still resolving, when Followed or Favorites is
+   selected, then Latte shows a loading state rather than briefly showing the
+   signed-out action.
+3. Given a valid Pixiv token is available, when account-scoped feeds load, then
    Latte refreshes the token when required and maps followed/bookmarked works.
-3. Given a work is not bookmarked, when bookmark is requested, then Latte sends
+4. Given a work is not bookmarked, when bookmark is requested, then Latte sends
    the add operation and changes the UI only after success.
-4. Given refresh fails, when the session is invalidated, then the account card
+5. Given refresh fails, when the session is invalidated, then the account card
    becomes signed out and the feed reports authentication required.
 
 ### User Story 4 — Switch platforms and manage accounts (P2)
@@ -119,6 +122,11 @@ multi-page Pixiv work is a second, explicit navigation level inside the current
 viewer, using previous/next page controls and a visible `Page n of m` label.
 This prevents a page inside one work from being mistaken for the next feed
 item, and makes Save/metadata actions target the visible page.
+
+Grid image candidates are stable per artwork and retain a successful fallback
+choice when a lazy-grid item leaves composition. A proxy failure must not cause
+the same card to retry the broken candidate every time it re-enters the
+viewport.
 
 The `Latte` title acts as the platform switcher. Selecting Pixiv changes the
 platform tint/background and tab semantics together, with a short crossfade

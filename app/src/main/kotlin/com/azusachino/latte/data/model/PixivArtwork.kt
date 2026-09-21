@@ -22,7 +22,7 @@ data class ArtworkPage(
         get() = mediaRef.id
 
     val imageSources: List<String>
-        get() = listOfNotNull(previewUrl, fallbackUrl).distinct()
+        get() = listOfNotNull(fallbackUrl, previewUrl).distinct()
 }
 
 @Serializable

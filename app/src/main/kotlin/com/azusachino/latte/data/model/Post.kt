@@ -58,11 +58,11 @@ data class Post(
     val bestVariant: MediaVariant
         get() = variants.firstOrNull { siteId == "pixiv" && it.id == "pixiv-cat" }
             ?: variants.firstOrNull {
-            siteId == "pixiv" && (
-                it.id == "pixiv-cat" ||
-                    it.url.startsWith("https://i.pixiv.cat/") ||
-                    it.url.startsWith("https://pixiv.cat/")
-                )
+                siteId == "pixiv" && (
+                    it.id == "pixiv-cat" ||
+                        it.url.startsWith("https://i.pixiv.cat/") ||
+                        it.url.startsWith("https://pixiv.cat/")
+                    )
             }
             ?: variants.firstOrNull { it.id == "jpeg" }
             ?: variants.firstOrNull { it.id == "sample" }
@@ -71,10 +71,10 @@ data class Post(
 
     val imageSources: List<String>
         get() = buildList {
-            add(previewUrl)
             if (siteId == "pixiv") {
                 addAll(variants.filter { it.id == "pixiv-cat" }.map { it.url })
             }
+            add(previewUrl)
         }.distinct()
 
     val workIdentity: ArtworkIdentity

@@ -87,6 +87,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -103,6 +104,7 @@ import coil3.compose.AsyncImage
 import com.azusachino.latte.data.model.PoolSummary
 import com.azusachino.latte.data.model.PopularPeriod
 import com.azusachino.latte.data.model.Post
+import com.azusachino.latte.data.network.PixivFeedKind
 import com.azusachino.latte.plugin.SitePlugin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
@@ -508,9 +510,9 @@ fun ExploreScreen(
                                     columnCount = columnCount,
                                     onPostClick = onPostClick,
                                     onRequireLogin = onRequireLogin,
-                                    onLoadMore = { viewModel.loadMorePixiv() },
-                                    onRetry = { viewModel.loadPixivInitial() },
-                                    onRefresh = { viewModel.refreshPixiv() },
+                                    onLoadMore = { viewModel.loadMorePixiv(PixivFeedKind.FOLLOWED_UPDATES) },
+                                    onRetry = { viewModel.loadPixivInitial(PixivFeedKind.FOLLOWED_UPDATES) },
+                                    onRefresh = { viewModel.refreshPixiv(PixivFeedKind.FOLLOWED_UPDATES) },
                                 )
                             } else {
                                 FeedGrid(
@@ -534,15 +536,15 @@ fun ExploreScreen(
                                 onPostClick = onPostClick,
                                 onRequireLogin = onRequireLogin,
                                 onLoadMore = {
-                                    if (uiState.isPixiv) viewModel.loadMorePixiv()
+                                    if (uiState.isPixiv) viewModel.loadMorePixiv(PixivFeedKind.FAVORITES)
                                     else sitePlugin?.getDisplayUsername()?.let(viewModel::loadMoreFavorites)
                                 },
                                 onRetry = {
-                                    if (uiState.isPixiv) viewModel.loadPixivInitial()
+                                    if (uiState.isPixiv) viewModel.loadPixivInitial(PixivFeedKind.FAVORITES)
                                     else sitePlugin?.getDisplayUsername()?.let(viewModel::loadFavoritesInitial)
                                 },
                                 onRefresh = {
-                                    if (uiState.isPixiv) viewModel.refreshPixiv()
+                                    if (uiState.isPixiv) viewModel.refreshPixiv(PixivFeedKind.FAVORITES)
                                     else sitePlugin?.getDisplayUsername()?.let(viewModel::refreshFavorites)
                                 },
                             )
@@ -728,11 +730,21 @@ private fun PersonalFeedContent(
 ) {
     if (plugin == null) return
 
-    val isLoggedIn by plugin.isLoggedInFlow.collectAsState(initial = plugin.isLoggedIn)
+    val isLoggedIn: Boolean? by plugin.isLoggedInFlow.collectAsState(initial = null)
     val username = plugin.getDisplayUsername()
     val needsUsername = plugin.id != "pixiv"
 
-    if (!isLoggedIn || (needsUsername && username.isNullOrBlank())) {
+    if (isLoggedIn == null) {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    if (isLoggedIn == false || (needsUsername && username.isNullOrBlank())) {
         Box(
             modifier = modifier.fillMaxSize().padding(24.dp),
             contentAlignment = Alignment.Center,
@@ -951,8 +963,9 @@ private fun PostGridItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val imageSources = remember(post.id, post.pageIndex) { post.imageSources }
-    var imageSourceIndex by remember(post.id, post.pageIndex) { mutableStateOf(0) }
+    val imageSources = remember(post.siteId, post.id, post.pageIndex) { post.imageSources }
+    var imageSourceIndex by rememberSaveable(post.siteId, post.id, post.pageIndex) { mutableStateOf(0) }
+    val safeImageSourceIndex = imageSourceIndex.coerceIn(imageSources.indices)
 
     Card(
         modifier = modifier
@@ -966,11 +979,11 @@ private fun PostGridItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         AsyncImage(
-            model = imageSources[imageSourceIndex],
+            model = imageSources[safeImageSourceIndex],
             contentDescription = null,
             contentScale = ContentScale.Crop,
             onError = {
-                if (imageSourceIndex < imageSources.lastIndex) imageSourceIndex++
+                if (safeImageSourceIndex < imageSources.lastIndex) imageSourceIndex = safeImageSourceIndex + 1
             },
             modifier = Modifier
                 .fillMaxWidth()
