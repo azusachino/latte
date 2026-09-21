@@ -9,6 +9,7 @@
         android:label="Latte"
         android:name=".LatteApplication"
         android:icon="@drawable/latte_icon"
+        android:largeHeap="true"
         android:supportsRtl="true"
         android:theme="@style/Theme.Latte">
         <service
