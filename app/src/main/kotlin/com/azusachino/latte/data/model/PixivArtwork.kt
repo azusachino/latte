@@ -1,5 +1,6 @@
 package com.azusachino.latte.data.model
 
+import com.azusachino.latte.plugin.PlatformId
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.time.Instant
@@ -122,7 +123,7 @@ fun PixivIllustDto.toPost(): Post {
     val createdAt = createDate?.let { runCatching { Instant.parse(it).epochSecond }.getOrNull() }
     return Post(
         id = id,
-        siteId = "pixiv",
+        platform = PlatformId.PIXIV,
         rating = when (xRestrict) {
             1 -> PostRating.QUESTIONABLE
             2 -> PostRating.EXPLICIT

@@ -2,7 +2,6 @@ package com.azusachino.latte.plugin.yande
 
 import com.azusachino.latte.data.network.SessionCookieStore
 import com.azusachino.latte.plugin.AuthType
-import com.azusachino.latte.plugin.PlatformCapability
 import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.plugin.storage.PluginStorage
@@ -21,18 +20,13 @@ class YandePlugin(
     private val storage: PluginStorage,
     private val httpClient: OkHttpClient,
     private val cookieJar: SessionCookieStore? = null,
-    private val baseUrl: String = "https://yande.re",
+    private val baseUrl: String = PlatformId.YANDE.apiUrl,
 ) : SitePlugin {
 
     override val platform: PlatformId = PlatformId.YANDE
     override val name: String = "yande.re"
     override val iconRes: Int? = null
     override val authType: AuthType = AuthType.CREDENTIALS
-    override val capabilities: Set<PlatformCapability> = setOf(
-        PlatformCapability.SCORING,
-        PlatformCapability.FAVORITES,
-    )
-
     private var cachedUsername: String? = storage.get(id, KEY_USERNAME)
     private val _isLoggedIn = MutableStateFlow(cachedUsername != null)
     override val isLoggedIn: Boolean get() = _isLoggedIn.value

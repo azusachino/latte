@@ -3,6 +3,7 @@ package com.azusachino.latte.ui.explore
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.model.PostRating
 import com.azusachino.latte.data.network.PixivFeedKind
+import com.azusachino.latte.plugin.PlatformId
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
@@ -19,7 +20,7 @@ class ExplorePlatformStateTest {
     fun pixivStateUsesItsOwnFeedAndSearchContext() {
         val post = Post(
             id = 75034219,
-            siteId = "pixiv",
+            platform = PlatformId.PIXIV,
             rating = PostRating.SAFE,
             tags = listOf("original"),
             score = 0,
@@ -35,7 +36,7 @@ class ExplorePlatformStateTest {
             variants = emptyList(),
         )
         val state = ExploreUiState(
-            platform = ExplorePlatform.PIXIV,
+            platform = PlatformId.PIXIV,
             pixivPopularFeed = FeedState(posts = listOf(post)),
             pixivSearchTags = "blue hair",
             pixivSearchFeed = FeedState(posts = listOf(post.copy(id = 75034220))),
@@ -51,28 +52,28 @@ class ExplorePlatformStateTest {
     fun pixivAuthenticationReloadsTheSelectedFeed() {
         assertEquals(
             PixivFeedKind.POPULAR,
-            ExploreUiState(platform = ExplorePlatform.PIXIV, selectedTab = 0)
+            ExploreUiState(platform = PlatformId.PIXIV, selectedTab = 0)
                 .pixivFeedToReloadAfterAuthentication(),
         )
         assertEquals(
             PixivFeedKind.SEARCH,
-            ExploreUiState(platform = ExplorePlatform.PIXIV, pixivSearchTags = "blue hair")
+            ExploreUiState(platform = PlatformId.PIXIV, pixivSearchTags = "blue hair")
                 .pixivFeedToReloadAfterAuthentication(),
         )
         assertEquals(
             PixivFeedKind.FOLLOWED_UPDATES,
-            ExploreUiState(platform = ExplorePlatform.PIXIV, selectedTab = 1)
+            ExploreUiState(platform = PlatformId.PIXIV, selectedTab = 1)
                 .pixivFeedToReloadAfterAuthentication(),
         )
         assertEquals(
             PixivFeedKind.FAVORITES,
-            ExploreUiState(platform = ExplorePlatform.PIXIV, selectedTab = 2)
+            ExploreUiState(platform = PlatformId.PIXIV, selectedTab = 2)
                 .pixivFeedToReloadAfterAuthentication(),
         )
         assertEquals(
             PixivFeedKind.USER_WORKS,
             ExploreUiState(
-                platform = ExplorePlatform.PIXIV,
+                platform = PlatformId.PIXIV,
                 pixivAuthorId = 99,
                 pixivAuthorName = "Artist",
             ).pixivFeedToReloadAfterAuthentication(),
@@ -91,7 +92,7 @@ class ExplorePlatformStateTest {
     fun pixivSafeModeKeepsOnlySafeIllustrations() {
         val safe = Post(
             id = 1,
-            siteId = "pixiv",
+            platform = PlatformId.PIXIV,
             rating = PostRating.SAFE,
             tags = emptyList(),
             score = 0,

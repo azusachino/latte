@@ -20,7 +20,7 @@ class PixivDownloadIdentityTest {
         val original = pixivCat.copy(id = "original", url = "https://i.pximg.net/original/75034219-1.jpg")
         val page = Post(
             id = 75034219,
-            siteId = "pixiv",
+            platform = com.azusachino.latte.plugin.PlatformId.PIXIV,
             rating = PostRating.SAFE,
             tags = listOf("original"),
             score = 0,

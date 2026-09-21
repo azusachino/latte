@@ -2,14 +2,15 @@ package com.azusachino.latte.data.download
 
 import com.azusachino.latte.data.model.MediaVariant
 import com.azusachino.latte.data.model.Post
+import com.azusachino.latte.plugin.PlatformId
 
 object DownloadIdentity {
     fun displayName(post: Post, variant: MediaVariant = post.bestVariant): String {
         val extension = variant.extension
             ?: if (variant.url.endsWith(".png", ignoreCase = true)) "png" else "jpg"
-        val sourceLabel = if (post.siteId == "yande.re") "yande.re" else post.siteId
+        val sourceLabel = post.platform.externalId
         val pageSuffix = if (post.pageCount > 1) " p${post.pageIndex + 1}" else ""
-        val variantSuffix = if (post.siteId == "pixiv") {
+        val variantSuffix = if (post.platform == PlatformId.PIXIV) {
             " ${variant.id.toSafeFilePart()}"
         } else {
             ""

@@ -6,7 +6,6 @@ import com.azusachino.latte.data.network.PixivOAuthClient
 import com.azusachino.latte.data.network.PixivAuthorizationRequest
 import com.azusachino.latte.data.network.PixivSession
 import com.azusachino.latte.plugin.AuthType
-import com.azusachino.latte.plugin.PlatformCapability
 import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.plugin.storage.PluginStorage
@@ -22,18 +21,13 @@ import okhttp3.OkHttpClient
 class PixivPlugin(
     private val storage: PluginStorage,
     httpClient: OkHttpClient,
-    private val apiBaseUrl: String = "https://app-api.pixiv.net",
+    private val apiBaseUrl: String = PlatformId.PIXIV.apiUrl,
     private val oauthClient: PixivOAuthClient? = null,
 ) : SitePlugin {
     override val platform: PlatformId = PlatformId.PIXIV
     override val name: String = "Pixiv"
     override val iconRes: Int? = null
     override val authType: AuthType = AuthType.OAUTH2
-    override val capabilities: Set<PlatformCapability> = setOf(
-        PlatformCapability.FAVORITES,
-        PlatformCapability.USER_FEED,
-    )
-
     private var session: PixivSession? = loadSession()
     private val browserLoginMutex = Mutex()
     private val _isLoggedIn = MutableStateFlow(session?.accessToken?.isNotBlank() == true)

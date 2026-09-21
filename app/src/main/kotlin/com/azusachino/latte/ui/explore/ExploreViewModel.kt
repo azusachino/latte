@@ -14,6 +14,7 @@ import com.azusachino.latte.data.network.PixivFeedRequest
 import com.azusachino.latte.data.network.PixivFeedResult
 import com.azusachino.latte.data.network.PixivSupportResult
 import com.azusachino.latte.data.settings.LattePreferences
+import com.azusachino.latte.plugin.PlatformId
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,13 +26,8 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
-enum class ExplorePlatform {
-    YANDE,
-    PIXIV,
-}
-
 internal data class ExploreGridKey(
-    val platform: ExplorePlatform,
+    val platform: PlatformId,
     val feed: String,
 )
 
@@ -66,7 +62,7 @@ data class PoolListState(
 
 // Tab indices: 0 = Popular, 1 = Newest, 2 = Favorites, 3 = Pools
 data class ExploreUiState(
-    val platform: ExplorePlatform = ExplorePlatform.YANDE,
+    val platform: PlatformId = PlatformId.YANDE,
     val popularFeed: FeedState = FeedState(),
     val newestFeed: FeedState = FeedState(),
     val favoritesFeed: FeedState = FeedState(),
@@ -90,13 +86,13 @@ data class ExploreUiState(
     val selectedTab: Int = 0,
 ) {
     val activeSearchTags: String
-        get() = if (platform == ExplorePlatform.PIXIV) {
+        get() = if (platform == PlatformId.PIXIV) {
             pixivAuthorName ?: pixivSearchTags
         } else {
             searchTags
         }
 
-    val isPixiv: Boolean get() = platform == ExplorePlatform.PIXIV
+    val isPixiv: Boolean get() = platform == PlatformId.PIXIV
     val isPopular: Boolean get() = selectedTab == 0 && activeSearchTags.isBlank()
     val isSearch: Boolean get() = activeSearchTags.isNotBlank()
 
@@ -270,7 +266,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     fun configurePixiv(api: PixivApi) {
         if (pixivApi === api) return
         pixivApi = api
-        if (_uiState.value.platform == ExplorePlatform.PIXIV && _uiState.value.pixivPopularFeed.posts.isEmpty()) {
+        if (_uiState.value.platform == PlatformId.PIXIV && _uiState.value.pixivPopularFeed.posts.isEmpty()) {
             loadPixivInitial(PixivFeedKind.POPULAR)
         }
     }
@@ -282,17 +278,17 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         loadPixivInitial(kind)
     }
 
-    fun selectPlatform(platform: ExplorePlatform) {
+    fun selectPlatform(platform: PlatformId) {
         val previous = _uiState.value.platform
         if (previous == platform) return
         pixivLoadJob?.cancel()
         _uiState.update {
             it.copy(
                 platform = platform,
-                selectedTab = if (platform == ExplorePlatform.PIXIV) it.selectedTab.coerceAtMost(2) else it.selectedTab,
+                selectedTab = if (platform == PlatformId.PIXIV) it.selectedTab.coerceAtMost(2) else it.selectedTab,
             )
         }
-        if (platform == ExplorePlatform.PIXIV && _uiState.value.pixivPopularFeed.posts.isEmpty()) {
+        if (platform == PlatformId.PIXIV && _uiState.value.pixivPopularFeed.posts.isEmpty()) {
             loadPixivInitial(PixivFeedKind.POPULAR)
         }
     }

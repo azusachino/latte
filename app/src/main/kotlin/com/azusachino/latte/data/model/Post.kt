@@ -1,5 +1,6 @@
 package com.azusachino.latte.data.model
 
+import com.azusachino.latte.plugin.PlatformId
 import java.time.LocalDate
 
 enum class PostRating {
@@ -30,7 +31,7 @@ data class MediaVariant(
 
 data class Post(
     val id: Long,
-    val siteId: String = "yande.re",
+    val platform: PlatformId = PlatformId.YANDE,
     val rating: PostRating,
     val tags: List<String>,
     val score: Int,
@@ -53,13 +54,16 @@ data class Post(
     val pages: List<ArtworkPage> = emptyList(),
     val authorId: Long? = null,
 ) {
+    val siteId: String
+        get() = platform.externalId
+
     val aspectRatio: Float
         get() = if (width > 0 && height > 0) width.toFloat() / height.toFloat() else 1f
 
     val bestVariant: MediaVariant
-        get() = variants.firstOrNull { siteId == "pixiv" && it.id == "pixiv-cat" }
+        get() = variants.firstOrNull { platform == PlatformId.PIXIV && it.id == "pixiv-cat" }
             ?: variants.firstOrNull {
-                siteId == "pixiv" && (
+                platform == PlatformId.PIXIV && (
                     it.id == "pixiv-cat" ||
                         it.url.startsWith("https://i.pixiv.re/") ||
                         it.url.startsWith("https://pixiv.cat/")
@@ -72,7 +76,7 @@ data class Post(
 
     val imageSources: List<String>
         get() = buildList {
-            if (siteId == "pixiv") {
+            if (platform == PlatformId.PIXIV) {
                 add(previewUrl)
                 addAll(
                     variants
@@ -89,7 +93,7 @@ data class Post(
 }
 
 fun Post.forPage(index: Int): Post {
-    if (siteId != "pixiv" || pages.isEmpty()) return this
+    if (platform != PlatformId.PIXIV || pages.isEmpty()) return this
     val page = pages.getOrNull(index.coerceIn(pages.indices)) ?: return this
     return copy(
         previewUrl = page.previewUrl,
@@ -191,7 +195,7 @@ fun YandePostDto.toDomain(): Post {
 
     return Post(
         id = id,
-        siteId = "yande.re",
+        platform = PlatformId.YANDE,
         rating = PostRating.fromCode(rating),
         tags = tags.split(" ").filter { it.isNotBlank() },
         score = score,

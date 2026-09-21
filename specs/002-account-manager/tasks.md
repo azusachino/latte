@@ -18,9 +18,10 @@ new contract is decomposed into implementation tasks.
 
 - [x] **T001**: Add `androidx.security:security-crypto:1.1.0-alpha06` to `app/build.gradle.kts`.
 - [x] **T002**: Define core plugin contracts in `com.azusachino.latte.plugin`:
-  - `SitePlugin`: interface with `id`, `name`, `iconRes`, `authType`, `capabilities`, `isLoggedIn`, `isLoggedInFlow`, `login()`, `logout()`, `applyHeaders()`
+  - `PlatformId`: typed platform identity with external key, display name, web/API URLs, and declared capabilities
+  - `SitePlugin`: interface with `platform`, derived external `id`, `name`, `iconRes`, `authType`, `capabilities`, `isLoggedIn`, `isLoggedInFlow`, `login()`, `logout()`, `applyHeaders()`
   - `AuthType` (`CREDENTIALS`, `OAUTH2`, `API_KEY`)
-  - `PluginCapability` (`SCORING`, `FAVORITES`, `REFERER_INJECT`, `USER_FEED`)
+  - `PlatformCapability` (`SCORING`, `FAVORITES`, `REFERER_INJECT`, `USER_FEED`)
 - [x] **T003**: Implement `SecurePluginStorage` backed by `EncryptedSharedPreferences` for plugin-scoped credential storage, and make `PersistentCookieJar` use encrypted preferences with no ordinary-preferences fallback after Keystore failure.
 - [ ] **T004**: Implement `SitePluginManager` managing `plugins = listOf(yandePlugin, pixivPlugin)` and exposing `loggedInPluginsFlow()`. The manager exists, but the runtime registry currently contains Yande only until the Pixiv slice lands.
 - [ ] **T005**: Unit tests for `SecurePluginStorage` and `SitePluginManager`. Manager tests exist; secure-storage tests are still missing.
@@ -61,7 +62,7 @@ new contract is decomposed into implementation tasks.
 ## Slice 4: Yande Scoring & Favorites Integration
 
 - [x] **T015**: Implement `setScore(postId: Long, score: Int)` in `YandePlugin` calling `POST /post/vote.json`.
-- [x] **T016**: Wire `DetailScreen` through `SitePluginManager.get(post.siteId)` and check the resolved plugin's login state and `PluginCapability.SCORING`:
+- [x] **T016**: Wire `DetailScreen` through `SitePluginManager.get(post.platform)` and check the resolved plugin's login state and `PlatformCapability.SCORING`:
   - If logged in: show interactive 0–3 star rating bar and Favorite toggle button (`score == 3`).
   - If not logged in: tapping rating stars launches `PluginLoginDialog` for Yande.
 - [x] **T017**: Add "My Favorites" filter chip in `ExploreScreen` querying `vote:3:<username>` when `YandePlugin` is logged in. (Superseded 2026-09-20: promoted to a dedicated Favorites tab with its own feed, see User Story 2 in `spec.md`.)
@@ -86,7 +87,7 @@ behavior without rewriting the original acceptance history.
 - [ ] **T022**: Implement `PixivPlugin` skeleton:
   - `id = "pixiv"`
   - `authType = AuthType.OAUTH2`
-  - `capabilities = setOf(PluginCapability.REFERER_INJECT)`
+  - `capabilities = setOf(PlatformCapability.REFERER_INJECT)`
 - [ ] **T023**: Implement `applyHeaders` in `PixivPlugin`: injects `Referer: https://app-api.pixiv.net/` and `Authorization: Bearer <token>` for `*.pximg.net` and `app-api.pixiv.net`.
 - [ ] **T024**: Add `PluginHeaderInterceptor` into `OkHttpProvider` routing outbound requests through `SitePluginManager.plugins.forEach { it.applyHeaders(...) }`.
 - [ ] **T025**: Add Pixiv card in `AccountManagerScreen` with token configuration / sign-in options.

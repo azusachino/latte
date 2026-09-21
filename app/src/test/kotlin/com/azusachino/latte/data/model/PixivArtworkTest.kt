@@ -46,6 +46,7 @@ class PixivArtworkTest {
         val artwork = dto.illust!!.toPost()
 
         assertEquals("pixiv", artwork.siteId)
+        assertEquals(com.azusachino.latte.plugin.PlatformId.PIXIV, artwork.platform)
         assertEquals(75034219L, artwork.id)
         assertEquals("A study", artwork.title)
         assertEquals("Artist", artwork.author)

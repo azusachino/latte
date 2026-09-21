@@ -34,7 +34,7 @@ Latte adopts the proven plugin architecture from Mihon's tracking subsystem. Ins
 │                    SitePluginManager                     │
 │  • plugins = listOf(YandePlugin, PixivPlugin, ...)       │
 │  • loggedInPluginsFlow()                                 │
-│  • get(siteId)                                           │
+│  • get(platform)                                         │
 └──────────────┬────────────────────────────┬──────────────┘
                │                            │
 ┌──────────────▼─────────────┐ ┌────────────▼──────────────┐
@@ -65,7 +65,15 @@ enum class AuthType {
     API_KEY      // Username + API Key
 }
 
-enum class PluginCapability {
+enum class PlatformId(
+    val externalId: String,
+    val displayName: String,
+    val webUrl: String,
+    val apiUrl: String,
+    val capabilities: Set<PlatformCapability>,
+)
+
+enum class PlatformCapability {
     SCORING,          // 0-3 star rating
     FAVORITES,        // Add to / browse favorites
     REFERER_INJECT,   // Custom headers on media requests
@@ -73,11 +81,12 @@ enum class PluginCapability {
 }
 
 interface SitePlugin {
-    val id: String
+    val platform: PlatformId
+    val id: String get() = platform.externalId
     val name: String
     val iconRes: Int?
     val authType: AuthType
-    val capabilities: Set<PluginCapability>
+    val capabilities: Set<PlatformCapability>
 
     val isLoggedIn: Boolean
     val isLoggedInFlow: Flow<Boolean>
@@ -175,7 +184,7 @@ As the owner, I can configure a Pixiv account in Account Center. `PixivPlugin` s
 - **FR-004**: Credentials and tokens MUST be encrypted via `EncryptedSharedPreferences` backed by Android Keystore.
 - **FR-005**: `YandePlugin` MUST hash passwords client-side using `SHA1("choujin-steiner--$password--")`; raw passwords MUST NOT be stored or logged.
 - **FR-006**: `YandePlugin` MUST implement `SCORING` capability calling `POST /post/vote.json`.
-- **FR-007**: Post detail UI MUST dynamically query `SitePluginManager.get(siteId)?.capabilities` to render scoring controls conditionally.
+- **FR-007**: Post detail UI MUST dynamically query `SitePluginManager.get(post.platform)?.capabilities` to render scoring controls conditionally; external site keys remain a boundary lookup.
 - **FR-008**: `PixivPlugin` MUST implement `REFERER_INJECT` capability injecting `Referer: https://app-api.pixiv.net/` on matching URLs.
 - **FR-009**: Password dialogs MUST provide visibility toggles and proper IME keyboard actions (`Next` / `Done`).
 - **FR-010**: Explore MUST expose Favorites as a dedicated tab with its own feed state, not a search-bar substitution.

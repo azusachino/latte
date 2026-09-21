@@ -110,6 +110,7 @@ import com.azusachino.latte.data.model.PoolSummary
 import com.azusachino.latte.data.model.PopularPeriod
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.network.PixivFeedKind
+import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.plugin.SitePlugin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
@@ -125,6 +126,10 @@ private val PIXIV_ACCENT = Color(0xFF0096FA)
 internal fun shouldHandleSearchBack(isRootScreen: Boolean, isSearch: Boolean): Boolean =
     isRootScreen && isSearch
 
+internal fun dispatchExploreBack(onNestedBack: (() -> Unit)?, onClearSearch: () -> Unit) {
+    if (onNestedBack != null) onNestedBack() else onClearSearch()
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExploreScreen(
@@ -132,6 +137,7 @@ fun ExploreScreen(
     onPostClick: (index: Int) -> Unit,
     onOpenSettings: () -> Unit,
     handleSearchBack: Boolean = true,
+    onBack: (() -> Unit)? = null,
     sitePlugin: SitePlugin? = null,
     pixivPlugin: SitePlugin? = null,
     onRequireLogin: (SitePlugin) -> Unit = {},
@@ -244,9 +250,9 @@ fun ExploreScreen(
                                     text = {
                                         Text(
                                             text = "Yande",
-                                            color = if (uiState.platform == ExplorePlatform.YANDE) YANDE_ACCENT
+                                            color = if (uiState.platform == PlatformId.YANDE) YANDE_ACCENT
                                             else MaterialTheme.colorScheme.onSurface,
-                                            fontWeight = if (uiState.platform == ExplorePlatform.YANDE) {
+                                            fontWeight = if (uiState.platform == PlatformId.YANDE) {
                                                 FontWeight.SemiBold
                                             } else {
                                                 FontWeight.Normal
@@ -254,7 +260,7 @@ fun ExploreScreen(
                                         )
                                     },
                                     trailingIcon = {
-                                        if (uiState.platform == ExplorePlatform.YANDE) {
+                                        if (uiState.platform == PlatformId.YANDE) {
                                             Icon(
                                                 imageVector = Icons.Default.Check,
                                                 contentDescription = "Selected",
@@ -264,7 +270,7 @@ fun ExploreScreen(
                                     },
                                     onClick = {
                                         platformMenuOpen = false
-                                        viewModel.selectPlatform(ExplorePlatform.YANDE)
+                                        viewModel.selectPlatform(PlatformId.YANDE)
                                     },
                                 )
                                 DropdownMenuItem(
@@ -278,9 +284,9 @@ fun ExploreScreen(
                                     text = {
                                         Text(
                                             text = "Pixiv",
-                                            color = if (uiState.platform == ExplorePlatform.PIXIV) PIXIV_ACCENT
+                                            color = if (uiState.platform == PlatformId.PIXIV) PIXIV_ACCENT
                                             else MaterialTheme.colorScheme.onSurface,
-                                            fontWeight = if (uiState.platform == ExplorePlatform.PIXIV) {
+                                            fontWeight = if (uiState.platform == PlatformId.PIXIV) {
                                                 FontWeight.SemiBold
                                             } else {
                                                 FontWeight.Normal
@@ -288,7 +294,7 @@ fun ExploreScreen(
                                         )
                                     },
                                     trailingIcon = {
-                                        if (uiState.platform == ExplorePlatform.PIXIV) {
+                                        if (uiState.platform == PlatformId.PIXIV) {
                                             Icon(
                                                 imageVector = Icons.Default.Check,
                                                 contentDescription = "Selected",
@@ -298,7 +304,7 @@ fun ExploreScreen(
                                     },
                                     onClick = {
                                         platformMenuOpen = false
-                                        viewModel.selectPlatform(ExplorePlatform.PIXIV)
+                                        viewModel.selectPlatform(PlatformId.PIXIV)
                                     },
                                 )
                             }
@@ -306,7 +312,11 @@ fun ExploreScreen(
                     },
                     navigationIcon = {
                         if (uiState.isSearch) {
-                            IconButton(onClick = { viewModel.clearSearch() }) {
+                            IconButton(
+                                onClick = {
+                                    dispatchExploreBack(onBack, viewModel::clearSearch)
+                                },
+                            ) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                     contentDescription = "Back to discovery",
@@ -473,9 +483,9 @@ fun ExploreScreen(
                     },
                     viewModel = viewModel,
                     gridKey = when {
-                        !uiState.isPixiv -> ExploreGridKey(ExplorePlatform.YANDE, "search:${uiState.searchTags}")
-                        uiState.pixivAuthorId != null -> ExploreGridKey(ExplorePlatform.PIXIV, "user:${uiState.pixivAuthorId}")
-                        else -> ExploreGridKey(ExplorePlatform.PIXIV, "search:${uiState.pixivSearchTags}")
+                        !uiState.isPixiv -> ExploreGridKey(PlatformId.YANDE, "search:${uiState.searchTags}")
+                        uiState.pixivAuthorId != null -> ExploreGridKey(PlatformId.PIXIV, "user:${uiState.pixivAuthorId}")
+                        else -> ExploreGridKey(PlatformId.PIXIV, "search:${uiState.pixivSearchTags}")
                     },
                     gridState = when {
                         !uiState.isPixiv -> searchGridState
@@ -514,7 +524,7 @@ fun ExploreScreen(
                                     feed = if (uiState.isPixiv) uiState.pixivPopularFeed else uiState.popularFeed,
                                     viewModel = viewModel,
                                     gridKey = ExploreGridKey(
-                                        if (uiState.isPixiv) ExplorePlatform.PIXIV else ExplorePlatform.YANDE,
+                                        if (uiState.isPixiv) PlatformId.PIXIV else PlatformId.YANDE,
                                         "popular",
                                     ),
                                     gridState = if (uiState.isPixiv) pixivPopularGridState else popularGridState,
@@ -539,7 +549,7 @@ fun ExploreScreen(
                                     plugin = pixivPlugin,
                                     feed = uiState.pixivFollowedFeed,
                                     label = "Sign in to see followed updates",
-                                    gridKey = ExploreGridKey(ExplorePlatform.PIXIV, "followed"),
+                                    gridKey = ExploreGridKey(PlatformId.PIXIV, "followed"),
                                     gridState = if (uiState.isPixiv) pixivFollowedGridState else newestGridState,
                                     columnCount = columnCount,
                                     onPostClick = onPostClick,
@@ -552,7 +562,7 @@ fun ExploreScreen(
                                 FeedGrid(
                                     feed = uiState.newestFeed,
                                     viewModel = viewModel,
-                                    gridKey = ExploreGridKey(ExplorePlatform.YANDE, "newest"),
+                                    gridKey = ExploreGridKey(PlatformId.YANDE, "newest"),
                                     gridState = newestGridState,
                                     columnCount = columnCount,
                                     onPostClick = onPostClick,
@@ -569,7 +579,7 @@ fun ExploreScreen(
                                 feed = if (uiState.isPixiv) uiState.pixivFavoritesFeed else uiState.favoritesFeed,
                                 label = if (uiState.isPixiv) "Sign in to see Pixiv favorites" else "Sign in to see your favorites",
                                 gridKey = ExploreGridKey(
-                                    if (uiState.isPixiv) ExplorePlatform.PIXIV else ExplorePlatform.YANDE,
+                                    if (uiState.isPixiv) PlatformId.PIXIV else PlatformId.YANDE,
                                     "favorites",
                                 ),
                                 gridState = if (uiState.isPixiv) pixivFavoritesGridState else favoritesGridState,
@@ -829,7 +839,7 @@ private fun PersonalFeedContent(
 
     val isLoggedIn: Boolean? by plugin.isLoggedInFlow.collectAsState(initial = null)
     val username = plugin.getDisplayUsername()
-    val needsUsername = plugin.id != "pixiv"
+    val needsUsername = plugin.platform != PlatformId.PIXIV
 
     if (isLoggedIn == null) {
         Box(

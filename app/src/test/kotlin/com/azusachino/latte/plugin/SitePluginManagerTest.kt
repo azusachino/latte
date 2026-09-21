@@ -120,6 +120,8 @@ class SitePluginManagerTest {
         assertEquals(yande, manager.get(PlatformId.YANDE))
         assertEquals(pixiv, manager.get(PlatformId.PIXIV))
         assertEquals(yande, manager.get(PlatformId.YANDE.externalId))
+        assertEquals(PlatformId.YANDE.capabilities, yande.capabilities)
+        assertEquals(PlatformId.PIXIV.capabilities, pixiv.capabilities)
     }
 
     private class InMemoryStorage : PluginStorage {

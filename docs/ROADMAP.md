@@ -41,7 +41,7 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
 ### 1. Mihon-Style Plugin Subsystem (`SitePlugin` & `SitePluginManager`)
 
 - **Plugin Architecture**:
-  - Each platform is an encapsulated `SitePlugin` implementing identity, `AuthType` (`CREDENTIALS`, `OAUTH2`), capabilities (`SCORING`, `FAVORITES`, `REFERER_INJECT`), login/logout lifecycle, and header hooks.
+  - Each platform is an encapsulated `SitePlugin` identified by `PlatformId`; the enum owns the external key, display/API URLs, and declared `PlatformCapability` set, while the plugin owns authentication, lifecycle, and header hooks.
   - `SitePluginManager` maintains the plugin registry and exposes `loggedInPluginsFlow()`.
 - **Mihon-Style UI (`AccountPreferenceWidget`)**:
   - In `SettingsScreen` (under "Accounts") or dedicated `AccountManagerScreen`.

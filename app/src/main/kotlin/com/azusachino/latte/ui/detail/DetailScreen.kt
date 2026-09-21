@@ -92,6 +92,7 @@ import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.model.PostRating
 import com.azusachino.latte.data.model.forPage
 import com.azusachino.latte.plugin.PlatformCapability
+import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.plugin.SitePluginManager
 import com.azusachino.latte.ui.common.ToastManager
@@ -131,7 +132,7 @@ fun DetailScreen(
 
     val currentPost = detailPosts.getOrNull(pagerState.currentPage)
     val displayPost = currentPost?.forPage(pixivPageIndex)
-    val currentPlugin = currentPost?.let { pluginManager.get(it.siteId) }
+    val currentPlugin = currentPost?.let { pluginManager.get(it.platform) }
 
     LaunchedEffect(currentPost?.siteId, currentPost?.id) {
         pixivPageIndex = 0
@@ -142,7 +143,7 @@ fun DetailScreen(
     // recover a favorite (score 3) set in a prior session or on the web.
     LaunchedEffect(currentPost?.id, currentPlugin?.isLoggedIn) {
         val post = currentPost
-        if (post != null && post.siteId != "pixiv" && currentPlugin != null && currentPlugin.isLoggedIn && currentPlugin.getScore(post.id) == null) {
+        if (post != null && post.platform != PlatformId.PIXIV && currentPlugin != null && currentPlugin.isLoggedIn && currentPlugin.getScore(post.id) == null) {
             currentPlugin.refreshScore(post.id)?.let { refreshed ->
                 localScores = localScores + (post.id to refreshed)
             }
@@ -377,7 +378,7 @@ fun DetailScreen(
                             modifier = Modifier.padding(bottom = 8.dp),
                         )
                     }
-                    if (currentPost?.siteId == "pixiv" && currentPost.pageCount > 1) {
+                    if (currentPost?.platform == PlatformId.PIXIV && currentPost.pageCount > 1) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -453,7 +454,7 @@ fun DetailScreen(
                             val isPluginLoggedIn by currentPlugin.isLoggedInFlow.collectAsState(initial = currentPlugin.isLoggedIn)
                             val post = displayPost
                             val currentScore = localScores[post.id] ?: currentPlugin.getScore(post.id) ?: 0
-                            val isPixivPost = post.siteId == "pixiv"
+                            val isPixivPost = post.platform == PlatformId.PIXIV
                             val isFavorited = if (isPixivPost) {
                                 localBookmarks[post.workIdentity.toString()] ?: post.isBookmarked
                             } else {
@@ -730,7 +731,7 @@ private fun MetadataTable(
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 
-            if (post.siteId == "pixiv") {
+            if (post.platform == PlatformId.PIXIV) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
                 MetadataTableRow(label = "Pages", value = "${post.pageIndex + 1} / ${post.pageCount}")
                 post.bookmarkCount?.let { count ->

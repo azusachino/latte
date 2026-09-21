@@ -29,6 +29,7 @@ interface SitePlugin {
             AuthType.API_KEY -> setOf(AuthFlow.TOKEN_IMPORT)
         }
     val capabilities: Set<PlatformCapability>
+        get() = platform.capabilities
 
     val isLoggedIn: Boolean
     val isLoggedInFlow: Flow<Boolean>
