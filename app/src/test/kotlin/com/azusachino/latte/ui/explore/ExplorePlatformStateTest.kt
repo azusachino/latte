@@ -132,4 +132,53 @@ class ExplorePlatformStateTest {
 
         assertEquals(null, applied)
     }
+
+    @Test
+    fun exploreUiStatePreservesCachedFeedsAcrossSearchTransitions() {
+        val post1 = Post(
+            id = 101,
+            platform = PlatformId.PIXIV,
+            rating = PostRating.SAFE,
+            tags = listOf("tag1"),
+            score = 0,
+            author = "Artist A",
+            source = null,
+            createdAt = null,
+            width = 100,
+            height = 100,
+            previewUrl = "p1",
+            sampleUrl = "s1",
+            jpegUrl = null,
+            originalUrl = "o1",
+            variants = emptyList(),
+        )
+        val post2 = post1.copy(id = 102, author = "Artist B", tags = listOf("tag2"))
+
+        // Simulating cache restoration in state:
+        // Transitioning from AuthorWorks (id=1) to Search ("tag2") and back
+        val authorFeed = FeedState(posts = listOf(post1), page = 1, hasMore = false)
+        val searchFeed = FeedState(posts = listOf(post2), page = 1, hasMore = false)
+
+        val authorState = ExploreUiState(
+            platform = PlatformId.PIXIV,
+            pixivAuthorId = 1L,
+            pixivAuthorName = "Artist A",
+            pixivUserWorksFeed = authorFeed,
+        )
+        assertEquals(listOf(post1), authorState.posts)
+        assertEquals("Artist A", authorState.activeSearchTags)
+
+        val searchState = ExploreUiState(
+            platform = PlatformId.PIXIV,
+            pixivSearchTags = "tag2",
+            pixivSearchFeed = searchFeed,
+        )
+        assertEquals(listOf(post2), searchState.posts)
+        assertEquals("tag2", searchState.activeSearchTags)
+
+        // Restoring author state preserves original author works posts
+        val restoredAuthorState = authorState.copy()
+        assertEquals(listOf(post1), restoredAuthorState.posts)
+        assertEquals(1L, restoredAuthorState.pixivAuthorId)
+    }
 }

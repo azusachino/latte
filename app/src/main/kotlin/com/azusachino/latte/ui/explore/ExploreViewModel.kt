@@ -207,6 +207,9 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     private var pixivApi: PixivApi? = null
     private var pixivLoadJob: Job? = null
     private val gridPositions = mutableMapOf<ExploreGridKey, GridPosition>()
+    private val yandeSearchCache = mutableMapOf<String, FeedState>()
+    private val pixivSearchCache = mutableMapOf<String, FeedState>()
+    private val pixivUserWorksCache = mutableMapOf<Long, FeedState>()
     val preferences = LattePreferences(application)
 
     private val _uiState = MutableStateFlow(ExploreUiState())
@@ -220,6 +223,10 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         gridPositions[key] = position
     }
 
+    internal fun cachedYandeSearch(tags: String): FeedState? = yandeSearchCache[tags]
+    internal fun cachedPixivSearch(query: String): FeedState? = pixivSearchCache[query]
+    internal fun cachedPixivUserWorks(userId: Long): FeedState? = pixivUserWorksCache[userId]
+
     init {
         loadPopularInitial()
         loadNewestInitial()
@@ -228,6 +235,9 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                 loadPopularInitial()
                 loadNewestInitial()
                 pixivLoadJob?.cancel()
+                yandeSearchCache.clear()
+                pixivSearchCache.clear()
+                pixivUserWorksCache.clear()
                 _uiState.update {
                     it.copy(
                         pixivPopularFeed = FeedState(),
@@ -452,17 +462,20 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         _uiState.update { it.copy(searchFeed = it.searchFeed.copy(isLoadingMore = true)) }
         viewModelScope.launch {
             val nextPage = feed.page + 1
+            val searchKey = state.searchTags
             try {
-                val newPosts = api.getPosts(page = nextPage, tags = applySafeMode(state.searchTags))
+                val newPosts = api.getPosts(page = nextPage, tags = applySafeMode(searchKey))
                 _uiState.update {
-                    it.copy(
-                        searchFeed = it.searchFeed.copy(
-                            posts = it.searchFeed.posts + newPosts,
-                            page = nextPage,
-                            hasMore = newPosts.isNotEmpty(),
-                            isLoadingMore = false,
-                        )
+                    val updatedFeed = it.searchFeed.copy(
+                        posts = it.searchFeed.posts + newPosts,
+                        page = nextPage,
+                        hasMore = newPosts.isNotEmpty(),
+                        isLoadingMore = false,
                     )
+                    if (it.searchTags == searchKey) {
+                        yandeSearchCache[searchKey] = updatedFeed
+                    }
+                    it.copy(searchFeed = updatedFeed)
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(searchFeed = it.searchFeed.copy(isLoadingMore = false)) }
@@ -527,19 +540,32 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             searchPixiv(trimmed)
             return
         }
+        val cached = yandeSearchCache[trimmed]
+        if (cached != null && cached.posts.isNotEmpty()) {
+            _uiState.update {
+                it.copy(
+                    searchTags = trimmed,
+                    activePoolName = poolName,
+                    searchFeed = cached,
+                )
+            }
+            return
+        }
         _uiState.update { it.copy(searchTags = trimmed, activePoolName = poolName) }
         viewModelScope.launch {
             _uiState.update { it.copy(searchFeed = it.searchFeed.copy(isLoading = true, error = null, page = 1)) }
             try {
                 val posts = api.getPosts(page = 1, tags = applySafeMode(trimmed))
                 _uiState.update {
-                    it.copy(
-                        searchFeed = it.searchFeed.copy(
-                            posts = posts,
-                            isLoading = false,
-                            hasMore = posts.isNotEmpty(),
-                        )
+                    val updatedFeed = it.searchFeed.copy(
+                        posts = posts,
+                        isLoading = false,
+                        hasMore = posts.isNotEmpty(),
                     )
+                    if (it.searchTags == trimmed) {
+                        yandeSearchCache[trimmed] = updatedFeed
+                    }
+                    it.copy(searchFeed = updatedFeed)
                 }
             } catch (e: Exception) {
                 _uiState.update {
@@ -553,6 +579,21 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         val trimmed = query.trim()
         if (trimmed.isBlank()) {
             clearSearch()
+            return
+        }
+        val cached = pixivSearchCache[trimmed]
+        if (cached != null && cached.posts.isNotEmpty()) {
+            pixivLoadJob?.cancel()
+            _uiState.update {
+                it.copy(
+                    pixivSearchTags = trimmed,
+                    pixivAuthorId = null,
+                    pixivAuthorName = null,
+                    pixivSearchFeed = cached,
+                    pixivUserWorksFeed = FeedState(),
+                    activePoolName = null,
+                )
+            }
             return
         }
         _uiState.update {
@@ -569,6 +610,21 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
 
     fun loadPixivUserWorks(userId: Long, authorName: String) {
         if (userId <= 0 || authorName.isBlank()) return
+        val cached = pixivUserWorksCache[userId]
+        if (cached != null && cached.posts.isNotEmpty()) {
+            pixivLoadJob?.cancel()
+            _uiState.update {
+                it.copy(
+                    pixivSearchTags = "",
+                    pixivAuthorId = userId,
+                    pixivAuthorName = authorName,
+                    pixivSearchFeed = FeedState(),
+                    pixivUserWorksFeed = cached,
+                    activePoolName = null,
+                )
+            }
+            return
+        }
         _uiState.update {
             it.copy(
                 pixivSearchTags = "",
@@ -715,8 +771,18 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                 PixivFeedKind.POPULAR -> state.copy(pixivPopularFeed = updated)
                 PixivFeedKind.FOLLOWED_UPDATES -> state.copy(pixivFollowedFeed = updated)
                 PixivFeedKind.FAVORITES -> state.copy(pixivFavoritesFeed = updated)
-                PixivFeedKind.SEARCH -> state.copy(pixivSearchFeed = updated)
-                PixivFeedKind.USER_WORKS -> state.copy(pixivUserWorksFeed = updated)
+                PixivFeedKind.SEARCH -> {
+                    if (state.pixivSearchTags.isNotBlank()) {
+                        pixivSearchCache[state.pixivSearchTags] = updated
+                    }
+                    state.copy(pixivSearchFeed = updated)
+                }
+                PixivFeedKind.USER_WORKS -> {
+                    state.pixivAuthorId?.let { authorId ->
+                        pixivUserWorksCache[authorId] = updated
+                    }
+                    state.copy(pixivUserWorksFeed = updated)
+                }
             }
         }
     }
