@@ -39,7 +39,8 @@ import com.azusachino.latte.ui.theme.LatteTheme
 
 sealed interface Screen {
     data object Explore : Screen
-    data object AuthorWorks : Screen
+    data class AuthorWorks(val authorId: Long? = null, val authorName: String = "") : Screen
+    data class TagSearch(val query: String) : Screen
     data class Detail(val posts: List<Post>, val initialIndex: Int) : Screen
     data object Settings : Screen
     data object AccountManager : Screen
@@ -51,6 +52,9 @@ internal data class ScreenStack(
     val current: Screen
         get() = screens.last()
 
+    val size: Int
+        get() = screens.size
+
     fun push(screen: Screen): ScreenStack = copy(screens = screens + screen)
 
     fun pop(): ScreenStack = if (screens.size > 1) {
@@ -58,23 +62,13 @@ internal data class ScreenStack(
     } else {
         this
     }
-
-    fun root(): ScreenStack = copy(screens = listOf(Screen.Explore))
 }
-
-private val Screen.navDepth: Int
-    get() = when (this) {
-        is Screen.Explore -> 0
-        is Screen.AuthorWorks -> 2
-        is Screen.Detail -> 1
-        is Screen.Settings -> 1
-        is Screen.AccountManager -> 2
-    }
 
 private val Screen.stateKey: String
     get() = when (this) {
         is Screen.Explore -> "explore"
-        is Screen.AuthorWorks -> "author-works"
+        is Screen.AuthorWorks -> "author-works:${authorId ?: authorName}"
+        is Screen.TagSearch -> "tag-search:${query}"
         is Screen.Detail -> "detail:${posts.getOrNull(initialIndex)?.workIdentity ?: initialIndex}"
         is Screen.Settings -> "settings"
         is Screen.AccountManager -> "account-manager"
@@ -129,17 +123,47 @@ fun LatteApp(
     var activeLoginPlugin by remember { mutableStateOf<com.azusachino.latte.plugin.SitePlugin?>(null) }
     val saveableStateHolder = rememberSaveableStateHolder()
 
+    fun popNavigation() {
+        navigation = navigation.pop()
+    }
+
+    LaunchedEffect(navigation.current) {
+        when (val screen = navigation.current) {
+            is Screen.Explore -> {
+                if (exploreViewModel.uiState.value.isSearch) {
+                    exploreViewModel.clearSearch()
+                }
+            }
+            is Screen.AuthorWorks -> {
+                val state = exploreViewModel.uiState.value
+                if (screen.authorId != null && (state.pixivAuthorId != screen.authorId || !state.isSearch)) {
+                    exploreViewModel.loadPixivUserWorks(screen.authorId, screen.authorName)
+                } else if (screen.authorId == null && screen.authorName.isNotBlank() && (!state.isSearch || state.searchTags != "user:${screen.authorName}")) {
+                    exploreViewModel.search("user:${screen.authorName}")
+                }
+            }
+            is Screen.TagSearch -> {
+                val state = exploreViewModel.uiState.value
+                val activeTags = if (state.isPixiv) state.pixivSearchTags else state.searchTags
+                if (activeTags != screen.query || !state.isSearch) {
+                    exploreViewModel.search(screen.query)
+                }
+            }
+            else -> Unit
+        }
+    }
+
     LatteTheme(themeMode = themeMode, palette = palette) {
         Box(modifier = modifier.fillMaxSize()) {
-            BackHandler(enabled = navigation.screens.size > 1) {
-                navigation = navigation.pop()
+            BackHandler(enabled = navigation.size > 1) {
+                popNavigation()
             }
 
             AnimatedContent(
-                targetState = navigation.current,
+                targetState = navigation,
                 label = "ScreenTransition",
                 transitionSpec = {
-                    if (targetState.navDepth >= initialState.navDepth) {
+                    if (targetState.size >= initialState.size) {
                         (slideInHorizontally(screenSlideSpec) { width -> width } + fadeIn())
                             .togetherWith(slideOutHorizontally(screenSlideSpec) { width -> -width / 3 } + fadeOut())
                     } else {
@@ -148,15 +172,21 @@ fun LatteApp(
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
-            ) { screen ->
+            ) { targetNav ->
+                val screen = targetNav.current
                 saveableStateHolder.SaveableStateProvider(screen.stateKey) {
                     when (screen) {
-                        is Screen.Explore, is Screen.AuthorWorks -> {
+                        is Screen.Explore, is Screen.AuthorWorks, is Screen.TagSearch -> {
                             ExploreScreen(
                                 viewModel = exploreViewModel,
+                                title = when (screen) {
+                                    is Screen.AuthorWorks -> screen.authorName.ifBlank { null }
+                                    is Screen.TagSearch -> screen.query
+                                    else -> null
+                                },
                                 handleSearchBack = screen is Screen.Explore,
-                                onBack = if (screen is Screen.AuthorWorks) {
-                                    { navigation = navigation.pop() }
+                                onBack = if (screen is Screen.AuthorWorks || screen is Screen.TagSearch) {
+                                    { popNavigation() }
                                 } else {
                                     null
                                 },
@@ -185,11 +215,11 @@ fun LatteApp(
                                 downloadManager = downloadManager,
                                 pluginManager = sitePluginManager,
                                 onBack = {
-                                    navigation = navigation.pop()
+                                    popNavigation()
                                 },
                                 onTagClick = { tag ->
                                     exploreViewModel.search(tag)
-                                    navigation = navigation.root()
+                                    navigation = navigation.push(Screen.TagSearch(query = tag))
                                 },
                                 onAuthorClick = { post ->
                                     if (post.platform == PlatformId.PIXIV && post.authorId != null) {
@@ -199,7 +229,12 @@ fun LatteApp(
                                             exploreViewModel.search("user:$it")
                                         }
                                     }
-                                    navigation = navigation.push(Screen.AuthorWorks)
+                                    navigation = navigation.push(
+                                        Screen.AuthorWorks(
+                                            authorId = post.authorId,
+                                            authorName = post.author.orEmpty(),
+                                        ),
+                                    )
                                 },
                                 onRequireLogin = { plugin ->
                                     activeLoginPlugin = plugin
@@ -210,7 +245,7 @@ fun LatteApp(
                             SettingsScreen(
                                 preferences = exploreViewModel.preferences,
                                 onBack = {
-                                    navigation = navigation.pop()
+                                    popNavigation()
                                 },
                                 onOpenAccountManager = {
                                     navigation = navigation.push(Screen.AccountManager)
@@ -221,7 +256,7 @@ fun LatteApp(
                             com.azusachino.latte.ui.account.AccountManagerScreen(
                                 pluginManager = sitePluginManager,
                                 onBack = {
-                                    navigation = navigation.pop()
+                                    popNavigation()
                                 },
                             )
                         }

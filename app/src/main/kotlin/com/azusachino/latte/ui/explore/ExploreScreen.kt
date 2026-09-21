@@ -138,6 +138,7 @@ fun ExploreScreen(
     onOpenSettings: () -> Unit,
     handleSearchBack: Boolean = true,
     onBack: (() -> Unit)? = null,
+    title: String? = null,
     sitePlugin: SitePlugin? = null,
     pixivPlugin: SitePlugin? = null,
     onRequireLogin: (SitePlugin) -> Unit = {},
@@ -215,7 +216,8 @@ fun ExploreScreen(
                                 modifier = Modifier.clickable { platformMenuOpen = true },
                             ) {
                                 Text(
-                                    text = uiState.activePoolName
+                                    text = title
+                                        ?: uiState.activePoolName
                                         ?: if (uiState.isSearch) uiState.activeSearchTags
                                         else "Latte",
                                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
@@ -311,7 +313,7 @@ fun ExploreScreen(
                         }
                     },
                     navigationIcon = {
-                        if (uiState.isSearch) {
+                        if (uiState.isSearch || onBack != null) {
                             IconButton(
                                 onClick = {
                                     dispatchExploreBack(onBack, viewModel::clearSearch)

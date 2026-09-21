@@ -57,7 +57,10 @@ Acceptance scenarios:
 5. Given author works were opened from detail, when Back is used, then Latte
    returns to the same detail work/page before returning to the originating
    feed on the next Back action.
-6. Given the ranking response is malformed or unavailable, when the feed loads,
+6. Given a tag is selected from detail metadata, when its search results open,
+   then Back returns to the same detail work/page before returning to the
+   originating feed on the next Back action.
+7. Given the ranking response is malformed or unavailable, when the feed loads,
    then Latte shows a typed error state and never renders fabricated artwork.
 
 ### User Story 2 — Search Pixiv illustrations (P1)
