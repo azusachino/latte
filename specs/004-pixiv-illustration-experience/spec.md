@@ -329,8 +329,8 @@ Search support is part of the first experience but remains adapter-owned:
 - the UI does not expose Pixiv's broader user, novel, or advanced search
   matrix.
 
-The reference operations are visible in the read-only [PixEz API
-client](../../../../refs/image-gallery-apps/pixez-flutter/lib/network/api_client.dart)
+The reference operations are visible in the read-only PixEz API
+client (`pixez-flutter:lib/network/api_client.dart`)
 at pinned revision `7f89bc8`. They are protocol evidence, not a stable Pixiv
 public API contract.
 

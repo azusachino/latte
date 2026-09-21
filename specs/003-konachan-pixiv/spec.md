@@ -34,9 +34,9 @@ The two read-only references are pinned locally at the revisions available on
 
 | Reference | Useful lesson for Latte | Boundary to keep |
 | --- | --- | --- |
-| [PixEz Flutter](../../../../refs/image-gallery-apps/pixez-flutter/lib/network/api_client.dart) `7f89bc8` | Illustration search, ranking, related works, bookmarks, user works, ugoira metadata, next-page URLs, cached reads, and a distinct image-source resolver | Its private App API headers, DNS/TLS workarounds, and broad novel/social surface are not Latte requirements |
-| [Pixiv-Shaft feed module](../../../../refs/image-gallery-apps/pixiv-shaft/docs/feeds-module.md) `2c8a30b` | Keep generic feed state separate from Pixiv protocol knowledge; make paging, empty/error states, and local-first first-page caching explicit | Do not copy its Android modules or assume its private API/network route is stable |
-| [Pixiv-Shaft image-host note](../../../../refs/image-gallery-apps/pixiv-shaft/docs/image-host.md) `2c8a30b` | Rewrite image hosts at load time, preserve original URLs for sharing, and disable a transport bypass when a proxy/custom host needs ordinary TLS verification | `pixiv.cat` is a transport policy, not metadata/authentication |
+| PixEz Flutter (`lib/network/api_client.dart`, `7f89bc8`) | Illustration search, ranking, related works, bookmarks, user works, ugoira metadata, next-page URLs, cached reads, and a distinct image-source resolver | Its private App API headers, DNS/TLS workarounds, and broad novel/social surface are not Latte requirements |
+| Pixiv-Shaft (`docs/feeds-module.md`, `2c8a30b`) | Keep generic feed state separate from Pixiv protocol knowledge; make paging, empty/error states, and local-first first-page caching explicit | Do not copy its Android modules or assume its private API/network route is stable |
+| Pixiv-Shaft (`docs/image-host.md`, `2c8a30b`) | Rewrite image hosts at load time, preserve original URLs for sharing, and disable a transport bypass when a proxy/custom host needs ordinary TLS verification | `pixiv.cat` is a transport policy, not metadata/authentication |
 
 The required Latte capability map is deliberately smaller:
 
