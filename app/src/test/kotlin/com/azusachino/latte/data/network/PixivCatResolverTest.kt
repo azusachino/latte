@@ -15,9 +15,23 @@ class PixivCatResolverTest {
     }
 
     @Test
+    fun originalPixivImagePathsUseTheReverseProxyHost() {
+        assertEquals(
+            "https://i.pixiv.cat/img-original/img/2018/04/24/01/51/35/68377968_p0.png",
+            resolver.proxyUrl("https://i.pximg.net/img-original/img/2018/04/24/01/51/35/68377968_p0.png"),
+        )
+    }
+
+    @Test
     fun invalidIdsAndExtensionsDoNotCreateUntrustedUrls() {
         assertThrows(IllegalArgumentException::class.java) { PixivCatResolver("http://pixiv.cat") }
         assertThrows(IllegalArgumentException::class.java) { PixivCatResolver("https://example.com") }
+        assertThrows(IllegalArgumentException::class.java) {
+            resolver.proxyUrl("http://i.pximg.net/img-original/image.jpg")
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            resolver.proxyUrl("https://example.com/image.jpg")
+        }
         assertThrows(IllegalArgumentException::class.java) { resolver.url(0, 0, "jpg") }
         assertThrows(IllegalArgumentException::class.java) { resolver.url(75034219, -1, "jpg") }
         assertThrows(IllegalArgumentException::class.java) { resolver.url(75034219, 0, "html") }

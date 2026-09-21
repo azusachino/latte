@@ -199,6 +199,32 @@ class PixivPluginTest {
         assertTrue(body.contains("redirect_uri="))
     }
 
+    @Test
+    fun browserAuthorizationVerifierSurvivesPluginRecreation() = runTest {
+        val storage = InMemoryStorage()
+        val oauthClient = PixivOAuthClient(
+            OkHttpClient(),
+            PixivOAuthConfiguration(
+                clientId = "fixture-client",
+                clientSecret = "fixture-secret",
+                tokenEndpoint = server.url("/auth/token").toString(),
+            ),
+        )
+        plugin(storage, oauthClient).beginBrowserLogin().getOrThrow()
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """
+                {"response":{"access_token":"recreated-access","user":{"id":42,"name":"artist"}}}
+                """.trimIndent(),
+            ),
+        )
+
+        val recreatedPlugin = plugin(storage, oauthClient)
+        assertTrue(recreatedPlugin.completeBrowserLogin("fixture-code").isSuccess)
+        assertEquals("recreated-access", storage.get("pixiv", "access_token"))
+        assertEquals(null, storage.get("pixiv", "pending_code_verifier"))
+    }
+
     private fun plugin(
         storage: PluginStorage,
         oauthClient: PixivOAuthClient? = null,

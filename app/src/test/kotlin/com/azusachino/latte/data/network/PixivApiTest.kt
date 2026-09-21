@@ -9,7 +9,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import java.time.LocalDate
 
 class PixivApiTest {
     private lateinit var server: MockWebServer
@@ -35,11 +34,10 @@ class PixivApiTest {
                 kind = PixivFeedKind.POPULAR,
                 refresh = true,
             ),
-            today = LocalDate.of(2026, 9, 21),
         )
 
         val request = server.takeRequest()
-        assertEquals("/v1/illust/ranking?filter=for_android&mode=day&date=2026-09-21", request.path)
+        assertEquals("/v1/illust/ranking?filter=for_android&mode=day", request.path)
         assertEquals("Bearer access-token", request.getHeader("Authorization"))
         assertTrue(result is PixivFeedResult.Success)
         assertEquals(75034219L, (result as PixivFeedResult.Success).page.items.single().id)

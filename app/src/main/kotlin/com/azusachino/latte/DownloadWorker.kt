@@ -157,7 +157,10 @@ class DownloadWorker(
                 if (responseCode !in 200..299) {
                     throw IOException("Image server returned HTTP $responseCode")
                 }
-                if (url.host.equals("pixiv.cat", ignoreCase = true)) {
+                if (
+                    url.host.equals("pixiv.cat", ignoreCase = true) ||
+                    url.host.equals("i.pixiv.cat", ignoreCase = true)
+                ) {
                     when (
                         val pixivResponse = PixivCatResolver().classifyResponse(
                             code = responseCode,

@@ -2,6 +2,7 @@ package com.azusachino.latte.ui.explore
 
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.model.PostRating
+import com.azusachino.latte.data.network.PixivFeedKind
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -37,5 +38,24 @@ class ExplorePlatformStateTest {
         assertEquals("blue hair", state.activeSearchTags)
         assertEquals(75034220L, state.posts.single().id)
         assertEquals(75034219L, state.copy(pixivSearchTags = "").posts.single().id)
+    }
+
+    @Test
+    fun pixivAuthenticationReloadsPopularAndSearchButNotPersonalTabs() {
+        assertEquals(
+            PixivFeedKind.POPULAR,
+            ExploreUiState(platform = ExplorePlatform.PIXIV, selectedTab = 0)
+                .pixivFeedToReloadAfterAuthentication(),
+        )
+        assertEquals(
+            PixivFeedKind.SEARCH,
+            ExploreUiState(platform = ExplorePlatform.PIXIV, pixivSearchTags = "blue hair")
+                .pixivFeedToReloadAfterAuthentication(),
+        )
+        assertEquals(
+            null,
+            ExploreUiState(platform = ExplorePlatform.PIXIV, selectedTab = 1)
+                .pixivFeedToReloadAfterAuthentication(),
+        )
     }
 }

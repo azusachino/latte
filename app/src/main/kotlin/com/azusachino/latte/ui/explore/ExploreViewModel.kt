@@ -141,6 +141,13 @@ data class ExploreUiState(
         }
 }
 
+internal fun ExploreUiState.pixivFeedToReloadAfterAuthentication(): PixivFeedKind? = when {
+    !isPixiv -> null
+    isSearch -> PixivFeedKind.SEARCH
+    selectedTab == 0 -> PixivFeedKind.POPULAR
+    else -> null
+}
+
 class ExploreViewModel(application: Application) : AndroidViewModel(application) {
     private val api = YandeApi()
     private var pixivApi: PixivApi? = null
@@ -184,6 +191,13 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         if (_uiState.value.platform == ExplorePlatform.PIXIV && _uiState.value.pixivPopularFeed.posts.isEmpty()) {
             loadPixivInitial(PixivFeedKind.POPULAR)
         }
+    }
+
+    fun retryPixivAfterAuthentication() {
+        val state = _uiState.value
+        val kind = state.pixivFeedToReloadAfterAuthentication() ?: return
+        if (!pixivFeed(state, kind).authRequired) return
+        loadPixivInitial(kind)
     }
 
     fun selectPlatform(platform: ExplorePlatform) {

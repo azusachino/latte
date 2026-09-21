@@ -93,8 +93,8 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
 
 ### 1. Architectural Adjustments
 
-- **Custom HTTP Headers for Media (`Referer`)**:
-  - Pixiv images on `i.pximg.net` return HTTP 403 Forbidden without `Referer: https://app-api.pixiv.net/`.
+- **Pixiv image proxy transport**:
+  - Pixiv images on `i.pximg.net` return HTTP 403 Forbidden without a Pixiv Referer; prefer rewriting the host to `i.pixiv.cat` while preserving the original path, with the ID/page resolver as fallback.
   - Implement `PixivPlugin.applyHeaders` and route matching requests through
     `SitePluginManager` and the OkHttp provider.
 - **1:N Multi-Page Artworks (`IllustPage`)**:

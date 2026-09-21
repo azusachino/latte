@@ -57,6 +57,7 @@ class PixivArtworkTest {
         assertEquals(0, artwork.pages[0].pageIndex)
         assertEquals(1, artwork.pages[1].pageIndex)
         assertEquals("https://i.pximg.net/original/p1.png", artwork.pages[1].originalUrl)
+        assertEquals("https://i.pixiv.cat/original/p1.png", artwork.pages[1].mediaRef.url)
         assertEquals("pixiv", artwork.workIdentity.sourceId)
         assertEquals("pixiv:75034219:1", artwork.pages[1].identity)
     }

@@ -15,7 +15,6 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.IOException
-import java.time.LocalDate
 
 data class PixivSession(
     val accessToken: String,
@@ -39,11 +38,10 @@ class PixivApi(
 
     suspend fun load(
         request: PixivFeedRequest,
-        today: LocalDate = LocalDate.now(),
     ): PixivFeedResult = withContext(Dispatchers.IO) {
         val session = sessionProvider()
         val url = try {
-            requestUrl(request, today, session)
+            requestUrl(request, session)
         } catch (e: IllegalArgumentException) {
             return@withContext if (e.message == "Pixiv sign-in required") {
                 PixivFeedResult.AuthRequired
@@ -152,7 +150,6 @@ class PixivApi(
 
     private fun requestUrl(
         request: PixivFeedRequest,
-        today: LocalDate,
         session: PixivSession?,
     ): HttpUrl {
         request.cursor?.let { cursor ->
@@ -167,7 +164,6 @@ class PixivApi(
                 .addPathSegments("v1/illust/ranking")
                 .addQueryParameter("filter", "for_android")
                 .addQueryParameter("mode", "day")
-                .addQueryParameter("date", today.toString())
             PixivFeedKind.FOLLOWED_UPDATES -> {
                 require(session?.accessToken?.isNotBlank() == true) { "Pixiv sign-in required" }
                 builder.addPathSegments("v2/illust/follow")

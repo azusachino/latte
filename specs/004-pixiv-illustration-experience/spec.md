@@ -38,8 +38,9 @@ metadata, and save a page locally.
 
 Acceptance scenarios:
 
-1. Given Pixiv is selected, when Popular opens, then Latte requests the daily
-   ranking operation and renders normalized artwork cards in the existing grid.
+1. Given Pixiv is selected and the account is authenticated, when Popular opens,
+   then Latte requests the daily ranking operation and renders normalized
+   artwork cards in the existing grid.
 2. Given a ranked work has multiple pages, when it opens, then the detail pager
    contains that work's pages in page-index order, not neighboring feed items.
 3. Given a page is saved, when the download is queued, then the display name
@@ -123,10 +124,11 @@ stale requests and restores the selected platform's last valid state.
 
 ### Account boundary
 
-Popular may be attempted without an account, but the adapter must surface the
-real upstream requirement if the current App API route rejects anonymous calls.
-Followed updates and Favorites are account-scoped and require a valid Pixiv
-session. An authentication requirement is never represented as an empty list.
+Popular, Followed updates, and Favorites use Pixiv's authenticated App API
+contract and require a valid Pixiv session. The public website's ranking route
+is a separate, drift-prone HTML/web adapter and is not part of Latte's supported
+feed contract. An authentication requirement is never represented as an empty
+list.
 
 Latte must not collect a Pixiv password in a normal app-owned form. The primary
 Pixiv action is browser-based Pixiv sign-in, followed by refresh-token storage,
@@ -144,7 +146,8 @@ feed-level authentication error may offer direct sign-in for that platform.
 
 ### Image boundary
 
-`pixiv.cat` is an image transport, not the Pixiv metadata or account API. A
+`i.pixiv.cat` and `pixiv.cat` are image transports, not the Pixiv metadata or
+account API. A
 Pixiv work page retains:
 
 - the Pixiv work ID and zero-based page index;
@@ -152,10 +155,12 @@ Pixiv work page retains:
 - the canonical Pixiv web URL;
 - a resolver reference for the selected image host.
 
-The default resolver creates a `pixiv.cat` candidate from work ID and page
-index at load/download time. It trusts response `Content-Type` and
-`Content-Disposition` for decoding and filenames. It does not store or use a
-Pixiv.Cat service refresh token in Latte.
+When metadata supplies an `i.pximg.net` URL, the default resolver rewrites only
+the host to `i.pixiv.cat`, preserving the original path and query. When no
+origin URL is available, it falls back to the `pixiv.cat/<work-id>-<page>` URL
+grammar. It trusts response `Content-Type` and `Content-Disposition` for
+decoding and filenames. It does not store or use a Pixiv.Cat service refresh
+token in Latte.
 
 ## Capability map
 
@@ -164,7 +169,7 @@ Pixiv.Cat service refresh token in Latte.
 | `pixiv-artwork` | Normalized work, artist, page, tag, restriction, and media identity | — |
 | `pixiv-account` | Browser/token auth flows, session state, secure persistence, and account-required gating | — |
 | `pixiv-feeds` | Popular, followed-update, favorites, search, and search-support contracts plus opaque paging | `pixiv-artwork`, `pixiv-account` |
-| `pixiv-transport` | `pixiv.cat` URL resolution and response filename/type handling | `pixiv-artwork` |
+| `pixiv-transport` | `i.pixiv.cat` host rewriting, `pixiv.cat` fallback resolution, and response filename/type handling | `pixiv-artwork` |
 | `pixiv-explore` | Platform switcher, feed tabs, detail pager, bookmark actions, and local save handoff | `pixiv-artwork`, `pixiv-account`, `pixiv-feeds`, `pixiv-transport` |
 
 Build order: `pixiv-artwork` → fixture-backed `pixiv-account`,
@@ -259,7 +264,7 @@ The initial protocol mapping is:
 
 | Latte feed | Current reference operation | Auth |
 | --- | --- | --- |
-| Popular | Pixiv illustration ranking | upstream-dependent; expose `AuthRequired` honestly |
+| Popular | Pixiv illustration ranking | required; expose `AuthRequired` honestly |
 | Followed updates | Pixiv followed-illustration feed | required |
 | Favorites | Pixiv bookmarked-illustrations feed | required |
 | Search | Pixiv illustration search | upstream-dependent; expose `AuthRequired` honestly |

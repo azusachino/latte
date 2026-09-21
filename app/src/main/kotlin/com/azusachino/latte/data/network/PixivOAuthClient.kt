@@ -1,6 +1,11 @@
 package com.azusachino.latte.data.network
 
+import android.net.Uri
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -15,14 +20,30 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Base64
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.receiveAsFlow
 
 data class PixivOAuthConfiguration(
     val clientId: String,
     val clientSecret: String,
     val tokenEndpoint: String = "https://oauth.secure.pixiv.net/auth/token",
-)
+) {
+    companion object {
+        /**
+         * Pixiv's Android OAuth client is a public native-app client. Its
+         * credentials are necessarily present in installed Pixiv clients;
+         * build-time values can still override them for local experiments.
+         */
+        fun pixivAndroid(
+            clientId: String? = null,
+            clientSecret: String? = null,
+        ): PixivOAuthConfiguration = PixivOAuthConfiguration(
+            clientId = clientId ?: DEFAULT_CLIENT_ID,
+            clientSecret = clientSecret ?: DEFAULT_CLIENT_SECRET,
+        )
+
+        private const val DEFAULT_CLIENT_ID = "MOBrBDS8blbauoSck0ZfDbtuzpyT"
+        private const val DEFAULT_CLIENT_SECRET = "lsACyCD94FhDUtGTXi3QzcFE2uU1hqtDaKeqrdwj"
+    }
+}
 
 data class PixivAuthorizationRequest(
     val url: String,
@@ -148,20 +169,28 @@ class PixivOAuthClient(
         }.getOrNull()
     }
 
-    private companion object {
-        const val HASH_SALT = "28c1fdd170a5204386cb1313c7077b34f83e4aaf4aa829ce78c231e05b0bae2c"
-        val CLIENT_TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'+00:00'")
-        const val REDIRECT_URI = "https://app-api.pixiv.net/web/v1/users/auth/pixiv/callback"
+    companion object {
+        private const val HASH_SALT = "28c1fdd170a5204386cb1313c7077b34f83e4aaf4aa829ce78c231e05b0bae2c"
+        private val CLIENT_TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'+00:00'")
+        private const val REDIRECT_URI = "https://app-api.pixiv.net/web/v1/users/auth/pixiv/callback"
 
-        fun md5(value: String): String = MessageDigest.getInstance("MD5")
+        private fun md5(value: String): String = MessageDigest.getInstance("MD5")
             .digest(value.toByteArray())
             .joinToString("") { byte -> "%02x".format(byte) }
 
-        fun randomUrlToken(byteCount: Int): String {
+        private fun randomUrlToken(byteCount: Int): String {
             val bytes = ByteArray(byteCount)
             SecureRandom().nextBytes(bytes)
             return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
         }
+
+        fun isCallbackUri(uri: Uri): Boolean =
+            (uri.scheme == "pixiv" &&
+                uri.host == "account" &&
+                (uri.path.isNullOrEmpty() || uri.path == "/login")) ||
+                (uri.scheme == "https" &&
+                    uri.host == "app-api.pixiv.net" &&
+                    uri.path == "/web/v1/users/auth/pixiv/callback")
     }
 }
 

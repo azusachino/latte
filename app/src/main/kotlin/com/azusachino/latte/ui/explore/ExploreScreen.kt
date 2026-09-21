@@ -144,6 +144,10 @@ fun ExploreScreen(
     var searchQuery by remember { mutableStateOf(uiState.activeSearchTags) }
     var platformMenuOpen by remember { mutableStateOf(false) }
     val platformAccent = MaterialTheme.colorScheme.primary
+    val pixivIsLoggedIn = pixivPlugin?.let { plugin ->
+        val isLoggedIn by plugin.isLoggedInFlow.collectAsState(initial = plugin.isLoggedIn)
+        isLoggedIn
+    } ?: false
 
     LaunchedEffect(pagerState.currentPage) {
         viewModel.selectTab(pagerState.currentPage)
@@ -162,6 +166,10 @@ fun ExploreScreen(
 
     LaunchedEffect(uiState.activeSearchTags) {
         searchQuery = uiState.activeSearchTags
+    }
+
+    LaunchedEffect(pixivIsLoggedIn) {
+        if (pixivIsLoggedIn) viewModel.retryPixivAfterAuthentication()
     }
 
     LaunchedEffect(isSearchExpanded, uiState.isPixiv, searchQuery) {
@@ -644,6 +652,25 @@ private fun FeedGrid(
                             IconButton(onClick = onRetry) {
                                 Icon(Icons.Default.Refresh, contentDescription = "Retry")
                             }
+                        }
+                    }
+                }
+            }
+            feed.posts.isEmpty() -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "No illustrations available",
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        IconButton(onClick = onRetry) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Retry")
                         }
                     }
                 }

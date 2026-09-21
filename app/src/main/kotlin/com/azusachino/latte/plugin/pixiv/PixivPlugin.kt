@@ -13,6 +13,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 
@@ -32,7 +34,7 @@ class PixivPlugin(
     )
 
     private var session: PixivSession? = loadSession()
-    private var pendingCodeVerifier: String? = null
+    private val browserLoginMutex = Mutex()
     private val _isLoggedIn = MutableStateFlow(session?.accessToken?.isNotBlank() == true)
     override val isLoggedIn: Boolean get() = _isLoggedIn.value
     override val isLoggedInFlow: Flow<Boolean> = _isLoggedIn.asStateFlow()
@@ -51,18 +53,19 @@ class PixivPlugin(
         if (request == null) {
             return Result.failure(IllegalStateException("Pixiv browser login is not configured"))
         }
-        pendingCodeVerifier = request.codeVerifier
+        storage.save(id, KEY_PENDING_CODE_VERIFIER, request.codeVerifier)
         return Result.success(request)
     }
 
-    suspend fun completeBrowserLogin(code: String): Result<Unit> {
-        val verifier = pendingCodeVerifier
-            ?: return Result.failure(IllegalStateException("Pixiv browser login has expired"))
+    suspend fun completeBrowserLogin(code: String): Result<Unit> = browserLoginMutex.withLock {
+        val verifier = storage.get(id, KEY_PENDING_CODE_VERIFIER)
+            ?: return@withLock Result.failure(IllegalStateException("Pixiv browser login has expired"))
+        storage.remove(id, KEY_PENDING_CODE_VERIFIER)
+
         val nextSession = oauthClient?.exchangeCode(code, verifier)
-            ?: return Result.failure(IllegalStateException("Pixiv browser sign-in failed"))
-        pendingCodeVerifier = null
+            ?: return@withLock Result.failure(IllegalStateException("Pixiv browser sign-in failed"))
         persistSession(nextSession)
-        return Result.success(Unit)
+        Result.success(Unit)
     }
 
     override suspend fun login(credentials: Map<String, String>): Result<Unit> = withContext(Dispatchers.IO) {
@@ -114,13 +117,13 @@ class PixivPlugin(
             ?: storage.remove(id, KEY_USER_ID)
         nextSession.username?.let { storage.save(id, KEY_USERNAME, it) }
             ?: storage.remove(id, KEY_USERNAME)
+        storage.remove(id, KEY_PENDING_CODE_VERIFIER)
         session = nextSession
         _isLoggedIn.value = true
     }
 
     private fun invalidateSession() {
         storage.clearPlugin(id)
-        pendingCodeVerifier = null
         session = null
         _isLoggedIn.value = false
     }
@@ -140,5 +143,6 @@ class PixivPlugin(
         const val KEY_REFRESH_TOKEN = "refresh_token"
         const val KEY_USER_ID = "user_id"
         const val KEY_USERNAME = "username"
+        const val KEY_PENDING_CODE_VERIFIER = "pending_code_verifier"
     }
 }

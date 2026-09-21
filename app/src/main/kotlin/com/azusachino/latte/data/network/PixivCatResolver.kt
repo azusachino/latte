@@ -33,6 +33,14 @@ class PixivCatResolver(
         return "${baseUrl.trimEnd('/')}/$workId$pageSuffix.$normalizedExtension"
     }
 
+    fun proxyUrl(originalUrl: String): String {
+        val url = originalUrl.toHttpUrl()
+        require(url.scheme == "https" && url.host == "i.pximg.net") {
+            "Pixiv image proxy requires an HTTPS i.pximg.net URL"
+        }
+        return url.newBuilder().host("i.pixiv.cat").build().toString()
+    }
+
     fun classifyResponse(
         code: Int,
         contentType: String?,

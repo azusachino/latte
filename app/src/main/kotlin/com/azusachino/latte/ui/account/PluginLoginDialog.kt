@@ -39,7 +39,9 @@ import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.plugin.AuthFlow
 import android.content.Intent
 import android.net.Uri
+import com.azusachino.latte.PixivLoginActivity
 import com.azusachino.latte.data.network.PixivOAuthCallbackBus
+import com.azusachino.latte.data.network.PixivOAuthClient
 import com.azusachino.latte.plugin.pixiv.PixivPlugin
 import kotlinx.coroutines.launch
 
@@ -69,10 +71,14 @@ fun PluginLoginDialog(
         if (pixivPlugin == null) return@LaunchedEffect
         PixivOAuthCallbackBus.callbacks.collect { callbackUri ->
             val uri = Uri.parse(callbackUri)
+            if (!PixivOAuthClient.isCallbackUri(uri)) return@collect
             val error = uri.getQueryParameter("error")
             val code = uri.getQueryParameter("code")
             if (error != null) {
-                errorMessage = "Pixiv browser sign-in failed: $error"
+                val description = uri.getQueryParameter("error_description")
+                errorMessage = listOfNotNull(error, description)
+                    .joinToString(": ")
+                    .let { "Pixiv browser sign-in failed: $it" }
                 return@collect
             }
             if (code.isNullOrBlank()) return@collect
@@ -109,7 +115,10 @@ fun PluginLoginDialog(
                             val request = pixivPlugin.beginBrowserLogin()
                             if (request.isSuccess) {
                                 runCatching {
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(request.getOrThrow().url)))
+                                    context.startActivity(
+                                        Intent(context, PixivLoginActivity::class.java)
+                                            .putExtra(PixivLoginActivity.EXTRA_LOGIN_URL, request.getOrThrow().url),
+                                    )
                                 }.onFailure {
                                     errorMessage = it.message ?: "Could not open Pixiv sign-in"
                                 }

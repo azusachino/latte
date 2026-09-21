@@ -87,17 +87,17 @@ fun PixivIllustDto.toPost(): Post {
             ?.lowercase()
             ?.takeIf { it in setOf("jpg", "jpeg", "png", "gif") }
             ?: "jpg"
-        val proxyUrl = if (index == 0) {
-            "https://pixiv.cat/$id.$extension"
-        } else {
-            "https://pixiv.cat/$id-$index.$extension"
-        }
+        val proxyUrl = pixivImageProxyUrl(original)
+            ?: pixivImageProxyUrl(urls.medium)
+            ?: pixivIdProxyUrl(id, index, extension)
         ArtworkPage(
             pageIndex = index,
             width = width,
             height = height,
             originalUrl = original,
-            previewUrl = urls.medium ?: urls.large ?: proxyUrl,
+            previewUrl = pixivImageProxyUrl(urls.medium)
+                ?: pixivImageProxyUrl(urls.large)
+                ?: proxyUrl,
             mediaRef = MediaVariant(
                 id = "pixiv:$id:$index",
                 url = proxyUrl,
@@ -154,3 +154,19 @@ fun PixivIllustDto.toPost(): Post {
 }
 
 private fun canonicalUrl(id: Long): String = "https://www.pixiv.net/artworks/$id"
+
+private fun pixivImageProxyUrl(url: String?): String? {
+    val value = url?.takeIf(String::isNotBlank) ?: return null
+    return when {
+        value.startsWith("https://i.pximg.net/") -> {
+            "https://i.pixiv.cat/${value.removePrefix("https://i.pximg.net/")}"
+        }
+        value.startsWith("https://i.pixiv.cat/") -> value
+        else -> null
+    }
+}
+
+private fun pixivIdProxyUrl(id: Long, pageIndex: Int, extension: String): String {
+    val pageSuffix = if (pageIndex == 0) "" else "-$pageIndex"
+    return "https://pixiv.cat/$id$pageSuffix.$extension"
+}

@@ -70,17 +70,13 @@ fun LatteApp(
     val pluginStorage = remember { com.azusachino.latte.plugin.storage.SecurePluginStorage(context) }
     val yandePlugin = remember { com.azusachino.latte.plugin.yande.YandePlugin(pluginStorage, com.azusachino.latte.data.network.OkHttpProvider.client, com.azusachino.latte.data.network.OkHttpProvider.cookieJar) }
     val pixivOAuthClient = remember {
-        if (BuildConfig.PIXIV_OAUTH_CLIENT_ID.isNotBlank() && BuildConfig.PIXIV_OAUTH_CLIENT_SECRET.isNotBlank()) {
-            com.azusachino.latte.data.network.PixivOAuthClient(
-                httpClient = com.azusachino.latte.data.network.OkHttpProvider.client,
-                configuration = com.azusachino.latte.data.network.PixivOAuthConfiguration(
-                    clientId = BuildConfig.PIXIV_OAUTH_CLIENT_ID,
-                    clientSecret = BuildConfig.PIXIV_OAUTH_CLIENT_SECRET,
-                ),
-            )
-        } else {
-            null
-        }
+        com.azusachino.latte.data.network.PixivOAuthClient(
+            httpClient = com.azusachino.latte.data.network.OkHttpProvider.client,
+            configuration = com.azusachino.latte.data.network.PixivOAuthConfiguration.pixivAndroid(
+                clientId = BuildConfig.PIXIV_OAUTH_CLIENT_ID.takeIf(String::isNotBlank),
+                clientSecret = BuildConfig.PIXIV_OAUTH_CLIENT_SECRET.takeIf(String::isNotBlank),
+            ),
+        )
     }
     val pixivPlugin = remember {
         com.azusachino.latte.plugin.pixiv.PixivPlugin(

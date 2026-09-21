@@ -39,7 +39,7 @@ stable Pixiv identity; malformed and transport responses render explicit errors.
 - [x] T010 [P] [US1] Implement Pixiv DTOs, normalized artwork mapper, and page/media identity in `app/src/main/kotlin/com/azusachino/latte/data/model/PixivArtwork.kt`
 - [x] T011 [P] [US1] Implement `PixivCatResolver` with canonical original URL retention and response type/filename validation in `app/src/main/kotlin/com/azusachino/latte/data/network/PixivCatResolver.kt`
 - [x] T012 [US1] Implement fixture-compatible ranking/detail requests and typed response classification in `app/src/main/kotlin/com/azusachino/latte/data/network/PixivApi.kt`
-- [x] T013 [US1] Connect anonymous Pixiv Popular state to `app/src/main/kotlin/com/azusachino/latte/ui/explore/ExploreViewModel.kt` and the existing `FeedGrid` in `app/src/main/kotlin/com/azusachino/latte/ui/explore/ExploreScreen.kt`
+- [x] T013 [US1] Connect authenticated Pixiv Popular state to `app/src/main/kotlin/com/azusachino/latte/ui/explore/ExploreViewModel.kt` and the existing `FeedGrid` in `app/src/main/kotlin/com/azusachino/latte/ui/explore/ExploreScreen.kt`
 - [x] T014 [US1] Make `app/src/main/kotlin/com/azusachino/latte/ui/detail/DetailScreen.kt` page through a selected Pixiv work and use its canonical URL for open/share actions
 - [x] T015 [US1] Make `app/src/main/kotlin/com/azusachino/latte/data/download/DownloadManager.kt` preserve Pixiv source/work/page/variant identity and source-aware filenames
 
@@ -99,7 +99,7 @@ approved `Platforms & accounts` cards/actions.
 
 - [x] T033 [P] Add quiet inline error, auth-required, rate-limit, upstream-drift, and transport-failure copy without toast-only recovery in `app/src/main/kotlin/com/azusachino/latte/ui/explore/ExploreScreen.kt` and `app/src/main/kotlin/com/azusachino/latte/ui/detail/DetailScreen.kt`
 - [x] T034 Run `make check`, inspect `git diff --check`, and record fixture/test evidence in this task file
-- [x] T035 Build and install a debug APK with `make validate` and `make install`, then record the physical-device Explore/platform-switch/detail receipt before declaring the journey complete (Explore, Yande detail, Pixiv auth-gated feed, platform picker, and Platforms & accounts verified on the connected OnePlus 8; live Pixiv browser OAuth was not configured)
+- [x] T035 Build and install a debug APK with `make validate` and `make install`, then record the physical-device Explore/platform-switch/detail receipt before declaring the journey complete (Explore, Yande detail, Pixiv browser OAuth exchange, authenticated Popular rendering, platform picker, and Platforms & accounts verified on the connected OnePlus 8; Pixiv personal-feed/detail/download acceptance remains a live follow-up)
 
 ## Dependencies and execution order
 
@@ -125,12 +125,13 @@ approved `Platforms & accounts` cards/actions.
 ## Evidence
 
 - `make check` passed on 2026-09-21: rumdl found no Markdown issues and the
-  full `testDebugUnitTest` suite passed with 34 tests and no failures.
-- The browser OAuth exchange, refresh/retry, failed-refresh invalidation,
-  platform capability/status, and multi-page download identity tests pass with
-  MockWebServer or pure unit fixtures. Production OAuth client identifiers are
-  supplied through `LATTE_PIXIV_CLIENT_ID` and `LATTE_PIXIV_CLIENT_SECRET`; no
-  credential is committed to the repository.
+  full `testDebugUnitTest` suite passed with 36 tests and no failures.
+- The browser OAuth exchange, verifier persistence across plugin recreation,
+  refresh/retry, failed-refresh invalidation, platform capability/status, and
+  multi-page download identity tests pass with MockWebServer or pure unit
+  fixtures. The app uses Pixiv's public native-client configuration, with
+  `LATTE_PIXIV_CLIENT_ID` and `LATTE_PIXIV_CLIENT_SECRET` retained as optional
+  build-time overrides.
 - `make validate` passed and `make install` installed the debug APK on the
   connected OnePlus 8 (`0cadf428`, Android 16).
 - The connected-device receipt covered Yande Explore artwork, the Latte
@@ -140,6 +141,12 @@ approved `Platforms & accounts` cards/actions.
   actions. The refreshed picker now shows teal Yande `y` and blue Pixiv `p`
   favicon-like badges with a selected check; switching platforms also changes
   the root Material 3 palette used across the app.
-- An anonymous live ranking probe returned HTTP 400 with Pixiv's
-  `invalid_request` OAuth message, so Popular is currently auth-gated by the
-  upstream App API; `pixiv.cat` remains image transport only.
+- The anonymous App API ranking probe returned HTTP 400 with Pixiv's
+  `invalid_request` OAuth message. PixEz's login-first interceptor and the
+  device probe agree that native-client Popular is authenticated; the public
+  website's separate ranking route is research-only because the workstation
+  returned JSON while Android received HTML. `i.pixiv.cat` is used for
+  path-preserving image transport, with the `pixiv.cat` ID/page form retained
+  as a fallback. A same-day probe returned HTTP 500 from `i.pixiv.cat` but HTTP
+  200 from the ID route, so the reverse proxy is documented as preferred rather
+  than assumed healthy.

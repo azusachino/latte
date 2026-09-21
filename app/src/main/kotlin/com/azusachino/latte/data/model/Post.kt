@@ -56,7 +56,13 @@ data class Post(
         get() = if (width > 0 && height > 0) width.toFloat() / height.toFloat() else 1f
 
     val bestVariant: MediaVariant
-        get() = variants.firstOrNull { siteId == "pixiv" && it.id == "pixiv-cat" }
+        get() = variants.firstOrNull {
+            siteId == "pixiv" && (
+                it.id == "pixiv-cat" ||
+                    it.url.startsWith("https://i.pixiv.cat/") ||
+                    it.url.startsWith("https://pixiv.cat/")
+                )
+        }
             ?: variants.firstOrNull { it.id == "jpeg" }
             ?: variants.firstOrNull { it.id == "sample" }
             ?: variants.firstOrNull { it.id == "original" }

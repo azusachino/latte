@@ -199,6 +199,11 @@ The [Pixiv.cat home page](https://pixiv.cat/) documents these image URLs:
   `Content-Type`;
 - `pixiv.re` and `pixiv.nl` are listed as mirror domains.
 
+Its [reverse-proxy page](https://pixiv.cat/reverseproxy.html) documents a
+second, path-preserving form: replace only `i.pximg.net` with
+`i.pixiv.cat`. This is the preferred form when metadata already supplies the
+original Pixiv image URL, because it preserves the exact media path and page.
+
 The site explicitly says it is not affiliated with Pixiv and recommends its
 reverse proxy when a client already has the original Pixiv image URL. The
 [verified Pixiv.Cat GitHub organization](https://github.com/pixiv-cat) exposes
@@ -218,8 +223,18 @@ Cache-Control: public, max-age=31536000
 ```
 
 The same image URL on `i.pximg.net` returned 403 without a Referer and 200
-with `Referer: https://www.pixiv.net/`. `pixiv.cat` is therefore a valuable
-image-host abstraction, but it is not a substitute for a metadata source.
+with `Referer: https://www.pixiv.net/`. The reverse-proxy form preserves the
+path while avoiding that hotlink restriction; the ID route remains a useful
+fallback when no original URL is available. `pixiv.cat` is therefore a
+valuable image-host abstraction, but it is not a substitute for a metadata
+source.
+
+Availability is not uniform across the proxy hostnames: a 2026-09-21 probe
+from the development network returned HTTP 500 from the documented
+`i.pixiv.cat` path, while the equivalent `pixiv.cat/<id>.jpg` route and
+`i.pixiv.re` path returned HTTP 200. Latte therefore keeps the ID route as a
+runtime-compatible fallback and does not treat the reverse proxy as a health
+checked guarantee.
 
 Do not put the Pixiv.cat service's refresh token in Latte. If Latte later uses
 the private App API directly for a user's own account, that is a different
@@ -250,6 +265,33 @@ direct i.pximg.net      = possible fallback, needs Pixiv Referer and live check
 
 The first implementation must not pretend that a detail fixture proves login,
 bookmark writes, or long-lived refresh-token behavior.
+
+The browser login spike now has a narrower verified contract:
+
+- Pixiv's native-client login page is opened at
+  `app-api.pixiv.net/web/v1/login` with an S256 PKCE challenge and
+  `client=pixiv-android`.
+- Successful browser navigation returns through
+  `pixiv://account/login?code=...`; Latte accepts only that callback shape and
+  clears the delivered intent because the authorization code is single-use.
+- Latte's primary entry is an app-owned WebView that intercepts this callback;
+  the manifest callback remains a narrow fallback for an external browser, so
+  another installed Pixiv client cannot win the login handoff.
+- The PKCE verifier is stored in Latte's encrypted plugin storage before the
+  browser opens, so activity/process recreation does not discard the exchange
+  context. A mutex prevents duplicate callback exchanges.
+- PixEz and Pixiv-Shaft both keep the native client configuration and verifier
+  handling inside their OAuth boundary. Latte follows that boundary; the user
+  password remains in Pixiv's browser surface and is never collected by Latte.
+
+The connected OnePlus 8 completed the browser exchange and retained the session
+across an app restart. The first authenticated Popular request exposed a
+separate clock-sensitive bug: sending the device-derived `date` produced HTTP
+200 with an empty `illusts` list. Current Pixiv-Shaft API declarations treat
+`date` as optional and omit it for the latest ranking, so Latte now sends only
+`mode=day` for Popular. The device then returned a populated ranking and
+rendered the grid. Fixture coverage still remains the contract for response
+mapping; live account behavior can change independently.
 
 ### 2.3 Existing clients worth studying
 
@@ -291,7 +333,13 @@ Pixiv Explore
 ```
 
 `Popular` maps to the App API ranking operation, not the broader recommended
-surface. It should start with one verified ranking mode rather than exposing
+surface. The native App API requires OAuth in the current client context, so
+Latte exposes Popular as auth-gated. The latest daily ranking request sends
+`mode=day` without a client-generated `date`; dated historical ranking is not
+part of this first UX. The public website's `ranking.php` route
+is a separate web response: it returned JSON from the workstation but HTML on
+the Android device, so it remains research-only rather than a second feed
+adapter. Popular should start with one verified ranking mode rather than exposing
 Pixiv's complete ranking/date/filter matrix. `Followed updates` maps to the
 followed-illustration feed. `Favorites` maps to the user's bookmarked
 illustrations. PixEz's source shows these as distinct operations rather than a
@@ -369,14 +417,16 @@ Pixiv metadata and image transport stay separate:
 ```text
 Pixiv work/page metadata
   -> Pixiv media reference (work ID, page index, original URL)
-  -> pixiv.cat URL at image-load/download time
+  -> i.pixiv.cat host-rewritten URL at image-load/download time
+     (pixiv.cat ID/page fallback when the origin path is unavailable)
 ```
 
 The Pixiv.Cat backend describes itself as an image proxy and requires its own
 server-side Pixiv refresh token; that token must never enter Latte. See the
 [Pixiv.Cat backend](https://github.com/pixiv-cat/pixivcat-backend). Latte keeps
-the original Pixiv URL for canonical sharing and diagnostics, but the default
-image candidate is resolved from work ID and page index through `pixiv.cat`.
+the original Pixiv URL for canonical sharing and diagnostics. When an origin
+image URL is available, the default image candidate replaces only
+`i.pximg.net` with `i.pixiv.cat`; the work-ID/page resolver remains a fallback.
 The resolver trusts response `Content-Type` and `Content-Disposition` rather
 than assuming the URL suffix describes the bytes.
 
