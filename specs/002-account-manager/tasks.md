@@ -5,6 +5,10 @@
 review-blocking storage, authentication, adapter-boundary, Safe Mode, and
 inline-error issues are repaired. Secure-storage tests, T014 hardware
 verification, and Pixiv remain open; pool browsing was delivered post-hoc.
+Pixiv work is now specified by
+[`004-pixiv-illustration-experience`](../004-pixiv-illustration-experience/spec.md);
+the Slice 5 entries below are retained as historical planning notes until the
+new contract is decomposed into implementation tasks.
 **Inspiration**: Mihon / Tachiyomi `Tracker` & `TrackerManager`  
 **Constitution**: v2.0.0 (Device-First Ergonomics, Downsized Spec-Kit)  
 

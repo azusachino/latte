@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-21
 
-**Status**: Proposed; owner review required before implementation
+**Status**: Product direction accepted; written contract requires final review before implementation
 
 **Supersedes**: Pixiv portions of
 [`003-konachan-pixiv`](../003-konachan-pixiv/spec.md)
@@ -15,7 +15,7 @@ Add Pixiv as a bounded illustration source in Latte. The first useful Pixiv
 experience has three primary destinations plus query-driven illustration
 search:
 
-1. **Popular** — ranked illustrations, starting with one verified ranking mode.
+1. **Popular** — daily ranked illustrations.
 2. **Followed updates** — new illustrations from followed artists.
 3. **Favorites** — the account's bookmarked illustrations.
 4. **Search** — illustration results for a user-entered keyword.
@@ -45,6 +45,13 @@ The grid remains aspect-preserving and artwork-first. Detail remains a pager,
 but its pages are the illustrations inside one Pixiv work rather than adjacent
 posts from the feed.
 
+The `Latte` title acts as the platform switcher. Selecting Pixiv changes the
+platform tint/background and tab semantics together, with a short crossfade
+that respects reduced-motion settings. The background is a restrained source
+identity treatment, not remote artwork. Each platform retains bounded feed,
+query, scroll, and detail state independently; switching platforms cancels
+stale requests and restores the selected platform's last valid state.
+
 ### Account boundary
 
 Popular may be attempted without an account, but the adapter must surface the
@@ -52,10 +59,19 @@ real upstream requirement if the current App API route rejects anonymous calls.
 Followed updates and Favorites are account-scoped and require a valid Pixiv
 session. An authentication requirement is never represented as an empty list.
 
-Latte must not collect a Pixiv password in a normal app-owned form. Refresh
-token acquisition, encrypted storage, refresh, logout, and invalidation are a
-separate authentication spike. Until that spike is accepted, live account
-feeds remain gated while fixtures can exercise their UI states.
+Latte must not collect a Pixiv password in a normal app-owned form. The primary
+Pixiv action is browser-based Pixiv sign-in, followed by refresh-token storage,
+refresh, logout, and invalidation. Token import is an advanced recovery path,
+not the default sign-in experience. Credentials are stored only in encrypted
+platform-scoped storage; Latte does not persist a Pixiv password.
+
+The first account slice supports one active account per platform. The main
+Settings screen shows a concise account summary and opens a dedicated
+`Platforms & accounts` screen. That screen presents static Yande and Pixiv
+platform cards with connection status, account identity, available feed/action
+capabilities, and Manage / Sign out actions. Platform transport details are
+not account-management UI. `Manage account` opens the platform card; a
+feed-level authentication error may offer direct sign-in for that platform.
 
 ### Image boundary
 
@@ -77,13 +93,14 @@ Pixiv.Cat service refresh token in Latte.
 | Module | Responsibility | Depends on |
 | --- | --- | --- |
 | `pixiv-artwork` | Normalized work, artist, page, tag, restriction, and media identity | — |
-| `pixiv-feeds` | Popular, followed-update, favorites, and search feed contracts plus opaque paging | `pixiv-artwork` |
+| `pixiv-account` | Browser/token auth flows, session state, secure persistence, and account-required gating | — |
+| `pixiv-feeds` | Popular, followed-update, favorites, search, and search-support contracts plus opaque paging | `pixiv-artwork`, `pixiv-account` |
 | `pixiv-transport` | `pixiv.cat` URL resolution and response filename/type handling | `pixiv-artwork` |
-| `pixiv-account` | Session state and account-required gating | `pixiv-feeds` |
-| `pixiv-explore` | Feed tabs, detail pager integration, and local save handoff | `pixiv-artwork`, `pixiv-feeds`, `pixiv-transport` |
+| `pixiv-explore` | Platform switcher, feed tabs, detail pager, bookmark actions, and local save handoff | `pixiv-artwork`, `pixiv-account`, `pixiv-feeds`, `pixiv-transport` |
 
-Build order: `pixiv-artwork` → `pixiv-feeds` and `pixiv-transport` →
-`pixiv-explore` → `pixiv-account` live connection.
+Build order: `pixiv-artwork` → fixture-backed `pixiv-account`,
+`pixiv-feeds`, and `pixiv-transport` → `pixiv-explore` → live Pixiv auth/feed
+enablement.
 
 ## Domain contract
 
@@ -139,6 +156,19 @@ enum class PixivFeedKind {
     SEARCH,
 }
 
+sealed interface PixivBookmarkResult {
+    data object Success : PixivBookmarkResult
+    data object AuthRequired : PixivBookmarkResult
+    data class RateLimited(val retryAfterSeconds: Long?) : PixivBookmarkResult
+    data class UpstreamDrift(val operation: String) : PixivBookmarkResult
+    data class TransportFailure(val message: String) : PixivBookmarkResult
+}
+
+data class SearchSupport(
+    val autocomplete: List<String>,
+    val trendingTags: List<String>,
+)
+
 data class FeedRequest(
     val kind: PixivFeedKind,
     val query: String? = null,
@@ -165,6 +195,22 @@ The initial protocol mapping is:
 | Favorites | Pixiv bookmarked-illustrations feed | required |
 | Search | Pixiv illustration search | upstream-dependent; expose `AuthRequired` honestly |
 
+Bookmark mutations use the active Pixiv account and have the same explicit
+authentication and upstream-failure boundary:
+
+| Action | Reference operation | Auth |
+| --- | --- | --- |
+| Bookmark | Pixiv bookmark add/delete operations | required |
+
+Search support is part of the first experience but remains adapter-owned:
+
+- autocomplete returns keyword suggestions for the active query;
+- trending tags provide a browseable entry point before a query is entered;
+- either operation may return an empty result without turning a feed failure
+  into an empty feed;
+- the UI does not expose Pixiv's broader user, novel, or advanced search
+  matrix.
+
 The reference operations are visible in the read-only [PixEz API
 client](../../../../refs/image-gallery-apps/pixez-flutter/lib/network/api_client.dart)
 at pinned revision `7f89bc8`. They are protocol evidence, not a stable Pixiv
@@ -188,6 +234,9 @@ sealed interface FeedLoadResult {
 
 - Source selector chooses Pixiv without changing Latte's global navigation.
 - Three tabs expose the feed kinds above.
+- The platform switcher is reachable by tapping `Latte`; its Pixiv identity is
+  visible through the restrained Explore background/tint and selected source
+  treatment.
 - Pull-to-refresh resets the active cursor and requests the first page.
 - End-of-list loading follows the existing staggered-grid behavior.
 - Empty, loading, rate-limit, upstream-drift, and auth-required states are
@@ -197,8 +246,9 @@ sealed interface FeedLoadResult {
 - Search accepts a non-empty keyword and reuses the same feed/grid/detail
   contract. The first slice sends only the keyword and uses the verified
   server default sort.
-- Search suggestions, local query history, ranking modes, and advanced search
-  filters are separate follow-ups.
+- Autocomplete and trending tags are available from the search entry surface.
+  Local query history, ranking modes, and advanced search filters are separate
+  follow-ups.
 
 ### Work detail
 
@@ -206,6 +256,9 @@ sealed interface FeedLoadResult {
 - Metadata includes title, artist, tags, page position, restriction, and
   bookmark count when provided.
 - The canonical Pixiv URL is used for open/share actions.
+- The detail action can bookmark or unbookmark the work. The action uses the
+  active Pixiv account, prompts for sign-in when no valid session exists, and
+  reports mutation failure without changing the displayed state optimistically.
 - Local download is separate from remote bookmark state.
 - Comments, related works, artist profiles, novels, manga, and ugoira are not
   rendered in this feature.
@@ -228,7 +281,7 @@ unverified host.
 
 - Pixiv password collection or an unverified login workaround.
 - Remote follow/unfollow mutations.
-- Recommendations, user profiles, comments, related works, and trending tags.
+- Recommendations, user profiles, comments, and related works.
 - Novels, manga, ugoira, multi-account, and notification sync.
 - A second Pixiv-specific navigation architecture.
 - Konachan implementation or Cloudflare challenge handling.
@@ -249,7 +302,7 @@ unverified host.
 ## Verification gates
 
 1. Fixture mappers cover one success response for each feed kind, one search
-   response, and one multi-page detail response.
+   response, one search-support response, and one multi-page detail response.
 2. Fixture/error tests distinguish empty, auth-required, rate-limited,
    malformed, upstream-drift, and transport failure states.
 3. Artwork/page/media identities remain stable across proxy URL changes.
@@ -257,16 +310,8 @@ unverified host.
    content type, filename, non-image response, and retryable failure.
 5. Explore/detail tests prove that switching source does not lose feed context,
    page position, or local-save identity.
-6. A bounded live metadata/authentication spike is recorded separately from
+6. Platform switching restores per-platform feed/search state, cancels stale
+   requests, and preserves detail/page identity.
+7. A bounded live metadata/authentication spike is recorded separately from
    fixture evidence before enabling account feeds on a device.
-7. `make check` passes before any implementation slice is considered green.
-
-## Open questions for owner review
-
-1. Should `Popular` be daily ranking only for the first live slice, or should
-   the first slice include a day/week/month selector?
-2. Should a Pixiv account be required before showing the Popular tab, or should
-   the tab remain visible and explain `AuthRequired` when the upstream demands
-   a token?
-3. Is read-only Favorites sufficient for the first release, with bookmark
-   mutation deferred?
+8. `make check` passes before any implementation slice is considered green.

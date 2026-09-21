@@ -316,11 +316,11 @@ The reference clients expose a few useful, relatively small additions:
 | Feature | Evidence | Value | Latte decision |
 | --- | --- | --- | --- |
 | Illustration search | PixEz `/v1/search/illust` | High; useful without a fixed feed | Include in first Pixiv experience |
-| Search suggestions | PixEz `/v2/search/autocomplete` | Medium; reduces query friction | Add after basic search, with local recent-query history if cheap |
+| Search suggestions | PixEz `/v2/search/autocomplete` | Medium; reduces query friction | Include in the first search experience; local recent-query history remains deferred |
 | Ranking period/mode | PixEz ranking `mode` and `date` parameters | Medium; familiar Popular refinement | Daily first; add week/month after live contract verification |
-| Bookmark/unbookmark | PixEz `/v2/illust/bookmark/add` and `/v1/illust/bookmark/delete` | High; makes Favorites actionable | Add after auth and mutation tests pass |
+| Bookmark/unbookmark | PixEz `/v2/illust/bookmark/add` and `/v1/illust/bookmark/delete` | High; makes Favorites actionable | Include after the auth and mutation gates pass |
 | Related works | PixEz `/v2/illust/related` | Medium; natural detail continuation | Easy follow-up, not required for first feed slice |
-| Trending tags | PixEz `/v1/trending-tags/illust` | Medium; useful search entry point | Prefer after search; keep out of initial navigation |
+| Trending tags | PixEz `/v1/trending-tags/illust` | Medium; useful search entry point | Include as search-entry support; keep it out of the permanent tab row |
 | User profile/follow actions | PixEz user/follow routes | Medium but opens a social graph | Defer with the full-client surface |
 
 This keeps the initial implementation small without making the source feel
@@ -391,17 +391,19 @@ In scope for this Pixiv experience:
 
 - three primary illustration feeds: popular, followed updates, favorites;
 - keyword illustration search as a query-driven feed;
+- autocomplete and trending tags as search-entry support;
 - opaque cursor pagination and refresh/error/empty/auth states;
 - normalized illustration detail with multi-page image viewing;
 - `pixiv.cat` image resolution and original-URL retention;
 - shared Latte local save and restart-safe duplicate behavior;
-- open-in-Pixiv and share actions using the canonical web URL.
+- open-in-Pixiv and share actions using the canonical web URL;
+- bookmark/unbookmark from detail after the account mutation gate passes.
 
 Out of scope:
 
 - remote follow/unfollow mutations;
-- recommendations, user profiles, comments, related works, and trending-tag
-  navigation;
+- recommendations, user profiles, comments, related works, and local query
+  history;
 - novels, manga reader, ugoira playback, and multi-account;
 - custom image mirrors and direct-origin fallback;
 - Pixiv password collection or a complete Pixiv account center.
@@ -412,8 +414,8 @@ Konachan remains parked. The Pixiv work is gated in this order:
 
 1. Freeze the normalized illustration/page/media model and typed feed states.
 2. Add fixture-backed mappers for ranking, followed-update, favorites, search,
-   detail, empty, auth-required, rate-limit, malformed, and upstream-drift
-   responses.
+   search support, detail, bookmark mutation, empty, auth-required, rate-limit,
+   malformed, and upstream-drift responses.
 3. Build the `pixiv.cat` resolver independently of metadata and verify actual
    content type/filename handling.
 4. Put the three feed kinds and query-driven search behind the existing Explore

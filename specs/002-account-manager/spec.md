@@ -10,6 +10,12 @@ ownership, Safe Mode defaults, and inline action errors repaired. Secure-storage
 tests, T014 hardware verification, pool behavior coverage, and Slice 5 (Pixiv)
 remain open as follow-up work -- see `tasks.md`.
 
+**Pixiv scope note**: Pixiv-specific account, authentication, and platform
+management requirements are superseded by
+[`004-pixiv-illustration-experience`](../004-pixiv-illustration-experience/spec.md).
+The Yande credential/scoring behavior in this document remains the active
+baseline; the old generic Pixiv login outline is historical context only.
+
 **Inspiration**: Mihon / Tachiyomi `Tracker` & `TrackerManager` plugin architecture (`eu.kanade.tachiyomi.data.track.*`).
 
 ---

@@ -7,9 +7,10 @@ Material 3, and Coil 3. Its first supported site is
 [yande.re](https://yande.re/); its architecture cleanly isolates network models,
 domain entities, and the presentation layer.
 
-The active product contract is recorded in the Spec Kit artifacts under
-`specs/002-account-manager/`. The 0.0.1 artifacts remain the shipped baseline
-and historical record for the anonymous browse journey.
+The Yande/account baseline is recorded in the Spec Kit artifacts under
+`specs/002-account-manager/`; the bounded Pixiv proposal is in
+`specs/004-pixiv-illustration-experience/`. The 0.0.1 artifacts remain the
+shipped baseline and historical record for the anonymous browse journey.
 Material 3 is the visual foundation, preserving the essential Moebooru/Yande
 discovery workflow, dataflow, and gestures.
 
