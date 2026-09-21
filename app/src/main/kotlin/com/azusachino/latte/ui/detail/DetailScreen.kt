@@ -91,7 +91,7 @@ import com.azusachino.latte.data.download.DownloadResult
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.model.PostRating
 import com.azusachino.latte.data.model.forPage
-import com.azusachino.latte.plugin.PluginCapability
+import com.azusachino.latte.plugin.PlatformCapability
 import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.plugin.SitePluginManager
 import com.azusachino.latte.ui.common.ToastManager
@@ -447,7 +447,7 @@ fun DetailScreen(
                     ) {
                         if (
                             currentPlugin != null &&
-                            currentPlugin.capabilities.contains(PluginCapability.FAVORITES) &&
+                            currentPlugin.capabilities.contains(PlatformCapability.FAVORITES) &&
                             displayPost != null
                         ) {
                             val isPluginLoggedIn by currentPlugin.isLoggedInFlow.collectAsState(initial = currentPlugin.isLoggedIn)
@@ -602,7 +602,7 @@ fun DetailScreen(
                     }
 
                     // Personal Rating (0-3 stars)
-                    if (currentPlugin != null && currentPlugin.capabilities.contains(PluginCapability.SCORING)) {
+                    if (currentPlugin != null && currentPlugin.capabilities.contains(PlatformCapability.SCORING)) {
                         val isPluginLoggedIn by currentPlugin.isLoggedInFlow.collectAsState(initial = currentPlugin.isLoggedIn)
                         val currentScore = localScores[currentPost.id] ?: currentPlugin.getScore(currentPost.id) ?: 0
 

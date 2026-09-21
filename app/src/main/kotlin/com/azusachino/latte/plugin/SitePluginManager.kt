@@ -6,7 +6,10 @@ import okhttp3.Request
 
 class SitePluginManager(val plugins: List<SitePlugin>) {
 
-    fun get(id: String): SitePlugin? = plugins.find { it.id == id }
+    fun get(platform: PlatformId): SitePlugin? = plugins.find { it.platform == platform }
+
+    fun get(externalId: String): SitePlugin? =
+        PlatformId.fromExternalId(externalId)?.let(::get)
 
     fun loggedInPlugins(): List<SitePlugin> = plugins.filter { it.isLoggedIn }
 

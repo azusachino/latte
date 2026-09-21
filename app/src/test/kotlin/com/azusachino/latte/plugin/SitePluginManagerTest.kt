@@ -17,10 +17,10 @@ import org.junit.Test
 class SitePluginManagerTest {
 
     private class FakePlugin(
-        override val id: String,
+        override val platform: PlatformId,
         override val name: String,
         initialLoggedIn: Boolean = false,
-        override val capabilities: Set<PluginCapability> = emptySet(),
+        override val capabilities: Set<PlatformCapability> = emptySet(),
     ) : SitePlugin {
         override val iconRes: Int? = null
         override val authType: AuthType = AuthType.CREDENTIALS
@@ -47,8 +47,8 @@ class SitePluginManagerTest {
 
     @Test
     fun testPluginLookup() {
-        val yande = FakePlugin("yande.re", "yande.re")
-        val pixiv = FakePlugin("pixiv", "Pixiv")
+        val yande = FakePlugin(PlatformId.YANDE, "yande.re")
+        val pixiv = FakePlugin(PlatformId.PIXIV, "Pixiv")
         val manager = SitePluginManager(listOf(yande, pixiv))
 
         assertEquals(yande, manager.get("yande.re"))
@@ -58,8 +58,8 @@ class SitePluginManagerTest {
 
     @Test
     fun testLoggedInPlugins() = runTest {
-        val yande = FakePlugin("yande.re", "yande.re", initialLoggedIn = false)
-        val pixiv = FakePlugin("pixiv", "Pixiv", initialLoggedIn = true)
+        val yande = FakePlugin(PlatformId.YANDE, "yande.re", initialLoggedIn = false)
+        val pixiv = FakePlugin(PlatformId.PIXIV, "Pixiv", initialLoggedIn = true)
         val manager = SitePluginManager(listOf(yande, pixiv))
 
         assertEquals(listOf(pixiv), manager.loggedInPlugins())
@@ -76,8 +76,8 @@ class SitePluginManagerTest {
 
     @Test
     fun testApplyHeaders() {
-        val yande = FakePlugin("yande.re", "yande.re")
-        val pixiv = FakePlugin("pixiv", "Pixiv")
+        val yande = FakePlugin(PlatformId.YANDE, "yande.re")
+        val pixiv = FakePlugin(PlatformId.PIXIV, "Pixiv")
         val manager = SitePluginManager(listOf(yande, pixiv))
 
         val reqBuilder = Request.Builder().url("https://yande.re/post")
@@ -95,17 +95,31 @@ class SitePluginManagerTest {
         val manager = SitePluginManager(listOf(yande, pixiv))
 
         assertEquals(
-            setOf(PluginCapability.SCORING, PluginCapability.FAVORITES),
+            setOf(PlatformCapability.SCORING, PlatformCapability.FAVORITES),
             manager.get("yande.re")?.capabilities,
         )
         assertEquals(
-            setOf(PluginCapability.FAVORITES, PluginCapability.USER_FEED),
+            setOf(PlatformCapability.FAVORITES, PlatformCapability.USER_FEED),
             manager.get("pixiv")?.capabilities,
         )
         assertTrue(manager.get("yande.re")?.supportedAuthFlows == setOf(AuthFlow.CREDENTIALS))
         assertTrue(AuthFlow.BROWSER in (manager.get("pixiv")?.supportedAuthFlows ?: emptySet()))
         assertTrue(AuthFlow.TOKEN_IMPORT in (manager.get("pixiv")?.supportedAuthFlows ?: emptySet()))
         assertTrue(manager.loggedInPlugins().isEmpty())
+    }
+
+    @Test
+    fun pluginsExposeTypedPlatformIdentity() {
+        val storage = InMemoryStorage()
+        val yande = YandePlugin(storage, OkHttpClient())
+        val pixiv = PixivPlugin(storage, OkHttpClient())
+        val manager = SitePluginManager(listOf(yande, pixiv))
+
+        assertEquals(PlatformId.YANDE, yande.platform)
+        assertEquals(PlatformId.PIXIV, pixiv.platform)
+        assertEquals(yande, manager.get(PlatformId.YANDE))
+        assertEquals(pixiv, manager.get(PlatformId.PIXIV))
+        assertEquals(yande, manager.get(PlatformId.YANDE.externalId))
     }
 
     private class InMemoryStorage : PluginStorage {

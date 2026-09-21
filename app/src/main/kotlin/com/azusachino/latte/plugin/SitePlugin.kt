@@ -15,15 +15,10 @@ enum class AuthFlow {
     TOKEN_IMPORT,
 }
 
-enum class PluginCapability {
-    SCORING,
-    FAVORITES,
-    REFERER_INJECT,
-    USER_FEED
-}
-
 interface SitePlugin {
+    val platform: PlatformId
     val id: String
+        get() = platform.externalId
     val name: String
     val iconRes: Int?
     val authType: AuthType
@@ -33,7 +28,7 @@ interface SitePlugin {
             AuthType.OAUTH2 -> setOf(AuthFlow.BROWSER, AuthFlow.TOKEN_IMPORT)
             AuthType.API_KEY -> setOf(AuthFlow.TOKEN_IMPORT)
         }
-    val capabilities: Set<PluginCapability>
+    val capabilities: Set<PlatformCapability>
 
     val isLoggedIn: Boolean
     val isLoggedInFlow: Flow<Boolean>

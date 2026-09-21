@@ -6,7 +6,8 @@ import com.azusachino.latte.data.network.PixivOAuthClient
 import com.azusachino.latte.data.network.PixivAuthorizationRequest
 import com.azusachino.latte.data.network.PixivSession
 import com.azusachino.latte.plugin.AuthType
-import com.azusachino.latte.plugin.PluginCapability
+import com.azusachino.latte.plugin.PlatformCapability
+import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.plugin.storage.PluginStorage
 import kotlinx.coroutines.Dispatchers
@@ -24,13 +25,13 @@ class PixivPlugin(
     private val apiBaseUrl: String = "https://app-api.pixiv.net",
     private val oauthClient: PixivOAuthClient? = null,
 ) : SitePlugin {
-    override val id: String = "pixiv"
+    override val platform: PlatformId = PlatformId.PIXIV
     override val name: String = "Pixiv"
     override val iconRes: Int? = null
     override val authType: AuthType = AuthType.OAUTH2
-    override val capabilities: Set<PluginCapability> = setOf(
-        PluginCapability.FAVORITES,
-        PluginCapability.USER_FEED,
+    override val capabilities: Set<PlatformCapability> = setOf(
+        PlatformCapability.FAVORITES,
+        PlatformCapability.USER_FEED,
     )
 
     private var session: PixivSession? = loadSession()

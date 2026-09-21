@@ -2,7 +2,8 @@ package com.azusachino.latte.plugin.yande
 
 import com.azusachino.latte.data.network.SessionCookieStore
 import com.azusachino.latte.plugin.AuthType
-import com.azusachino.latte.plugin.PluginCapability
+import com.azusachino.latte.plugin.PlatformCapability
+import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.plugin.storage.PluginStorage
 import kotlinx.coroutines.Dispatchers
@@ -23,13 +24,13 @@ class YandePlugin(
     private val baseUrl: String = "https://yande.re",
 ) : SitePlugin {
 
-    override val id: String = "yande.re"
+    override val platform: PlatformId = PlatformId.YANDE
     override val name: String = "yande.re"
     override val iconRes: Int? = null
     override val authType: AuthType = AuthType.CREDENTIALS
-    override val capabilities: Set<PluginCapability> = setOf(
-        PluginCapability.SCORING,
-        PluginCapability.FAVORITES,
+    override val capabilities: Set<PlatformCapability> = setOf(
+        PlatformCapability.SCORING,
+        PlatformCapability.FAVORITES,
     )
 
     private var cachedUsername: String? = storage.get(id, KEY_USERNAME)
