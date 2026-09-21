@@ -1,5 +1,6 @@
 package com.azusachino.latte.data.model
 
+import com.azusachino.latte.plugin.PlatformId
 import java.time.LocalDate
 
 enum class PostRating {
@@ -30,7 +31,7 @@ data class MediaVariant(
 
 data class Post(
     val id: Long,
-    val siteId: String = "yande.re",
+    val platform: PlatformId = PlatformId.YANDE,
     val rating: PostRating,
     val tags: List<String>,
     val score: Int,
@@ -44,15 +45,99 @@ data class Post(
     val jpegUrl: String?,
     val originalUrl: String,
     val variants: List<MediaVariant>,
+    val title: String? = null,
+    val canonicalUrl: String? = null,
+    val bookmarkCount: Int? = null,
+    val isBookmarked: Boolean = false,
+    val pageIndex: Int = 0,
+    val pageCount: Int = 1,
+    val pages: List<ArtworkPage> = emptyList(),
+    val authorId: Long? = null,
 ) {
+    val siteId: String
+        get() = platform.externalId
+
     val aspectRatio: Float
         get() = if (width > 0 && height > 0) width.toFloat() / height.toFloat() else 1f
 
     val bestVariant: MediaVariant
-        get() = variants.firstOrNull { it.id == "jpeg" }
+        get() = variants.firstOrNull { platform == PlatformId.PIXIV && it.id == "pixiv-cat" }
+            ?: variants.firstOrNull {
+                platform == PlatformId.PIXIV && (
+                    it.id == "pixiv-cat" ||
+                        it.url.startsWith("https://i.pixiv.re/") ||
+                        it.url.startsWith("https://pixiv.cat/")
+                    )
+            }
+            ?: variants.firstOrNull { it.id == "jpeg" }
             ?: variants.firstOrNull { it.id == "sample" }
             ?: variants.firstOrNull { it.id == "original" }
             ?: variants.first { it.id == "preview" }
+
+    val imageSources: List<String>
+        get() = buildList {
+            if (platform == PlatformId.PIXIV) {
+                add(previewUrl)
+                addAll(
+                    variants
+                        .filter { it.id == "pixiv-re" || it.id == "pixiv-cat" }
+                        .map { it.url },
+                )
+            } else {
+                add(previewUrl)
+            }
+        }.filter(String::isNotBlank).distinct()
+
+    val workIdentity: ArtworkIdentity
+        get() = ArtworkIdentity(siteId, id)
+}
+
+fun Post.forPage(index: Int): Post {
+    if (platform != PlatformId.PIXIV || pages.isEmpty()) return this
+    val page = pages.getOrNull(index.coerceIn(pages.indices)) ?: return this
+    return copy(
+        previewUrl = page.previewUrl,
+        sampleUrl = page.mediaRef.url,
+        originalUrl = page.originalUrl ?: page.mediaRef.url,
+        variants = listOfNotNull(
+            MediaVariant(
+                id = "preview",
+                url = page.previewUrl,
+                width = page.width,
+                height = page.height,
+            ),
+            page.mediaRef,
+            page.proxyUrl?.let {
+                MediaVariant(
+                    id = "pixiv-re",
+                    url = it,
+                    width = page.width,
+                    height = page.height,
+                    extension = page.mediaRef.extension,
+                )
+            },
+            page.fallbackUrl?.let {
+                MediaVariant(
+                    id = "pixiv-cat",
+                    url = it,
+                    width = page.width,
+                    height = page.height,
+                    extension = page.mediaRef.extension,
+                )
+            },
+            MediaVariant(
+                id = "original",
+                url = page.originalUrl ?: page.mediaRef.url,
+                width = page.width,
+                height = page.height,
+                extension = page.mediaRef.extension,
+            ),
+        ),
+        width = page.width,
+        height = page.height,
+        pageIndex = page.pageIndex,
+        authorId = authorId,
+    )
 }
 
 fun YandePostDto.toDomain(): Post {
@@ -110,7 +195,7 @@ fun YandePostDto.toDomain(): Post {
 
     return Post(
         id = id,
-        siteId = "yande.re",
+        platform = PlatformId.YANDE,
         rating = PostRating.fromCode(rating),
         tags = tags.split(" ").filter { it.isNotBlank() },
         score = score,
@@ -124,5 +209,6 @@ fun YandePostDto.toDomain(): Post {
         jpegUrl = jpegUrl,
         originalUrl = original,
         variants = variants,
+        authorId = null,
     )
 }

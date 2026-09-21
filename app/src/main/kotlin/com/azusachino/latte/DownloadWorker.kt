@@ -27,6 +27,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import com.azusachino.latte.data.network.PixivCatResponse
+import com.azusachino.latte.data.network.PixivCatResolver
 
 class DownloadWorker(
     appContext: Context,
@@ -154,6 +156,26 @@ class DownloadWorker(
                 val append = offset > 0 && responseCode == HttpURLConnection.HTTP_PARTIAL
                 if (responseCode !in 200..299) {
                     throw IOException("Image server returned HTTP $responseCode")
+                }
+                if (
+                    url.host.equals("pixiv.cat", ignoreCase = true) ||
+                    url.host.equals("i.pixiv.re", ignoreCase = true)
+                ) {
+                    when (
+                        val pixivResponse = PixivCatResolver().classifyResponse(
+                            code = responseCode,
+                            contentType = connection.contentType,
+                            contentDisposition = connection.getHeaderField("Content-Disposition"),
+                        )
+                    ) {
+                        is PixivCatResponse.Image -> Unit
+                        is PixivCatResponse.RetryableFailure -> throw IOException(
+                            "Pixiv.Cat temporarily failed with HTTP $responseCode",
+                        )
+                        is PixivCatResponse.NonImage -> throw IOException(
+                            "Pixiv.Cat returned ${pixivResponse.contentType ?: "a non-image response"}",
+                        )
+                    }
                 }
                 val start = if (append) offset else 0L
                 val totalBytes = connection.contentLengthLong.takeIf { it > 0 }?.let { it + start } ?: -1L

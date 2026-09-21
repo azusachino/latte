@@ -1,0 +1,24 @@
+{
+  "illusts": [
+    {
+      "id": 75034219,
+      "title": "Blue hour",
+      "image_urls": {
+        "square_medium": "https://i.pximg.net/c/360x360_70/img-square.jpg",
+        "medium": "https://i.pximg.net/c/540x540_70/img-medium.jpg",
+        "large": "https://i.pximg.net/img-original/img-large.jpg",
+        "original": "https://i.pximg.net/img-original/img-original.png"
+      },
+      "user": {"id": 99, "name": "Artist", "account": "artist"},
+      "tags": [{"name": "original"}],
+      "create_date": "2026-09-21T10:20:30+09:00",
+      "page_count": 1,
+      "width": 1000,
+      "height": 1400,
+      "x_restrict": 0,
+      "total_bookmarks": 321,
+      "is_bookmarked": false
+    }
+  ],
+  "next_url": null
+}

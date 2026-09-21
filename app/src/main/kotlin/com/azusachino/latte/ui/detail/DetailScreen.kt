@@ -2,9 +2,16 @@ package com.azusachino.latte.ui.detail
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -32,6 +39,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
@@ -54,6 +63,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -62,6 +72,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,13 +84,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
 import coil3.compose.SubcomposeAsyncImage
+import coil3.request.ImageRequest
 import com.azusachino.latte.data.download.DownloadManager
 import com.azusachino.latte.data.download.DownloadResult
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.model.PostRating
-import com.azusachino.latte.plugin.PluginCapability
+import com.azusachino.latte.data.model.forPage
+import com.azusachino.latte.plugin.PlatformCapability
+import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.plugin.SitePluginManager
 import com.azusachino.latte.ui.common.ToastManager
@@ -94,16 +107,19 @@ import kotlin.math.abs
 fun DetailScreen(
     posts: List<Post>,
     initialIndex: Int,
+    initialPageIndex: Int = 0,
     downloadManager: DownloadManager,
     onBack: () -> Unit,
-    onTagClick: (String) -> Unit = {},
+    onTagClick: (tag: String, postIndex: Int, pageIndex: Int) -> Unit = { _, _, _ -> },
+    onAuthorClick: (post: Post, postIndex: Int, pageIndex: Int) -> Unit = { _, _, _ -> },
     pluginManager: SitePluginManager,
     onRequireLogin: (SitePlugin) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    val detailPosts = posts
     val pagerState = rememberPagerState(
-        initialPage = initialIndex.coerceIn(0, (posts.size - 1).coerceAtLeast(0)),
-        pageCount = { posts.size },
+        initialPage = initialIndex.coerceIn(0, (detailPosts.size - 1).coerceAtLeast(0)),
+        pageCount = { detailPosts.size },
     )
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -111,16 +127,28 @@ fun DetailScreen(
     var showControls by remember { mutableStateOf(true) }
     var showInspectSheet by remember { mutableStateOf(false) }
     var localScores by remember { mutableStateOf(mapOf<Long, Int>()) }
+    var localBookmarks by remember { mutableStateOf(mapOf<String, Boolean>()) }
     var inlineActionError by remember { mutableStateOf<String?>(null) }
+    var pixivPageIndex by rememberSaveable { mutableStateOf(initialPageIndex) }
 
-    val currentPost = posts.getOrNull(pagerState.currentPage)
-    val currentPlugin = currentPost?.let { pluginManager.get(it.siteId) }
+    val currentPost = detailPosts.getOrNull(pagerState.currentPage)
+    var activePostId by rememberSaveable { mutableStateOf(currentPost?.id) }
+    val displayPost = currentPost?.forPage(pixivPageIndex)
+    val currentPlugin = currentPost?.let { pluginManager.get(it.platform) }
+
+    LaunchedEffect(currentPost?.siteId, currentPost?.id) {
+        if (currentPost?.id != activePostId) {
+            activePostId = currentPost?.id
+            pixivPageIndex = 0
+        }
+        inlineActionError = null
+    }
 
     // The site never tells the app "you already scored this post" up front --
     // recover a favorite (score 3) set in a prior session or on the web.
     LaunchedEffect(currentPost?.id, currentPlugin?.isLoggedIn) {
         val post = currentPost
-        if (post != null && currentPlugin != null && currentPlugin.isLoggedIn && currentPlugin.getScore(post.id) == null) {
+        if (post != null && post.platform != PlatformId.PIXIV && currentPlugin != null && currentPlugin.isLoggedIn && currentPlugin.getScore(post.id) == null) {
             currentPlugin.refreshScore(post.id)?.let { refreshed ->
                 localScores = localScores + (post.id to refreshed)
             }
@@ -138,26 +166,123 @@ fun DetailScreen(
             beyondViewportPageCount = 1,
             modifier = Modifier.fillMaxSize(),
         ) { page ->
-            val post = posts[page]
-            ZoomableBox(
+            val post = detailPosts[page].forPage(if (page == pagerState.currentPage) pixivPageIndex else 0)
+            AnimatedContent(
+                targetState = post,
+                transitionSpec = {
+                    if (initialState.workIdentity == targetState.workIdentity &&
+                        initialState.pageIndex != targetState.pageIndex
+                    ) {
+                        val direction = if (targetState.pageIndex > initialState.pageIndex) 1 else -1
+                        (slideInHorizontally(tween(220)) { width -> direction * width / 3 } + fadeIn(tween(220)))
+                            .togetherWith(slideOutHorizontally(tween(160)) { width -> -direction * width / 3 } + fadeOut(tween(160)))
+                    } else {
+                        EnterTransition.None togetherWith ExitTransition.None
+                    }
+                },
+                label = "PixivPageTransition",
                 modifier = Modifier.fillMaxSize(),
-                onTap = { showControls = !showControls },
-            ) {
-                SubcomposeAsyncImage(
-                    model = post.sampleUrl,
-                    contentDescription = null,
-                    loading = {
-                        // Instant display of cached preview bitmap from memory cache
-                        AsyncImage(
-                            model = post.previewUrl,
+            ) { targetPost ->
+                ZoomableBox(
+                    modifier = Modifier.fillMaxSize(),
+                    onTap = { showControls = !showControls },
+                ) {
+                    val imageSources = remember(targetPost.siteId, targetPost.id, targetPost.pageIndex) {
+                        buildList {
+                            add(targetPost.sampleUrl)
+                            add(targetPost.previewUrl)
+                            addAll(targetPost.imageSources)
+                        }.filter(String::isNotBlank).distinct()
+                    }
+                    if (imageSources.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("Image unavailable", color = Color.White)
+                        }
+                    } else {
+                        var imageSourceIndex by rememberSaveable(
+                            targetPost.siteId,
+                            targetPost.id,
+                            targetPost.pageIndex,
+                        ) { mutableStateOf(0) }
+                        var imageRetryCount by rememberSaveable(
+                            targetPost.siteId,
+                            targetPost.id,
+                            targetPost.pageIndex,
+                        ) { mutableStateOf(0) }
+                        val safeImageSourceIndex = imageSourceIndex.coerceIn(imageSources.indices)
+                        val imageRequest = remember(imageSources[safeImageSourceIndex], imageRetryCount) {
+                            ImageRequest.Builder(context)
+                                .data(imageSources[safeImageSourceIndex])
+                                .build()
+                        }
+                        SubcomposeAsyncImage(
+                            model = imageRequest,
                             contentDescription = null,
                             contentScale = ContentScale.Fit,
+                            loading = {
+                                if (targetPost.previewUrl.isBlank() ||
+                                    imageSources[safeImageSourceIndex] == targetPost.previewUrl
+                                ) {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        CircularProgressIndicator(color = Color.White)
+                                    }
+                                } else {
+                                    SubcomposeAsyncImage(
+                                        model = targetPost.previewUrl,
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Fit,
+                                        loading = {
+                                            CircularProgressIndicator(color = Color.White)
+                                        },
+                                        error = {
+                                            CircularProgressIndicator(color = Color.White)
+                                        },
+                                        modifier = Modifier.fillMaxSize(),
+                                    )
+                                }
+                            },
+                            error = {
+                                if (safeImageSourceIndex < imageSources.lastIndex) {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        CircularProgressIndicator(color = Color.White)
+                                    }
+                                } else {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text("Image unavailable", color = Color.White)
+                                            TextButton(
+                                                onClick = {
+                                                    imageSourceIndex = 0
+                                                    imageRetryCount++
+                                                },
+                                            ) {
+                                                Text("Retry")
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            onError = {
+                                if (safeImageSourceIndex < imageSources.lastIndex) {
+                                    imageSourceIndex = safeImageSourceIndex + 1
+                                }
+                            },
                             modifier = Modifier.fillMaxSize(),
                         )
-                    },
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxSize(),
-                )
+                    }
+                }
             }
         }
 
@@ -188,7 +313,7 @@ fun DetailScreen(
                     }
 
                     Text(
-                        text = if (currentPost != null) "#${currentPost.id}" else "",
+                        text = if (currentPost != null) currentPost.title ?: "#${currentPost.id}" else "",
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
@@ -200,7 +325,7 @@ fun DetailScreen(
                         IconButton(onClick = {
                             val intent = Intent(
                                 Intent.ACTION_VIEW,
-                                Uri.parse("https://yande.re/post/show/${currentPost.id}"),
+                                Uri.parse(currentPost.canonicalUrl ?: currentPost.source ?: "https://yande.re/post/show/${currentPost.id}"),
                             )
                             context.startActivity(intent)
                         }) {
@@ -215,7 +340,10 @@ fun DetailScreen(
                         IconButton(onClick = {
                             val intent = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, "https://yande.re/post/show/${currentPost.id}")
+                                putExtra(
+                                    Intent.EXTRA_TEXT,
+                                    currentPost.canonicalUrl ?: currentPost.source ?: "https://yande.re/post/show/${currentPost.id}",
+                                )
                             }
                             context.startActivity(Intent.createChooser(intent, "Share post"))
                         }) {
@@ -255,6 +383,41 @@ fun DetailScreen(
                             modifier = Modifier.padding(bottom = 8.dp),
                         )
                     }
+                    if (currentPost?.platform == PlatformId.PIXIV && currentPost.pageCount > 1) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 10.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            IconButton(
+                                onClick = { pixivPageIndex-- },
+                                enabled = pixivPageIndex > 0,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ChevronLeft,
+                                    contentDescription = "Previous illustration page",
+                                    tint = if (pixivPageIndex > 0) Color.White else Color.White.copy(alpha = 0.35f),
+                                )
+                            }
+                            Text(
+                                text = "Page ${pixivPageIndex + 1} of ${currentPost.pageCount}",
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                            IconButton(
+                                onClick = { pixivPageIndex++ },
+                                enabled = pixivPageIndex < currentPost.pageCount - 1,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ChevronRight,
+                                    contentDescription = "Next illustration page",
+                                    tint = if (pixivPageIndex < currentPost.pageCount - 1) Color.White else Color.White.copy(alpha = 0.35f),
+                                )
+                            }
+                        }
+                    }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -277,7 +440,7 @@ fun DetailScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = if (currentPost != null) "${currentPost.width}×${currentPost.height}" else "Details",
+                            text = if (displayPost != null) "${displayPost.width}×${displayPost.height}" else "Details",
                             fontWeight = FontWeight.Medium,
                             fontSize = 14.sp,
                         )
@@ -288,11 +451,20 @@ fun DetailScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        if (currentPlugin != null && currentPlugin.capabilities.contains(PluginCapability.FAVORITES)) {
+                        if (
+                            currentPlugin != null &&
+                            currentPlugin.capabilities.contains(PlatformCapability.FAVORITES) &&
+                            displayPost != null
+                        ) {
                             val isPluginLoggedIn by currentPlugin.isLoggedInFlow.collectAsState(initial = currentPlugin.isLoggedIn)
-                            val post = currentPost
+                            val post = displayPost
                             val currentScore = localScores[post.id] ?: currentPlugin.getScore(post.id) ?: 0
-                            val isFavorited = currentScore == 3
+                            val isPixivPost = post.platform == PlatformId.PIXIV
+                            val isFavorited = if (isPixivPost) {
+                                localBookmarks[post.workIdentity.toString()] ?: post.isBookmarked
+                            } else {
+                                currentScore == 3
+                            }
 
                             FilledTonalIconButton(
                                 onClick = {
@@ -301,11 +473,20 @@ fun DetailScreen(
                                     } else {
                                         scope.launch {
                                             val targetScore = if (isFavorited) 0 else 3
-                                            val result = currentPlugin.setScore(post.id, targetScore)
+                                            val targetBookmarked = !isFavorited
+                                            val result = if (isPixivPost) {
+                                                currentPlugin.setBookmark(post.id, targetBookmarked)
+                                            } else {
+                                                currentPlugin.setScore(post.id, targetScore)
+                                            }
                                             if (result.isSuccess) {
                                                 inlineActionError = null
-                                                localScores = localScores + (post.id to targetScore)
-                                                if (targetScore == 3) {
+                                                if (isPixivPost) {
+                                                    localBookmarks = localBookmarks + (post.workIdentity.toString() to targetBookmarked)
+                                                } else {
+                                                    localScores = localScores + (post.id to targetScore)
+                                                }
+                                                if (targetBookmarked) {
                                                     ToastManager.showSuccess("Added to favorites")
                                                 } else {
                                                     ToastManager.showInfo("Removed from favorites")
@@ -334,9 +515,9 @@ fun DetailScreen(
                         // Download button: matching 48dp pill
                         Button(
                             onClick = {
-                                if (currentPost != null) {
+                                if (displayPost != null) {
                                     scope.launch {
-                                        when (val result = downloadManager.enqueueDownload(currentPost)) {
+                                        when (val result = downloadManager.enqueueDownload(displayPost)) {
                                             is DownloadResult.AlreadySaved -> {
                                                 ToastManager.showWarning("Already saved: ${result.displayName}")
                                             }
@@ -406,10 +587,10 @@ fun DetailScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     MetadataTable(
-                        post = currentPost,
+                        post = displayPost ?: currentPost,
                         onAuthorClick = { author ->
                             showInspectSheet = false
-                            onTagClick("user:$author")
+                            onAuthorClick(displayPost ?: currentPost, pagerState.currentPage, pixivPageIndex)
                         },
                         onSourceClick = { url ->
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
@@ -427,7 +608,7 @@ fun DetailScreen(
                     }
 
                     // Personal Rating (0-3 stars)
-                    if (currentPlugin != null && currentPlugin.capabilities.contains(PluginCapability.SCORING)) {
+                    if (currentPlugin != null && currentPlugin.capabilities.contains(PlatformCapability.SCORING)) {
                         val isPluginLoggedIn by currentPlugin.isLoggedInFlow.collectAsState(initial = currentPlugin.isLoggedIn)
                         val currentScore = localScores[currentPost.id] ?: currentPlugin.getScore(currentPost.id) ?: 0
 
@@ -487,7 +668,7 @@ fun DetailScreen(
                                 tag = tag,
                                 onClick = {
                                     showInspectSheet = false
-                                    onTagClick(tag)
+                                    onTagClick(tag, pagerState.currentPage, pixivPageIndex)
                                 },
                             )
                         }
@@ -512,7 +693,15 @@ private fun MetadataTable(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Author
+                    // Author
+            if (!post.title.isNullOrBlank()) {
+                MetadataTableRow(
+                    label = "Title",
+                    value = post.title,
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+            }
+
             if (!post.author.isNullOrBlank()) {
                 MetadataTableRow(
                     label = "Author",
@@ -547,11 +736,20 @@ private fun MetadataTable(
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 
-            // Score
-            MetadataTableRow(
-                label = "Score",
-                value = "${post.score}",
-            )
+            if (post.platform == PlatformId.PIXIV) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                MetadataTableRow(label = "Pages", value = "${post.pageIndex + 1} / ${post.pageCount}")
+                post.bookmarkCount?.let { count ->
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                    MetadataTableRow(label = "Bookmarks", value = count.toString())
+                }
+            } else {
+                // Score
+                MetadataTableRow(
+                    label = "Score",
+                    value = "${post.score}",
+                )
+            }
 
             // Created Date
             if (post.createdAt != null && post.createdAt > 0) {

@@ -21,7 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.azusachino.latte.plugin.PluginCapability
+import com.azusachino.latte.plugin.PlatformCapability
 import com.azusachino.latte.plugin.SitePlugin
 
 @Composable
@@ -70,10 +70,10 @@ fun PluginProfileDialog(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = when (cap) {
-                                PluginCapability.SCORING -> "Personal post rating (0–3 stars)"
-                                PluginCapability.FAVORITES -> "Favorites synchronization"
-                                PluginCapability.REFERER_INJECT -> "Referer header injection for media"
-                                PluginCapability.USER_FEED -> "Following artist updates"
+                                PlatformCapability.SCORING -> "Personal post rating (0–3 stars)"
+                                PlatformCapability.FAVORITES -> "Favorites synchronization"
+                                PlatformCapability.REFERER_INJECT -> "Referer header injection for media"
+                                PlatformCapability.USER_FEED -> "Following artist updates"
                             },
                             style = MaterialTheme.typography.bodyMedium,
                         )

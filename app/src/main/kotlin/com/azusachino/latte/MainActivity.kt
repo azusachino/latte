@@ -1,6 +1,7 @@
 package com.azusachino.latte
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -9,6 +10,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import com.azusachino.latte.data.network.PixivOAuthClient
+import com.azusachino.latte.data.network.PixivOAuthCallbackBus
 import com.azusachino.latte.ui.LatteApp
 
 class MainActivity : ComponentActivity() {
@@ -22,10 +25,28 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        publishPixivCallback(intent)
+
         requestNotificationPermission()
 
         setContent {
             LatteApp()
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        publishPixivCallback(intent)
+    }
+
+    private fun publishPixivCallback(intent: Intent?) {
+        val uri = intent?.data ?: return
+        if (PixivOAuthClient.isCallbackUri(uri)) {
+            PixivOAuthCallbackBus.publish(uri.toString())
+            // The authorization code is single-use. Do not replay it when the
+            // activity is recreated or the same intent is delivered again.
+            intent.data = null
         }
     }
 

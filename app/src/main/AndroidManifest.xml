@@ -9,6 +9,7 @@
         android:label="Latte"
         android:name=".LatteApplication"
         android:icon="@drawable/latte_icon"
+        android:largeHeap="true"
         android:supportsRtl="true"
         android:theme="@style/Theme.Latte">
         <service
@@ -16,6 +17,11 @@
             android:exported="false"
             android:foregroundServiceType="dataSync"
             tools:node="merge" />
+        <activity
+            android:name=".PixivLoginActivity"
+            android:exported="false"
+            android:label="Pixiv sign-in"
+            android:theme="@style/Theme.Latte" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -26,6 +32,12 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="pixiv" android:host="account" android:path="/login" />
             </intent-filter>
         </activity>
     </application>

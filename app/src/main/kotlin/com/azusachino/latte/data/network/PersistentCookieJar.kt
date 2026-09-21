@@ -15,11 +15,21 @@ interface SessionCookieStore : CookieJar {
 }
 
 class PersistentCookieJar(context: Context) : SessionCookieStore {
-    private val prefs: SharedPreferences = createEncryptedPrefs(context)
+    private val appContext = context.applicationContext
+    private var prefs: SharedPreferences = createEncryptedPrefs(appContext)
     private val memoryStore = ConcurrentHashMap<String, MutableMap<String, Cookie>>()
 
     init {
-        loadPersistedCookies()
+        try {
+            loadPersistedCookies()
+        } catch (_: Exception) {
+            // Keystore keys can be invalidated by restore, profile migration, or
+            // a device-side security reset. Drop only the cookie cache and
+            // recreate it so a stale session cannot prevent app startup.
+            appContext.deleteSharedPreferences(PREFS_FILE_NAME)
+            prefs = createEncryptedPrefs(appContext)
+            memoryStore.clear()
+        }
     }
 
     @Synchronized

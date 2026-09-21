@@ -5,6 +5,14 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
+fun String.asBuildConfigString(): String =
+    "\"${replace("\\", "\\\\").replace("\"", "\\\"")}\""
+
+val latteVersion = "0.0.3"
+
+val pixivOAuthClientId = System.getenv("LATTE_PIXIV_CLIENT_ID").orEmpty()
+val pixivOAuthClientSecret = System.getenv("LATTE_PIXIV_CLIENT_SECRET").orEmpty()
+
 android {
     namespace = "com.azusachino.latte"
     compileSdk = 35
@@ -13,8 +21,11 @@ android {
         applicationId = "com.azusachino.latte"
         minSdk = 29
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.0.2"
+        versionCode = 3
+        versionName = latteVersion
+
+        buildConfigField("String", "PIXIV_OAUTH_CLIENT_ID", pixivOAuthClientId.asBuildConfigString())
+        buildConfigField("String", "PIXIV_OAUTH_CLIENT_SECRET", pixivOAuthClientSecret.asBuildConfigString())
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -43,6 +54,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

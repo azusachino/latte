@@ -74,17 +74,25 @@ fun AccountPreferenceWidget(
             )
 
             val displayUsername = plugin.getDisplayUsername()
-            if (isLoggedIn && !displayUsername.isNullOrBlank()) {
+            if (isLoggedIn) {
                 Text(
-                    text = displayUsername,
+                    text = displayUsername ?: "Connected",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                Text(
+                    text = plugin.capabilities.joinToString(" · ") { it.name.lowercase().replace('_', ' ') }
+                        .ifBlank { "Connected" },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             } else {
                 Text(
-                    text = "Not connected · Tap to sign in",
+                    text = "Not connected · Tap to connect",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
