@@ -1,7 +1,8 @@
 # Konachan and Pixiv research
 
 Date: 2026-09-21
-Status: research complete; Pixiv scope revised; implementation remains gated
+Status: research complete; Pixiv scope revised; 0.0.3 implementation and
+scoped device acceptance verified
 
 ## Question and conclusion
 
@@ -500,13 +501,15 @@ Konachan remains parked. The Pixiv work is gated in this order:
 
 ## 5. 0.0.3 implementation audit receipt (2026-09-21)
 
-The connected unlocked OnePlus 8 (`0cadf428`, Android 16) verified the current
-implementation slice after `make dev`: browser-authenticated Pixiv Popular
-rendered real images; returning to a loaded feed reused image cache; the detail
-Information sheet's Author row opened a populated author-works feed; and
-toggling Safe Mode reloaded the Pixiv feed without an auth-state flash. The
-receipt does not close live Followed/Favorites/bookmark/download acceptance or
-the pending cancellation integration test. Konachan remains postponed.
+The connected unlocked OnePlus 8 (`0cadf428`, Android 16) verified the scoped
+implementation after `make dev`: browser-authenticated Pixiv Popular,
+Following, and Favorites rendered real images; returning to a loaded feed
+reused image cache; the detail Information sheet's Author row opened a
+populated author-works feed; toggling Safe Mode reloaded the Pixiv feed without
+an auth-state flash; bookmark state toggled off and back on; WorkManager
+completed a save into `Pictures/Latte`; and the second save showed the visible
+duplicate warning. The production request-apply seam has a regression test for
+discarding a late result after cancellation. Konachan remains postponed.
 
 The first useful acceptance story is:
 

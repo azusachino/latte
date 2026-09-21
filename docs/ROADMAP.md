@@ -92,10 +92,11 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
 
 ## Milestone 0.0.3: Pixiv Platform Support
 
-> **Status**: Implementation and device audit in progress. Browser OAuth,
-> Popular, search, platform switching, author works, image fallback, cache
-> re-entry, and Pixiv Safe Mode are verified; live Following/Favorites,
-> bookmark/download, and cancellation integration remain open.
+> **Status**: Scoped implementation and device audit verified. Browser OAuth,
+> Popular/Following/Favorites, search, platform switching, author works, image
+> fallback, cache re-entry, Pixiv Safe Mode, bookmark toggle, download
+> completion/duplicate prevention, and request-cancellation regression coverage
+> are verified. Konachan remains postponed.
 > **Active Feature Spec**: [004 Pixiv Illustration Experience](../specs/004-pixiv-illustration-experience/spec.md)
 > **Tasks**: [004 Tasks](../specs/004-pixiv-illustration-experience/tasks.md)
 

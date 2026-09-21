@@ -4,9 +4,9 @@
 
 **Created**: 2026-09-21
 
-**Status**: Implemented through fixture, auth, author-work, Safe Mode, and
-device-interaction gates; live Pixiv personal-feed/bookmark/download
-verification and cancellation integration coverage remain pending
+**Status**: Implemented through fixture, auth, author-work, Safe Mode, live
+personal-feed/bookmark/download device acceptance, and request-cancellation
+regression gates
 
 **Supersedes**: Pixiv portions of
 [`003-konachan-pixiv`](../003-konachan-pixiv/spec.md)
@@ -128,7 +128,8 @@ horizontal swipe always means adjacent illustrations from the active feed. A
 multi-page Pixiv work is a second, explicit navigation level inside the current
 viewer, using previous/next page controls and a visible `Page n of m` label.
 This prevents a page inside one work from being mistaken for the next feed
-item, and makes Save/metadata actions target the visible page.
+item, makes the page change visibly directional, and makes Save/metadata
+actions target the visible page.
 
 Grid image candidates are stable per artwork and retain a successful fallback
 choice when a lazy-grid item leaves composition. A proxy failure must not cause

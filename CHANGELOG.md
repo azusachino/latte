@@ -17,14 +17,17 @@
   viewport, and resolved the authenticated-feed transition without a signed-out
   flash.
 - Kept Pixiv feed navigation separate from page navigation inside a work.
+- Added a directional transition for inner Pixiv page changes so cached images
+  do not swap invisibly.
 
 ### Verification
 
 - Fixture and contract tests pass; the unlocked OnePlus 8 verified browser
   login, authenticated Popular rendering, author-work navigation, image cache
   re-entry, and Pixiv Safe Mode reload behavior.
-- Live Followed/Favorites/bookmark/download acceptance remains open for the
-  next device pass. Konachan remains postponed.
+- The same device pass verified authenticated Following and Favorites grids,
+  bookmark toggle round-trip, WorkManager download completion, and the visible
+  duplicate-save warning. Konachan remains postponed.
 
 ## 0.0.2 - 2026-09-21
 

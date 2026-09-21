@@ -99,7 +99,7 @@ approved `Platforms & accounts` cards/actions.
 
 ### Tests first
 
-- [ ] T026 [P] [US4] Add platform-local state and stale-request cancellation tests in `app/src/test/kotlin/com/azusachino/latte/ui/explore/ExplorePlatformStateTest.kt` (state isolation is covered; cancellation remains integration-only)
+- [x] T026 [P] [US4] Add platform-local state and stale-request cancellation tests in `app/src/test/kotlin/com/azusachino/latte/ui/explore/ExplorePlatformStateTest.kt` (the production `applyIfActive` seam rejects a late response after its request job is canceled)
 - [x] T027 [P] [US4] Add plugin-manager capability/status tests for Yande and Pixiv cards in `app/src/test/kotlin/com/azusachino/latte/plugin/SitePluginManagerTest.kt`
 
 ### Implementation
@@ -114,7 +114,7 @@ approved `Platforms & accounts` cards/actions.
 
 - [x] T033 [P] Add quiet inline error, auth-required, rate-limit, upstream-drift, and transport-failure copy without toast-only recovery in `app/src/main/kotlin/com/azusachino/latte/ui/explore/ExploreScreen.kt` and `app/src/main/kotlin/com/azusachino/latte/ui/detail/DetailScreen.kt`
 - [x] T034 Run `make check`, inspect `git diff --check`, and record fixture/test evidence in this task file
-- [x] T035 Build and install a debug APK with `make validate` and `make install`, then record the physical-device Explore/platform-switch/detail receipt before declaring the journey complete (Explore, Yande detail, Pixiv browser OAuth exchange, authenticated Popular rendering, platform picker, and Platforms & accounts verified on the connected OnePlus 8; author works and Pixiv Safe Mode are now also verified; live personal-feed/bookmark/download acceptance remains a follow-up)
+- [x] T035 Build and install a debug APK with `make validate` and `make install`, then record the physical-device Explore/platform-switch/detail receipt before declaring the journey complete (Explore, Yande detail, Pixiv browser OAuth exchange, authenticated Popular/Following/Favorites rendering, platform picker, and Platforms & accounts verified on the connected OnePlus 8; author works and Pixiv Safe Mode are also verified; bookmark toggle, completed download, and duplicate-save warning are verified live)
 
 ## Dependencies and execution order
 
@@ -140,7 +140,7 @@ approved `Platforms & accounts` cards/actions.
 ## Evidence
 
 - `make check` passed on 2026-09-21: rumdl found no Markdown issues and the
-  full `testDebugUnitTest` suite passed with 40 tests and no failures.
+  full `testDebugUnitTest` suite passed with 41 tests and no failures.
 - The browser OAuth exchange, verifier persistence across plugin recreation,
   refresh/retry, failed-refresh invalidation, platform capability/status, and
   multi-page download identity tests pass with MockWebServer or pure unit
@@ -159,6 +159,13 @@ approved `Platforms & accounts` cards/actions.
 - The same device receipt opened a Pixiv detail Information sheet, followed its
   Author row into a populated author-works feed, toggled Safe Mode, and returned
   to a populated filtered Popular feed.
+- The final authenticated-feed receipt rendered real Following and Favorites
+  grids, toggled a Pixiv bookmark off and back on, completed a WorkManager save
+  into `Pictures/Latte`, and showed the visible duplicate-save warning on the
+  second save request.
+- The cancellation regression test drives the production Pixiv result-apply
+  seam with a deliberately late response and proves a canceled request cannot
+  update feed state.
 - The anonymous App API ranking probe returned HTTP 400 with Pixiv's
   `invalid_request` OAuth message. PixEz's login-first interceptor and the
   device probe agree that native-client Popular is authenticated; the public

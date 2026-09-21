@@ -252,10 +252,12 @@ and continues through opaque cursors after a fully filtered page. Cache
 candidate retention and tri-state auth resolution are recorded as correctness
 constraints rather than UI anecdotes.
 
-`make check` passes with 40 unit tests and no Markdown issues. `make validate`
+`make check` passes with 41 unit tests and no Markdown issues. `make validate`
 and the unlocked OnePlus 8 receipt cover the browser OAuth exchange, real
-Popular images, author-work navigation, image-cache re-entry, and Pixiv Safe
-Mode reload. Live Followed/Favorites/bookmark/download acceptance and stale
-request cancellation integration remain open, so this milestone is **PARTIALLY
-VERIFIED**, not release-complete. The active branch is prepared for a 0.0.3
-review; no remote PR or push is implied by this record.
+Popular/Following/Favorites images, author-work navigation, image-cache
+re-entry, Pixiv Safe Mode reload, bookmark toggle round-trip, WorkManager save
+completion, and duplicate-save prevention. The production Pixiv request seam
+also has a cancellation regression test proving that a late response from a
+canceled job cannot update feed state. This 0.0.3 slice is **VERIFIED** for
+the scoped implementation; Konachan remains postponed. The active branch is
+prepared for a 0.0.3 review; no remote PR or push is implied by this record.

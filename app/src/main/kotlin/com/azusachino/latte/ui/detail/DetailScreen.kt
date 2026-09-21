@@ -2,9 +2,16 @@ package com.azusachino.latte.ui.detail
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -152,25 +159,42 @@ fun DetailScreen(
             modifier = Modifier.fillMaxSize(),
         ) { page ->
             val post = detailPosts[page].forPage(if (page == pagerState.currentPage) pixivPageIndex else 0)
-            ZoomableBox(
+            AnimatedContent(
+                targetState = post,
+                transitionSpec = {
+                    if (initialState.workIdentity == targetState.workIdentity &&
+                        initialState.pageIndex != targetState.pageIndex
+                    ) {
+                        val direction = if (targetState.pageIndex > initialState.pageIndex) 1 else -1
+                        (slideInHorizontally(tween(220)) { width -> direction * width / 3 } + fadeIn(tween(220)))
+                            .togetherWith(slideOutHorizontally(tween(160)) { width -> -direction * width / 3 } + fadeOut(tween(160)))
+                    } else {
+                        EnterTransition.None togetherWith ExitTransition.None
+                    }
+                },
+                label = "PixivPageTransition",
                 modifier = Modifier.fillMaxSize(),
-                onTap = { showControls = !showControls },
-            ) {
-                SubcomposeAsyncImage(
-                    model = post.sampleUrl,
-                    contentDescription = null,
-                    loading = {
-                        // Instant display of cached preview bitmap from memory cache
-                        AsyncImage(
-                            model = post.previewUrl,
-                            contentDescription = null,
-                            contentScale = ContentScale.Fit,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    },
-                    contentScale = ContentScale.Fit,
+            ) { targetPost ->
+                ZoomableBox(
                     modifier = Modifier.fillMaxSize(),
-                )
+                    onTap = { showControls = !showControls },
+                ) {
+                    SubcomposeAsyncImage(
+                        model = targetPost.sampleUrl,
+                        contentDescription = null,
+                        loading = {
+                            // Instant display of cached preview bitmap from memory cache
+                            AsyncImage(
+                                model = targetPost.previewUrl,
+                                contentDescription = null,
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        },
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
         }
 

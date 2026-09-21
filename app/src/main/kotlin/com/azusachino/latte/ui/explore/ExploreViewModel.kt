@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -185,6 +186,14 @@ internal fun pixivKindForTab(tabIndex: Int): PixivFeedKind? = when (tabIndex) {
 
 internal fun filterPixivPosts(posts: List<Post>, safeMode: Boolean): List<Post> =
     if (safeMode) posts.filter { it.rating == PostRating.SAFE } else posts
+
+internal suspend fun <T> applyIfActive(
+    request: suspend () -> T,
+    apply: (T) -> Unit,
+) {
+    val result = request()
+    if (currentCoroutineContext().isActive) apply(result)
+}
 
 class ExploreViewModel(application: Application) : AndroidViewModel(application) {
     private val api = YandeApi()
@@ -585,11 +594,14 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         pixivLoadJob?.cancel()
         updatePixivFeed(kind) { it.copy(isLoading = true, isRefreshing = false, error = null, authRequired = false, page = 1, nextCursor = null) }
         pixivLoadJob = viewModelScope.launch {
-            val result = client.load(
-                PixivFeedRequest(kind = kind, query = activeQuery, userId = activeUserId, refresh = true),
+            applyIfActive(
+                request = {
+                    client.load(
+                        PixivFeedRequest(kind = kind, query = activeQuery, userId = activeUserId, refresh = true),
+                    )
+                },
+                apply = { result -> applyPixivResult(kind, result, isAppend = false) },
             )
-            if (!isActive) return@launch
-            applyPixivResult(kind, result, isAppend = false)
         }
     }
 
@@ -603,12 +615,14 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         pixivLoadJob?.cancel()
         updatePixivFeed(kind) { it.copy(isLoadingMore = true) }
         pixivLoadJob = viewModelScope.launch {
-            val result = pixivApi?.load(
-                PixivFeedRequest(kind = kind, query = activeQuery, userId = activeUserId, cursor = cursor),
+            applyIfActive(
+                request = {
+                    pixivApi?.load(
+                        PixivFeedRequest(kind = kind, query = activeQuery, userId = activeUserId, cursor = cursor),
+                    ) ?: PixivFeedResult.TransportFailure("Pixiv is not configured")
+                },
+                apply = { result -> applyPixivResult(kind, result, isAppend = true) },
             )
-                ?: PixivFeedResult.TransportFailure("Pixiv is not configured")
-            if (!isActive) return@launch
-            applyPixivResult(kind, result, isAppend = true)
         }
     }
 
@@ -618,11 +632,14 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         pixivLoadJob?.cancel()
         updatePixivFeed(kind) { it.copy(isRefreshing = true, error = null, authRequired = false, nextCursor = null) }
         pixivLoadJob = viewModelScope.launch {
-            val result = pixivApi?.load(
-                PixivFeedRequest(kind = kind, query = activeQuery, userId = activeUserId, refresh = true),
-            ) ?: PixivFeedResult.TransportFailure("Pixiv is not configured")
-            if (!isActive) return@launch
-            applyPixivResult(kind, result, isAppend = false)
+            applyIfActive(
+                request = {
+                    pixivApi?.load(
+                        PixivFeedRequest(kind = kind, query = activeQuery, userId = activeUserId, refresh = true),
+                    ) ?: PixivFeedResult.TransportFailure("Pixiv is not configured")
+                },
+                apply = { result -> applyPixivResult(kind, result, isAppend = false) },
+            )
         }
     }
 

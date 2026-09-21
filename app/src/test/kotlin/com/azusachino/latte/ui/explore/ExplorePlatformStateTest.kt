@@ -3,6 +3,13 @@ package com.azusachino.latte.ui.explore
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.model.PostRating
 import com.azusachino.latte.data.network.PixivFeedKind
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -103,5 +110,25 @@ class ExplorePlatformStateTest {
 
         assertEquals(listOf(safe), filterPixivPosts(listOf(safe, explicit), safeMode = true))
         assertEquals(listOf(safe, explicit), filterPixivPosts(listOf(safe, explicit), safeMode = false))
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun cancelledPixivRequestCannotApplyLateResult() = runTest {
+        val response = CompletableDeferred<String>()
+        var applied: String? = null
+        val request = launch {
+            applyIfActive(
+                request = { withContext(NonCancellable) { response.await() } },
+                apply = { applied = it },
+            )
+        }
+
+        runCurrent()
+        request.cancel()
+        response.complete("stale")
+        request.join()
+
+        assertEquals(null, applied)
     }
 }
