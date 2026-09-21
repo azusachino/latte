@@ -375,11 +375,14 @@ This keeps the initial implementation small without making the source feel
 like three disconnected demo tabs: search and, later, one bookmark action give
 the feed set a useful discovery-to-collection loop.
 
-The detail screen keeps Latte's existing image-first pager, but the pager is
-for pages inside one Pixiv work. It exposes title, artist, tags, page position,
-restriction, bookmark count when present, the canonical Pixiv URL, sharing,
-and local download. It does not add comments, related works, user profiles,
-novels, manga, or ugoira in this slice.
+The detail screen keeps Latte's image-first viewer, with two deliberately
+separate navigation levels. Horizontal swipe moves between neighboring
+illustrations in the active feed. If the current Pixiv work has multiple pages,
+explicit previous/next page controls and a visible `Page n of m` label move
+through that work. Title, artist, tags, page position, restriction, bookmark
+count when present, the canonical Pixiv URL, sharing, and local download all
+describe or act on the visible page. It does not add comments, related works,
+user profiles, novels, manga, or ugoira in this slice.
 
 ### Feed state and authentication
 
@@ -478,8 +481,9 @@ Konachan remains parked. The Pixiv work is gated in this order:
 The first useful acceptance story is:
 
 ```text
-choose Pixiv -> open Popular -> open a work -> page through its illustrations
--> inspect artist/tags -> download one page -> return without losing context
+choose Pixiv -> open Popular -> open a work -> use its page controls -> swipe to
+the next work -> inspect artist/tags -> download one page -> return without
+losing context
 ```
 
 The account acceptance story is separate:

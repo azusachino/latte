@@ -41,7 +41,7 @@ class ExplorePlatformStateTest {
     }
 
     @Test
-    fun pixivAuthenticationReloadsPopularAndSearchButNotPersonalTabs() {
+    fun pixivAuthenticationReloadsTheSelectedFeed() {
         assertEquals(
             PixivFeedKind.POPULAR,
             ExploreUiState(platform = ExplorePlatform.PIXIV, selectedTab = 0)
@@ -53,9 +53,22 @@ class ExplorePlatformStateTest {
                 .pixivFeedToReloadAfterAuthentication(),
         )
         assertEquals(
-            null,
+            PixivFeedKind.FOLLOWED_UPDATES,
             ExploreUiState(platform = ExplorePlatform.PIXIV, selectedTab = 1)
                 .pixivFeedToReloadAfterAuthentication(),
         )
+        assertEquals(
+            PixivFeedKind.FAVORITES,
+            ExploreUiState(platform = ExplorePlatform.PIXIV, selectedTab = 2)
+                .pixivFeedToReloadAfterAuthentication(),
+        )
+    }
+
+    @Test
+    fun pixivTabsMapToIndependentFeedKinds() {
+        assertEquals(PixivFeedKind.POPULAR, pixivKindForTab(0))
+        assertEquals(PixivFeedKind.FOLLOWED_UPDATES, pixivKindForTab(1))
+        assertEquals(PixivFeedKind.FAVORITES, pixivKindForTab(2))
+        assertEquals(null, pixivKindForTab(3))
     }
 }

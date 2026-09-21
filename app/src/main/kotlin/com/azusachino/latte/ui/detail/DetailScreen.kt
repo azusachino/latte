@@ -32,6 +32,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
@@ -79,7 +81,7 @@ import com.azusachino.latte.data.download.DownloadManager
 import com.azusachino.latte.data.download.DownloadResult
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.model.PostRating
-import com.azusachino.latte.data.model.MediaVariant
+import com.azusachino.latte.data.model.forPage
 import com.azusachino.latte.plugin.PluginCapability
 import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.plugin.SitePluginManager
@@ -102,42 +104,9 @@ fun DetailScreen(
     onRequireLogin: (SitePlugin) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val detailPosts = remember(posts, initialIndex) {
-        val selected = posts.getOrNull(initialIndex)
-        if (selected?.siteId == "pixiv" && selected.pages.isNotEmpty()) {
-            selected.pages.map { page ->
-                selected.copy(
-                    previewUrl = page.previewUrl,
-                    sampleUrl = page.mediaRef.url,
-                    originalUrl = page.originalUrl ?: page.mediaRef.url,
-                    variants = listOf(
-                        MediaVariant(
-                            id = "preview",
-                            url = page.previewUrl,
-                            width = page.width,
-                            height = page.height,
-                        ),
-                        page.mediaRef,
-                        MediaVariant(
-                            id = "original",
-                            url = page.originalUrl ?: page.mediaRef.url,
-                            width = page.width,
-                            height = page.height,
-                            extension = page.mediaRef.extension,
-                        ),
-                    ),
-                    width = page.width,
-                    height = page.height,
-                    pageIndex = page.pageIndex,
-                    pages = emptyList(),
-                )
-            }
-        } else {
-            posts
-        }
-    }
+    val detailPosts = posts
     val pagerState = rememberPagerState(
-        initialPage = if (detailPosts !== posts) 0 else initialIndex.coerceIn(0, (detailPosts.size - 1).coerceAtLeast(0)),
+        initialPage = initialIndex.coerceIn(0, (detailPosts.size - 1).coerceAtLeast(0)),
         pageCount = { detailPosts.size },
     )
     val context = LocalContext.current
@@ -148,9 +117,16 @@ fun DetailScreen(
     var localScores by remember { mutableStateOf(mapOf<Long, Int>()) }
     var localBookmarks by remember { mutableStateOf(mapOf<String, Boolean>()) }
     var inlineActionError by remember { mutableStateOf<String?>(null) }
+    var pixivPageIndex by remember { mutableStateOf(0) }
 
     val currentPost = detailPosts.getOrNull(pagerState.currentPage)
+    val displayPost = currentPost?.forPage(pixivPageIndex)
     val currentPlugin = currentPost?.let { pluginManager.get(it.siteId) }
+
+    LaunchedEffect(currentPost?.siteId, currentPost?.id) {
+        pixivPageIndex = 0
+        inlineActionError = null
+    }
 
     // The site never tells the app "you already scored this post" up front --
     // recover a favorite (score 3) set in a prior session or on the web.
@@ -174,7 +150,7 @@ fun DetailScreen(
             beyondViewportPageCount = 1,
             modifier = Modifier.fillMaxSize(),
         ) { page ->
-            val post = detailPosts[page]
+            val post = detailPosts[page].forPage(if (page == pagerState.currentPage) pixivPageIndex else 0)
             ZoomableBox(
                 modifier = Modifier.fillMaxSize(),
                 onTap = { showControls = !showControls },
@@ -294,6 +270,41 @@ fun DetailScreen(
                             modifier = Modifier.padding(bottom = 8.dp),
                         )
                     }
+                    if (currentPost?.siteId == "pixiv" && currentPost.pageCount > 1) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 10.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            IconButton(
+                                onClick = { pixivPageIndex-- },
+                                enabled = pixivPageIndex > 0,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ChevronLeft,
+                                    contentDescription = "Previous illustration page",
+                                    tint = if (pixivPageIndex > 0) Color.White else Color.White.copy(alpha = 0.35f),
+                                )
+                            }
+                            Text(
+                                text = "Page ${pixivPageIndex + 1} of ${currentPost.pageCount}",
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                            IconButton(
+                                onClick = { pixivPageIndex++ },
+                                enabled = pixivPageIndex < currentPost.pageCount - 1,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ChevronRight,
+                                    contentDescription = "Next illustration page",
+                                    tint = if (pixivPageIndex < currentPost.pageCount - 1) Color.White else Color.White.copy(alpha = 0.35f),
+                                )
+                            }
+                        }
+                    }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -316,7 +327,7 @@ fun DetailScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = if (currentPost != null) "${currentPost.width}×${currentPost.height}" else "Details",
+                            text = if (displayPost != null) "${displayPost.width}×${displayPost.height}" else "Details",
                             fontWeight = FontWeight.Medium,
                             fontSize = 14.sp,
                         )
@@ -327,9 +338,13 @@ fun DetailScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        if (currentPlugin != null && currentPlugin.capabilities.contains(PluginCapability.FAVORITES)) {
+                        if (
+                            currentPlugin != null &&
+                            currentPlugin.capabilities.contains(PluginCapability.FAVORITES) &&
+                            displayPost != null
+                        ) {
                             val isPluginLoggedIn by currentPlugin.isLoggedInFlow.collectAsState(initial = currentPlugin.isLoggedIn)
-                            val post = currentPost
+                            val post = displayPost
                             val currentScore = localScores[post.id] ?: currentPlugin.getScore(post.id) ?: 0
                             val isPixivPost = post.siteId == "pixiv"
                             val isFavorited = if (isPixivPost) {
@@ -387,9 +402,9 @@ fun DetailScreen(
                         // Download button: matching 48dp pill
                         Button(
                             onClick = {
-                                if (currentPost != null) {
+                                if (displayPost != null) {
                                     scope.launch {
-                                        when (val result = downloadManager.enqueueDownload(currentPost)) {
+                                        when (val result = downloadManager.enqueueDownload(displayPost)) {
                                             is DownloadResult.AlreadySaved -> {
                                                 ToastManager.showWarning("Already saved: ${result.displayName}")
                                             }
@@ -459,7 +474,7 @@ fun DetailScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     MetadataTable(
-                        post = currentPost,
+                        post = displayPost ?: currentPost,
                         onAuthorClick = { author ->
                             showInspectSheet = false
                             onTagClick("user:$author")

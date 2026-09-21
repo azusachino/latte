@@ -951,6 +951,9 @@ private fun PostGridItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val imageSources = remember(post.id, post.pageIndex) { post.imageSources }
+    var imageSourceIndex by remember(post.id, post.pageIndex) { mutableStateOf(0) }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -963,9 +966,12 @@ private fun PostGridItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         AsyncImage(
-            model = post.previewUrl,
+            model = imageSources[imageSourceIndex],
             contentDescription = null,
             contentScale = ContentScale.Crop,
+            onError = {
+                if (imageSourceIndex < imageSources.lastIndex) imageSourceIndex++
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(post.aspectRatio.coerceIn(0.4f, 2.5f)),

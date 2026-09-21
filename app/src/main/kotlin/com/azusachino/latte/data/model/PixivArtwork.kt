@@ -16,9 +16,13 @@ data class ArtworkPage(
     val originalUrl: String?,
     val previewUrl: String,
     val mediaRef: MediaVariant,
+    val fallbackUrl: String? = null,
 ) {
     val identity: String
         get() = mediaRef.id
+
+    val imageSources: List<String>
+        get() = listOfNotNull(previewUrl, fallbackUrl).distinct()
 }
 
 @Serializable
@@ -87,24 +91,25 @@ fun PixivIllustDto.toPost(): Post {
             ?.lowercase()
             ?.takeIf { it in setOf("jpg", "jpeg", "png", "gif") }
             ?: "jpg"
-        val proxyUrl = pixivImageProxyUrl(original)
+        val pathProxyUrl = pixivImageProxyUrl(original)
             ?: pixivImageProxyUrl(urls.medium)
-            ?: pixivIdProxyUrl(id, index, extension)
+        val idProxyUrl = pixivIdProxyUrl(id, index, extension)
         ArtworkPage(
             pageIndex = index,
             width = width,
             height = height,
             originalUrl = original,
-            previewUrl = pixivImageProxyUrl(urls.medium)
+            previewUrl = pathProxyUrl
                 ?: pixivImageProxyUrl(urls.large)
-                ?: proxyUrl,
+                ?: idProxyUrl,
             mediaRef = MediaVariant(
                 id = "pixiv:$id:$index",
-                url = proxyUrl,
+                url = pathProxyUrl ?: idProxyUrl,
                 width = width,
                 height = height,
                 extension = extension,
             ),
+            fallbackUrl = idProxyUrl.takeUnless { it == pathProxyUrl },
         )
     }
     val firstPage = pages.first()
@@ -125,10 +130,10 @@ fun PixivIllustDto.toPost(): Post {
         width = firstPage.width,
         height = firstPage.height,
         previewUrl = firstPage.mediaRef.url,
-        sampleUrl = firstPage.mediaRef.url,
+        sampleUrl = firstPage.fallbackUrl ?: firstPage.mediaRef.url,
         jpegUrl = null,
         originalUrl = firstPage.originalUrl ?: firstPage.mediaRef.url,
-        variants = listOf(
+        variants = listOfNotNull(
             MediaVariant(
                 id = "preview",
                 url = firstPage.previewUrl,
@@ -136,6 +141,15 @@ fun PixivIllustDto.toPost(): Post {
                 height = firstPage.height,
             ),
             firstPage.mediaRef,
+            firstPage.fallbackUrl?.let {
+                MediaVariant(
+                    id = "pixiv-cat",
+                    url = it,
+                    width = firstPage.width,
+                    height = firstPage.height,
+                    extension = firstPage.mediaRef.extension,
+                )
+            },
             MediaVariant(
                 id = "original",
                 url = firstPage.originalUrl ?: firstPage.mediaRef.url,

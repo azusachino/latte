@@ -56,20 +56,67 @@ data class Post(
         get() = if (width > 0 && height > 0) width.toFloat() / height.toFloat() else 1f
 
     val bestVariant: MediaVariant
-        get() = variants.firstOrNull {
+        get() = variants.firstOrNull { siteId == "pixiv" && it.id == "pixiv-cat" }
+            ?: variants.firstOrNull {
             siteId == "pixiv" && (
                 it.id == "pixiv-cat" ||
                     it.url.startsWith("https://i.pixiv.cat/") ||
                     it.url.startsWith("https://pixiv.cat/")
                 )
-        }
+            }
             ?: variants.firstOrNull { it.id == "jpeg" }
             ?: variants.firstOrNull { it.id == "sample" }
             ?: variants.firstOrNull { it.id == "original" }
             ?: variants.first { it.id == "preview" }
 
+    val imageSources: List<String>
+        get() = buildList {
+            add(previewUrl)
+            if (siteId == "pixiv") {
+                addAll(variants.filter { it.id == "pixiv-cat" }.map { it.url })
+            }
+        }.distinct()
+
     val workIdentity: ArtworkIdentity
         get() = ArtworkIdentity(siteId, id)
+}
+
+fun Post.forPage(index: Int): Post {
+    if (siteId != "pixiv" || pages.isEmpty()) return this
+    val page = pages.getOrNull(index.coerceIn(pages.indices)) ?: return this
+    return copy(
+        previewUrl = page.previewUrl,
+        sampleUrl = page.fallbackUrl ?: page.mediaRef.url,
+        originalUrl = page.originalUrl ?: page.mediaRef.url,
+        variants = listOfNotNull(
+            MediaVariant(
+                id = "preview",
+                url = page.previewUrl,
+                width = page.width,
+                height = page.height,
+            ),
+            page.mediaRef,
+            page.fallbackUrl?.let {
+                MediaVariant(
+                    id = "pixiv-cat",
+                    url = it,
+                    width = page.width,
+                    height = page.height,
+                    extension = page.mediaRef.extension,
+                )
+            },
+            MediaVariant(
+                id = "original",
+                url = page.originalUrl ?: page.mediaRef.url,
+                width = page.width,
+                height = page.height,
+                extension = page.mediaRef.extension,
+            ),
+        ),
+        width = page.width,
+        height = page.height,
+        pageIndex = page.pageIndex,
+    )
 }
 
 fun YandePostDto.toDomain(): Post {

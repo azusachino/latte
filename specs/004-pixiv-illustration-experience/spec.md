@@ -23,8 +23,9 @@ search:
 4. **Search** — illustration results for a user-entered keyword.
 
 Each destination uses the existing Latte Explore grid, image-first detail
-pager, and durable local save behavior. Latte is not becoming a complete Pixiv
-third-party client.
+viewer, and durable local save behavior. Detail swipe moves between neighboring
+feed illustrations; multi-page works use explicit page controls inside the
+viewer. Latte is not becoming a complete Pixiv third-party client.
 
 Konachan is explicitly postponed and is not part of this implementation gate.
 
@@ -33,16 +34,17 @@ Konachan is explicitly postponed and is not part of this implementation gate.
 ### User Story 1 — Browse Pixiv popular works (P1)
 
 As the owner, I can switch Latte to Pixiv, browse the daily ranked
-illustration feed, open a work, page through all of its illustrations, inspect
-metadata, and save a page locally.
+illustration feed, open a work, view all of its pages, inspect metadata, and
+save the visible page locally.
 
 Acceptance scenarios:
 
 1. Given Pixiv is selected and the account is authenticated, when Popular opens,
    then Latte requests the daily ranking operation and renders normalized
    artwork cards in the existing grid.
-2. Given a ranked work has multiple pages, when it opens, then the detail pager
-   contains that work's pages in page-index order, not neighboring feed items.
+2. Given a ranked work has multiple pages, when it opens, then horizontal detail
+   swipe moves to neighboring feed illustrations, while explicit page controls
+   move through the current work's pages and show `Page n of m`.
 3. Given a page is saved, when the download is queued, then the display name
    and duplicate identity use `(pixiv, workId, pageIndex, mediaVariant)`.
 4. Given the ranking response is malformed or unavailable, when the feed loads,
@@ -111,9 +113,12 @@ Search remains the existing top-bar search action. It opens a query-labelled
 feed and returns to the previous destination with its scroll position intact;
 it is not a permanent fourth tab.
 
-The grid remains aspect-preserving and artwork-first. Detail remains a pager,
-but its pages are the illustrations inside one Pixiv work rather than adjacent
-posts from the feed.
+The grid remains aspect-preserving and artwork-first. Detail is a feed pager:
+horizontal swipe always means adjacent illustrations from the active feed. A
+multi-page Pixiv work is a second, explicit navigation level inside the current
+viewer, using previous/next page controls and a visible `Page n of m` label.
+This prevents a page inside one work from being mistaken for the next feed
+item, and makes Save/metadata actions target the visible page.
 
 The `Latte` title acts as the platform switcher. Selecting Pixiv changes the
 platform tint/background and tab semantics together, with a short crossfade
@@ -170,7 +175,7 @@ token in Latte.
 | `pixiv-account` | Browser/token auth flows, session state, secure persistence, and account-required gating | — |
 | `pixiv-feeds` | Popular, followed-update, favorites, search, and search-support contracts plus opaque paging | `pixiv-artwork`, `pixiv-account` |
 | `pixiv-transport` | `i.pixiv.cat` host rewriting, `pixiv.cat` fallback resolution, and response filename/type handling | `pixiv-artwork` |
-| `pixiv-explore` | Platform switcher, feed tabs, detail pager, bookmark actions, and local save handoff | `pixiv-artwork`, `pixiv-account`, `pixiv-feeds`, `pixiv-transport` |
+| `pixiv-explore` | Platform switcher, feed tabs, feed detail pager, page controls, bookmark actions, and local save handoff | `pixiv-artwork`, `pixiv-account`, `pixiv-feeds`, `pixiv-transport` |
 
 Build order: `pixiv-artwork` → fixture-backed `pixiv-account`,
 `pixiv-feeds`, and `pixiv-transport` → `pixiv-explore` → live Pixiv auth/feed

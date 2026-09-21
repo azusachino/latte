@@ -144,7 +144,13 @@ data class ExploreUiState(
 internal fun ExploreUiState.pixivFeedToReloadAfterAuthentication(): PixivFeedKind? = when {
     !isPixiv -> null
     isSearch -> PixivFeedKind.SEARCH
-    selectedTab == 0 -> PixivFeedKind.POPULAR
+    else -> pixivKindForTab(selectedTab)
+}
+
+internal fun pixivKindForTab(tabIndex: Int): PixivFeedKind? = when (tabIndex) {
+    0 -> PixivFeedKind.POPULAR
+    1 -> PixivFeedKind.FOLLOWED_UPDATES
+    2 -> PixivFeedKind.FAVORITES
     else -> null
 }
 
@@ -216,7 +222,11 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun selectTab(tabIndex: Int) {
+        val state = _uiState.value
         _uiState.update { it.copy(selectedTab = tabIndex) }
+        if (state.isPixiv && state.activeSearchTags.isBlank()) {
+            pixivKindForTab(tabIndex)?.let { kind -> ensurePixivFeedLoaded(kind) }
+        }
     }
 
     fun selectPopularTab() = selectTab(0)
@@ -609,6 +619,18 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         1 -> PixivFeedKind.FOLLOWED_UPDATES
         2 -> PixivFeedKind.FAVORITES
         else -> if (_uiState.value.isSearch) PixivFeedKind.SEARCH else PixivFeedKind.POPULAR
+    }
+
+    private fun ensurePixivFeedLoaded(kind: PixivFeedKind) {
+        val feed = pixivFeed(_uiState.value, kind)
+        if (
+            feed.posts.isNotEmpty() ||
+            feed.isLoading ||
+            feed.isRefreshing ||
+            feed.error != null ||
+            !feed.hasMore
+        ) return
+        loadPixivInitial(kind)
     }
 
     fun clearSearch() {

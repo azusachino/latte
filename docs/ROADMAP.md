@@ -101,7 +101,8 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
   - Pixiv illusts can contain multiple pages (`page_count >= 1`).
   - Extend the Kotlin post/media model with a site-owned multi-page mapping
     before exposing it to the shared detail pager.
-  - Support navigating pages within a post in the detail pager.
+  - Keep horizontal detail swipe on neighboring feed works; expose explicit
+    previous/next controls for pages within a multi-page Pixiv work.
 - **Subscribed / Following Updates**:
   - Add a Pixiv-owned following query and expose a "Following" tab only when
     the selected plugin advertises the capability.
