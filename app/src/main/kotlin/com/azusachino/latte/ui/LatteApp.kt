@@ -31,6 +31,7 @@ import com.azusachino.latte.ui.detail.DetailScreen
 import com.azusachino.latte.ui.explore.ExploreScreen
 import com.azusachino.latte.ui.explore.ExploreViewModel
 import com.azusachino.latte.ui.settings.SettingsScreen
+import com.azusachino.latte.ui.theme.LattePalette
 import com.azusachino.latte.ui.theme.LatteTheme
 
 sealed interface Screen {
@@ -63,6 +64,8 @@ fun LatteApp(
     val context = LocalContext.current
     val downloadManager = remember { DownloadManager(context) }
     val themeMode by exploreViewModel.preferences.themeMode.collectAsState()
+    val exploreState by exploreViewModel.uiState.collectAsState()
+    val palette = if (exploreState.isPixiv) LattePalette.PIXIV else LattePalette.YANDE
 
     val pluginStorage = remember { com.azusachino.latte.plugin.storage.SecurePluginStorage(context) }
     val yandePlugin = remember { com.azusachino.latte.plugin.yande.YandePlugin(pluginStorage, com.azusachino.latte.data.network.OkHttpProvider.client, com.azusachino.latte.data.network.OkHttpProvider.cookieJar) }
@@ -95,7 +98,7 @@ fun LatteApp(
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Explore) }
     var activeLoginPlugin by remember { mutableStateOf<com.azusachino.latte.plugin.SitePlugin?>(null) }
 
-    LatteTheme(themeMode = themeMode) {
+    LatteTheme(themeMode = themeMode, palette = palette) {
         Box(modifier = modifier.fillMaxSize()) {
             AnimatedContent(
                 targetState = currentScreen,

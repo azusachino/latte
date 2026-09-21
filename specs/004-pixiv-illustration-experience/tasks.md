@@ -137,8 +137,9 @@ approved `Platforms & accounts` cards/actions.
   platform picker, Pixiv's `Popular | Following | Favorites` surface and
   explicit auth-required state, the Pixiv browser-login dialog, the
   `Platforms & accounts` screen, and a Yande detail screen with Save/Open/Share
-  actions. The refreshed picker now shows a blue Yande image badge and pink
-  Pixiv palette badge with a selected check.
+  actions. The refreshed picker now shows teal Yande `y` and blue Pixiv `p`
+  favicon-like badges with a selected check; switching platforms also changes
+  the root Material 3 palette used across the app.
 - An anonymous live ranking probe returned HTTP 400 with Pixiv's
   `invalid_request` OAuth message, so Popular is currently auth-gated by the
   upstream App API; `pixiv.cat` remains image transport only.

@@ -47,9 +47,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -95,6 +93,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -112,7 +112,7 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 private val YANDE_ACCENT = Color(0xFF3F6F8F)
-private val PIXIV_ACCENT = Color(0xFFE45C83)
+private val PIXIV_ACCENT = Color(0xFF0096FA)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -143,7 +143,7 @@ fun ExploreScreen(
     var isSearchExpanded by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf(uiState.activeSearchTags) }
     var platformMenuOpen by remember { mutableStateOf(false) }
-    val platformAccent = if (uiState.isPixiv) PIXIV_ACCENT else YANDE_ACCENT
+    val platformAccent = MaterialTheme.colorScheme.primary
 
     LaunchedEffect(pagerState.currentPage) {
         viewModel.selectTab(pagerState.currentPage)
@@ -173,7 +173,7 @@ fun ExploreScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = platformAccent.copy(alpha = 0.10f),
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 TopAppBar(
@@ -193,9 +193,15 @@ fun ExploreScreen(
                                     overflow = TextOverflow.Ellipsis,
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                PlatformBadge(
-                                    isPixiv = uiState.isPixiv,
+                                PlatformLogo(
+                                    label = if (uiState.isPixiv) "p" else "y",
                                     color = platformAccent,
+                                    contentDescription = if (uiState.isPixiv) {
+                                        "Current platform: Pixiv"
+                                    } else {
+                                        "Current platform: Yande"
+                                    },
+                                    modifier = Modifier.size(28.dp),
                                 )
                             }
                             DropdownMenu(
@@ -204,9 +210,10 @@ fun ExploreScreen(
                             ) {
                                 DropdownMenuItem(
                                     leadingIcon = {
-                                        PlatformMarker(
-                                            label = "Y",
+                                        PlatformLogo(
+                                            label = "y",
                                             color = YANDE_ACCENT,
+                                            contentDescription = "Yande platform",
                                         )
                                     },
                                     text = {
@@ -237,9 +244,10 @@ fun ExploreScreen(
                                 )
                                 DropdownMenuItem(
                                     leadingIcon = {
-                                        PlatformMarker(
-                                            label = "P",
+                                        PlatformLogo(
+                                            label = "p",
                                             color = PIXIV_ACCENT,
+                                            contentDescription = "Pixiv platform",
                                         )
                                     },
                                     text = {
@@ -550,42 +558,24 @@ fun ExploreScreen(
 }
 
 @Composable
-private fun PlatformBadge(
-    isPixiv: Boolean,
-    color: Color,
-) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(28.dp)
-            .clip(CircleShape)
-            .background(color.copy(alpha = 0.16f)),
-    ) {
-        Icon(
-            imageVector = if (isPixiv) Icons.Default.Palette else Icons.Default.Image,
-            contentDescription = if (isPixiv) "Current platform: Pixiv" else "Current platform: Yande",
-            tint = color,
-            modifier = Modifier.size(18.dp),
-        )
-    }
-}
-
-@Composable
-private fun PlatformMarker(
+private fun PlatformLogo(
     label: String,
     color: Color,
+    contentDescription: String,
+    modifier: Modifier = Modifier.size(32.dp),
 ) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(32.dp)
-            .clip(CircleShape)
-            .background(color.copy(alpha = 0.16f)),
+            .then(modifier)
+            .clip(RoundedCornerShape(9.dp))
+            .background(color)
+            .semantics { this.contentDescription = contentDescription },
     ) {
         Text(
             text = label,
-            color = color,
-            style = MaterialTheme.typography.labelLarge,
+            color = Color.White,
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
         )
     }
