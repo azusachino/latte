@@ -260,7 +260,12 @@ fun DetailScreen(
                                     ) {
                                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                             Text("Image unavailable", color = Color.White)
-                                            TextButton(onClick = { imageRetryCount++ }) {
+                                            TextButton(
+                                                onClick = {
+                                                    imageSourceIndex = 0
+                                                    imageRetryCount++
+                                                },
+                                            ) {
                                                 Text("Retry")
                                             }
                                         }

@@ -1107,26 +1107,32 @@ private fun PostGridItem(
                     }
                 },
                 error = {
-                    Box(
-                        modifier = Modifier.fillMaxSize().padding(8.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "Image unavailable",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            TextButton(
-                                onClick = {
-                                    if (safeImageSourceIndex < imageSources.lastIndex) {
-                                        imageSourceIndex = safeImageSourceIndex + 1
-                                    } else {
+                    if (safeImageSourceIndex < imageSources.lastIndex) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier.fillMaxSize().padding(8.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "Image unavailable",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                TextButton(
+                                    onClick = {
+                                        imageSourceIndex = 0
                                         imageRetryCount++
-                                    }
-                                },
-                            ) {
-                                Text("Retry")
+                                    },
+                                ) {
+                                    Text("Retry")
+                                }
                             }
                         }
                     }

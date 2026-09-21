@@ -18,6 +18,8 @@
   the authenticated-feed transition without a signed-out flash.
 - Added visible thumbnail loading, proxy fallback, and retry states so a slow
   or failed image request cannot leave a grid card or detail viewer blank.
+- Kept fallback attempts in the loading state so a transient proxy failure does
+  not flash `Image unavailable` before the next candidate is tried.
 - Preferred the path-preserving `i.pixiv.cat` candidate before the ID/page
   fallback and retained WebP extensions when constructing Pixiv fallback URLs.
 - Kept Pixiv feed navigation separate from page navigation inside a work.
