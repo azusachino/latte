@@ -7,14 +7,26 @@ import com.azusachino.latte.data.model.PoolSummary
 import com.azusachino.latte.data.model.PopularPeriod
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.network.YandeApi
+import com.azusachino.latte.data.network.PixivApi
+import com.azusachino.latte.data.network.PixivFeedKind
+import com.azusachino.latte.data.network.PixivFeedRequest
+import com.azusachino.latte.data.network.PixivFeedResult
+import com.azusachino.latte.data.network.PixivSupportResult
 import com.azusachino.latte.data.settings.LattePreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+
+enum class ExplorePlatform {
+    YANDE,
+    PIXIV,
+}
 
 data class FeedState(
     val posts: List<Post> = emptyList(),
@@ -22,8 +34,10 @@ data class FeedState(
     val isLoadingMore: Boolean = false,
     val isRefreshing: Boolean = false,
     val error: String? = null,
+    val authRequired: Boolean = false,
     val page: Int = 1,
     val hasMore: Boolean = true,
+    val nextCursor: String? = null,
 )
 
 data class PoolListState(
@@ -39,24 +53,39 @@ data class PoolListState(
 
 // Tab indices: 0 = Popular, 1 = Newest, 2 = Favorites, 3 = Pools
 data class ExploreUiState(
+    val platform: ExplorePlatform = ExplorePlatform.YANDE,
     val popularFeed: FeedState = FeedState(),
     val newestFeed: FeedState = FeedState(),
     val favoritesFeed: FeedState = FeedState(),
     val searchFeed: FeedState = FeedState(),
+    val pixivPopularFeed: FeedState = FeedState(),
+    val pixivFollowedFeed: FeedState = FeedState(),
+    val pixivFavoritesFeed: FeedState = FeedState(),
+    val pixivSearchFeed: FeedState = FeedState(),
     val poolsFeed: PoolListState = PoolListState(),
     val poolCovers: Map<Long, String> = emptyMap(),
     val searchTags: String = "",
+    val pixivSearchTags: String = "",
+    val pixivSearchSuggestions: List<String> = emptyList(),
+    val pixivTrendingTags: List<String> = emptyList(),
     val activePoolName: String? = null,
     val popularPeriod: PopularPeriod = PopularPeriod.DAY,
     val popularDate: LocalDate = LocalDate.now(),
     val selectedTab: Int = 0,
 ) {
-    val isPopular: Boolean get() = selectedTab == 0 && searchTags.isBlank()
-    val isSearch: Boolean get() = searchTags.isNotBlank()
+    val activeSearchTags: String
+        get() = if (platform == ExplorePlatform.PIXIV) pixivSearchTags else searchTags
+
+    val isPixiv: Boolean get() = platform == ExplorePlatform.PIXIV
+    val isPopular: Boolean get() = selectedTab == 0 && activeSearchTags.isBlank()
+    val isSearch: Boolean get() = activeSearchTags.isNotBlank()
 
     val posts: List<Post>
         get() = when {
-            isSearch -> searchFeed.posts
+            isSearch -> if (isPixiv) pixivSearchFeed.posts else searchFeed.posts
+            isPixiv && selectedTab == 0 -> pixivPopularFeed.posts
+            isPixiv && selectedTab == 1 -> pixivFollowedFeed.posts
+            isPixiv && selectedTab == 2 -> pixivFavoritesFeed.posts
             selectedTab == 0 -> popularFeed.posts
             selectedTab == 1 -> newestFeed.posts
             selectedTab == 2 -> favoritesFeed.posts
@@ -65,7 +94,10 @@ data class ExploreUiState(
 
     val isLoading: Boolean
         get() = when {
-            isSearch -> searchFeed.isLoading
+            isSearch -> if (isPixiv) pixivSearchFeed.isLoading else searchFeed.isLoading
+            isPixiv && selectedTab == 0 -> pixivPopularFeed.isLoading
+            isPixiv && selectedTab == 1 -> pixivFollowedFeed.isLoading
+            isPixiv && selectedTab == 2 -> pixivFavoritesFeed.isLoading
             selectedTab == 0 -> popularFeed.isLoading
             selectedTab == 1 -> newestFeed.isLoading
             selectedTab == 2 -> favoritesFeed.isLoading
@@ -74,7 +106,10 @@ data class ExploreUiState(
 
     val isLoadingMore: Boolean
         get() = when {
-            isSearch -> searchFeed.isLoadingMore
+            isSearch -> if (isPixiv) pixivSearchFeed.isLoadingMore else searchFeed.isLoadingMore
+            isPixiv && selectedTab == 0 -> pixivPopularFeed.isLoadingMore
+            isPixiv && selectedTab == 1 -> pixivFollowedFeed.isLoadingMore
+            isPixiv && selectedTab == 2 -> pixivFavoritesFeed.isLoadingMore
             selectedTab == 0 -> popularFeed.isLoadingMore
             selectedTab == 1 -> newestFeed.isLoadingMore
             selectedTab == 2 -> favoritesFeed.isLoadingMore
@@ -83,7 +118,10 @@ data class ExploreUiState(
 
     val isRefreshing: Boolean
         get() = when {
-            isSearch -> searchFeed.isRefreshing
+            isSearch -> if (isPixiv) pixivSearchFeed.isRefreshing else searchFeed.isRefreshing
+            isPixiv && selectedTab == 0 -> pixivPopularFeed.isRefreshing
+            isPixiv && selectedTab == 1 -> pixivFollowedFeed.isRefreshing
+            isPixiv && selectedTab == 2 -> pixivFavoritesFeed.isRefreshing
             selectedTab == 0 -> popularFeed.isRefreshing
             selectedTab == 1 -> newestFeed.isRefreshing
             selectedTab == 2 -> favoritesFeed.isRefreshing
@@ -92,7 +130,10 @@ data class ExploreUiState(
 
     val error: String?
         get() = when {
-            isSearch -> searchFeed.error
+            isSearch -> if (isPixiv) pixivSearchFeed.error else searchFeed.error
+            isPixiv && selectedTab == 0 -> pixivPopularFeed.error
+            isPixiv && selectedTab == 1 -> pixivFollowedFeed.error
+            isPixiv && selectedTab == 2 -> pixivFavoritesFeed.error
             selectedTab == 0 -> popularFeed.error
             selectedTab == 1 -> newestFeed.error
             selectedTab == 2 -> favoritesFeed.error
@@ -102,6 +143,8 @@ data class ExploreUiState(
 
 class ExploreViewModel(application: Application) : AndroidViewModel(application) {
     private val api = YandeApi()
+    private var pixivApi: PixivApi? = null
+    private var pixivLoadJob: Job? = null
     val preferences = LattePreferences(application)
 
     private val _uiState = MutableStateFlow(ExploreUiState())
@@ -117,7 +160,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                 loadPopularInitial()
                 loadNewestInitial()
                 if (_uiState.value.isSearch) {
-                    search(_uiState.value.searchTags)
+                    search(_uiState.value.activeSearchTags)
                 }
             }
         }
@@ -133,6 +176,29 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
 
     fun setColumnCount(count: Int) {
         preferences.setColumnCount(count)
+    }
+
+    fun configurePixiv(api: PixivApi) {
+        if (pixivApi === api) return
+        pixivApi = api
+        if (_uiState.value.platform == ExplorePlatform.PIXIV && _uiState.value.pixivPopularFeed.posts.isEmpty()) {
+            loadPixivInitial(PixivFeedKind.POPULAR)
+        }
+    }
+
+    fun selectPlatform(platform: ExplorePlatform) {
+        val previous = _uiState.value.platform
+        if (previous == platform) return
+        pixivLoadJob?.cancel()
+        _uiState.update {
+            it.copy(
+                platform = platform,
+                selectedTab = if (platform == ExplorePlatform.PIXIV) it.selectedTab.coerceAtMost(2) else it.selectedTab,
+            )
+        }
+        if (platform == ExplorePlatform.PIXIV && _uiState.value.pixivPopularFeed.posts.isEmpty()) {
+            loadPixivInitial(PixivFeedKind.POPULAR)
+        }
     }
 
     fun selectTab(tabIndex: Int) {
@@ -276,6 +342,10 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
 
     fun loadMoreSearch() {
         val state = _uiState.value
+        if (state.isPixiv) {
+            loadMorePixiv(PixivFeedKind.SEARCH, state.pixivSearchTags)
+            return
+        }
         val feed = state.searchFeed
         if (feed.isLoading || feed.isLoadingMore || !feed.hasMore || state.searchTags.isBlank()) return
 
@@ -353,6 +423,10 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             clearSearch()
             return
         }
+        if (_uiState.value.isPixiv) {
+            searchPixiv(trimmed)
+            return
+        }
         _uiState.update { it.copy(searchTags = trimmed, activePoolName = poolName) }
         viewModelScope.launch {
             _uiState.update { it.copy(searchFeed = it.searchFeed.copy(isLoading = true, error = null, page = 1)) }
@@ -375,12 +449,171 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun searchPixiv(query: String) {
+        val trimmed = query.trim()
+        if (trimmed.isBlank()) {
+            clearSearch()
+            return
+        }
+        _uiState.update { it.copy(pixivSearchTags = trimmed, activePoolName = null) }
+        loadPixivInitial(PixivFeedKind.SEARCH, trimmed)
+    }
+
+    fun loadPixivSearchSupport(query: String) {
+        val client = pixivApi ?: return
+        viewModelScope.launch {
+            if (query.isNotBlank()) {
+                when (val result = client.autocomplete(query)) {
+                    is PixivSupportResult.Success -> _uiState.update { it.copy(pixivSearchSuggestions = result.values) }
+                    else -> Unit
+                }
+            } else {
+                _uiState.update { it.copy(pixivSearchSuggestions = emptyList()) }
+            }
+            if (_uiState.value.pixivTrendingTags.isEmpty()) {
+                when (val result = client.trendingTags()) {
+                    is PixivSupportResult.Success -> _uiState.update { it.copy(pixivTrendingTags = result.values) }
+                    else -> Unit
+                }
+            }
+        }
+    }
+
+    fun loadPixivInitial(kind: PixivFeedKind = selectedPixivKind(), query: String? = null) {
+        val client = pixivApi ?: return updatePixivError(kind, "Pixiv is not configured")
+        val activeQuery = query ?: _uiState.value.pixivSearchTags.takeIf { kind == PixivFeedKind.SEARCH }
+        pixivLoadJob?.cancel()
+        updatePixivFeed(kind) { it.copy(isLoading = true, isRefreshing = false, error = null, authRequired = false, page = 1, nextCursor = null) }
+        pixivLoadJob = viewModelScope.launch {
+            val result = client.load(
+                PixivFeedRequest(kind = kind, query = activeQuery, refresh = true),
+            )
+            if (!isActive) return@launch
+            applyPixivResult(kind, result, isAppend = false)
+        }
+    }
+
+    fun loadMorePixiv(kind: PixivFeedKind = selectedPixivKind(), query: String? = null) {
+        val state = _uiState.value
+        val feed = pixivFeed(state, kind)
+        val cursor = feed.nextCursor ?: return
+        if (feed.isLoading || feed.isLoadingMore) return
+        val activeQuery = query ?: state.pixivSearchTags.takeIf { kind == PixivFeedKind.SEARCH }
+        pixivLoadJob?.cancel()
+        updatePixivFeed(kind) { it.copy(isLoadingMore = true) }
+        pixivLoadJob = viewModelScope.launch {
+            val result = pixivApi?.load(PixivFeedRequest(kind = kind, query = activeQuery, cursor = cursor))
+                ?: PixivFeedResult.TransportFailure("Pixiv is not configured")
+            if (!isActive) return@launch
+            applyPixivResult(kind, result, isAppend = true)
+        }
+    }
+
+    fun refreshPixiv(kind: PixivFeedKind = selectedPixivKind(), query: String? = null) {
+        val activeQuery = query ?: _uiState.value.pixivSearchTags.takeIf { kind == PixivFeedKind.SEARCH }
+        pixivLoadJob?.cancel()
+        updatePixivFeed(kind) { it.copy(isRefreshing = true, error = null, authRequired = false, nextCursor = null) }
+        pixivLoadJob = viewModelScope.launch {
+            val result = pixivApi?.load(
+                PixivFeedRequest(kind = kind, query = activeQuery, refresh = true),
+            ) ?: PixivFeedResult.TransportFailure("Pixiv is not configured")
+            if (!isActive) return@launch
+            applyPixivResult(kind, result, isAppend = false)
+        }
+    }
+
+    private fun applyPixivResult(kind: PixivFeedKind, result: PixivFeedResult, isAppend: Boolean) {
+        when (result) {
+            is PixivFeedResult.Success -> updatePixivFeed(kind) {
+                it.copy(
+                    posts = if (isAppend) it.posts + result.page.items else result.page.items,
+                    isLoading = false,
+                    isLoadingMore = false,
+                    isRefreshing = false,
+                    error = null,
+                    authRequired = false,
+                    page = if (isAppend) it.page + 1 else 1,
+                    hasMore = result.page.nextCursor != null,
+                    nextCursor = result.page.nextCursor,
+                )
+            }
+            PixivFeedResult.Empty -> updatePixivFeed(kind) {
+                it.copy(
+                    posts = if (isAppend) it.posts else emptyList(),
+                    isLoading = false,
+                    isLoadingMore = false,
+                    isRefreshing = false,
+                    error = null,
+                    authRequired = false,
+                    hasMore = false,
+                    nextCursor = null,
+                )
+            }
+            PixivFeedResult.AuthRequired -> updatePixivError(kind, "Sign in to Pixiv to continue", authRequired = true)
+            is PixivFeedResult.RateLimited -> updatePixivError(
+                kind,
+                result.retryAfterSeconds?.let { "Pixiv is rate limiting requests; retry in ${it}s" }
+                    ?: "Pixiv is rate limiting requests",
+            )
+            is PixivFeedResult.UpstreamDrift -> updatePixivError(kind, "Pixiv changed its ${result.operation} response")
+            is PixivFeedResult.TransportFailure -> updatePixivError(kind, result.message)
+        }
+    }
+
+    private fun updatePixivError(kind: PixivFeedKind, message: String, authRequired: Boolean = false) {
+        updatePixivFeed(kind) {
+            it.copy(
+                isLoading = false,
+                isLoadingMore = false,
+                isRefreshing = false,
+                error = message,
+                authRequired = authRequired,
+            )
+        }
+    }
+
+    private fun updatePixivFeed(kind: PixivFeedKind, transform: (FeedState) -> FeedState) {
+        _uiState.update { state ->
+            val updated = transform(pixivFeed(state, kind))
+            when (kind) {
+                PixivFeedKind.POPULAR -> state.copy(pixivPopularFeed = updated)
+                PixivFeedKind.FOLLOWED_UPDATES -> state.copy(pixivFollowedFeed = updated)
+                PixivFeedKind.FAVORITES -> state.copy(pixivFavoritesFeed = updated)
+                PixivFeedKind.SEARCH -> state.copy(pixivSearchFeed = updated)
+            }
+        }
+    }
+
+    private fun pixivFeed(state: ExploreUiState, kind: PixivFeedKind): FeedState = when (kind) {
+        PixivFeedKind.POPULAR -> state.pixivPopularFeed
+        PixivFeedKind.FOLLOWED_UPDATES -> state.pixivFollowedFeed
+        PixivFeedKind.FAVORITES -> state.pixivFavoritesFeed
+        PixivFeedKind.SEARCH -> state.pixivSearchFeed
+    }
+
+    private fun selectedPixivKind(): PixivFeedKind = when (_uiState.value.selectedTab) {
+        1 -> PixivFeedKind.FOLLOWED_UPDATES
+        2 -> PixivFeedKind.FAVORITES
+        else -> if (_uiState.value.isSearch) PixivFeedKind.SEARCH else PixivFeedKind.POPULAR
+    }
+
     fun clearSearch() {
-        _uiState.update { it.copy(searchTags = "", searchFeed = FeedState(), activePoolName = null) }
+        pixivLoadJob?.cancel()
+        _uiState.update {
+            if (it.isPixiv) {
+                it.copy(pixivSearchTags = "", pixivSearchFeed = FeedState(), activePoolName = null)
+            } else {
+                it.copy(searchTags = "", searchFeed = FeedState(), activePoolName = null)
+            }
+        }
     }
 
     fun refreshSearch() {
         val state = _uiState.value
+        if (state.isPixiv) {
+            if (state.pixivSearchTags.isNotBlank()) refreshPixiv(PixivFeedKind.SEARCH, state.pixivSearchTags)
+            return
+        }
         if (state.searchTags.isBlank()) return
 
         viewModelScope.launch {
@@ -579,6 +812,10 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
 
     fun loadMore() {
         val state = _uiState.value
+        if (state.isPixiv) {
+            loadMorePixiv()
+            return
+        }
         when {
             state.isSearch -> loadMoreSearch()
             state.selectedTab == 0 -> loadMorePopular()
@@ -588,6 +825,10 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
 
     fun refresh() {
         val state = _uiState.value
+        if (state.isPixiv) {
+            refreshPixiv()
+            return
+        }
         when {
             state.isSearch -> search(state.searchTags)
             state.selectedTab == 0 -> refreshPopular()
@@ -597,6 +838,10 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
 
     fun loadInitial() {
         val state = _uiState.value
+        if (state.isPixiv) {
+            loadPixivInitial()
+            return
+        }
         when {
             state.isSearch -> search(state.searchTags)
             state.selectedTab == 0 -> loadPopularInitial()

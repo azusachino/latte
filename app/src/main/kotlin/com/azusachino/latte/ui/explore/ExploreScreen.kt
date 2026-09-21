@@ -58,6 +58,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -99,6 +101,7 @@ import com.azusachino.latte.data.model.PopularPeriod
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.plugin.SitePlugin
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -111,6 +114,7 @@ fun ExploreScreen(
     onPostClick: (index: Int) -> Unit,
     onOpenSettings: () -> Unit,
     sitePlugin: SitePlugin? = null,
+    pixivPlugin: SitePlugin? = null,
     onRequireLogin: (SitePlugin) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -120,16 +124,22 @@ fun ExploreScreen(
     val newestGridState = rememberLazyStaggeredGridState()
     val favoritesGridState = rememberLazyStaggeredGridState()
     val searchGridState = rememberLazyStaggeredGridState()
-    val pagerState = rememberPagerState(initialPage = uiState.selectedTab) { 4 }
+    val pixivPopularGridState = rememberLazyStaggeredGridState()
+    val pixivFollowedGridState = rememberLazyStaggeredGridState()
+    val pixivFavoritesGridState = rememberLazyStaggeredGridState()
+    val pixivSearchGridState = rememberLazyStaggeredGridState()
+    val tabCount = if (uiState.isPixiv) 3 else 4
+    val pagerState = rememberPagerState(initialPage = uiState.selectedTab.coerceAtMost(tabCount - 1)) { tabCount }
     val coroutineScope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
 
     var isSearchExpanded by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf(uiState.searchTags) }
+    var searchQuery by remember { mutableStateOf(uiState.activeSearchTags) }
+    var platformMenuOpen by remember { mutableStateOf(false) }
 
     LaunchedEffect(pagerState.currentPage) {
         viewModel.selectTab(pagerState.currentPage)
-        searchQuery = if (pagerState.currentPage == 3) uiState.poolsFeed.query else uiState.searchTags
+        searchQuery = if (!uiState.isPixiv && pagerState.currentPage == 3) uiState.poolsFeed.query else uiState.activeSearchTags
     }
 
     LaunchedEffect(uiState.selectedTab) {
@@ -138,31 +148,65 @@ fun ExploreScreen(
         }
     }
 
-    BackHandler(enabled = uiState.searchTags.isNotBlank()) {
+    BackHandler(enabled = uiState.isSearch) {
         viewModel.clearSearch()
     }
 
-    LaunchedEffect(uiState.searchTags) {
-        searchQuery = uiState.searchTags
+    LaunchedEffect(uiState.activeSearchTags) {
+        searchQuery = uiState.activeSearchTags
+    }
+
+    LaunchedEffect(isSearchExpanded, uiState.isPixiv, searchQuery) {
+        if (isSearchExpanded && uiState.isPixiv) {
+            delay(250)
+            viewModel.loadPixivSearchSupport(searchQuery)
+        }
     }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        containerColor = if (uiState.isPixiv) {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.16f)
+        } else {
+            MaterialTheme.colorScheme.background
+        },
         topBar = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 TopAppBar(
                     title = {
-                        Text(
-                            text = uiState.activePoolName
-                                ?: if (uiState.searchTags.isNotBlank()) uiState.searchTags
-                                else "Latte",
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        Box {
+                            Text(
+                                text = uiState.activePoolName
+                                    ?: if (uiState.isSearch) uiState.activeSearchTags
+                                    else "Latte",
+                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.clickable { platformMenuOpen = true },
+                            )
+                            DropdownMenu(
+                                expanded = platformMenuOpen,
+                                onDismissRequest = { platformMenuOpen = false },
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Yande") },
+                                    onClick = {
+                                        platformMenuOpen = false
+                                        viewModel.selectPlatform(ExplorePlatform.YANDE)
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Pixiv") },
+                                    onClick = {
+                                        platformMenuOpen = false
+                                        viewModel.selectPlatform(ExplorePlatform.PIXIV)
+                                    },
+                                )
+                            }
+                        }
                     },
                     navigationIcon = {
-                        if (uiState.searchTags.isNotBlank()) {
+                        if (uiState.isSearch) {
                             IconButton(onClick = { viewModel.clearSearch() }) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -209,7 +253,7 @@ fun ExploreScreen(
 
                 // Expandable Search Bar -- searches pools while the Pools tab is
                 // active and no pool is open yet, otherwise searches post tags.
-                val isPoolsSearch = pagerState.currentPage == 3 && uiState.searchTags.isBlank()
+                val isPoolsSearch = !uiState.isPixiv && pagerState.currentPage == 3 && !uiState.isSearch
 
                 AnimatedVisibility(
                     visible = isSearchExpanded,
@@ -256,12 +300,43 @@ fun ExploreScreen(
                             },
                             shape = RoundedCornerShape(12.dp),
                         )
+                        if (uiState.isPixiv && isSearchExpanded) {
+                            val supportTags = if (searchQuery.isBlank()) {
+                                uiState.pixivTrendingTags
+                            } else {
+                                uiState.pixivSearchSuggestions
+                            }
+                            if (supportTags.isNotEmpty()) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 64.dp)
+                                        .horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    supportTags.take(8).forEach { tag ->
+                                        FilterChip(
+                                            selected = false,
+                                            onClick = {
+                                                searchQuery = tag
+                                                viewModel.searchPixiv(tag)
+                                            },
+                                            label = { Text(tag) },
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
                 // Front page tabs: Popular / Newest / Favorites / Pools (hidden during search)
-                if (uiState.searchTags.isBlank()) {
-                    val tabTitles = listOf("Popular", "Newest", "Favorites", "Pools")
+                if (!uiState.isSearch) {
+                    val tabTitles = if (uiState.isPixiv) {
+                        listOf("Popular", "Following", "Favorites")
+                    } else {
+                        listOf("Popular", "Newest", "Favorites", "Pools")
+                    }
                     TabRow(
                         selectedTabIndex = pagerState.currentPage,
                         containerColor = MaterialTheme.colorScheme.surface,
@@ -294,13 +369,18 @@ fun ExploreScreen(
         ) {
             if (uiState.isSearch) {
                 FeedGrid(
-                    feed = uiState.searchFeed,
-                    gridState = searchGridState,
+                    feed = if (uiState.isPixiv) uiState.pixivSearchFeed else uiState.searchFeed,
+                    gridState = if (uiState.isPixiv) pixivSearchGridState else searchGridState,
                     columnCount = columnCount,
                     onPostClick = onPostClick,
                     onLoadMore = { viewModel.loadMoreSearch() },
-                    onRetry = { viewModel.search(uiState.searchTags, uiState.activePoolName) },
+                    onRetry = { viewModel.search(uiState.activeSearchTags, uiState.activePoolName) },
                     onRefresh = { viewModel.refreshSearch() },
+                    onRequireLogin = if (uiState.isPixiv && pixivPlugin != null) {
+                        { onRequireLogin(pixivPlugin) }
+                    } else {
+                        null
+                    },
                 )
             } else {
                 HorizontalPager(
@@ -310,47 +390,79 @@ fun ExploreScreen(
                     when (page) {
                         0 -> {
                             Column(modifier = Modifier.fillMaxSize()) {
-                                PopularControls(
-                                    period = uiState.popularPeriod,
-                                    date = uiState.popularDate,
-                                    onPeriodSelect = { viewModel.selectPopularPeriod(it) },
-                                    onShiftDate = { viewModel.shiftPopularDate(it) },
-                                    onPickDate = { viewModel.setPopularDate(it) },
-                                )
+                                if (!uiState.isPixiv) {
+                                    PopularControls(
+                                        period = uiState.popularPeriod,
+                                        date = uiState.popularDate,
+                                        onPeriodSelect = { viewModel.selectPopularPeriod(it) },
+                                        onShiftDate = { viewModel.shiftPopularDate(it) },
+                                        onPickDate = { viewModel.setPopularDate(it) },
+                                    )
+                                }
                                 FeedGrid(
-                                    feed = uiState.popularFeed,
-                                    gridState = popularGridState,
+                                    feed = if (uiState.isPixiv) uiState.pixivPopularFeed else uiState.popularFeed,
+                                    gridState = if (uiState.isPixiv) pixivPopularGridState else popularGridState,
                                     columnCount = columnCount,
                                     onPostClick = onPostClick,
-                                    onLoadMore = { viewModel.loadMorePopular() },
-                                    onRetry = { viewModel.loadPopularInitial() },
-                                    onRefresh = { viewModel.refreshPopular() },
+                                    onLoadMore = { if (uiState.isPixiv) viewModel.loadMorePixiv() else viewModel.loadMorePopular() },
+                                    onRetry = { if (uiState.isPixiv) viewModel.loadPixivInitial() else viewModel.loadPopularInitial() },
+                                    onRefresh = { if (uiState.isPixiv) viewModel.refreshPixiv() else viewModel.refreshPopular() },
+                                    onRequireLogin = if (uiState.isPixiv && pixivPlugin != null) {
+                                        { onRequireLogin(pixivPlugin) }
+                                    } else {
+                                        null
+                                    },
                                     modifier = Modifier.weight(1f),
                                 )
                             }
                         }
                         1 -> {
-                            FeedGrid(
-                                feed = uiState.newestFeed,
-                                gridState = newestGridState,
-                                columnCount = columnCount,
-                                onPostClick = onPostClick,
-                                onLoadMore = { viewModel.loadMoreNewest() },
-                                onRetry = { viewModel.loadNewestInitial() },
-                                onRefresh = { viewModel.refreshNewest() },
-                            )
+                            if (uiState.isPixiv) {
+                                PersonalFeedContent(
+                                    plugin = pixivPlugin,
+                                    feed = uiState.pixivFollowedFeed,
+                                    label = "Sign in to see followed updates",
+                                    gridState = if (uiState.isPixiv) pixivFollowedGridState else newestGridState,
+                                    columnCount = columnCount,
+                                    onPostClick = onPostClick,
+                                    onRequireLogin = onRequireLogin,
+                                    onLoadMore = { viewModel.loadMorePixiv() },
+                                    onRetry = { viewModel.loadPixivInitial() },
+                                    onRefresh = { viewModel.refreshPixiv() },
+                                )
+                            } else {
+                                FeedGrid(
+                                    feed = uiState.newestFeed,
+                                    gridState = newestGridState,
+                                    columnCount = columnCount,
+                                    onPostClick = onPostClick,
+                                    onLoadMore = { viewModel.loadMoreNewest() },
+                                    onRetry = { viewModel.loadNewestInitial() },
+                                    onRefresh = { viewModel.refreshNewest() },
+                                )
+                            }
                         }
                         2 -> {
-                            FavoritesTabContent(
-                                sitePlugin = sitePlugin,
-                                feed = uiState.favoritesFeed,
-                                gridState = favoritesGridState,
+                            PersonalFeedContent(
+                                plugin = if (uiState.isPixiv) pixivPlugin else sitePlugin,
+                                feed = if (uiState.isPixiv) uiState.pixivFavoritesFeed else uiState.favoritesFeed,
+                                label = if (uiState.isPixiv) "Sign in to see Pixiv favorites" else "Sign in to see your favorites",
+                                gridState = if (uiState.isPixiv) pixivFavoritesGridState else favoritesGridState,
                                 columnCount = columnCount,
                                 onPostClick = onPostClick,
                                 onRequireLogin = onRequireLogin,
-                                onLoadMore = { username -> viewModel.loadMoreFavorites(username) },
-                                onRetry = { username -> viewModel.loadFavoritesInitial(username) },
-                                onRefresh = { username -> viewModel.refreshFavorites(username) },
+                                onLoadMore = {
+                                    if (uiState.isPixiv) viewModel.loadMorePixiv()
+                                    else sitePlugin?.getDisplayUsername()?.let(viewModel::loadMoreFavorites)
+                                },
+                                onRetry = {
+                                    if (uiState.isPixiv) viewModel.loadPixivInitial()
+                                    else sitePlugin?.getDisplayUsername()?.let(viewModel::loadFavoritesInitial)
+                                },
+                                onRefresh = {
+                                    if (uiState.isPixiv) viewModel.refreshPixiv()
+                                    else sitePlugin?.getDisplayUsername()?.let(viewModel::refreshFavorites)
+                                },
                             )
                         }
                         else -> {
@@ -381,6 +493,7 @@ private fun FeedGrid(
     onLoadMore: () -> Unit,
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
+    onRequireLogin: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val shouldLoadMore by remember {
@@ -425,8 +538,14 @@ private fun FeedGrid(
                             style = MaterialTheme.typography.bodyLarge,
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        IconButton(onClick = onRetry) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Retry")
+                        if (feed.authRequired && onRequireLogin != null) {
+                            Button(onClick = onRequireLogin) {
+                                Text("Sign in")
+                            }
+                        } else {
+                            IconButton(onClick = onRetry) {
+                                Icon(Icons.Default.Refresh, contentDescription = "Retry")
+                            }
                         }
                     }
                 }
@@ -469,24 +588,26 @@ private fun FeedGrid(
 }
 
 @Composable
-private fun FavoritesTabContent(
-    sitePlugin: SitePlugin?,
+private fun PersonalFeedContent(
+    plugin: SitePlugin?,
     feed: FeedState,
+    label: String,
     gridState: LazyStaggeredGridState,
     columnCount: Int,
     onPostClick: (Int) -> Unit,
     onRequireLogin: (SitePlugin) -> Unit,
-    onLoadMore: (username: String) -> Unit,
-    onRetry: (username: String) -> Unit,
-    onRefresh: (username: String) -> Unit,
+    onLoadMore: () -> Unit,
+    onRetry: () -> Unit,
+    onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (sitePlugin == null) return
+    if (plugin == null) return
 
-    val isLoggedIn by sitePlugin.isLoggedInFlow.collectAsState(initial = sitePlugin.isLoggedIn)
-    val username = sitePlugin.getDisplayUsername()
+    val isLoggedIn by plugin.isLoggedInFlow.collectAsState(initial = plugin.isLoggedIn)
+    val username = plugin.getDisplayUsername()
+    val needsUsername = plugin.id != "pixiv"
 
-    if (!isLoggedIn || username.isNullOrBlank()) {
+    if (!isLoggedIn || (needsUsername && username.isNullOrBlank())) {
         Box(
             modifier = modifier.fillMaxSize().padding(24.dp),
             contentAlignment = Alignment.Center,
@@ -500,11 +621,11 @@ private fun FavoritesTabContent(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "Sign in to see your favorites",
+                    text = label,
                     style = MaterialTheme.typography.bodyLarge,
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = { onRequireLogin(sitePlugin) }) {
+                Button(onClick = { onRequireLogin(plugin) }) {
                     Text("Sign in")
                 }
             }
@@ -512,8 +633,8 @@ private fun FavoritesTabContent(
         return
     }
 
-    LaunchedEffect(username) {
-        onRetry(username)
+    LaunchedEffect(isLoggedIn, username) {
+        onRetry()
     }
 
     FeedGrid(
@@ -521,9 +642,10 @@ private fun FavoritesTabContent(
         gridState = gridState,
         columnCount = columnCount,
         onPostClick = onPostClick,
-        onLoadMore = { onLoadMore(username) },
-        onRetry = { onRetry(username) },
-        onRefresh = { onRefresh(username) },
+        onLoadMore = onLoadMore,
+        onRetry = onRetry,
+        onRefresh = onRefresh,
+        onRequireLogin = { onRequireLogin(plugin) },
         modifier = modifier,
     )
 }

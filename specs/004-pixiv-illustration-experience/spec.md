@@ -4,7 +4,8 @@
 
 **Created**: 2026-09-21
 
-**Status**: Product direction accepted; written contract requires final review before implementation
+**Status**: Implemented through fixture/device-startup gates; Pixiv token refresh,
+live account verification, and unlocked hardware interaction remain pending
 
 **Supersedes**: Pixiv portions of
 [`003-konachan-pixiv`](../003-konachan-pixiv/spec.md)
@@ -25,6 +26,73 @@ pager, and durable local save behavior. Latte is not becoming a complete Pixiv
 third-party client.
 
 Konachan is explicitly postponed and is not part of this implementation gate.
+
+## User stories and acceptance
+
+### User Story 1 — Browse Pixiv popular works (P1)
+
+As the owner, I can switch Latte to Pixiv, browse the daily ranked
+illustration feed, open a work, page through all of its illustrations, inspect
+metadata, and save a page locally.
+
+Acceptance scenarios:
+
+1. Given Pixiv is selected, when Popular opens, then Latte requests the daily
+   ranking operation and renders normalized artwork cards in the existing grid.
+2. Given a ranked work has multiple pages, when it opens, then the detail pager
+   contains that work's pages in page-index order, not neighboring feed items.
+3. Given a page is saved, when the download is queued, then the display name
+   and duplicate identity use `(pixiv, workId, pageIndex, mediaVariant)`.
+4. Given the ranking response is malformed or unavailable, when the feed loads,
+   then Latte shows a typed error state and never renders fabricated artwork.
+
+### User Story 2 — Search Pixiv illustrations (P1)
+
+As the owner, I can use Latte's existing search action to search Pixiv
+illustrations and start a query from autocomplete or trending tags.
+
+Acceptance scenarios:
+
+1. Given a non-empty query, when search is submitted, then the same grid/detail
+   flow renders illustration results with opaque continuation state.
+2. Given the search field has a query, when autocomplete is requested, then
+   suggestions are shown without replacing the current feed with an empty
+   state.
+3. Given no query is entered, when trending tags load, then the user can start
+   a search from a returned tag.
+
+### User Story 3 — Connect Pixiv and use personal feeds (P2)
+
+As the owner, I can manage a Pixiv account, browse followed updates and
+bookmarks, and bookmark or unbookmark a work from detail.
+
+Acceptance scenarios:
+
+1. Given the account is signed out, when Followed or Favorites is selected,
+   then Latte shows an explicit sign-in action rather than an empty feed.
+2. Given a valid Pixiv token is available, when account-scoped feeds load, then
+   Latte refreshes the token when required and maps followed/bookmarked works.
+3. Given a work is not bookmarked, when bookmark is requested, then Latte sends
+   the add operation and changes the UI only after success.
+4. Given refresh fails, when the session is invalidated, then the account card
+   becomes signed out and the feed reports authentication required.
+
+### User Story 4 — Switch platforms and manage accounts (P2)
+
+As the owner, I can switch between Yande and Pixiv from Explore and manage
+each platform from Settings without losing the platform-local feed context.
+
+Acceptance scenarios:
+
+1. Given Yande and Pixiv are available, when `Latte` is tapped, then a platform
+   picker exposes both static platform choices and their connection status.
+2. Given the platform changes, when the Explore content crossfades, then tabs,
+   tint/background, and source state change together while stale requests are
+   cancelled.
+3. Given each platform has a prior feed/query position, when switching back,
+   then its bounded state is restored.
+4. Given Settings is opened, when `Platforms & accounts` is selected, then
+   platform cards expose status, capabilities, Manage, and Sign out actions.
 
 ## Product decisions
 

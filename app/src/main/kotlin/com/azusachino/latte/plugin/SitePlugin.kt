@@ -9,6 +9,12 @@ enum class AuthType {
     API_KEY
 }
 
+enum class AuthFlow {
+    CREDENTIALS,
+    BROWSER,
+    TOKEN_IMPORT,
+}
+
 enum class PluginCapability {
     SCORING,
     FAVORITES,
@@ -21,6 +27,12 @@ interface SitePlugin {
     val name: String
     val iconRes: Int?
     val authType: AuthType
+    val supportedAuthFlows: Set<AuthFlow>
+        get() = when (authType) {
+            AuthType.CREDENTIALS -> setOf(AuthFlow.CREDENTIALS)
+            AuthType.OAUTH2 -> setOf(AuthFlow.BROWSER, AuthFlow.TOKEN_IMPORT)
+            AuthType.API_KEY -> setOf(AuthFlow.TOKEN_IMPORT)
+        }
     val capabilities: Set<PluginCapability>
 
     val isLoggedIn: Boolean
@@ -32,6 +44,9 @@ interface SitePlugin {
 
     suspend fun setScore(postId: Long, score: Int): Result<Unit> =
         Result.failure(UnsupportedOperationException("Scoring not supported by $name"))
+
+    suspend fun setBookmark(postId: Long, bookmarked: Boolean): Result<Unit> =
+        Result.failure(UnsupportedOperationException("Bookmarks not supported by $name"))
 
     fun getScore(postId: Long): Int? = null
 

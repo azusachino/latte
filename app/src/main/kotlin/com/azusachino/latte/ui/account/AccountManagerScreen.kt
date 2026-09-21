@@ -47,7 +47,7 @@ fun AccountManagerScreen(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("Account Center") },
+                title = { Text("Platforms & accounts") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -66,7 +66,7 @@ fun AccountManagerScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
             Text(
-                text = "Connected Platforms",
+                text = "Platform connections",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -64,7 +65,12 @@ fun LatteApp(
 
     val pluginStorage = remember { com.azusachino.latte.plugin.storage.SecurePluginStorage(context) }
     val yandePlugin = remember { com.azusachino.latte.plugin.yande.YandePlugin(pluginStorage, com.azusachino.latte.data.network.OkHttpProvider.client, com.azusachino.latte.data.network.OkHttpProvider.cookieJar) }
-    val sitePluginManager = remember { com.azusachino.latte.plugin.SitePluginManager(listOf(yandePlugin)) }
+    val pixivPlugin = remember { com.azusachino.latte.plugin.pixiv.PixivPlugin(pluginStorage, com.azusachino.latte.data.network.OkHttpProvider.client) }
+    val sitePluginManager = remember { com.azusachino.latte.plugin.SitePluginManager(listOf(yandePlugin, pixivPlugin)) }
+
+    LaunchedEffect(pixivPlugin.api) {
+        exploreViewModel.configurePixiv(pixivPlugin.api)
+    }
 
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Explore) }
     var activeLoginPlugin by remember { mutableStateOf<com.azusachino.latte.plugin.SitePlugin?>(null) }
@@ -90,6 +96,7 @@ fun LatteApp(
                         ExploreScreen(
                             viewModel = exploreViewModel,
                             sitePlugin = yandePlugin,
+                            pixivPlugin = pixivPlugin,
                             onPostClick = { index ->
                                 currentScreen = Screen.Detail(index)
                             },

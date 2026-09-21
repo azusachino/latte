@@ -97,8 +97,8 @@ fun SettingsScreen(
 
             SettingsRow(
                 icon = Icons.Default.AccountCircle,
-                title = "Account Center",
-                subtitle = "Manage platform accounts & logins (yande.re, Pixiv)",
+                title = "Platforms & accounts",
+                subtitle = "Connect, switch, and manage yande.re or Pixiv sessions",
                 onClick = onOpenAccountManager,
             )
 

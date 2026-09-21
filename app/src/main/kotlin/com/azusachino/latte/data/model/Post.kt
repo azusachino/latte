@@ -44,15 +44,26 @@ data class Post(
     val jpegUrl: String?,
     val originalUrl: String,
     val variants: List<MediaVariant>,
+    val title: String? = null,
+    val canonicalUrl: String? = null,
+    val bookmarkCount: Int? = null,
+    val isBookmarked: Boolean = false,
+    val pageIndex: Int = 0,
+    val pageCount: Int = 1,
+    val pages: List<ArtworkPage> = emptyList(),
 ) {
     val aspectRatio: Float
         get() = if (width > 0 && height > 0) width.toFloat() / height.toFloat() else 1f
 
     val bestVariant: MediaVariant
-        get() = variants.firstOrNull { it.id == "jpeg" }
+        get() = variants.firstOrNull { siteId == "pixiv" && it.id == "pixiv-cat" }
+            ?: variants.firstOrNull { it.id == "jpeg" }
             ?: variants.firstOrNull { it.id == "sample" }
             ?: variants.firstOrNull { it.id == "original" }
             ?: variants.first { it.id == "preview" }
+
+    val workIdentity: ArtworkIdentity
+        get() = ArtworkIdentity(siteId, id)
 }
 
 fun YandePostDto.toDomain(): Post {

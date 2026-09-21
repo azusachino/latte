@@ -79,6 +79,7 @@ import com.azusachino.latte.data.download.DownloadManager
 import com.azusachino.latte.data.download.DownloadResult
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.model.PostRating
+import com.azusachino.latte.data.model.MediaVariant
 import com.azusachino.latte.plugin.PluginCapability
 import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.plugin.SitePluginManager
@@ -101,9 +102,43 @@ fun DetailScreen(
     onRequireLogin: (SitePlugin) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    val detailPosts = remember(posts, initialIndex) {
+        val selected = posts.getOrNull(initialIndex)
+        if (selected?.siteId == "pixiv" && selected.pages.isNotEmpty()) {
+            selected.pages.map { page ->
+                selected.copy(
+                    previewUrl = page.previewUrl,
+                    sampleUrl = page.mediaRef.url,
+                    originalUrl = page.originalUrl ?: page.mediaRef.url,
+                    variants = listOf(
+                        MediaVariant(
+                            id = "preview",
+                            url = page.previewUrl,
+                            width = page.width,
+                            height = page.height,
+                        ),
+                        page.mediaRef,
+                        MediaVariant(
+                            id = "original",
+                            url = page.originalUrl ?: page.mediaRef.url,
+                            width = page.width,
+                            height = page.height,
+                            extension = page.mediaRef.extension,
+                        ),
+                    ),
+                    width = page.width,
+                    height = page.height,
+                    pageIndex = page.pageIndex,
+                    pages = emptyList(),
+                )
+            }
+        } else {
+            posts
+        }
+    }
     val pagerState = rememberPagerState(
-        initialPage = initialIndex.coerceIn(0, (posts.size - 1).coerceAtLeast(0)),
-        pageCount = { posts.size },
+        initialPage = if (detailPosts !== posts) 0 else initialIndex.coerceIn(0, (detailPosts.size - 1).coerceAtLeast(0)),
+        pageCount = { detailPosts.size },
     )
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -111,16 +146,17 @@ fun DetailScreen(
     var showControls by remember { mutableStateOf(true) }
     var showInspectSheet by remember { mutableStateOf(false) }
     var localScores by remember { mutableStateOf(mapOf<Long, Int>()) }
+    var localBookmarks by remember { mutableStateOf(mapOf<String, Boolean>()) }
     var inlineActionError by remember { mutableStateOf<String?>(null) }
 
-    val currentPost = posts.getOrNull(pagerState.currentPage)
+    val currentPost = detailPosts.getOrNull(pagerState.currentPage)
     val currentPlugin = currentPost?.let { pluginManager.get(it.siteId) }
 
     // The site never tells the app "you already scored this post" up front --
     // recover a favorite (score 3) set in a prior session or on the web.
     LaunchedEffect(currentPost?.id, currentPlugin?.isLoggedIn) {
         val post = currentPost
-        if (post != null && currentPlugin != null && currentPlugin.isLoggedIn && currentPlugin.getScore(post.id) == null) {
+        if (post != null && post.siteId != "pixiv" && currentPlugin != null && currentPlugin.isLoggedIn && currentPlugin.getScore(post.id) == null) {
             currentPlugin.refreshScore(post.id)?.let { refreshed ->
                 localScores = localScores + (post.id to refreshed)
             }
@@ -138,7 +174,7 @@ fun DetailScreen(
             beyondViewportPageCount = 1,
             modifier = Modifier.fillMaxSize(),
         ) { page ->
-            val post = posts[page]
+            val post = detailPosts[page]
             ZoomableBox(
                 modifier = Modifier.fillMaxSize(),
                 onTap = { showControls = !showControls },
@@ -188,7 +224,7 @@ fun DetailScreen(
                     }
 
                     Text(
-                        text = if (currentPost != null) "#${currentPost.id}" else "",
+                        text = if (currentPost != null) currentPost.title ?: "#${currentPost.id}" else "",
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
@@ -200,7 +236,7 @@ fun DetailScreen(
                         IconButton(onClick = {
                             val intent = Intent(
                                 Intent.ACTION_VIEW,
-                                Uri.parse("https://yande.re/post/show/${currentPost.id}"),
+                                Uri.parse(currentPost.canonicalUrl ?: currentPost.source ?: "https://yande.re/post/show/${currentPost.id}"),
                             )
                             context.startActivity(intent)
                         }) {
@@ -215,7 +251,10 @@ fun DetailScreen(
                         IconButton(onClick = {
                             val intent = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, "https://yande.re/post/show/${currentPost.id}")
+                                putExtra(
+                                    Intent.EXTRA_TEXT,
+                                    currentPost.canonicalUrl ?: currentPost.source ?: "https://yande.re/post/show/${currentPost.id}",
+                                )
                             }
                             context.startActivity(Intent.createChooser(intent, "Share post"))
                         }) {
@@ -292,7 +331,12 @@ fun DetailScreen(
                             val isPluginLoggedIn by currentPlugin.isLoggedInFlow.collectAsState(initial = currentPlugin.isLoggedIn)
                             val post = currentPost
                             val currentScore = localScores[post.id] ?: currentPlugin.getScore(post.id) ?: 0
-                            val isFavorited = currentScore == 3
+                            val isPixivPost = post.siteId == "pixiv"
+                            val isFavorited = if (isPixivPost) {
+                                localBookmarks[post.workIdentity.toString()] ?: post.isBookmarked
+                            } else {
+                                currentScore == 3
+                            }
 
                             FilledTonalIconButton(
                                 onClick = {
@@ -301,11 +345,20 @@ fun DetailScreen(
                                     } else {
                                         scope.launch {
                                             val targetScore = if (isFavorited) 0 else 3
-                                            val result = currentPlugin.setScore(post.id, targetScore)
+                                            val targetBookmarked = !isFavorited
+                                            val result = if (isPixivPost) {
+                                                currentPlugin.setBookmark(post.id, targetBookmarked)
+                                            } else {
+                                                currentPlugin.setScore(post.id, targetScore)
+                                            }
                                             if (result.isSuccess) {
                                                 inlineActionError = null
-                                                localScores = localScores + (post.id to targetScore)
-                                                if (targetScore == 3) {
+                                                if (isPixivPost) {
+                                                    localBookmarks = localBookmarks + (post.workIdentity.toString() to targetBookmarked)
+                                                } else {
+                                                    localScores = localScores + (post.id to targetScore)
+                                                }
+                                                if (targetBookmarked) {
                                                     ToastManager.showSuccess("Added to favorites")
                                                 } else {
                                                     ToastManager.showInfo("Removed from favorites")
@@ -512,7 +565,15 @@ private fun MetadataTable(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Author
+                    // Author
+            if (!post.title.isNullOrBlank()) {
+                MetadataTableRow(
+                    label = "Title",
+                    value = post.title,
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+            }
+
             if (!post.author.isNullOrBlank()) {
                 MetadataTableRow(
                     label = "Author",
@@ -547,11 +608,20 @@ private fun MetadataTable(
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 
-            // Score
-            MetadataTableRow(
-                label = "Score",
-                value = "${post.score}",
-            )
+            if (post.siteId == "pixiv") {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                MetadataTableRow(label = "Pages", value = "${post.pageIndex + 1} / ${post.pageCount}")
+                post.bookmarkCount?.let { count ->
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                    MetadataTableRow(label = "Bookmarks", value = count.toString())
+                }
+            } else {
+                // Score
+                MetadataTableRow(
+                    label = "Score",
+                    value = "${post.score}",
+                )
+            }
 
             // Created Date
             if (post.createdAt != null && post.createdAt > 0) {
