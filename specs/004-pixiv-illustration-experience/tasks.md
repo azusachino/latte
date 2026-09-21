@@ -99,7 +99,7 @@ approved `Platforms & accounts` cards/actions.
 
 - [x] T033 [P] Add quiet inline error, auth-required, rate-limit, upstream-drift, and transport-failure copy without toast-only recovery in `app/src/main/kotlin/com/azusachino/latte/ui/explore/ExploreScreen.kt` and `app/src/main/kotlin/com/azusachino/latte/ui/detail/DetailScreen.kt`
 - [x] T034 Run `make check`, inspect `git diff --check`, and record fixture/test evidence in this task file
-- [ ] T035 Build and install a debug APK with `make validate` and `make install`, then record the physical-device Explore/platform-switch/detail receipt before declaring the journey complete (startup verified; phone remained locked for UI interaction)
+- [x] T035 Build and install a debug APK with `make validate` and `make install`, then record the physical-device Explore/platform-switch/detail receipt before declaring the journey complete (Explore, Yande detail, Pixiv auth-gated feed, platform picker, and Platforms & accounts verified on the connected OnePlus 8; live Pixiv browser OAuth was not configured)
 
 ## Dependencies and execution order
 
@@ -133,8 +133,12 @@ approved `Platforms & accounts` cards/actions.
   credential is committed to the repository.
 - `make validate` passed and `make install` installed the debug APK on the
   connected OnePlus 8 (`0cadf428`, Android 16).
-- The first device launch exposed stale encrypted cookie preferences; the
-  startup recovery path now drops only that cookie cache and recreates it.
-  The current relaunch reached the Latte process with no fresh fatal exception,
-  but the device remains on the dreaming lock screen, so platform-switch,
-  browser callback, and detail interaction remain unverified.
+- The connected-device receipt covered Yande Explore artwork, the Latte
+  platform picker, Pixiv's `Popular | Following | Favorites` surface and
+  explicit auth-required state, the Pixiv browser-login dialog, the
+  `Platforms & accounts` screen, and a Yande detail screen with Save/Open/Share
+  actions. The refreshed picker now shows a blue Yande image badge and pink
+  Pixiv palette badge with a selected check.
+- An anonymous live ranking probe returned HTTP 400 with Pixiv's
+  `invalid_request` OAuth message, so Popular is currently auth-gated by the
+  upstream App API; `pixiv.cat` remains image transport only.

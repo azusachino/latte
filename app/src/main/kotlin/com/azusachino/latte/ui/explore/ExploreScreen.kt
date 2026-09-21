@@ -42,11 +42,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -91,6 +94,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -106,6 +110,9 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+
+private val YANDE_ACCENT = Color(0xFF3F6F8F)
+private val PIXIV_ACCENT = Color(0xFFE45C83)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -136,6 +143,7 @@ fun ExploreScreen(
     var isSearchExpanded by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf(uiState.activeSearchTags) }
     var platformMenuOpen by remember { mutableStateOf(false) }
+    val platformAccent = if (uiState.isPixiv) PIXIV_ACCENT else YANDE_ACCENT
 
     LaunchedEffect(pagerState.currentPage) {
         viewModel.selectTab(pagerState.currentPage)
@@ -165,38 +173,96 @@ fun ExploreScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = if (uiState.isPixiv) {
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.16f)
-        } else {
-            MaterialTheme.colorScheme.background
-        },
+        containerColor = platformAccent.copy(alpha = 0.10f),
         topBar = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 TopAppBar(
                     title = {
                         Box {
-                            Text(
-                                text = uiState.activePoolName
-                                    ?: if (uiState.isSearch) uiState.activeSearchTags
-                                    else "Latte",
-                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.clickable { platformMenuOpen = true },
-                            )
+                            ) {
+                                Text(
+                                    text = uiState.activePoolName
+                                        ?: if (uiState.isSearch) uiState.activeSearchTags
+                                        else "Latte",
+                                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                                    color = platformAccent,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                PlatformBadge(
+                                    isPixiv = uiState.isPixiv,
+                                    color = platformAccent,
+                                )
+                            }
                             DropdownMenu(
                                 expanded = platformMenuOpen,
                                 onDismissRequest = { platformMenuOpen = false },
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text("Yande") },
+                                    leadingIcon = {
+                                        PlatformMarker(
+                                            label = "Y",
+                                            color = YANDE_ACCENT,
+                                        )
+                                    },
+                                    text = {
+                                        Text(
+                                            text = "Yande",
+                                            color = if (uiState.platform == ExplorePlatform.YANDE) YANDE_ACCENT
+                                            else MaterialTheme.colorScheme.onSurface,
+                                            fontWeight = if (uiState.platform == ExplorePlatform.YANDE) {
+                                                FontWeight.SemiBold
+                                            } else {
+                                                FontWeight.Normal
+                                            },
+                                        )
+                                    },
+                                    trailingIcon = {
+                                        if (uiState.platform == ExplorePlatform.YANDE) {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = "Selected",
+                                                tint = YANDE_ACCENT,
+                                            )
+                                        }
+                                    },
                                     onClick = {
                                         platformMenuOpen = false
                                         viewModel.selectPlatform(ExplorePlatform.YANDE)
                                     },
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Pixiv") },
+                                    leadingIcon = {
+                                        PlatformMarker(
+                                            label = "P",
+                                            color = PIXIV_ACCENT,
+                                        )
+                                    },
+                                    text = {
+                                        Text(
+                                            text = "Pixiv",
+                                            color = if (uiState.platform == ExplorePlatform.PIXIV) PIXIV_ACCENT
+                                            else MaterialTheme.colorScheme.onSurface,
+                                            fontWeight = if (uiState.platform == ExplorePlatform.PIXIV) {
+                                                FontWeight.SemiBold
+                                            } else {
+                                                FontWeight.Normal
+                                            },
+                                        )
+                                    },
+                                    trailingIcon = {
+                                        if (uiState.platform == ExplorePlatform.PIXIV) {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = "Selected",
+                                                tint = PIXIV_ACCENT,
+                                            )
+                                        }
+                                    },
                                     onClick = {
                                         platformMenuOpen = false
                                         viewModel.selectPlatform(ExplorePlatform.PIXIV)
@@ -480,6 +546,48 @@ fun ExploreScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun PlatformBadge(
+    isPixiv: Boolean,
+    color: Color,
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(28.dp)
+            .clip(CircleShape)
+            .background(color.copy(alpha = 0.16f)),
+    ) {
+        Icon(
+            imageVector = if (isPixiv) Icons.Default.Palette else Icons.Default.Image,
+            contentDescription = if (isPixiv) "Current platform: Pixiv" else "Current platform: Yande",
+            tint = color,
+            modifier = Modifier.size(18.dp),
+        )
+    }
+}
+
+@Composable
+private fun PlatformMarker(
+    label: String,
+    color: Color,
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(32.dp)
+            .clip(CircleShape)
+            .background(color.copy(alpha = 0.16f)),
+    ) {
+        Text(
+            text = label,
+            color = color,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
 
