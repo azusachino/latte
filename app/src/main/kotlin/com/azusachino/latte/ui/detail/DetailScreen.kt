@@ -183,7 +183,6 @@ fun DetailScreen(
                 ) {
                     val imageSources = remember(targetPost.siteId, targetPost.id, targetPost.pageIndex) {
                         buildList {
-                            if (targetPost.siteId == "pixiv") addAll(targetPost.imageSources)
                             add(targetPost.sampleUrl)
                             add(targetPost.previewUrl)
                             addAll(targetPost.imageSources)

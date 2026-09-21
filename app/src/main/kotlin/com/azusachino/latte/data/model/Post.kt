@@ -74,7 +74,11 @@ data class Post(
         get() = buildList {
             if (siteId == "pixiv") {
                 add(previewUrl)
-                addAll(variants.filter { it.id == "pixiv-cat" }.map { it.url })
+                addAll(
+                    variants
+                        .filter { it.id == "pixiv-re" || it.id == "pixiv-cat" }
+                        .map { it.url },
+                )
             } else {
                 add(previewUrl)
             }
@@ -89,7 +93,7 @@ fun Post.forPage(index: Int): Post {
     val page = pages.getOrNull(index.coerceIn(pages.indices)) ?: return this
     return copy(
         previewUrl = page.previewUrl,
-        sampleUrl = page.fallbackUrl ?: page.mediaRef.url,
+        sampleUrl = page.mediaRef.url,
         originalUrl = page.originalUrl ?: page.mediaRef.url,
         variants = listOfNotNull(
             MediaVariant(
@@ -99,6 +103,15 @@ fun Post.forPage(index: Int): Post {
                 height = page.height,
             ),
             page.mediaRef,
+            page.proxyUrl?.let {
+                MediaVariant(
+                    id = "pixiv-re",
+                    url = it,
+                    width = page.width,
+                    height = page.height,
+                    extension = page.mediaRef.extension,
+                )
+            },
             page.fallbackUrl?.let {
                 MediaVariant(
                     id = "pixiv-cat",

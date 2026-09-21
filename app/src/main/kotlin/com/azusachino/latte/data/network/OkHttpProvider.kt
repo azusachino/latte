@@ -6,6 +6,7 @@ import okhttp3.Cache
 import okhttp3.ConnectionPool
 import okhttp3.Dns
 import okhttp3.OkHttpClient
+import okhttp3.Request
 import java.io.File
 import java.net.InetAddress
 import java.util.concurrent.TimeUnit
@@ -13,6 +14,9 @@ import java.util.concurrent.TimeUnit
 object OkHttpProvider {
     private const val CACHE_SIZE = 256L * 1024 * 1024 // 256 MB
     private const val MOE_HOST = "yande.re"
+    private const val PIXIV_IMAGE_HOST = "i.pximg.net"
+    private const val PIXIV_STATIC_HOST = "s.pximg.net"
+    private const val PIXIV_IMAGE_REFERER = "https://app-api.pixiv.net/"
     private val customDns = object : Dns {
         override fun lookup(hostname: String): List<InetAddress> {
             return try {
@@ -45,10 +49,7 @@ object OkHttpProvider {
                     _cookieJar?.let { cookieJar(it) }
                 }
                 .addInterceptor { chain ->
-                    val request = chain.request().newBuilder()
-                        .header("User-Agent", "Mozilla/5.0 (Android; Mobile; Latte/${BuildConfig.VERSION_NAME})")
-                        .build()
-                    chain.proceed(request)
+                    chain.proceed(withDefaultHeaders(chain.request()))
                 }
                 .build()
                 .also { _client = it }
@@ -70,14 +71,20 @@ object OkHttpProvider {
                         .connectionPool(ConnectionPool(32, 5, TimeUnit.MINUTES))
                         .dns(customDns)
                         .addInterceptor { chain ->
-                            val request = chain.request().newBuilder()
-                                .header("User-Agent", "Mozilla/5.0 (Android; Mobile; Latte/${BuildConfig.VERSION_NAME})")
-                                .build()
-                            chain.proceed(request)
+                            chain.proceed(withDefaultHeaders(chain.request()))
                         }
                         .build()
                 }
             }
         }
+    }
+
+    private fun withDefaultHeaders(request: Request): Request {
+        val builder = request.newBuilder()
+            .header("User-Agent", "Mozilla/5.0 (Android; Mobile; Latte/${BuildConfig.VERSION_NAME})")
+        if (request.url.host == PIXIV_IMAGE_HOST || request.url.host == PIXIV_STATIC_HOST) {
+            builder.header("Referer", PIXIV_IMAGE_REFERER)
+        }
+        return builder.build()
     }
 }

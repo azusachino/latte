@@ -58,18 +58,27 @@ class PixivArtworkTest {
         assertEquals(0, artwork.pages[0].pageIndex)
         assertEquals(1, artwork.pages[1].pageIndex)
         assertEquals("https://i.pximg.net/original/p1.png", artwork.pages[1].originalUrl)
-        assertEquals("https://i.pixiv.re/original/p1.png", artwork.pages[1].mediaRef.url)
+        assertEquals("https://i.pximg.net/original/p1.png", artwork.pages[1].mediaRef.url)
+        assertEquals("https://i.pixiv.re/original/p1.png", artwork.pages[1].proxyUrl)
         assertEquals("https://pixiv.cat/75034219-1.png", artwork.pages[1].fallbackUrl)
         assertEquals(
-            listOf("https://i.pixiv.re/original/p1.png", "https://pixiv.cat/75034219-1.png"),
+            listOf(
+                "https://i.pximg.net/original/p1.png",
+                "https://i.pixiv.re/original/p1.png",
+                "https://pixiv.cat/75034219-1.png",
+            ),
             artwork.pages[1].imageSources,
         )
         assertEquals(
-            listOf("https://i.pixiv.re/original/p0.png", "https://pixiv.cat/75034219.png"),
+            listOf(
+                "https://i.pximg.net/original/p0.png",
+                "https://i.pixiv.re/original/p0.png",
+                "https://pixiv.cat/75034219.png",
+            ),
             artwork.imageSources,
         )
         val secondPage = artwork.forPage(1)
-        assertEquals("https://pixiv.cat/75034219-1.png", secondPage.sampleUrl)
+        assertEquals("https://i.pximg.net/original/p1.png", secondPage.sampleUrl)
         assertEquals(1, secondPage.pageIndex)
         assertEquals(2, secondPage.pageCount)
         assertEquals("pixiv-cat", secondPage.bestVariant.id)
@@ -87,13 +96,42 @@ class PixivArtworkTest {
         ).toPost()
 
         assertEquals(
-            "https://i.pixiv.re/c/600x1200_90/img-master/p0.jpg",
+            "https://i.pximg.net/c/600x1200_90/img-master/p0.jpg",
             artwork.previewUrl,
         )
         assertEquals(
             listOf(
+                "https://i.pximg.net/c/600x1200_90/img-master/p0.jpg",
                 "https://i.pixiv.re/c/600x1200_90/img-master/p0.jpg",
                 "https://pixiv.cat/88000001.jpg",
+            ),
+            artwork.imageSources,
+        )
+    }
+
+    @Test
+    fun usesOfficialMediumForPreviewAndKeepsOriginalForDetail() {
+        val artwork = PixivIllustDto(
+            id = 88000002,
+            imageUrls = PixivImageUrls(
+                medium = "https://i.pximg.net/c/540x540_70/img-master/p0.jpg",
+                original = "https://i.pximg.net/img-original/img/p0.jpg",
+            ),
+        ).toPost()
+
+        assertEquals(
+            "https://i.pximg.net/c/540x540_70/img-master/p0.jpg",
+            artwork.previewUrl,
+        )
+        assertEquals(
+            "https://i.pximg.net/img-original/img/p0.jpg",
+            artwork.sampleUrl,
+        )
+        assertEquals(
+            listOf(
+                "https://i.pximg.net/c/540x540_70/img-master/p0.jpg",
+                "https://i.pixiv.re/img-original/img/p0.jpg",
+                "https://pixiv.cat/88000002.jpg",
             ),
             artwork.imageSources,
         )

@@ -28,6 +28,9 @@
   cannot flash `Image unavailable` while another candidate is loading.
 - Settled exploration tabs immediately so rapid switches cannot leave the
   pager between feeds while adjacent grids are composing.
+- Followed PixEz's direct Pixiv image transport: use official medium URLs for
+  grid previews with the required Referer, retain full URLs for detail, and
+  keep `i.pixiv.re` plus the ID resolver as fallbacks.
 - Kept Pixiv feed navigation separate from page navigation inside a work.
 - Added a directional transition for inner Pixiv page changes so cached images
   do not swap invisibly.
