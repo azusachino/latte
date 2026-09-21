@@ -256,8 +256,11 @@ constraints rather than UI anecdotes.
 and the unlocked OnePlus 8 receipt cover the browser OAuth exchange, real
 Popular/Following/Favorites images, author-work navigation, image-cache
 re-entry, Pixiv Safe Mode reload, bookmark toggle round-trip, WorkManager save
-completion, and duplicate-save prevention. The production Pixiv request seam
-also has a cancellation regression test proving that a late response from a
-canceled job cannot update feed state. This 0.0.3 slice is **VERIFIED** for
-the scoped implementation; Konachan remains postponed. The active branch is
-prepared for a 0.0.3 review; no remote PR or push is implied by this record.
+completion, duplicate-save prevention, and Following detail-back position
+restoration. Grid and detail image failures now expose a retryable state, while
+Pixiv display candidates prefer the path-preserving proxy before the ID/page
+fallback. The production Pixiv request seam also has a cancellation regression
+test proving that a late response from a canceled job cannot update feed state.
+This 0.0.3 slice is **VERIFIED** for the scoped implementation; Konachan
+remains postponed. The active branch is prepared for a 0.0.3 review; no remote
+PR or push is implied by this record.

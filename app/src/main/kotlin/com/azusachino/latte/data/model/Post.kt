@@ -73,10 +73,12 @@ data class Post(
     val imageSources: List<String>
         get() = buildList {
             if (siteId == "pixiv") {
+                add(previewUrl)
                 addAll(variants.filter { it.id == "pixiv-cat" }.map { it.url })
+            } else {
+                add(previewUrl)
             }
-            add(previewUrl)
-        }.distinct()
+        }.filter(String::isNotBlank).distinct()
 
     val workIdentity: ArtworkIdentity
         get() = ArtworkIdentity(siteId, id)

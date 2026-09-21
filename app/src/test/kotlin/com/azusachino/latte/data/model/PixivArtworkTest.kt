@@ -61,11 +61,11 @@ class PixivArtworkTest {
         assertEquals("https://i.pixiv.cat/original/p1.png", artwork.pages[1].mediaRef.url)
         assertEquals("https://pixiv.cat/75034219-1.png", artwork.pages[1].fallbackUrl)
         assertEquals(
-            listOf("https://pixiv.cat/75034219-1.png", "https://i.pixiv.cat/original/p1.png"),
+            listOf("https://i.pixiv.cat/original/p1.png", "https://pixiv.cat/75034219-1.png"),
             artwork.pages[1].imageSources,
         )
         assertEquals(
-            listOf("https://pixiv.cat/75034219.png", "https://i.pixiv.cat/original/p0.png"),
+            listOf("https://i.pixiv.cat/original/p0.png", "https://pixiv.cat/75034219.png"),
             artwork.imageSources,
         )
         val secondPage = artwork.forPage(1)

@@ -114,7 +114,7 @@ approved `Platforms & accounts` cards/actions.
 
 - [x] T033 [P] Add quiet inline error, auth-required, rate-limit, upstream-drift, and transport-failure copy without toast-only recovery in `app/src/main/kotlin/com/azusachino/latte/ui/explore/ExploreScreen.kt` and `app/src/main/kotlin/com/azusachino/latte/ui/detail/DetailScreen.kt`
 - [x] T034 Run `make check`, inspect `git diff --check`, and record fixture/test evidence in this task file
-- [x] T035 Build and install a debug APK with `make validate` and `make install`, then record the physical-device Explore/platform-switch/detail receipt before declaring the journey complete (Explore, Yande detail, Pixiv browser OAuth exchange, authenticated Popular/Following/Favorites rendering, platform picker, and Platforms & accounts verified on the connected OnePlus 8; author works and Pixiv Safe Mode are also verified; bookmark toggle, completed download, and duplicate-save warning are verified live)
+- [x] T035 Build and install a debug APK with `make validate` and `make install`, then record the physical-device Explore/platform-switch/detail receipt before declaring the journey complete (Explore, Yande detail, Pixiv browser OAuth exchange, authenticated Popular/Following/Favorites rendering, platform picker, and Platforms & accounts verified on the connected OnePlus 8; author works and Pixiv Safe Mode are also verified; bookmark toggle, completed download, duplicate-save warning, Following detail-back position restoration, and loading-image fallback states are verified live)
 
 ## Dependencies and execution order
 
@@ -166,6 +166,10 @@ approved `Platforms & accounts` cards/actions.
 - The cancellation regression test drives the production Pixiv result-apply
   seam with a deliberately late response and proves a canceled request cannot
   update feed state.
+- The connected-device regression pass scrolled deep into Pixiv Following,
+  opened a work, returned with Android Back, and observed the same visible
+  viewport. It also opened a card while its thumbnail was still loading and
+  observed a visible detail loading/preview state rather than a blank viewer.
 - The anonymous App API ranking probe returned HTTP 400 with Pixiv's
   `invalid_request` OAuth message. PixEz's login-first interceptor and the
   device probe agree that native-client Popular is authenticated; the public

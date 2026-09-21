@@ -63,6 +63,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -71,6 +72,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -82,8 +84,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
 import coil3.compose.SubcomposeAsyncImage
+import coil3.request.ImageRequest
 import com.azusachino.latte.data.download.DownloadManager
 import com.azusachino.latte.data.download.DownloadResult
 import com.azusachino.latte.data.model.Post
@@ -179,21 +181,100 @@ fun DetailScreen(
                     modifier = Modifier.fillMaxSize(),
                     onTap = { showControls = !showControls },
                 ) {
-                    SubcomposeAsyncImage(
-                        model = targetPost.sampleUrl,
-                        contentDescription = null,
-                        loading = {
-                            // Instant display of cached preview bitmap from memory cache
-                            AsyncImage(
-                                model = targetPost.previewUrl,
-                                contentDescription = null,
-                                contentScale = ContentScale.Fit,
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        },
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                    val imageSources = remember(targetPost.siteId, targetPost.id, targetPost.pageIndex) {
+                        buildList {
+                            if (targetPost.siteId == "pixiv") addAll(targetPost.imageSources)
+                            add(targetPost.sampleUrl)
+                            add(targetPost.previewUrl)
+                            addAll(targetPost.imageSources)
+                        }.filter(String::isNotBlank).distinct()
+                    }
+                    if (imageSources.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("Image unavailable", color = Color.White)
+                        }
+                    } else {
+                        var imageSourceIndex by rememberSaveable(
+                            targetPost.siteId,
+                            targetPost.id,
+                            targetPost.pageIndex,
+                        ) { mutableStateOf(0) }
+                        var imageRetryCount by rememberSaveable(
+                            targetPost.siteId,
+                            targetPost.id,
+                            targetPost.pageIndex,
+                        ) { mutableStateOf(0) }
+                        val safeImageSourceIndex = imageSourceIndex.coerceIn(imageSources.indices)
+                        val imageRequest = remember(imageSources[safeImageSourceIndex], imageRetryCount) {
+                            ImageRequest.Builder(context)
+                                .data(imageSources[safeImageSourceIndex])
+                                .build()
+                        }
+                        SubcomposeAsyncImage(
+                            model = imageRequest,
+                            contentDescription = null,
+                            contentScale = ContentScale.Fit,
+                            loading = {
+                                if (targetPost.previewUrl.isBlank() ||
+                                    imageSources[safeImageSourceIndex] == targetPost.previewUrl
+                                ) {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        CircularProgressIndicator(color = Color.White)
+                                    }
+                                } else {
+                                    SubcomposeAsyncImage(
+                                        model = targetPost.previewUrl,
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Fit,
+                                        loading = {
+                                            CircularProgressIndicator(color = Color.White)
+                                        },
+                                        error = {
+                                            Text(
+                                                text = "Image unavailable",
+                                                color = Color.White,
+                                            )
+                                        },
+                                        modifier = Modifier.fillMaxSize(),
+                                    )
+                                }
+                            },
+                            error = {
+                                if (safeImageSourceIndex < imageSources.lastIndex) {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        CircularProgressIndicator(color = Color.White)
+                                    }
+                                } else {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text("Image unavailable", color = Color.White)
+                                            TextButton(onClick = { imageRetryCount++ }) {
+                                                Text("Retry")
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            onError = {
+                                if (safeImageSourceIndex < imageSources.lastIndex) {
+                                    imageSourceIndex = safeImageSourceIndex + 1
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
                 }
             }
         }

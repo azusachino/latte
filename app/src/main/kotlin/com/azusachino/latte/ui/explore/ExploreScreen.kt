@@ -86,12 +86,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
@@ -101,6 +104,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import coil3.compose.SubcomposeAsyncImage
+import coil3.request.ImageRequest
 import com.azusachino.latte.data.model.PoolSummary
 import com.azusachino.latte.data.model.PopularPeriod
 import com.azusachino.latte.data.model.Post
@@ -108,6 +113,7 @@ import com.azusachino.latte.data.network.PixivFeedKind
 import com.azusachino.latte.plugin.SitePlugin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -459,6 +465,12 @@ fun ExploreScreen(
                         uiState.pixivAuthorId != null -> uiState.pixivUserWorksFeed
                         else -> uiState.pixivSearchFeed
                     },
+                    viewModel = viewModel,
+                    gridKey = when {
+                        !uiState.isPixiv -> ExploreGridKey(ExplorePlatform.YANDE, "search:${uiState.searchTags}")
+                        uiState.pixivAuthorId != null -> ExploreGridKey(ExplorePlatform.PIXIV, "user:${uiState.pixivAuthorId}")
+                        else -> ExploreGridKey(ExplorePlatform.PIXIV, "search:${uiState.pixivSearchTags}")
+                    },
                     gridState = when {
                         !uiState.isPixiv -> searchGridState
                         uiState.pixivAuthorId != null -> pixivUserWorksGridState
@@ -494,6 +506,11 @@ fun ExploreScreen(
                                 }
                                 FeedGrid(
                                     feed = if (uiState.isPixiv) uiState.pixivPopularFeed else uiState.popularFeed,
+                                    viewModel = viewModel,
+                                    gridKey = ExploreGridKey(
+                                        if (uiState.isPixiv) ExplorePlatform.PIXIV else ExplorePlatform.YANDE,
+                                        "popular",
+                                    ),
                                     gridState = if (uiState.isPixiv) pixivPopularGridState else popularGridState,
                                     columnCount = columnCount,
                                     onPostClick = onPostClick,
@@ -512,9 +529,11 @@ fun ExploreScreen(
                         1 -> {
                             if (uiState.isPixiv) {
                                 PersonalFeedContent(
+                                    viewModel = viewModel,
                                     plugin = pixivPlugin,
                                     feed = uiState.pixivFollowedFeed,
                                     label = "Sign in to see followed updates",
+                                    gridKey = ExploreGridKey(ExplorePlatform.PIXIV, "followed"),
                                     gridState = if (uiState.isPixiv) pixivFollowedGridState else newestGridState,
                                     columnCount = columnCount,
                                     onPostClick = onPostClick,
@@ -526,6 +545,8 @@ fun ExploreScreen(
                             } else {
                                 FeedGrid(
                                     feed = uiState.newestFeed,
+                                    viewModel = viewModel,
+                                    gridKey = ExploreGridKey(ExplorePlatform.YANDE, "newest"),
                                     gridState = newestGridState,
                                     columnCount = columnCount,
                                     onPostClick = onPostClick,
@@ -537,9 +558,14 @@ fun ExploreScreen(
                         }
                         2 -> {
                             PersonalFeedContent(
+                                viewModel = viewModel,
                                 plugin = if (uiState.isPixiv) pixivPlugin else sitePlugin,
                                 feed = if (uiState.isPixiv) uiState.pixivFavoritesFeed else uiState.favoritesFeed,
                                 label = if (uiState.isPixiv) "Sign in to see Pixiv favorites" else "Sign in to see your favorites",
+                                gridKey = ExploreGridKey(
+                                    if (uiState.isPixiv) ExplorePlatform.PIXIV else ExplorePlatform.YANDE,
+                                    "favorites",
+                                ),
                                 gridState = if (uiState.isPixiv) pixivFavoritesGridState else favoritesGridState,
                                 columnCount = columnCount,
                                 onPostClick = onPostClick,
@@ -604,6 +630,8 @@ private fun PlatformLogo(
 @Composable
 private fun FeedGrid(
     feed: FeedState,
+    viewModel: ExploreViewModel,
+    gridKey: ExploreGridKey,
     gridState: LazyStaggeredGridState,
     columnCount: Int,
     onPostClick: (Int) -> Unit,
@@ -700,6 +728,33 @@ private fun FeedGrid(
                 }
             }
             else -> {
+                LaunchedEffect(gridKey) {
+                    val position = viewModel.gridPosition(gridKey)
+                    val restoredIndex = position.anchorPostId
+                        ?.let { anchorId -> feed.posts.indexOfFirst { it.id == anchorId } }
+                        ?.takeIf { it >= 0 }
+                        ?: position.index
+                    if (restoredIndex > 0 || position.scrollOffset > 0) {
+                        // The staggered grid cannot honor scrollToItem until its first
+                        // layout has measured the current children.
+                        withFrameNanos { }
+                        gridState.scrollToItem(
+                            restoredIndex.coerceIn(0, feed.posts.lastIndex),
+                            position.scrollOffset,
+                        )
+                    }
+                    snapshotFlow {
+                        GridPosition(
+                            index = gridState.firstVisibleItemIndex,
+                            scrollOffset = gridState.firstVisibleItemScrollOffset,
+                            anchorPostId = feed.posts
+                                .getOrNull(gridState.firstVisibleItemIndex)
+                                ?.id,
+                        )
+                    }
+                        .distinctUntilChanged()
+                        .collect { viewModel.saveGridPosition(gridKey, it) }
+                }
                 LazyVerticalStaggeredGrid(
                     columns = StaggeredGridCells.Fixed(columnCount),
                     state = gridState,
@@ -714,7 +769,19 @@ private fun FeedGrid(
                     ) { index, post ->
                         PostGridItem(
                             post = post,
-                            onClick = { onPostClick(index) },
+                            onClick = {
+                                viewModel.saveGridPosition(
+                                    gridKey,
+                                    GridPosition(
+                                        index = gridState.firstVisibleItemIndex,
+                                        scrollOffset = gridState.firstVisibleItemScrollOffset,
+                                        anchorPostId = feed.posts
+                                            .getOrNull(gridState.firstVisibleItemIndex)
+                                            ?.id,
+                                    ),
+                                )
+                                onPostClick(index)
+                            },
                         )
                     }
 
@@ -738,9 +805,11 @@ private fun FeedGrid(
 
 @Composable
 private fun PersonalFeedContent(
+    viewModel: ExploreViewModel,
     plugin: SitePlugin?,
     feed: FeedState,
     label: String,
+    gridKey: ExploreGridKey,
     gridState: LazyStaggeredGridState,
     columnCount: Int,
     onPostClick: (Int) -> Unit,
@@ -792,12 +861,10 @@ private fun PersonalFeedContent(
         return
     }
 
-    LaunchedEffect(isLoggedIn, username) {
-        onRetry()
-    }
-
     FeedGrid(
         feed = feed,
+        viewModel = viewModel,
+        gridKey = gridKey,
         gridState = gridState,
         columnCount = columnCount,
         onPostClick = onPostClick,
@@ -987,7 +1054,22 @@ private fun PostGridItem(
 ) {
     val imageSources = remember(post.siteId, post.id, post.pageIndex) { post.imageSources }
     var imageSourceIndex by rememberSaveable(post.siteId, post.id, post.pageIndex) { mutableStateOf(0) }
-    val safeImageSourceIndex = imageSourceIndex.coerceIn(imageSources.indices)
+    var imageRetryCount by rememberSaveable(post.siteId, post.id, post.pageIndex) { mutableStateOf(0) }
+    val safeImageSourceIndex = imageSourceIndex.coerceIn(0, (imageSources.size - 1).coerceAtLeast(0))
+    val imageUrl = imageSources.getOrNull(safeImageSourceIndex)
+    val context = LocalContext.current
+    val imageRequest = if (imageUrl == null) {
+        null
+    } else {
+        remember(imageUrl, imageRetryCount) {
+            ImageRequest.Builder(context)
+                .data(imageUrl)
+                .build()
+        }
+    }
+    val imageModifier = Modifier
+        .fillMaxWidth()
+        .aspectRatio(post.aspectRatio.coerceIn(0.4f, 2.5f))
 
     Card(
         modifier = modifier
@@ -1000,17 +1082,61 @@ private fun PostGridItem(
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        AsyncImage(
-            model = imageSources[safeImageSourceIndex],
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            onError = {
-                if (safeImageSourceIndex < imageSources.lastIndex) imageSourceIndex = safeImageSourceIndex + 1
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(post.aspectRatio.coerceIn(0.4f, 2.5f)),
-        )
+        if (imageRequest == null) {
+            Box(
+                modifier = imageModifier.padding(8.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "Image unavailable",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            SubcomposeAsyncImage(
+                model = imageRequest,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                loading = {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                    }
+                },
+                error = {
+                    Box(
+                        modifier = Modifier.fillMaxSize().padding(8.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "Image unavailable",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            TextButton(
+                                onClick = {
+                                    if (safeImageSourceIndex < imageSources.lastIndex) {
+                                        imageSourceIndex = safeImageSourceIndex + 1
+                                    } else {
+                                        imageRetryCount++
+                                    }
+                                },
+                            ) {
+                                Text("Retry")
+                            }
+                        }
+                    }
+                },
+                onError = {
+                    if (safeImageSourceIndex < imageSources.lastIndex) imageSourceIndex = safeImageSourceIndex + 1
+                },
+                modifier = imageModifier,
+            )
+        }
     }
 }
 

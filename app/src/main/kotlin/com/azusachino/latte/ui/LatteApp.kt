@@ -18,6 +18,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -47,6 +48,14 @@ private val Screen.navDepth: Int
         is Screen.Detail -> 1
         is Screen.Settings -> 1
         is Screen.AccountManager -> 2
+    }
+
+private val Screen.stateKey: String
+    get() = when (this) {
+        is Screen.Explore -> "explore"
+        is Screen.Detail -> "detail:$initialIndex"
+        is Screen.Settings -> "settings"
+        is Screen.AccountManager -> "account-manager"
     }
 
 // A quick, slightly overshooting settle (inspired by transitions.dev's toggle
@@ -93,6 +102,7 @@ fun LatteApp(
 
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Explore) }
     var activeLoginPlugin by remember { mutableStateOf<com.azusachino.latte.plugin.SitePlugin?>(null) }
+    val saveableStateHolder = rememberSaveableStateHolder()
 
     LatteTheme(themeMode = themeMode, palette = palette) {
         Box(modifier = modifier.fillMaxSize()) {
@@ -110,79 +120,81 @@ fun LatteApp(
                 },
                 modifier = Modifier.fillMaxSize(),
             ) { screen ->
-                when (screen) {
-                    is Screen.Explore -> {
-                        ExploreScreen(
-                            viewModel = exploreViewModel,
-                            sitePlugin = yandePlugin,
-                            pixivPlugin = pixivPlugin,
-                            onPostClick = { index ->
-                                currentScreen = Screen.Detail(index)
-                            },
-                            onOpenSettings = {
-                                currentScreen = Screen.Settings
-                            },
-                            onRequireLogin = { plugin ->
-                                activeLoginPlugin = plugin
-                            },
-                        )
-                    }
-                    is Screen.Detail -> {
-                        BackHandler {
-                            currentScreen = Screen.Explore
+                saveableStateHolder.SaveableStateProvider(screen.stateKey) {
+                    when (screen) {
+                        is Screen.Explore -> {
+                            ExploreScreen(
+                                viewModel = exploreViewModel,
+                                sitePlugin = yandePlugin,
+                                pixivPlugin = pixivPlugin,
+                                onPostClick = { index ->
+                                    currentScreen = Screen.Detail(index)
+                                },
+                                onOpenSettings = {
+                                    currentScreen = Screen.Settings
+                                },
+                                onRequireLogin = { plugin ->
+                                    activeLoginPlugin = plugin
+                                },
+                            )
                         }
-                        val posts = exploreViewModel.uiState.collectAsState().value.posts
-                        DetailScreen(
-                            posts = posts,
-                            initialIndex = screen.initialIndex,
-                            downloadManager = downloadManager,
-                            pluginManager = sitePluginManager,
-                            onBack = {
+                        is Screen.Detail -> {
+                            BackHandler {
                                 currentScreen = Screen.Explore
-                            },
-                            onTagClick = { tag ->
-                                exploreViewModel.search(tag)
-                                currentScreen = Screen.Explore
-                            },
-                            onAuthorClick = { post ->
-                                if (post.siteId == "pixiv" && post.authorId != null) {
-                                    exploreViewModel.loadPixivUserWorks(post.authorId, post.author.orEmpty())
-                                } else {
-                                    post.author?.takeIf(String::isNotBlank)?.let {
-                                        exploreViewModel.search("user:$it")
+                            }
+                            val posts = exploreViewModel.uiState.collectAsState().value.posts
+                            DetailScreen(
+                                posts = posts,
+                                initialIndex = screen.initialIndex,
+                                downloadManager = downloadManager,
+                                pluginManager = sitePluginManager,
+                                onBack = {
+                                    currentScreen = Screen.Explore
+                                },
+                                onTagClick = { tag ->
+                                    exploreViewModel.search(tag)
+                                    currentScreen = Screen.Explore
+                                },
+                                onAuthorClick = { post ->
+                                    if (post.siteId == "pixiv" && post.authorId != null) {
+                                        exploreViewModel.loadPixivUserWorks(post.authorId, post.author.orEmpty())
+                                    } else {
+                                        post.author?.takeIf(String::isNotBlank)?.let {
+                                            exploreViewModel.search("user:$it")
+                                        }
                                     }
-                                }
-                                currentScreen = Screen.Explore
-                            },
-                            onRequireLogin = { plugin ->
-                                activeLoginPlugin = plugin
-                            },
-                        )
-                    }
-                    is Screen.Settings -> {
-                        BackHandler {
-                            currentScreen = Screen.Explore
+                                    currentScreen = Screen.Explore
+                                },
+                                onRequireLogin = { plugin ->
+                                    activeLoginPlugin = plugin
+                                },
+                            )
                         }
-                        SettingsScreen(
-                            preferences = exploreViewModel.preferences,
-                            onBack = {
+                        is Screen.Settings -> {
+                            BackHandler {
                                 currentScreen = Screen.Explore
-                            },
-                            onOpenAccountManager = {
-                                currentScreen = Screen.AccountManager
-                            },
-                        )
-                    }
-                    is Screen.AccountManager -> {
-                        BackHandler {
-                            currentScreen = Screen.Settings
+                            }
+                            SettingsScreen(
+                                preferences = exploreViewModel.preferences,
+                                onBack = {
+                                    currentScreen = Screen.Explore
+                                },
+                                onOpenAccountManager = {
+                                    currentScreen = Screen.AccountManager
+                                },
+                            )
                         }
-                        com.azusachino.latte.ui.account.AccountManagerScreen(
-                            pluginManager = sitePluginManager,
-                            onBack = {
+                        is Screen.AccountManager -> {
+                            BackHandler {
                                 currentScreen = Screen.Settings
-                            },
-                        )
+                            }
+                            com.azusachino.latte.ui.account.AccountManagerScreen(
+                                pluginManager = sitePluginManager,
+                                onBack = {
+                                    currentScreen = Screen.Settings
+                                },
+                            )
+                        }
                     }
                 }
             }

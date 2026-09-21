@@ -30,6 +30,17 @@ enum class ExplorePlatform {
     PIXIV,
 }
 
+internal data class ExploreGridKey(
+    val platform: ExplorePlatform,
+    val feed: String,
+)
+
+internal data class GridPosition(
+    val index: Int = 0,
+    val scrollOffset: Int = 0,
+    val anchorPostId: Long? = null,
+)
+
 data class FeedState(
     val posts: List<Post> = emptyList(),
     val isLoading: Boolean = false,
@@ -199,12 +210,19 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     private val api = YandeApi()
     private var pixivApi: PixivApi? = null
     private var pixivLoadJob: Job? = null
+    private val gridPositions = mutableMapOf<ExploreGridKey, GridPosition>()
     val preferences = LattePreferences(application)
 
     private val _uiState = MutableStateFlow(ExploreUiState())
     val uiState: StateFlow<ExploreUiState> = _uiState.asStateFlow()
 
     val columnCount: StateFlow<Int> = preferences.columnCount
+
+    internal fun gridPosition(key: ExploreGridKey): GridPosition = gridPositions[key] ?: GridPosition()
+
+    internal fun saveGridPosition(key: ExploreGridKey, position: GridPosition) {
+        gridPositions[key] = position
+    }
 
     init {
         loadPopularInitial()

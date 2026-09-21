@@ -22,7 +22,7 @@ data class ArtworkPage(
         get() = mediaRef.id
 
     val imageSources: List<String>
-        get() = listOfNotNull(fallbackUrl, previewUrl).distinct()
+        get() = listOfNotNull(previewUrl, fallbackUrl).distinct()
 }
 
 @Serializable
@@ -89,7 +89,7 @@ fun PixivIllustDto.toPost(): Post {
             ?.substringBefore('?')
             ?.substringAfterLast('.', "jpg")
             ?.lowercase()
-            ?.takeIf { it in setOf("jpg", "jpeg", "png", "gif") }
+            ?.takeIf { it in setOf("jpg", "jpeg", "png", "gif", "webp") }
             ?: "jpg"
         val pathProxyUrl = pixivImageProxyUrl(original)
             ?: pixivImageProxyUrl(urls.medium)

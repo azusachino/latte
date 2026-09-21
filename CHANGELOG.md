@@ -14,8 +14,12 @@
 ### Fixed
 
 - Preserved successful image candidates when grid cards leave and re-enter the
-  viewport, and resolved the authenticated-feed transition without a signed-out
-  flash.
+  viewport, restored the active feed position after detail Back, and resolved
+  the authenticated-feed transition without a signed-out flash.
+- Added visible thumbnail loading, proxy fallback, and retry states so a slow
+  or failed image request cannot leave a grid card or detail viewer blank.
+- Preferred the path-preserving `i.pixiv.cat` candidate before the ID/page
+  fallback and retained WebP extensions when constructing Pixiv fallback URLs.
 - Kept Pixiv feed navigation separate from page navigation inside a work.
 - Added a directional transition for inner Pixiv page changes so cached images
   do not swap invisibly.
