@@ -119,8 +119,6 @@ fun SettingsScreen(
                 onCheckedChange = { preferences.setSafeMode(it) },
             )
 
-            BlacklistTagsEditor(preferences)
-
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
             // Appearance Section
@@ -331,61 +329,4 @@ private fun formatFileSize(bytes: Long): String {
     if (digitGroups >= units.size) digitGroups = units.size - 1
     val df = java.text.DecimalFormat("#,##0.#")
     return "${df.format(bytes / Math.pow(1024.0, digitGroups.toDouble()))} ${units[digitGroups]}"
-}
-
-@Composable
-private fun BlacklistTagsEditor(preferences: LattePreferences, modifier: Modifier = Modifier) {
-    val blacklist by preferences.blacklistTags.collectAsState()
-    var newTag by remember { mutableStateOf("") }
-
-    Column(modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Text("Blacklisted Tags", style = MaterialTheme.typography.bodyLarge)
-        Text(
-            "Hide posts carrying these tags on every feed",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(
-                value = newTag,
-                onValueChange = { newTag = it },
-                modifier = Modifier.weight(1f),
-                placeholder = { Text("e.g. comic") },
-                singleLine = true,
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-            )
-            TextButton(
-                onClick = {
-                    preferences.setTagBlacklisted(newTag, true)
-                    newTag = ""
-                },
-                enabled = newTag.isNotBlank(),
-            ) {
-                Text("Add")
-            }
-        }
-        if (blacklist.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-            ) {
-                blacklist.sorted().forEach { tag ->
-                    FilterChip(
-                        selected = true,
-                        onClick = { preferences.setTagBlacklisted(tag, false) },
-                        label = { Text(tag) },
-                        trailingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Remove $tag",
-                                modifier = Modifier.height(16.dp).width(16.dp),
-                            )
-                        },
-                    )
-                }
-            }
-        }
-    }
 }

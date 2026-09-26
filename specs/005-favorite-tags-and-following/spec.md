@@ -8,7 +8,7 @@
 
 **Input**: [azusachino/latte#5](https://github.com/azusachino/latte/issues/5),
 extended after a survey of PixEz, Boorusama, Yummybooru, and neighbours with two
-adjacent features (search history, tag blacklist) that reuse the same seams.
+adjacent features (search history) that reuse the same seams.
 
 ## Objective
 
@@ -18,8 +18,6 @@ Make the two platforms' personal-feed loops complete:
    open Pixiv on the Following tab instead of Popular.
 2. **Yande favorite tags** — save tags locally and start searches from them.
 3. **Yande search support** — recent searches and tag autocomplete chips.
-4. **Tag blacklist** — a local hide-list applied across both platforms,
-   generalizing Safe Mode's existing filter seam.
 
 Latte is not becoming a social client: there is no follow list screen, no
 comment surface, and no server-side tag favorites. Following state is shown
@@ -33,7 +31,7 @@ as today. Mapping against the Jetpack storage guidance:
 
 | Data | Store |
 | --- | --- |
-| Favorite tags, blacklist tags | Preferences DataStore (`stringSetKey`) |
+| Favorite tags | Preferences DataStore (`stringSetKey`) |
 | Recent searches (ordered) | Preferences DataStore, one JSON-encoded `stringKey` (DataStore has no ordered set; kotlinx-serialization is already a dependency), bound to 20, LRU-deduped |
 | Existing keys (`columnCount`, `themeMode`, `safeMode`) | Migrated to the same DataStore in a one-time read of `latte_prefs`; the SharedPreferences file is retired |
 
@@ -82,19 +80,29 @@ Acceptance scenarios:
 
 ### User Story 3 — Favorite yande tags (P1)
 
-As the owner, I can save tags I search often and start a search from them.
+As the owner, I can save tags I search often, view them in one place, and open
+a saved tag's feed to check for updates.
 
 Acceptance scenarios:
 
-1. Given the yande search bar is expanded and the query is blank, then saved
-   favorite tags render as chips; tapping one fills the query and searches.
-2. Given a query (typed or from a tag chip), when the star toggle in the search
-   bar is enabled, then the trimmed query is added to favorites; toggling again
-   removes it.
-3. Given favorites exist, when the search bar is expanded with a query, then
-   only the star's selected state reflects membership.
-4. Given the device restarts, when the search bar is expanded, then favorites
-   persist.
+1. Given the yande search bar is expanded with a query, when the star toggle in
+   the field is tapped, then the trimmed query is added to favorites; tapping
+   again removes it.
+2. Given the yande search bar shows chips (favorites, recents, or suggestions),
+   when a chip is long-pressed, then that tag's favorite state toggles;
+   favorited chips carry a star marker.
+3. Given the yande toolbar, when the star icon is tapped, then the Favorite
+   Tags view lists all saved tags sorted alphabetically.
+4. Given the Favorite Tags view, when a tag row is tapped, then that tag's
+   search feed opens, making update checks a single gesture.
+5. Given the Favorite Tags view, when a row's remove action is tapped, then the
+   tag disappears from the list and from the search-bar chips.
+6. Given the device restarts, when the Favorite Tags view is opened, then the
+   saved tags persist.
+
+A tag blacklist was surveyed as a candidate extension and removed from scope
+after owner review; if wanted later it arrives as its own issue against the
+shared filter seam.
 
 ### User Story 4 — Yande search history and autocomplete (P2)
 
@@ -111,29 +119,13 @@ Acceptance scenarios:
 3. Given the autocomplete request fails, when results do not arrive, then the
    chip row is simply absent; no error surface is shown.
 
-### User Story 5 — Tag blacklist (P2)
-
-As the owner, I can hide posts carrying certain tags on both platforms.
-
-Acceptance scenarios:
-
-1. Given blacklist entries in Settings, when any feed page (yande or Pixiv)
-   applies, then posts whose `tags` intersect the blacklist are dropped before
-   rendering, sharing the Safe Mode filter path.
-2. Given a blacklisted post is the only content on a feed page, when pagination
-   continues, then the existing skip-empty-page continuation logic applies.
-3. Given Safe Mode is also on, when both filters run, then posts are dropped by
-   either rule (composition, not precedence).
-4. Given detail is open for an already-rendered post, when the blacklist
-   changes, then already-open content is not retroactively closed; the filter
-   applies to subsequent loads.
-
 ## Non-goals
 
 - A followed-authors management screen or follow list.
 - Server-side yande tag favorites (Moebooru API); local only.
-- Blacklist of authors or works (tags only; authors can follow later).
-- SQLite/Room, DataStore migration, backup/export, tag collections.
+- A tag blacklist (surveyed, descoped after owner review).
+- SQLite/Room, DataStore migration beyond settings, backup/export, tag
+  collections.
 
 ## Testing strategy
 
@@ -142,10 +134,13 @@ Public-seam unit tests with fixtures, `make check` green per task:
 - `PixivApi.followAuthor` and `userDetail` against recorded/redacted fixtures
   in `app/src/test/resources/pixiv/`, covering success, auth-required, drift,
   and transport shapes (mirroring the bookmark test seam).
-- `LattePreferences` round-trip for favorites, ordered history (bound and
-  dedupe), and blacklist.
-- Filter composition: Safe Mode × blacklist matrix over `Post.tags` and
-  `Post.rating`, one shared seam for both platforms.
+- `PixivFollowRegressionTest` pins the plugin-seam follow loop end to end:
+  state-read wire format, add/delete form bodies, unknown-vs-unfollowed on
+  failed reads, signed-out mutation refusal, and the neutral
+  `PluginFeedKind.FOLLOWED` mapping onto `v2/illust/follow`.
+- `LattePreferences` round-trip for favorites and ordered history (bound and
+  dedupe) through the pure `LattePreferenceCodecs` object.
+- Safe-mode filtering over `Post.rating`, one shared seam for both platforms.
 - Yande tag suggestions parsing from a `/tag.json` fixture.
 - ViewModel-level: default-tab selection on platform switch, follow-state
   cache invalidation of the followed feed.

@@ -23,6 +23,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
+import com.azusachino.latte.plugin.storage.SecurePluginStorage
+import com.azusachino.latte.plugin.yande.YandePlugin
+import com.azusachino.latte.data.network.PixivOAuthClient
+import com.azusachino.latte.plugin.pixiv.PixivPlugin
+import com.azusachino.latte.plugin.SitePluginManager
+import com.azusachino.latte.ui.account.AccountManagerScreen
+import com.azusachino.latte.ui.account.PluginLoginDialog
+import com.azusachino.latte.data.network.OkHttpProvider
+import com.azusachino.latte.data.network.PixivOAuthConfiguration
+import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.BuildConfig
 import com.azusachino.latte.data.model.Post
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -30,6 +40,7 @@ import com.azusachino.latte.data.download.DownloadManager
 import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.ui.common.ToastHost
 import com.azusachino.latte.ui.common.ToastManager
+import com.azusachino.latte.ui.explore.FavoriteTagsScreen
 import com.azusachino.latte.ui.detail.DetailScreen
 import com.azusachino.latte.ui.explore.ExploreScreen
 import com.azusachino.latte.ui.explore.ExploreViewModel
@@ -43,6 +54,7 @@ sealed interface Screen {
     data class TagSearch(val query: String) : Screen
     data class Detail(val posts: List<Post>, val initialIndex: Int, val initialPageIndex: Int = 0) : Screen
     data object Settings : Screen
+    data object FavoriteTags : Screen
     data object AccountManager : Screen
 }
 
@@ -77,6 +89,7 @@ private val Screen.stateKey: String
         is Screen.TagSearch -> "tag-search:${query}"
         is Screen.Detail -> "detail:${posts.getOrNull(initialIndex)?.workIdentity ?: initialIndex}:$initialPageIndex"
         is Screen.Settings -> "settings"
+        is Screen.FavoriteTags -> "favorite-tags"
         is Screen.AccountManager -> "account-manager"
     }
 
@@ -101,32 +114,32 @@ fun LatteApp(
         PlatformId.YANDE -> LattePalette.YANDE
     }
 
-    val pluginStorage = remember { com.azusachino.latte.plugin.storage.SecurePluginStorage(context) }
-    val yandePlugin = remember { com.azusachino.latte.plugin.yande.YandePlugin(pluginStorage, com.azusachino.latte.data.network.OkHttpProvider.client, com.azusachino.latte.data.network.OkHttpProvider.cookieJar) }
+    val pluginStorage = remember { SecurePluginStorage(context) }
+    val yandePlugin = remember { YandePlugin(pluginStorage, OkHttpProvider.client, OkHttpProvider.cookieJar) }
     val pixivOAuthClient = remember {
-        com.azusachino.latte.data.network.PixivOAuthClient(
-            httpClient = com.azusachino.latte.data.network.OkHttpProvider.client,
-            configuration = com.azusachino.latte.data.network.PixivOAuthConfiguration.pixivAndroid(
+        PixivOAuthClient(
+            httpClient = OkHttpProvider.client,
+            configuration = PixivOAuthConfiguration.pixivAndroid(
                 clientId = BuildConfig.PIXIV_OAUTH_CLIENT_ID.takeIf(String::isNotBlank),
                 clientSecret = BuildConfig.PIXIV_OAUTH_CLIENT_SECRET.takeIf(String::isNotBlank),
             ),
         )
     }
     val pixivPlugin = remember {
-        com.azusachino.latte.plugin.pixiv.PixivPlugin(
+        PixivPlugin(
             storage = pluginStorage,
-            httpClient = com.azusachino.latte.data.network.OkHttpProvider.client,
+            httpClient = OkHttpProvider.client,
             oauthClient = pixivOAuthClient,
         )
     }
-    val sitePluginManager = remember { com.azusachino.latte.plugin.SitePluginManager(listOf(yandePlugin, pixivPlugin)) }
+    val sitePluginManager = remember { SitePluginManager(listOf(yandePlugin, pixivPlugin)) }
 
     LaunchedEffect(pixivPlugin) {
         exploreViewModel.configurePixiv(pixivPlugin)
     }
 
     var navigation by remember { mutableStateOf(ScreenStack()) }
-    var activeLoginPlugin by remember { mutableStateOf<com.azusachino.latte.plugin.SitePlugin?>(null) }
+    var activeLoginPlugin by remember { mutableStateOf<SitePlugin?>(null) }
     val saveableStateHolder = rememberSaveableStateHolder()
 
     fun popNavigation() {
@@ -209,6 +222,9 @@ fun LatteApp(
                                 onOpenSettings = {
                                     navigation = navigation.push(Screen.Settings)
                                 },
+                                onOpenFavoriteTags = {
+                                    navigation = navigation.push(Screen.FavoriteTags)
+                                },
                                 onRequireLogin = { plugin ->
                                     activeLoginPlugin = plugin
                                 },
@@ -263,8 +279,18 @@ fun LatteApp(
                                 },
                             )
                         }
+                        is Screen.FavoriteTags -> {
+                            FavoriteTagsScreen(
+                                viewModel = exploreViewModel,
+                                onBack = { popNavigation() },
+                                onOpenTag = { tag ->
+                                    exploreViewModel.search(tag)
+                                    navigation = navigation.push(Screen.TagSearch(query = tag))
+                                },
+                            )
+                        }
                         is Screen.AccountManager -> {
-                            com.azusachino.latte.ui.account.AccountManagerScreen(
+                            AccountManagerScreen(
                                 pluginManager = sitePluginManager,
                                 onBack = {
                                     popNavigation()
@@ -277,7 +303,7 @@ fun LatteApp(
 
             // Global Login Dialog
             activeLoginPlugin?.let { plugin ->
-                com.azusachino.latte.ui.account.PluginLoginDialog(
+                PluginLoginDialog(
                     plugin = plugin,
                     onDismissRequest = { activeLoginPlugin = null },
                     onLoginSuccess = {

@@ -5,6 +5,7 @@ import com.azusachino.latte.data.network.PixivFeedKind
 import com.azusachino.latte.data.network.PixivFeedRequest
 import com.azusachino.latte.data.network.PixivFeedResult
 import com.azusachino.latte.plugin.PluginFeedKind
+import com.azusachino.latte.plugin.PluginFeedPage
 import com.azusachino.latte.plugin.PluginFeedRequest
 import com.azusachino.latte.plugin.PluginFeedResult
 import com.azusachino.latte.plugin.PluginFeedSource
@@ -37,7 +38,7 @@ internal class PixivFeedSource(private val api: PixivApi) : PluginFeedSource {
 
     private fun PixivFeedResult.toNeutral(): PluginFeedResult = when (this) {
         is PixivFeedResult.Success -> PluginFeedResult.Success(
-            page = com.azusachino.latte.plugin.PluginFeedPage(
+            page = PluginFeedPage(
                 items = page.items,
                 nextCursor = page.nextCursor,
             ),

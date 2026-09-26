@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -131,12 +133,13 @@ internal fun dispatchExploreBack(onNestedBack: (() -> Unit)?, onClearSearch: () 
     if (onNestedBack != null) onNestedBack() else onClearSearch()
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun ExploreScreen(
     viewModel: ExploreViewModel,
     onPostClick: (index: Int) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenFavoriteTags: () -> Unit = {},
     handleSearchBack: Boolean = true,
     onBack: (() -> Unit)? = null,
     title: String? = null,
@@ -360,6 +363,21 @@ fun ExploreScreen(
                             )
                         }
 
+                        // Favorite tags (yande): saved tags and their update feeds
+                        if (!uiState.isPixiv) {
+                            IconButton(onClick = onOpenFavoriteTags) {
+                                Icon(
+                                    imageVector = Icons.Default.Star,
+                                    contentDescription = "Favorite tags",
+                                    tint = if (uiState.favoriteTags.isNotEmpty()) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                )
+                            }
+                        }
+
                         // Settings button
                         IconButton(onClick = onOpenSettings) {
                             Icon(
@@ -471,14 +489,40 @@ fun ExploreScreen(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
                                     supportTags.take(10).forEach { tag ->
-                                        FilterChip(
-                                            selected = uiState.favoriteTags.contains(tag) && searchQuery.isBlank(),
-                                            onClick = {
-                                                searchQuery = tag
-                                                viewModel.search(tag)
+                                        val isFavorite = uiState.favoriteTags.contains(tag)
+                                        Surface(
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = if (isFavorite) {
+                                                MaterialTheme.colorScheme.secondaryContainer
+                                            } else {
+                                                MaterialTheme.colorScheme.surfaceVariant
                                             },
-                                            label = { Text(tag) },
-                                        )
+                                            modifier = Modifier
+                                                .padding(vertical = 4.dp)
+                                                .combinedClickable(
+                                                    onClick = {
+                                                        searchQuery = tag
+                                                        viewModel.search(tag)
+                                                    },
+                                                    onLongClick = { viewModel.toggleFavoriteTag(tag) },
+                                                ),
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                            ) {
+                                                if (isFavorite) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Star,
+                                                        contentDescription = "Favorited",
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.size(16.dp),
+                                                    )
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                }
+                                                Text(tag, style = MaterialTheme.typography.labelLarge)
+                                            }
+                                        }
                                     }
                                 }
                             }

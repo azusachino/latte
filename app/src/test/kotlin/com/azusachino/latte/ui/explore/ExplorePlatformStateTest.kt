@@ -109,42 +109,8 @@ class ExplorePlatformStateTest {
         )
         val explicit = safe.copy(id = 2, rating = PostRating.EXPLICIT)
 
-        assertEquals(listOf(safe), filterPixivPosts(listOf(safe, explicit), safeMode = true))
-        assertEquals(listOf(safe, explicit), filterPixivPosts(listOf(safe, explicit), safeMode = false))
-    }
-
-    @Test
-    fun blacklistComposesWithSafeModeInTheSharedFilterSeam() {
-        val safe = Post(
-            id = 1,
-            platform = PlatformId.YANDE,
-            rating = PostRating.SAFE,
-            tags = listOf("landscape"),
-            score = 0,
-            author = "Artist",
-            source = null,
-            createdAt = null,
-            width = 1,
-            height = 1,
-            previewUrl = "safe",
-            sampleUrl = "safe",
-            jpegUrl = null,
-            originalUrl = "safe",
-            variants = emptyList(),
-        )
-        val blacklistedSafe = safe.copy(id = 2, tags = listOf("comic"))
-        val explicit = safe.copy(id = 3, rating = PostRating.EXPLICIT)
-        val blacklist = setOf("comic")
-        val all = listOf(safe, blacklistedSafe, explicit)
-
-        // Blacklist alone hides matching tags on any rating.
-        assertEquals(listOf(safe, explicit), filterPosts(all, safeMode = false, blacklist = blacklist))
-        // Safe Mode alone hides non-safe ratings.
-        assertEquals(listOf(safe, blacklistedSafe), filterPosts(all, safeMode = true, blacklist = emptySet()))
-        // Composition drops by either rule, not precedence.
-        assertEquals(listOf(safe), filterPosts(all, safeMode = true, blacklist = blacklist))
-        // Empty filter config short-circuits without copying semantics changes.
-        assertEquals(all, filterPosts(all, safeMode = false, blacklist = emptySet()))
+        assertEquals(listOf(safe), filterPosts(listOf(safe, explicit), safeMode = true))
+        assertEquals(listOf(safe, explicit), filterPosts(listOf(safe, explicit), safeMode = false))
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -236,7 +202,7 @@ class ExplorePlatformStateTest {
             variants = emptyList(),
         )
         val explicit2 = explicit1.copy(id = 2)
-        val filtered = filterPixivPosts(listOf(explicit1, explicit2), safeMode = true)
+        val filtered = filterPosts(listOf(explicit1, explicit2), safeMode = true)
         assertTrue(filtered.isEmpty())
     }
 }

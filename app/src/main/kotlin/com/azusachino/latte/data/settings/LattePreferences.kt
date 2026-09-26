@@ -78,9 +78,6 @@ class LattePreferences(private val context: Context) {
     private val _recentSearches = MutableStateFlow<List<String>>(emptyList())
     val recentSearches: StateFlow<List<String>> = _recentSearches.asStateFlow()
 
-    private val _blacklistTags = MutableStateFlow<Set<String>>(emptySet())
-    val blacklistTags: StateFlow<Set<String>> = _blacklistTags.asStateFlow()
-
     init {
         scope.launch {
             migrateLegacyPrefsOnce()
@@ -94,7 +91,6 @@ class LattePreferences(private val context: Context) {
                 _recentSearches.value = values[KEY_RECENT_SEARCHES]
                     ?.let(LattePreferenceCodecs::decodeRecentSearches)
                     ?: emptyList()
-                _blacklistTags.value = values[KEY_BLACKLIST_TAGS] ?: emptySet()
             }
         }
     }
@@ -159,20 +155,6 @@ class LattePreferences(private val context: Context) {
         }
     }
 
-    fun isTagBlacklisted(tag: String): Boolean = _blacklistTags.value.contains(tag.trim())
-
-    fun setTagBlacklisted(tag: String, blacklisted: Boolean) {
-        val trimmed = tag.trim()
-        if (trimmed.isBlank()) return
-        scope.launch {
-            dataStore.edit { values ->
-                val current = values[KEY_BLACKLIST_TAGS] ?: emptySet()
-                values[KEY_BLACKLIST_TAGS] =
-                    if (blacklisted) current + trimmed else current - trimmed
-            }
-        }
-    }
-
     fun getCacheSizeBytes(): Long {
         val cacheDir = context.cacheDir ?: return 0L
         return cacheDir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
@@ -189,6 +171,5 @@ class LattePreferences(private val context: Context) {
         private val KEY_SAFE_MODE = booleanPreferencesKey("safe_mode")
         private val KEY_FAVORITE_TAGS = stringSetPreferencesKey("favorite_tags")
         private val KEY_RECENT_SEARCHES = stringPreferencesKey("recent_searches")
-        private val KEY_BLACKLIST_TAGS = stringSetPreferencesKey("blacklist_tags")
     }
 }

@@ -198,15 +198,8 @@ internal fun pixivKindForTab(tabIndex: Int): PluginFeedKind? = when (tabIndex) {
     else -> null
 }
 
-internal fun filterPixivPosts(posts: List<Post>, safeMode: Boolean): List<Post> =
-    filterPosts(posts, safeMode, emptySet())
-
-internal fun filterPosts(posts: List<Post>, safeMode: Boolean, blacklist: Set<String>): List<Post> {
-    if (!safeMode && blacklist.isEmpty()) return posts
-    return posts.filter { post ->
-        (!safeMode || post.rating == PostRating.SAFE) && post.tags.none { it in blacklist }
-    }
-}
+internal fun filterPosts(posts: List<Post>, safeMode: Boolean): List<Post> =
+    if (safeMode) posts.filter { it.rating == PostRating.SAFE } else posts
 
 internal suspend fun <T> applyIfActive(
     request: suspend () -> T,
@@ -257,10 +250,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             }.collect { }
         }
         viewModelScope.launch {
-            combine(
-                preferences.safeMode.drop(1),
-                preferences.blacklistTags.drop(1),
-            ) { _, _ -> Unit }.collect {
+            preferences.safeMode.drop(1).collect {
                 onContentFiltersChanged()
             }
         }
@@ -313,7 +303,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun applyLocalFilters(posts: List<Post>): List<Post> =
-        filterPosts(posts, preferences.safeMode.value, preferences.blacklistTags.value)
+        filterPosts(posts, preferences.safeMode.value)
 
     fun configurePixiv(plugin: SitePlugin) {
         val api = plugin.feedSource ?: return
@@ -830,11 +820,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     private fun applyPixivResult(kind: PluginFeedKind, result: PluginFeedResult, isAppend: Boolean) {
         when (result) {
             is PluginFeedResult.Success -> {
-                val visibleItems = filterPosts(
-                    result.page.items,
-                    preferences.safeMode.value,
-                    preferences.blacklistTags.value,
-                )
+                val visibleItems = filterPosts(result.page.items, preferences.safeMode.value)
                 val hasMore = result.page.nextCursor != null
                 val shouldContinue = visibleItems.isEmpty() && hasMore
                 updatePixivFeed(kind) {

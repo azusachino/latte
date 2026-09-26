@@ -9,8 +9,9 @@
   a change.
 - Pixiv now opens on the Following tab.
 - Added local favorite tags and recent searches for yande.re, with autocomplete
-  suggestions from tag counts in the search bar.
-- Added a local tag blacklist applied across both platforms beside Safe Mode.
+  suggestions from tag counts, a Favorite Tags view reached from the toolbar
+  star, long-press chip favoriting, and the star toggle in the search bar.
+- Pixiv now opens on the Following tab.
 
 ### Changed
 
