@@ -1,5 +1,7 @@
 package com.azusachino.latte.data.settings
 
+import com.azusachino.latte.data.model.FavoriteTag
+import com.azusachino.latte.plugin.PlatformId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -38,5 +40,20 @@ class LattePreferenceCodecsTest {
     fun blankQueriesAreNotRecorded() {
         val existing = listOf("a")
         assertEquals(existing, LattePreferenceCodecs.recordRecentSearch(existing, "   "))
+    }
+
+    @Test
+    fun favoriteTagsRoundTripThroughJsonWithPlatform() {
+        val values = listOf(
+            FavoriteTag("genshin_impact", PlatformId.YANDE),
+            FavoriteTag("hatsune_miku", PlatformId.PIXIV),
+        )
+        val encoded = LattePreferenceCodecs.encodeFavoriteTags(values)
+        assertEquals(values, LattePreferenceCodecs.decodeFavoriteTags(encoded))
+    }
+
+    @Test
+    fun malformedFavoriteTagsDecodeToEmpty() {
+        assertTrue(LattePreferenceCodecs.decodeFavoriteTags("not json").isEmpty())
     }
 }

@@ -24,22 +24,26 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.azusachino.latte.data.model.FavoriteTag
+import com.azusachino.latte.plugin.PlatformId
 
 /**
- * Lists the owner's saved yande tags. Tapping a tag opens its search feed so
- * favorited tags work as an update checklist; the trailing action removes
- * the tag from favorites.
+ * Lists the owner's saved tags across both platforms. Tapping a row switches
+ * to its platform and opens that tag's search feed, so favorited tags work
+ * as an update checklist; the trailing action removes the tag.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FavoriteTagsScreen(
     viewModel: ExploreViewModel,
     onBack: () -> Unit,
-    onOpenTag: (String) -> Unit,
+    onOpenTag: (FavoriteTag) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val favorites = uiState.favoriteTags.sorted()
+    val favorites = uiState.favoriteTags.sortedWith(
+        compareBy({ it.platform }, { it.tag }),
+    )
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -59,7 +63,8 @@ fun FavoriteTagsScreen(
     ) { innerPadding ->
         if (favorites.isEmpty()) {
             Text(
-                text = "No favorite tags yet. Type a tag in the yande search bar and tap the star to save it, or long-press a suggestion chip.",
+                text = "No favorite tags yet. Long-press a tag on a post's detail page " +
+                    "to save it, or use the star in the search bar.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
@@ -73,14 +78,17 @@ fun FavoriteTagsScreen(
                     .fillMaxSize()
                     .padding(innerPadding),
             ) {
-                items(favorites, key = { it }) { tag ->
+                items(favorites, key = { "${it.platform}:${it.tag}" }) { favorite ->
                     ListItem(
                         headlineContent = {
                             Text(
-                                text = tag,
+                                text = favorite.tag,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
+                        },
+                        supportingContent = {
+                            Text(platformLabel(favorite.platform))
                         },
                         leadingContent = {
                             Icon(
@@ -90,17 +98,24 @@ fun FavoriteTagsScreen(
                             )
                         },
                         trailingContent = {
-                            IconButton(onClick = { viewModel.toggleFavoriteTag(tag) }) {
+                            IconButton(
+                                onClick = { viewModel.toggleFavoriteTag(favorite.tag, favorite.platform) },
+                            ) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
-                                    contentDescription = "Remove $tag from favorites",
+                                    contentDescription = "Remove ${favorite.tag} from favorites",
                                 )
                             }
                         },
-                        modifier = Modifier.clickable { onOpenTag(tag) },
+                        modifier = Modifier.clickable { onOpenTag(favorite) },
                     )
                 }
             }
         }
     }
+}
+
+private fun platformLabel(platform: PlatformId): String = when (platform) {
+    PlatformId.YANDE -> "yande.re"
+    PlatformId.PIXIV -> "Pixiv"
 }

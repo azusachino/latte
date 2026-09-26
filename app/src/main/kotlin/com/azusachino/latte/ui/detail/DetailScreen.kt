@@ -13,8 +13,10 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -89,6 +91,7 @@ import coil3.request.ImageRequest
 import com.azusachino.latte.data.download.DownloadManager
 import com.azusachino.latte.data.download.DownloadResult
 import com.azusachino.latte.data.model.Post
+import com.azusachino.latte.data.model.FavoriteTag
 import com.azusachino.latte.data.model.PostRating
 import com.azusachino.latte.data.model.forPage
 import com.azusachino.latte.plugin.PlatformCapability
@@ -114,6 +117,8 @@ fun DetailScreen(
     onAuthorClick: (post: Post, postIndex: Int, pageIndex: Int) -> Unit = { _, _, _ -> },
     pluginManager: SitePluginManager,
     onRequireLogin: (SitePlugin) -> Unit = {},
+    favoriteTags: List<FavoriteTag> = emptyList(),
+    onToggleFavoriteTag: ((tag: String, platform: PlatformId) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val detailPosts = posts
@@ -664,11 +669,19 @@ fun DetailScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         currentPost.tags.forEach { tag ->
+                            val canFavorite = onToggleFavoriteTag != null
                             TagChip(
                                 tag = tag,
                                 onClick = {
                                     showInspectSheet = false
                                     onTagClick(tag, pagerState.currentPage, pixivPageIndex)
+                                },
+                                isFavorite = canFavorite &&
+                                    favoriteTags.any { it.tag == tag && it.platform == currentPost.platform },
+                                onLongClick = if (canFavorite) {
+                                    { onToggleFavoriteTag?.invoke(tag, currentPost.platform) }
+                                } else {
+                                    null
                                 },
                             )
                         }
@@ -844,20 +857,34 @@ private val TagPalette = listOf(
     Color(0xFF90A4AE), // Blue Grey
 )
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TagChip(
     tag: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isFavorite: Boolean = false,
+    onLongClick: (() -> Unit)? = null,
 ) {
     val baseColor = TagPalette[abs(tag.hashCode()) % TagPalette.size]
-    val containerColor = baseColor.copy(alpha = 0.15f)
-    val borderColor = baseColor.copy(alpha = 0.45f)
+    val containerColor = if (isFavorite) {
+        baseColor.copy(alpha = 0.32f)
+    } else {
+        baseColor.copy(alpha = 0.15f)
+    }
+    val borderColor = if (isFavorite) {
+        baseColor.copy(alpha = 0.9f)
+    } else {
+        baseColor.copy(alpha = 0.45f)
+    }
 
     Surface(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
-            .clickable(onClick = onClick),
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick,
+            ),
         shape = RoundedCornerShape(10.dp),
         color = containerColor,
         border = BorderStroke(1.dp, borderColor),
@@ -879,6 +906,15 @@ private fun TagChip(
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Medium,
             )
+            if (isFavorite) {
+                Spacer(modifier = Modifier.width(6.dp))
+                Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = "Favorited tag",
+                    tint = baseColor,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
         }
     }
 }

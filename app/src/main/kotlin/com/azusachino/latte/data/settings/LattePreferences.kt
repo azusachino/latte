@@ -1,11 +1,12 @@
 package com.azusachino.latte.data.settings
 
 import android.content.Context
+import com.azusachino.latte.data.model.FavoriteTag
+import com.azusachino.latte.plugin.PlatformId
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -42,6 +43,12 @@ object LattePreferenceCodecs {
     fun decodeRecentSearches(value: String): List<String> =
         runCatching { json.decodeFromString(listSerializer, value) }.getOrDefault(emptyList())
 
+    fun encodeFavoriteTags(values: List<FavoriteTag>): String =
+        json.encodeToString(favoriteTagsSerializer, values)
+
+    fun decodeFavoriteTags(value: String): List<FavoriteTag> =
+        runCatching { json.decodeFromString(favoriteTagsSerializer, value) }.getOrDefault(emptyList())
+
     /**
      * Records [query] as the most recent entry: dedupe, trim to [limit],
      * most-recent first.
@@ -53,6 +60,8 @@ object LattePreferenceCodecs {
     }
 
     private val listSerializer = ListSerializer(String.serializer())
+
+    private val favoriteTagsSerializer = ListSerializer(FavoriteTag.serializer())
 }
 
 class LattePreferences(private val context: Context) {
@@ -72,8 +81,8 @@ class LattePreferences(private val context: Context) {
     private val _safeMode = MutableStateFlow(true)
     val safeMode: StateFlow<Boolean> = _safeMode.asStateFlow()
 
-    private val _favoriteTags = MutableStateFlow<Set<String>>(emptySet())
-    val favoriteTags: StateFlow<Set<String>> = _favoriteTags.asStateFlow()
+    private val _favoriteTags = MutableStateFlow<List<FavoriteTag>>(emptyList())
+    val favoriteTags: StateFlow<List<FavoriteTag>> = _favoriteTags.asStateFlow()
 
     private val _recentSearches = MutableStateFlow<List<String>>(emptyList())
     val recentSearches: StateFlow<List<String>> = _recentSearches.asStateFlow()
@@ -87,8 +96,20 @@ class LattePreferences(private val context: Context) {
                     ?.let { mode -> runCatching { ThemeMode.valueOf(mode) }.getOrNull() }
                     ?: ThemeMode.SYSTEM
                 _safeMode.value = values[KEY_SAFE_MODE] ?: true
-                _favoriteTags.value = values[KEY_FAVORITE_TAGS] ?: emptySet()
-                _recentSearches.value = values[KEY_RECENT_SEARCHES]
+                // Older builds stored favorite_tags as a string set; the JSON
+                // list read must tolerate (and clear) that stale type instead
+                // of crashing on upgrade.
+                val storedFavorites = runCatching { values[KEY_FAVORITE_TAGS] }.getOrNull()
+                if (storedFavorites is String) {
+                    _favoriteTags.value =
+                        LattePreferenceCodecs.decodeFavoriteTags(storedFavorites)
+                } else {
+                    if (storedFavorites != null) {
+                        scope.launch { dataStore.edit { it.remove(KEY_FAVORITE_TAGS) } }
+                    }
+                    _favoriteTags.value = emptyList()
+                }
+                _recentSearches.value = runCatching { values[KEY_RECENT_SEARCHES] }.getOrNull()
                     ?.let(LattePreferenceCodecs::decodeRecentSearches)
                     ?: emptyList()
             }
@@ -134,17 +155,18 @@ class LattePreferences(private val context: Context) {
         scope.launch { dataStore.edit { it[KEY_SAFE_MODE] = enabled } }
     }
 
-    fun isFavoriteTag(tag: String): Boolean = _favoriteTags.value.contains(tag.trim())
+    fun isFavoriteTag(tag: String, platform: PlatformId): Boolean =
+        _favoriteTags.value.any { it.tag == tag.trim() && it.platform == platform }
 
-    fun setTagFavorite(tag: String, favorite: Boolean) {
+    fun setTagFavorite(tag: String, platform: PlatformId, favorite: Boolean) {
         val trimmed = tag.trim()
         if (trimmed.isBlank()) return
+        val updated = _favoriteTags.value
+            .filterNot { it.tag == trimmed && it.platform == platform }
+            .let { existing -> if (favorite) existing + FavoriteTag(trimmed, platform) else existing }
+        _favoriteTags.value = updated
         scope.launch {
-            dataStore.edit { values ->
-                val current = values[KEY_FAVORITE_TAGS] ?: emptySet()
-                values[KEY_FAVORITE_TAGS] =
-                    if (favorite) current + trimmed else current - trimmed
-            }
+            dataStore.edit { it[KEY_FAVORITE_TAGS] = LattePreferenceCodecs.encodeFavoriteTags(updated) }
         }
     }
 
@@ -169,7 +191,7 @@ class LattePreferences(private val context: Context) {
         private val KEY_COLUMN_COUNT = intPreferencesKey("column_count")
         private val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
         private val KEY_SAFE_MODE = booleanPreferencesKey("safe_mode")
-        private val KEY_FAVORITE_TAGS = stringSetPreferencesKey("favorite_tags")
+        private val KEY_FAVORITE_TAGS = stringPreferencesKey("favorite_tags")
         private val KEY_RECENT_SEARCHES = stringPreferencesKey("recent_searches")
     }
 }

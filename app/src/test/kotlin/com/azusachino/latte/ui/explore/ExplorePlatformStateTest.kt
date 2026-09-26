@@ -38,6 +38,7 @@ class ExplorePlatformStateTest {
         val state = ExploreUiState(
             platform = PlatformId.PIXIV,
             pixivPopularFeed = FeedState(posts = listOf(post)),
+            pixivFollowedFeed = FeedState(posts = listOf(post.copy(id = 75034218))),
             pixivSearchTags = "blue hair",
             pixivSearchFeed = FeedState(posts = listOf(post.copy(id = 75034220))),
         )
@@ -45,13 +46,15 @@ class ExplorePlatformStateTest {
         assertTrue(state.isPixiv)
         assertEquals("blue hair", state.activeSearchTags)
         assertEquals(75034220L, state.posts.single().id)
-        assertEquals(75034219L, state.copy(pixivSearchTags = "").posts.single().id)
+        // Tab 0 is Following on Pixiv; Popular is tab 1.
+        assertEquals(75034218L, state.copy(pixivSearchTags = "").posts.single().id)
+        assertEquals(75034219L, state.copy(pixivSearchTags = "", selectedTab = 1).posts.single().id)
     }
 
     @Test
     fun pixivAuthenticationReloadsTheSelectedFeed() {
         assertEquals(
-            PluginFeedKind.POPULAR,
+            PluginFeedKind.FOLLOWED,
             ExploreUiState(platform = PlatformId.PIXIV, selectedTab = 0)
                 .pixivFeedToReloadAfterAuthentication(),
         )
@@ -61,7 +64,7 @@ class ExplorePlatformStateTest {
                 .pixivFeedToReloadAfterAuthentication(),
         )
         assertEquals(
-            PluginFeedKind.FOLLOWED,
+            PluginFeedKind.POPULAR,
             ExploreUiState(platform = PlatformId.PIXIV, selectedTab = 1)
                 .pixivFeedToReloadAfterAuthentication(),
         )
@@ -82,8 +85,8 @@ class ExplorePlatformStateTest {
 
     @Test
     fun pixivTabsMapToIndependentFeedKinds() {
-        assertEquals(PluginFeedKind.POPULAR, pixivKindForTab(0))
-        assertEquals(PluginFeedKind.FOLLOWED, pixivKindForTab(1))
+        assertEquals(PluginFeedKind.FOLLOWED, pixivKindForTab(0))
+        assertEquals(PluginFeedKind.POPULAR, pixivKindForTab(1))
         assertEquals(PluginFeedKind.FAVORITES, pixivKindForTab(2))
         assertEquals(null, pixivKindForTab(3))
     }

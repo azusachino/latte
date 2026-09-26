@@ -363,19 +363,17 @@ fun ExploreScreen(
                             )
                         }
 
-                        // Favorite tags (yande): saved tags and their update feeds
-                        if (!uiState.isPixiv) {
-                            IconButton(onClick = onOpenFavoriteTags) {
-                                Icon(
-                                    imageVector = Icons.Default.Star,
-                                    contentDescription = "Favorite tags",
-                                    tint = if (uiState.favoriteTags.isNotEmpty()) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    },
-                                )
-                            }
+                        // Favorite tags: saved tags and their update feeds
+                        IconButton(onClick = onOpenFavoriteTags) {
+                            Icon(
+                                imageVector = Icons.Default.Star,
+                                contentDescription = "Favorite tags",
+                                tint = if (uiState.favoriteTags.isNotEmpty()) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                            )
                         }
 
                         // Settings button
@@ -422,8 +420,10 @@ fun ExploreScreen(
                                 },
                             ),
                             trailingIcon = {
-                                if (!uiState.isPixiv && searchQuery.isNotBlank()) {
-                                    val isFavorite = uiState.favoriteTags.contains(searchQuery.trim())
+                                if (searchQuery.isNotBlank()) {
+                                    val isFavorite = uiState.favoriteTags.any {
+                                        it.tag == searchQuery.trim() && it.platform == uiState.platform
+                                    }
                                     IconButton(onClick = { viewModel.toggleFavoriteTag(searchQuery) }) {
                                         Icon(
                                             imageVector = Icons.Default.Star,
@@ -449,7 +449,9 @@ fun ExploreScreen(
                         )
                         if (uiState.isPixiv && isSearchExpanded) {
                             val supportTags = if (searchQuery.isBlank()) {
-                                uiState.pixivTrendingTags
+                                uiState.favoriteTags
+                                    .filter { it.platform == PlatformId.PIXIV }
+                                    .map { it.tag } + uiState.pixivTrendingTags
                             } else {
                                 uiState.pixivSearchSuggestions
                             }
@@ -462,13 +464,16 @@ fun ExploreScreen(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
                                     supportTags.take(8).forEach { tag ->
-                                        FilterChip(
-                                            selected = false,
+                                        SearchTagChip(
+                                            tag = tag,
+                                            isFavorite = uiState.favoriteTags.any {
+                                                it.tag == tag && it.platform == PlatformId.PIXIV
+                                            },
                                             onClick = {
                                                 searchQuery = tag
                                                 viewModel.searchPixiv(tag)
                                             },
-                                            label = { Text(tag) },
+                                            onLongClick = { viewModel.toggleFavoriteTag(tag, PlatformId.PIXIV) },
                                         )
                                     }
                                 }
@@ -476,7 +481,9 @@ fun ExploreScreen(
                         }
                         if (!uiState.isPixiv && isSearchExpanded) {
                             val supportTags = if (searchQuery.isBlank()) {
-                                uiState.favoriteTags.toList() + uiState.recentSearches.filter { it !in uiState.favoriteTags }
+                                uiState.favoriteTags
+                                    .filter { it.platform == PlatformId.YANDE }
+                                    .map { it.tag } + uiState.recentSearches
                             } else {
                                 uiState.yandeSearchSuggestions
                             }
@@ -489,40 +496,17 @@ fun ExploreScreen(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
                                     supportTags.take(10).forEach { tag ->
-                                        val isFavorite = uiState.favoriteTags.contains(tag)
-                                        Surface(
-                                            shape = RoundedCornerShape(8.dp),
-                                            color = if (isFavorite) {
-                                                MaterialTheme.colorScheme.secondaryContainer
-                                            } else {
-                                                MaterialTheme.colorScheme.surfaceVariant
+                                        SearchTagChip(
+                                            tag = tag,
+                                            isFavorite = uiState.favoriteTags.any {
+                                                it.tag == tag && it.platform == PlatformId.YANDE
                                             },
-                                            modifier = Modifier
-                                                .padding(vertical = 4.dp)
-                                                .combinedClickable(
-                                                    onClick = {
-                                                        searchQuery = tag
-                                                        viewModel.search(tag)
-                                                    },
-                                                    onLongClick = { viewModel.toggleFavoriteTag(tag) },
-                                                ),
-                                        ) {
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                            ) {
-                                                if (isFavorite) {
-                                                    Icon(
-                                                        imageVector = Icons.Default.Star,
-                                                        contentDescription = "Favorited",
-                                                        tint = MaterialTheme.colorScheme.primary,
-                                                        modifier = Modifier.size(16.dp),
-                                                    )
-                                                    Spacer(modifier = Modifier.width(4.dp))
-                                                }
-                                                Text(tag, style = MaterialTheme.typography.labelLarge)
-                                            }
-                                        }
+                                            onClick = {
+                                                searchQuery = tag
+                                                viewModel.search(tag)
+                                            },
+                                            onLongClick = { viewModel.toggleFavoriteTag(tag, PlatformId.YANDE) },
+                                        )
                                     }
                                 }
                             }
@@ -533,7 +517,7 @@ fun ExploreScreen(
                 // Front page tabs: Popular / Newest / Favorites / Pools (hidden during search)
                 if (!uiState.isSearch) {
                     val tabTitles = if (uiState.isPixiv) {
-                        listOf("Popular", "Following", "Favorites")
+                        listOf("Following", "Popular", "Favorites")
                     } else {
                         listOf("Popular", "Newest", "Favorites", "Pools")
                     }
@@ -631,39 +615,6 @@ fun ExploreScreen(
                 ) { page ->
                     when (page) {
                         0 -> {
-                            Column(modifier = Modifier.fillMaxSize()) {
-                                if (!uiState.isPixiv) {
-                                    PopularControls(
-                                        period = uiState.popularPeriod,
-                                        date = uiState.popularDate,
-                                        onPeriodSelect = { viewModel.selectPopularPeriod(it) },
-                                        onShiftDate = { viewModel.shiftPopularDate(it) },
-                                        onPickDate = { viewModel.setPopularDate(it) },
-                                    )
-                                }
-                                FeedGrid(
-                                    feed = if (uiState.isPixiv) uiState.pixivPopularFeed else uiState.popularFeed,
-                                    viewModel = viewModel,
-                                    gridKey = ExploreGridKey(
-                                        if (uiState.isPixiv) PlatformId.PIXIV else PlatformId.YANDE,
-                                        "popular",
-                                    ),
-                                    gridState = if (uiState.isPixiv) pixivPopularGridState else popularGridState,
-                                    columnCount = columnCount,
-                                    onPostClick = onPostClick,
-                                    onLoadMore = { if (uiState.isPixiv) viewModel.loadMorePixiv() else viewModel.loadMorePopular() },
-                                    onRetry = { if (uiState.isPixiv) viewModel.loadPixivInitial() else viewModel.loadPopularInitial() },
-                                    onRefresh = { if (uiState.isPixiv) viewModel.refreshPixiv() else viewModel.refreshPopular() },
-                                    onRequireLogin = if (uiState.isPixiv && pixivPlugin != null) {
-                                        { onRequireLogin(pixivPlugin) }
-                                    } else {
-                                        null
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
-                        }
-                        1 -> {
                             if (uiState.isPixiv) {
                                 PersonalFeedContent(
                                     viewModel = viewModel,
@@ -671,13 +622,55 @@ fun ExploreScreen(
                                     feed = uiState.pixivFollowedFeed,
                                     label = "Sign in to see followed updates",
                                     gridKey = ExploreGridKey(PlatformId.PIXIV, "followed"),
-                                    gridState = if (uiState.isPixiv) pixivFollowedGridState else newestGridState,
+                                    gridState = pixivFollowedGridState,
                                     columnCount = columnCount,
                                     onPostClick = onPostClick,
                                     onRequireLogin = onRequireLogin,
                                     onLoadMore = { viewModel.loadMorePixiv(PluginFeedKind.FOLLOWED) },
                                     onRetry = { viewModel.loadPixivInitial(PluginFeedKind.FOLLOWED) },
                                     onRefresh = { viewModel.refreshPixiv(PluginFeedKind.FOLLOWED) },
+                                )
+                            } else {
+                                Column(modifier = Modifier.fillMaxSize()) {
+                                    PopularControls(
+                                        period = uiState.popularPeriod,
+                                        date = uiState.popularDate,
+                                        onPeriodSelect = { viewModel.selectPopularPeriod(it) },
+                                        onShiftDate = { viewModel.shiftPopularDate(it) },
+                                        onPickDate = { viewModel.setPopularDate(it) },
+                                    )
+                                    FeedGrid(
+                                        feed = uiState.popularFeed,
+                                        viewModel = viewModel,
+                                        gridKey = ExploreGridKey(PlatformId.YANDE, "popular"),
+                                        gridState = popularGridState,
+                                        columnCount = columnCount,
+                                        onPostClick = onPostClick,
+                                        onLoadMore = { viewModel.loadMorePopular() },
+                                        onRetry = { viewModel.loadPopularInitial() },
+                                        onRefresh = { viewModel.refreshPopular() },
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+                            }
+                        }
+                        1 -> {
+                            if (uiState.isPixiv) {
+                                FeedGrid(
+                                    feed = uiState.pixivPopularFeed,
+                                    viewModel = viewModel,
+                                    gridKey = ExploreGridKey(PlatformId.PIXIV, "popular"),
+                                    gridState = pixivPopularGridState,
+                                    columnCount = columnCount,
+                                    onPostClick = onPostClick,
+                                    onLoadMore = { viewModel.loadMorePixiv() },
+                                    onRetry = { viewModel.loadPixivInitial() },
+                                    onRefresh = { viewModel.refreshPixiv() },
+                                    onRequireLogin = if (pixivPlugin != null) {
+                                        { onRequireLogin(pixivPlugin) }
+                                    } else {
+                                        null
+                                    },
                                 )
                             } else {
                                 FeedGrid(
@@ -1474,6 +1467,43 @@ private fun formatPopularWindow(period: PopularPeriod, anchor: LocalDate): Strin
             val start = anchor.withDayOfYear(1)
             val end = anchor.withDayOfYear(anchor.lengthOfYear())
             "${start.format(dateFormatter)} – ${end.format(dateFormatter)}"
+        }
+    }
+}
+
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+private fun SearchTagChip(
+    tag: String,
+    isFavorite: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = if (isFavorite) {
+            MaterialTheme.colorScheme.secondaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant
+        },
+        modifier = Modifier
+            .padding(vertical = 4.dp)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+        ) {
+            if (isFavorite) {
+                Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = "Favorited",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+            }
+            Text(tag, style = MaterialTheme.typography.labelLarge)
         }
     }
 }

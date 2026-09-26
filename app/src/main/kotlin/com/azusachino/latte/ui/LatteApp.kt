@@ -108,6 +108,7 @@ fun LatteApp(
     val context = LocalContext.current
     val downloadManager = remember { DownloadManager(context) }
     val themeMode by exploreViewModel.preferences.themeMode.collectAsState()
+    val exploreUiState by exploreViewModel.uiState.collectAsState()
     val exploreState by exploreViewModel.uiState.collectAsState()
     val palette = when (exploreState.platform) {
         PlatformId.PIXIV -> LattePalette.PIXIV
@@ -237,6 +238,10 @@ fun LatteApp(
                                 initialPageIndex = screen.initialPageIndex,
                                 downloadManager = downloadManager,
                                 pluginManager = sitePluginManager,
+                                favoriteTags = exploreUiState.favoriteTags,
+                                onToggleFavoriteTag = { tag, platform ->
+                                    exploreViewModel.toggleFavoriteTag(tag, platform)
+                                },
                                 onBack = {
                                     popNavigation()
                                 },
@@ -283,9 +288,10 @@ fun LatteApp(
                             FavoriteTagsScreen(
                                 viewModel = exploreViewModel,
                                 onBack = { popNavigation() },
-                                onOpenTag = { tag ->
-                                    exploreViewModel.search(tag)
-                                    navigation = navigation.push(Screen.TagSearch(query = tag))
+                                onOpenTag = { favorite ->
+                                    exploreViewModel.selectPlatform(favorite.platform)
+                                    exploreViewModel.search(favorite.tag)
+                                    navigation = navigation.push(Screen.TagSearch(query = favorite.tag))
                                 },
                             )
                         }

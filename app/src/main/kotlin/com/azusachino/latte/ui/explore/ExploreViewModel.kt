@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.azusachino.latte.data.model.PoolSummary
 import com.azusachino.latte.data.model.PopularPeriod
+import com.azusachino.latte.data.model.FavoriteTag
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.model.PostRating
 import com.azusachino.latte.data.network.YandeApi
@@ -83,7 +84,7 @@ data class ExploreUiState(
     val pixivSearchSuggestions: List<String> = emptyList(),
     val pixivTrendingTags: List<String> = emptyList(),
     val yandeSearchSuggestions: List<String> = emptyList(),
-    val favoriteTags: Set<String> = emptySet(),
+    val favoriteTags: List<FavoriteTag> = emptyList(),
     val recentSearches: List<String> = emptyList(),
     val pixivAuthorFollowed: Boolean? = null,
     val isTogglingPixivFollow: Boolean = false,
@@ -110,8 +111,8 @@ data class ExploreUiState(
                 pixivAuthorId != null -> pixivUserWorksFeed.posts
                 else -> pixivSearchFeed.posts
             }
-            isPixiv && selectedTab == 0 -> pixivPopularFeed.posts
-            isPixiv && selectedTab == 1 -> pixivFollowedFeed.posts
+            isPixiv && selectedTab == 0 -> pixivFollowedFeed.posts
+            isPixiv && selectedTab == 1 -> pixivPopularFeed.posts
             isPixiv && selectedTab == 2 -> pixivFavoritesFeed.posts
             selectedTab == 0 -> popularFeed.posts
             selectedTab == 1 -> newestFeed.posts
@@ -126,8 +127,8 @@ data class ExploreUiState(
                 pixivAuthorId != null -> pixivUserWorksFeed.isLoading
                 else -> pixivSearchFeed.isLoading
             }
-            isPixiv && selectedTab == 0 -> pixivPopularFeed.isLoading
-            isPixiv && selectedTab == 1 -> pixivFollowedFeed.isLoading
+            isPixiv && selectedTab == 0 -> pixivFollowedFeed.isLoading
+            isPixiv && selectedTab == 1 -> pixivPopularFeed.isLoading
             isPixiv && selectedTab == 2 -> pixivFavoritesFeed.isLoading
             selectedTab == 0 -> popularFeed.isLoading
             selectedTab == 1 -> newestFeed.isLoading
@@ -142,8 +143,8 @@ data class ExploreUiState(
                 pixivAuthorId != null -> pixivUserWorksFeed.isLoadingMore
                 else -> pixivSearchFeed.isLoadingMore
             }
-            isPixiv && selectedTab == 0 -> pixivPopularFeed.isLoadingMore
-            isPixiv && selectedTab == 1 -> pixivFollowedFeed.isLoadingMore
+            isPixiv && selectedTab == 0 -> pixivFollowedFeed.isLoadingMore
+            isPixiv && selectedTab == 1 -> pixivPopularFeed.isLoadingMore
             isPixiv && selectedTab == 2 -> pixivFavoritesFeed.isLoadingMore
             selectedTab == 0 -> popularFeed.isLoadingMore
             selectedTab == 1 -> newestFeed.isLoadingMore
@@ -158,8 +159,8 @@ data class ExploreUiState(
                 pixivAuthorId != null -> pixivUserWorksFeed.isRefreshing
                 else -> pixivSearchFeed.isRefreshing
             }
-            isPixiv && selectedTab == 0 -> pixivPopularFeed.isRefreshing
-            isPixiv && selectedTab == 1 -> pixivFollowedFeed.isRefreshing
+            isPixiv && selectedTab == 0 -> pixivFollowedFeed.isRefreshing
+            isPixiv && selectedTab == 1 -> pixivPopularFeed.isRefreshing
             isPixiv && selectedTab == 2 -> pixivFavoritesFeed.isRefreshing
             selectedTab == 0 -> popularFeed.isRefreshing
             selectedTab == 1 -> newestFeed.isRefreshing
@@ -174,8 +175,8 @@ data class ExploreUiState(
                 pixivAuthorId != null -> pixivUserWorksFeed.error
                 else -> pixivSearchFeed.error
             }
-            isPixiv && selectedTab == 0 -> pixivPopularFeed.error
-            isPixiv && selectedTab == 1 -> pixivFollowedFeed.error
+            isPixiv && selectedTab == 0 -> pixivFollowedFeed.error
+            isPixiv && selectedTab == 1 -> pixivPopularFeed.error
             isPixiv && selectedTab == 2 -> pixivFavoritesFeed.error
             selectedTab == 0 -> popularFeed.error
             selectedTab == 1 -> newestFeed.error
@@ -192,8 +193,8 @@ internal fun ExploreUiState.pixivFeedToReloadAfterAuthentication(): PluginFeedKi
 }
 
 internal fun pixivKindForTab(tabIndex: Int): PluginFeedKind? = when (tabIndex) {
-    0 -> PluginFeedKind.POPULAR
-    1 -> PluginFeedKind.FOLLOWED
+    0 -> PluginFeedKind.FOLLOWED
+    1 -> PluginFeedKind.POPULAR
     2 -> PluginFeedKind.FAVORITES
     else -> null
 }
@@ -292,10 +293,10 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         return preferences.cycleColumnCount()
     }
 
-    fun toggleFavoriteTag(query: String) {
+    fun toggleFavoriteTag(query: String, platform: PlatformId = _uiState.value.platform) {
         val trimmed = query.trim()
         if (trimmed.isBlank()) return
-        preferences.setTagFavorite(trimmed, !preferences.isFavoriteTag(trimmed))
+        preferences.setTagFavorite(trimmed, platform, !preferences.isFavoriteTag(trimmed, platform))
     }
 
     fun setColumnCount(count: Int) {
@@ -329,7 +330,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         _uiState.update {
             it.copy(
                 platform = platform,
-                selectedTab = if (platform == PlatformId.PIXIV) 1 else it.selectedTab,
+                selectedTab = if (platform == PlatformId.PIXIV) 0 else it.selectedTab,
             )
         }
         if (platform == PlatformId.PIXIV && _uiState.value.pixivFollowedFeed.posts.isEmpty()) {
@@ -907,7 +908,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun selectedPixivKind(): PluginFeedKind = when (_uiState.value.selectedTab) {
-        1 -> PluginFeedKind.FOLLOWED
+        0 -> PluginFeedKind.FOLLOWED
         2 -> PluginFeedKind.FAVORITES
         else -> when {
             _uiState.value.pixivAuthorId != null -> PluginFeedKind.AUTHOR_WORKS
