@@ -5,16 +5,16 @@
 Latte is a personal image-board client for [yande.re](https://yande.re/),
 [konachan.net](https://konachan.net/), and [Pixiv](https://www.pixiv.net/), built with Kotlin, Jetpack Compose, Material 3,
 and Coil 3. It focuses on the daily loop — explore feeds, read detail pages,
-continue with a tag — with follow, favorite tags, and local saves on both
-platforms. Its architecture cleanly isolates network models, domain entities,
-and the presentation layer.
+continue with a tag — with follow, favorite tags, and local saves across all three platforms. Its architecture cleanly isolates
+network models, domain entities, and the presentation layer.
 
 The Yande/account baseline is recorded in the Spec Kit artifacts under
 `specs/002-account-manager/`; the Pixiv illustration experience in
 `specs/004-pixiv-illustration-experience/`; favorite tags and following in
-`specs/005-favorite-tags-and-following/`. Konachan remains postponed. The
-0.0.1 artifacts remain the shipped baseline and historical record for the
-anonymous browse journey.
+`specs/005-favorite-tags-and-following/`. Konachan.net is supported; Konachan.com
+remains deferred because of its Cloudflare challenge. The 0.0.1 artifacts
+remain the shipped baseline and historical record for the anonymous browse
+journey.
 Material 3 is the visual foundation, preserving the essential Moebooru/Yande
 discovery workflow, dataflow, and gestures.
 
