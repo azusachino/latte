@@ -1311,7 +1311,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         launchMoebooru {
             try {
                 val posts = loadPosts(PluginFeedKind.SEARCH, query = MoebooruTags.pool(poolId))
-                val coverUrl = posts.firstOrNull()?.previewUrl ?: return@launch
+                val coverUrl = posts.firstOrNull()?.previewUrl ?: return@launchMoebooru
                 _uiState.update { it.copy(poolCovers = it.poolCovers + (poolId to coverUrl)) }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
