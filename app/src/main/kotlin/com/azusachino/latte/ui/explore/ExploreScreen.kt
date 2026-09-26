@@ -742,7 +742,7 @@ DropdownMenuItem(
                                 viewModel = viewModel,
                                 plugin = activePlugin,
                                 feed = if (uiState.supportsUserFeeds) uiState.pixivFavoritesFeed else uiState.favoritesFeed,
-                                label = if (uiState.supportsUserFeeds) "Sign in to see Pixiv favorites" else "Sign in to see ${activePlugin?.name ?: "your"} favorites",
+                                label = activePlugin?.favoritesPrompt ?: "Sign in to see favorites",
                                 gridKey = ExploreGridKey(uiState.platform, "favorites"),
                                 gridState = if (uiState.supportsUserFeeds) pixivFavoritesGridState else favoritesGridState,
                                 columnCount = columnCount,

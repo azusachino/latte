@@ -20,6 +20,8 @@ interface SitePlugin {
     val id: String
         get() = platform.externalId
     val name: String
+    val favoritesPrompt: String
+        get() = "Sign in to see $name favorites"
     val iconRes: Int?
     val authType: AuthType
     val supportedAuthFlows: Set<AuthFlow>
