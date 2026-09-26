@@ -8,7 +8,7 @@ import com.azusachino.latte.plugin.PluginFeedPeriod
 import com.azusachino.latte.data.model.FavoriteTag
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.model.PostRating
-import com.azusachino.latte.plugin.yande.MoebooruTags
+import com.azusachino.latte.plugin.moebooru.MoebooruTags
 import com.azusachino.latte.plugin.PluginFeedKind
 import com.azusachino.latte.plugin.PluginFeedRequest
 import com.azusachino.latte.plugin.PluginFeedResult

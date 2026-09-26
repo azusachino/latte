@@ -1,5 +1,8 @@
 package com.azusachino.latte.data.model
 
+import com.azusachino.latte.plugin.PlatformId
+import com.azusachino.latte.data.network.moebooru.MoebooruPostDto
+import com.azusachino.latte.data.network.moebooru.toDomain
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -14,7 +17,7 @@ class PostTest {
     }
 
     @Test
-    fun testYandePostDtoDecodingAndDomainMapping() {
+    fun testMoebooruPostDtoDecodingAndDomainMapping() {
         val sampleJson = """
         [
           {
@@ -59,10 +62,11 @@ class PostTest {
         ]
         """.trimIndent()
 
-        val dtos = json.decodeFromString<List<YandePostDto>>(sampleJson)
+        val dtos = json.decodeFromString<List<MoebooruPostDto>>(sampleJson)
         assertEquals(1, dtos.size)
 
-        val post = dtos.first().toDomain()
+        val post = dtos.first().toDomain(PlatformId.YANDE)
+        assertEquals(PlatformId.KONACHAN, dtos.first().toDomain(PlatformId.KONACHAN).platform)
         assertEquals(123456L, post.id)
         assertEquals(PostRating.SAFE, post.rating)
         assertEquals(listOf("genshin_impact", "furina", "solo", "blue_hair"), post.tags)

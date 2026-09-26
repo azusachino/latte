@@ -86,6 +86,27 @@ Konachan.net → Popular → Week → first post (#408739) → Add to favorites 
 Favorites; the Konachan feed response contained post #408739. A regression test
 asserts that the Moebooru adapter preserves `PlatformId.KONACHAN`.
 
+## Common-layer correction
+
+The first implementation still had `YandePostDto`, `YandeApi`, and a shared
+`YandePlugin` superclass. That was not a clean common boundary. Follow-up
+refactoring removed those leaks:
+
+- Shared engine implementation is `MoebooruPlugin`; Yande and Konachan are
+  separate thin platform bindings with required identity/base-URL parameters.
+- Transport models are `MoebooruPostDto`, `MoebooruPoolDto`, and
+  `MoebooruTagDto`; no Yande-named transport type is used for Konachan.
+- `MoebooruPostDto` mapping lives in `data.network`, not the domain `Post`
+  model, and the platform is required at mapping time (no Yande default).
+- `Post` requires explicit platform identity. Variant ranking and image retry
+  behavior are generic media metadata, not `PlatformId.PIXIV` branches.
+- The public feed request uses neutral `PluginFeedPeriod`; only the Moebooru
+  adapter maps it to the transport/model-specific period.
+
+This makes the boundary real: UI/ViewModel -> neutral plugin contract ->
+platform adapter -> Moebooru/Pixiv transport. The `Post` domain object retains `PlatformId` as source identity, while its
+media-selection behavior is expressed through neutral variant metadata.
+
 ## Recommended next slice
 
 1. Move Moebooru feed operations behind a plugin-owned neutral feed source.

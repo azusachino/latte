@@ -27,11 +27,13 @@ data class MediaVariant(
     val height: Int,
     val fileSize: Long? = null,
     val extension: String? = null,
+    val downloadPriority: Int = 0,
+    val fallbackOnPreviewFailure: Boolean = false,
 )
 
 data class Post(
     val id: Long,
-    val platform: PlatformId = PlatformId.YANDE,
+    val platform: PlatformId,
     val rating: PostRating,
     val tags: List<String>,
     val score: Int,
@@ -61,31 +63,13 @@ data class Post(
         get() = if (width > 0 && height > 0) width.toFloat() / height.toFloat() else 1f
 
     val bestVariant: MediaVariant
-        get() = variants.firstOrNull { platform == PlatformId.PIXIV && it.id == "pixiv-cat" }
-            ?: variants.firstOrNull {
-                platform == PlatformId.PIXIV && (
-                    it.id == "pixiv-cat" ||
-                        it.url.startsWith("https://i.pixiv.re/") ||
-                        it.url.startsWith("https://pixiv.cat/")
-                    )
-            }
-            ?: variants.firstOrNull { it.id == "jpeg" }
-            ?: variants.firstOrNull { it.id == "sample" }
-            ?: variants.firstOrNull { it.id == "original" }
-            ?: variants.first { it.id == "preview" }
+        get() = variants.maxByOrNull(MediaVariant::downloadPriority)
+            ?: error("Post $id has no media variants")
 
     val imageSources: List<String>
         get() = buildList {
-            if (platform == PlatformId.PIXIV) {
-                add(previewUrl)
-                addAll(
-                    variants
-                        .filter { it.id == "pixiv-re" || it.id == "pixiv-cat" }
-                        .map { it.url },
-                )
-            } else {
-                add(previewUrl)
-            }
+            add(previewUrl)
+            addAll(variants.filter(MediaVariant::fallbackOnPreviewFailure).map(MediaVariant::url))
         }.filter(String::isNotBlank).distinct()
 
     val workIdentity: ArtworkIdentity
@@ -93,7 +77,7 @@ data class Post(
 }
 
 fun Post.forPage(index: Int): Post {
-    if (platform != PlatformId.PIXIV || pages.isEmpty()) return this
+    if (pages.isEmpty()) return this
     val page = pages.getOrNull(index.coerceIn(pages.indices)) ?: return this
     return copy(
         previewUrl = page.previewUrl,
@@ -105,24 +89,29 @@ fun Post.forPage(index: Int): Post {
                 url = page.previewUrl,
                 width = page.width,
                 height = page.height,
+                downloadPriority = 0,
             ),
             page.mediaRef,
             page.proxyUrl?.let {
                 MediaVariant(
-                    id = "pixiv-re",
+                    id = "path-proxy",
                     url = it,
                     width = page.width,
                     height = page.height,
                     extension = page.mediaRef.extension,
+                    downloadPriority = 2,
+                    fallbackOnPreviewFailure = true,
                 )
             },
             page.fallbackUrl?.let {
                 MediaVariant(
-                    id = "pixiv-cat",
+                    id = "mirror-fallback",
                     url = it,
                     width = page.width,
                     height = page.height,
                     extension = page.mediaRef.extension,
+                    downloadPriority = 5,
+                    fallbackOnPreviewFailure = true,
                 )
             },
             MediaVariant(
@@ -131,84 +120,12 @@ fun Post.forPage(index: Int): Post {
                 width = page.width,
                 height = page.height,
                 extension = page.mediaRef.extension,
+                downloadPriority = 3,
             ),
         ),
         width = page.width,
         height = page.height,
         pageIndex = page.pageIndex,
         authorId = authorId,
-    )
-}
-
-fun YandePostDto.toDomain(platform: PlatformId = PlatformId.YANDE): Post {
-    val preview = previewUrl ?: sampleUrl ?: fileUrl.orEmpty()
-    val sample = sampleUrl ?: fileUrl.orEmpty()
-    val original = fileUrl ?: sampleUrl.orEmpty()
-    val variants = mutableListOf<MediaVariant>()
-
-    if (!previewUrl.isNullOrBlank()) {
-        variants.add(
-            MediaVariant(
-                id = "preview",
-                url = previewUrl,
-                width = previewWidth ?: 150,
-                height = previewHeight ?: 150,
-            )
-        )
-    }
-    if (!sampleUrl.isNullOrBlank()) {
-        variants.add(
-            MediaVariant(
-                id = "sample",
-                url = sampleUrl,
-                width = sampleWidth ?: width,
-                height = sampleHeight ?: height,
-                fileSize = sampleFileSize,
-                extension = fileExt,
-            )
-        )
-    }
-    if (!jpegUrl.isNullOrBlank()) {
-        variants.add(
-            MediaVariant(
-                id = "jpeg",
-                url = jpegUrl,
-                width = jpegWidth ?: width,
-                height = jpegHeight ?: height,
-                fileSize = jpegFileSize,
-                extension = "jpg",
-            )
-        )
-    }
-    if (!fileUrl.isNullOrBlank()) {
-        variants.add(
-            MediaVariant(
-                id = "original",
-                url = fileUrl,
-                width = width,
-                height = height,
-                fileSize = fileSize,
-                extension = fileExt,
-            )
-        )
-    }
-
-    return Post(
-        id = id,
-        platform = platform,
-        rating = PostRating.fromCode(rating),
-        tags = tags.split(" ").filter { it.isNotBlank() },
-        score = score,
-        author = author,
-        source = source,
-        createdAt = createdAt,
-        width = width,
-        height = height,
-        previewUrl = preview,
-        sampleUrl = sample,
-        jpegUrl = jpegUrl,
-        originalUrl = original,
-        variants = variants,
-        authorId = null,
     )
 }

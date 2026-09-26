@@ -1,7 +1,7 @@
-package com.azusachino.latte.plugin.yande
+package com.azusachino.latte.plugin.moebooru
 
 import com.azusachino.latte.data.model.PopularPeriod
-import com.azusachino.latte.data.network.YandeApi
+import com.azusachino.latte.data.network.moebooru.MoebooruApi
 import com.azusachino.latte.plugin.PluginFeedKind
 import com.azusachino.latte.plugin.PluginFeedPage
 import com.azusachino.latte.plugin.PluginFeedPeriod
@@ -24,7 +24,7 @@ object MoebooruTags {
 }
 
 class MoebooruFeedSource(
-    private val api: YandeApi,
+    private val api: MoebooruApi,
     private val username: () -> String?,
 ) : PluginFeedSource, PluginPoolSource {
     override suspend fun load(query: String?, page: Int): Result<List<com.azusachino.latte.data.model.PoolSummary>> =
@@ -47,7 +47,7 @@ class MoebooruFeedSource(
                 PluginFeedKind.SEARCH -> api.getPosts(page = request.page, tags = request.query)
                 PluginFeedKind.FAVORITES -> {
                     val user = username() ?: return PluginFeedResult.AuthRequired
-                    api.getPosts(page = request.page, tags = YandeApi.favoriteTags(user))
+                    api.getPosts(page = request.page, tags = MoebooruApi.favoriteTags(user))
                 }
                 PluginFeedKind.FOLLOWED,
                 PluginFeedKind.AUTHOR_WORKS,

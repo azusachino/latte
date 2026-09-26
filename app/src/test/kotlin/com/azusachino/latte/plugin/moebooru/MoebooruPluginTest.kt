@@ -1,6 +1,7 @@
-package com.azusachino.latte.plugin.yande
+package com.azusachino.latte.plugin.moebooru
 
 import com.azusachino.latte.data.network.SessionCookieStore
+import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.plugin.storage.PluginStorage
 import kotlinx.coroutines.test.runTest
 import okhttp3.Cookie
@@ -16,7 +17,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-class YandePluginTest {
+class MoebooruPluginTest {
 
     private lateinit var mockServer: MockWebServer
     private lateinit var httpClient: OkHttpClient
@@ -75,10 +76,10 @@ class YandePluginTest {
     }
 
     @Test
-    fun testYandePasswordHasher() {
+    fun testMoebooruPasswordHasher() {
         assertEquals(
             "b3c976b76ba4505518baa3dd35fd5d335069963c",
-            YandePasswordHasher.hash("password"),
+            MoebooruPasswordHasher.hash("password"),
         )
     }
 
@@ -93,23 +94,23 @@ class YandePluginTest {
             </head>
             </html>
         """.trimIndent()
-        assertEquals("test_token_12345", YandePlugin.extractCsrfToken(html1))
+        assertEquals("test_token_12345", MoebooruPlugin.extractCsrfToken(html1))
 
         val html2 = """
             <head>
                 <meta content="alt_token_67890" name="csrf-token" />
             </head>
         """.trimIndent()
-        assertEquals("alt_token_67890", YandePlugin.extractCsrfToken(html2))
+        assertEquals("alt_token_67890", MoebooruPlugin.extractCsrfToken(html2))
 
         val htmlEmpty = "<html><head></head></html>"
-        assertNull(YandePlugin.extractCsrfToken(htmlEmpty))
+        assertNull(MoebooruPlugin.extractCsrfToken(htmlEmpty))
     }
 
     @Test
     fun testSetScoreRequiresLogin() = runTest {
         val storage = InMemoryStorage()
-        val plugin = YandePlugin(storage, httpClient, baseUrl = mockServer.url("/").toString().removeSuffix("/"))
+        val plugin = MoebooruPlugin(storage, httpClient, baseUrl = mockServer.url("/").toString().removeSuffix("/"), platform = PlatformId.YANDE, name = PlatformId.YANDE.displayName)
 
         assertFalse(plugin.isLoggedIn)
         val result = plugin.setScore(123L, 3)
@@ -121,7 +122,7 @@ class YandePluginTest {
     fun testSetScoreAndCache() = runTest {
         val storage = InMemoryStorage()
         storage.save("yande.re", "username", "alice")
-        val plugin = YandePlugin(storage, httpClient, baseUrl = mockServer.url("/").toString().removeSuffix("/"))
+        val plugin = MoebooruPlugin(storage, httpClient, baseUrl = mockServer.url("/").toString().removeSuffix("/"), platform = PlatformId.YANDE, name = PlatformId.YANDE.displayName)
 
         assertTrue(plugin.isLoggedIn)
         assertEquals("alice", plugin.getDisplayUsername())
@@ -176,11 +177,13 @@ class YandePluginTest {
                 .addHeader("Set-Cookie", "user_id=42; Path=/"),
         )
 
-        val plugin = YandePlugin(
+        val plugin = MoebooruPlugin(
             storage = storage,
             httpClient = loginHttpClient,
             cookieJar = cookieStore,
             baseUrl = mockServer.url("/").toString().removeSuffix("/"),
+            platform = PlatformId.YANDE,
+            name = PlatformId.YANDE.displayName,
         )
 
         val result = plugin.login(mapOf("username" to "alice", "password" to "password"))
@@ -203,11 +206,13 @@ class YandePluginTest {
         )
         mockServer.enqueue(MockResponse().setResponseCode(200).setBody("alice"))
 
-        val plugin = YandePlugin(
+        val plugin = MoebooruPlugin(
             storage = storage,
             httpClient = loginHttpClient,
             cookieJar = cookieStore,
             baseUrl = mockServer.url("/").toString().removeSuffix("/"),
+            platform = PlatformId.YANDE,
+            name = PlatformId.YANDE.displayName,
         )
 
         val result = plugin.login(mapOf("username" to "alice", "password" to "wrong"))

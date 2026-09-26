@@ -1,10 +1,10 @@
-package com.azusachino.latte.data.model
+package com.azusachino.latte.data.network.moebooru
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class YandePostDto(
+data class MoebooruPostDto(
     val id: Long,
     val tags: String = "",
     @SerialName("created_at") val createdAt: Long? = null,

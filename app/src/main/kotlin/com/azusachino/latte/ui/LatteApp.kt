@@ -118,7 +118,9 @@ fun LatteApp(
     }
 
     val pluginStorage = remember { SecurePluginStorage(context) }
-    val yandePlugin = remember { YandePlugin(pluginStorage, OkHttpProvider.client, OkHttpProvider.cookieJar) }
+    val yandePlugin = remember {
+        YandePlugin(pluginStorage, OkHttpProvider.client, OkHttpProvider.cookieJar)
+    }
     val pixivOAuthClient = remember {
         PixivOAuthClient(
             httpClient = OkHttpProvider.client,

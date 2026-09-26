@@ -1,12 +1,9 @@
-package com.azusachino.latte.data.network
+package com.azusachino.latte.data.network.moebooru
 
 import com.azusachino.latte.data.model.PoolSummary
 import com.azusachino.latte.data.model.PopularPeriod
 import com.azusachino.latte.data.model.Post
-import com.azusachino.latte.data.model.YandePoolDto
-import com.azusachino.latte.data.model.YandePostDto
-import com.azusachino.latte.data.model.YandeTagDto
-import com.azusachino.latte.data.model.toDomain
+import com.azusachino.latte.data.network.OkHttpProvider
 import com.azusachino.latte.plugin.PlatformId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -17,9 +14,9 @@ import java.io.IOException
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-class YandeApi(
-    private val baseUrl: String = "https://yande.re",
-    private val platform: PlatformId = PlatformId.YANDE,
+class MoebooruApi(
+    private val baseUrl: String,
+    private val platform: PlatformId,
 ) {
     private val json = Json {
         ignoreUnknownKeys = true
@@ -114,7 +111,7 @@ class YandeApi(
             }
 
             val body = response.body?.string().orEmpty()
-            json.decodeFromString<List<YandeTagDto>>(body)
+            json.decodeFromString<List<MoebooruTagDto>>(body)
                 .mapNotNull { it.name.takeIf(String::isNotBlank) }
         }
 
@@ -147,7 +144,7 @@ class YandeApi(
         }
 
         val body = response.body?.string().orEmpty()
-        val dtos = json.decodeFromString<List<YandePostDto>>(body)
+        val dtos = json.decodeFromString<List<MoebooruPostDto>>(body)
         return dtos.map { it.toDomain(platform) }
     }
 
@@ -163,7 +160,7 @@ class YandeApi(
         }
 
         val body = response.body?.string().orEmpty()
-        val dtos = json.decodeFromString<List<YandePoolDto>>(body)
+        val dtos = json.decodeFromString<List<MoebooruPoolDto>>(body)
         return dtos.map { it.toDomain() }
     }
 }

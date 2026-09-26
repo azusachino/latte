@@ -75,7 +75,7 @@ shared `filterPosts` seam remains in place for a future issue.
 
 - [x] T023 `PlatformId.KONACHAN` + `KonachanPlugin` via constructor-injected
   site identity; no new transport code
-- [x] T024 Per-platform Moebooru API in the ViewModel; feed reload on
+- [x] T024 Plugin-owned Moebooru API/feed adapter; feed reload on
   Moebooru-to-Moebooru platform switch
 - [x] T025 Platform switcher entry; device-verified browse, detail, and search
   against konachan.net
@@ -86,4 +86,4 @@ shared `filterPosts` seam remains in place for a future issue.
   PR linked to issue #5
 - [ ] T022 File deferred follow-up issues (bulk download, backup/export, tag
   collections, optional tag blacklist, konachan.com Cloudflare handling,
-  de-binary the UI platform branches, YandeApi -> MoebooruApi rename)
+  remaining platform-specific domain/UI behavior)

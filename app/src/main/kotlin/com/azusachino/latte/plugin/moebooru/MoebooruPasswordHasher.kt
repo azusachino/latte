@@ -1,8 +1,8 @@
-package com.azusachino.latte.plugin.yande
+package com.azusachino.latte.plugin.moebooru
 
 import java.security.MessageDigest
 
-object YandePasswordHasher {
+object MoebooruPasswordHasher {
     private const val SALT_PREFIX = "choujin-steiner--"
     private const val SALT_SUFFIX = "--"
 

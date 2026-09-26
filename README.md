@@ -31,7 +31,7 @@ discovery workflow, dataflow, and gestures.
 ## Core journey & features
 
 ```text
-Popular / Newest / Favorites / Pools / Search -> YandeApi -> Staggered Grid
+Popular / Newest / Favorites / Pools / Search -> PluginFeedSource -> Staggered Grid
   -> Detail Pager (Zoomable) -> Table Metadata & Tags -> WorkManager Download
 ```
 

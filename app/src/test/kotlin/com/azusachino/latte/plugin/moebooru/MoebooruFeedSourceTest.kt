@@ -1,6 +1,6 @@
-package com.azusachino.latte.plugin.yande
+package com.azusachino.latte.plugin.moebooru
 
-import com.azusachino.latte.data.network.YandeApi
+import com.azusachino.latte.data.network.moebooru.MoebooruApi
 import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.plugin.PluginFeedKind
 import com.azusachino.latte.plugin.PluginFeedRequest
@@ -34,7 +34,7 @@ class MoebooruFeedSourceTest {
         assertEquals("konachan.net", com.azusachino.latte.plugin.PlatformId.KONACHAN.apiUrl.toHttpUrl().host)
         server.enqueue(MockResponse().setBody("[{\"id\":408739,\"rating\":\"s\"}]"))
         val source = MoebooruFeedSource(
-            api = YandeApi(
+            api = MoebooruApi(
                 server.url("/").toString().removeSuffix("/"),
                 platform = PlatformId.KONACHAN,
             ),
