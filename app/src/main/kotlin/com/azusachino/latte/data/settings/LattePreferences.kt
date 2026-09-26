@@ -96,15 +96,13 @@ class LattePreferences(private val context: Context) {
                     ?.let { mode -> runCatching { ThemeMode.valueOf(mode) }.getOrNull() }
                     ?: ThemeMode.SYSTEM
                 _safeMode.value = values[KEY_SAFE_MODE] ?: true
-                // Older builds stored favorite_tags as a string set; the JSON
-                // list read must tolerate (and clear) that stale type instead
-                // of crashing on upgrade.
-                val storedFavorites = runCatching { values[KEY_FAVORITE_TAGS] }.getOrNull()
-                if (storedFavorites is String) {
-                    _favoriteTags.value =
-                        LattePreferenceCodecs.decodeFavoriteTags(storedFavorites)
+                // Crash-safe read: a value written with an incompatible shape
+                // (dev-build leftovers) is dropped rather than cast-crashing.
+                val rawFavorites = runCatching { values[KEY_FAVORITE_TAGS] }.getOrNull()
+                if (rawFavorites is String) {
+                    _favoriteTags.value = LattePreferenceCodecs.decodeFavoriteTags(rawFavorites)
                 } else {
-                    if (storedFavorites != null) {
+                    if (rawFavorites != null) {
                         scope.launch { dataStore.edit { it.remove(KEY_FAVORITE_TAGS) } }
                     }
                     _favoriteTags.value = emptyList()

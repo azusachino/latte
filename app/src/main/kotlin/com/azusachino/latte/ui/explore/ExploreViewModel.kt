@@ -865,6 +865,10 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun updatePixivError(kind: PluginFeedKind, message: String, authRequired: Boolean = false) {
+        android.util.Log.w(
+            "LatteExplore",
+            "pixiv feed $kind failed: $message (authRequired=$authRequired)",
+        )
         updatePixivFeed(kind) {
             it.copy(
                 isLoading = false,

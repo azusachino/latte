@@ -56,4 +56,6 @@ class LattePreferenceCodecsTest {
     fun malformedFavoriteTagsDecodeToEmpty() {
         assertTrue(LattePreferenceCodecs.decodeFavoriteTags("not json").isEmpty())
     }
+
+
 }

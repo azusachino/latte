@@ -188,6 +188,16 @@ fun ExploreScreen(
         }
     }
 
+    // Platform switches reset the selected tab (Pixiv lands on Following);
+    // snap the pager immediately so the settled-page collector cannot push
+    // the stale page back into the view model first.
+    LaunchedEffect(uiState.platform) {
+        val target = uiState.selectedTab.coerceAtMost(tabCount - 1)
+        if (pagerState.currentPage != target) {
+            pagerState.scrollToPage(target)
+        }
+    }
+
     BackHandler(enabled = shouldHandleSearchBack(handleSearchBack, uiState.isSearch)) {
         viewModel.clearSearch()
     }
