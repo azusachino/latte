@@ -9,7 +9,7 @@ enum class PlatformId(
 ) {
     YANDE(
         externalId = "yande.re",
-        displayName = "yande.re",
+        displayName = "Yande",
         webUrl = "https://yande.re",
         apiUrl = "https://yande.re",
         capabilities = setOf(PlatformCapability.SCORING, PlatformCapability.FAVORITES),

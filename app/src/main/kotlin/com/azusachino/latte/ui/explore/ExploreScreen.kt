@@ -740,28 +740,25 @@ DropdownMenuItem(
                         2 -> {
                             PersonalFeedContent(
                                 viewModel = viewModel,
-                                plugin = if (uiState.supportsUserFeeds) pixivPlugin else sitePlugin,
+                                plugin = activePlugin,
                                 feed = if (uiState.supportsUserFeeds) uiState.pixivFavoritesFeed else uiState.favoritesFeed,
-                                label = if (uiState.supportsUserFeeds) "Sign in to see Pixiv favorites" else "Sign in to see your favorites",
-                                gridKey = ExploreGridKey(
-                                    if (uiState.supportsUserFeeds) PlatformId.PIXIV else PlatformId.YANDE,
-                                    "favorites",
-                                ),
+                                label = if (uiState.supportsUserFeeds) "Sign in to see Pixiv favorites" else "Sign in to see ${activePlugin?.name ?: "your"} favorites",
+                                gridKey = ExploreGridKey(uiState.platform, "favorites"),
                                 gridState = if (uiState.supportsUserFeeds) pixivFavoritesGridState else favoritesGridState,
                                 columnCount = columnCount,
                                 onPostClick = onPostClick,
                                 onRequireLogin = onRequireLogin,
                                 onLoadMore = {
                                     if (uiState.supportsUserFeeds) viewModel.loadMorePixiv(PluginFeedKind.FAVORITES)
-                                    else sitePlugin?.getDisplayUsername()?.let(viewModel::loadMoreFavorites)
+                                    else activePlugin?.getDisplayUsername()?.let(viewModel::loadMoreFavorites)
                                 },
                                 onRetry = {
                                     if (uiState.supportsUserFeeds) viewModel.loadPixivInitial(PluginFeedKind.FAVORITES)
-                                    else sitePlugin?.getDisplayUsername()?.let(viewModel::loadFavoritesInitial)
+                                    else activePlugin?.getDisplayUsername()?.let(viewModel::loadFavoritesInitial)
                                 },
                                 onRefresh = {
                                     if (uiState.supportsUserFeeds) viewModel.refreshPixiv(PluginFeedKind.FAVORITES)
-                                    else sitePlugin?.getDisplayUsername()?.let(viewModel::refreshFavorites)
+                                    else activePlugin?.getDisplayUsername()?.let(viewModel::refreshFavorites)
                                 },
                             )
                         }
