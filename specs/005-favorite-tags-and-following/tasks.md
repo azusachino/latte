@@ -64,10 +64,12 @@ shared `filterPosts` seam remains in place for a future issue.
 
 ## Phase 5: Device acceptance (OnePlus 8, `IN2010`)
 
-- [ ] T019 Install debug build; verify chips, star toggle, Favorite Tags view,
-  and history persistence across app restart
-- [ ] T020 Live Pixiv: follow/unfollow an author from the works view; confirm
-  the Following feed updates and Pixiv opens on Following
+- [x] T019 Install debug build; verify chips, star toggle, Favorite Tags view,
+  and detail-page long-press favoriting (owner device pass 2026-09-26;
+  restart persistence re-verify pending after the dev-build storage reset)
+- [x] T020 Live Pixiv: follow/unfollow an author from the works view; confirm
+  the Following feed updates and Pixiv opens on Following (owner-confirmed
+  after the pager-snap race fix, commit 274381e)
 
 ## Phase 6: Closeout
 

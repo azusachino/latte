@@ -4,7 +4,11 @@
 
 **Created**: 2026-09-26
 
-**Status**: Proposed
+**Status**: Implemented through unit-test, lint, and device-launch gates;
+PR pending. Owner-confirmed on device: Following-first tab order, follow
+toggle, detail-page tag favoriting, and the Favorite Tags view. Favorite-tag
+persistence across restart is unit-covered and awaits the owner's re-verify
+(dev-build storage was reset once during development).
 
 **Input**: [azusachino/latte#5](https://github.com/azusachino/latte/issues/5),
 extended after a survey of PixEz, Boorusama, Yummybooru, and neighbours with two

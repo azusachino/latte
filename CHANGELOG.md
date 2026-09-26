@@ -20,6 +20,12 @@
 - The Explore layer now consumes the platform-neutral plugin feed contract
   (`PluginFeedSource`) instead of Pixiv transport types.
 
+### Fixed
+
+- Platform switching now snaps the pager to the selected tab so the stale
+  page cannot override the Pixiv Following default.
+- Pixiv feed failures are logged (`LatteExplore`) for device diagnostics.
+
 ## 0.0.3 - 2026-09-21
 
 ### Added
