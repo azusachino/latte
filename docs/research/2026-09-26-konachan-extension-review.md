@@ -77,6 +77,15 @@ platform expensive and risky.
 | Avoiding UI/ViewModel edits | High friction today |
 | Plugin seam overall | Promising, incomplete |
 
+## Follow-up found during device acceptance
+
+The first Konachan favorite was routed to Yande because `YandePostDto.toDomain()`
+hardcoded `PlatformId.YANDE`. The Konachan API adapter now supplies its configured
+platform during DTO mapping. Device verification on 2026-09-26 followed
+Konachan.net → Popular → Week → first post (#408739) → Add to favorites →
+Favorites; the Konachan feed response contained post #408739. A regression test
+asserts that the Moebooru adapter preserves `PlatformId.KONACHAN`.
+
 ## Recommended next slice
 
 1. Move Moebooru feed operations behind a plugin-owned neutral feed source.

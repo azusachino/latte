@@ -29,14 +29,14 @@ open class YandePlugin(
     override val name: String = "yande.re",
 ) : SitePlugin {
     private val moebooruFeedSource: MoebooruFeedSource by lazy {
-        MoebooruFeedSource(YandeApi(baseUrl), ::getDisplayUsername)
+        MoebooruFeedSource(YandeApi(baseUrl, platform), ::getDisplayUsername)
     }
     override val feedSource: PluginFeedSource get() = moebooruFeedSource
     override val poolSource: com.azusachino.latte.plugin.PluginPoolSource get() = moebooruFeedSource
 
     override suspend fun searchSupport(query: String): com.azusachino.latte.plugin.PluginSearchSupport =
         com.azusachino.latte.plugin.PluginSearchSupport(
-            suggestions = YandeApi(baseUrl).getTagSuggestions(query),
+            suggestions = YandeApi(baseUrl, platform).getTagSuggestions(query),
         )
     override val feedTabs: List<PluginFeedTab> = listOf(
         PluginFeedTab("Popular", PluginFeedKind.POPULAR),

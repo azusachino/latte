@@ -7,6 +7,7 @@ import com.azusachino.latte.data.model.YandePoolDto
 import com.azusachino.latte.data.model.YandePostDto
 import com.azusachino.latte.data.model.YandeTagDto
 import com.azusachino.latte.data.model.toDomain
+import com.azusachino.latte.plugin.PlatformId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -16,7 +17,10 @@ import java.io.IOException
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-class YandeApi(private val baseUrl: String = "https://yande.re") {
+class YandeApi(
+    private val baseUrl: String = "https://yande.re",
+    private val platform: PlatformId = PlatformId.YANDE,
+) {
     private val json = Json {
         ignoreUnknownKeys = true
         coerceInputValues = true
@@ -144,7 +148,7 @@ class YandeApi(private val baseUrl: String = "https://yande.re") {
 
         val body = response.body?.string().orEmpty()
         val dtos = json.decodeFromString<List<YandePostDto>>(body)
-        return dtos.map { it.toDomain() }
+        return dtos.map { it.toDomain(platform) }
     }
 
     private fun executeGetPools(urlString: String): List<PoolSummary> {

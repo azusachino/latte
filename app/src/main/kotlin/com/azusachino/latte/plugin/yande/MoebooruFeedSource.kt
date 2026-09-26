@@ -1,8 +1,10 @@
 package com.azusachino.latte.plugin.yande
 
+import com.azusachino.latte.data.model.PopularPeriod
 import com.azusachino.latte.data.network.YandeApi
 import com.azusachino.latte.plugin.PluginFeedKind
 import com.azusachino.latte.plugin.PluginFeedPage
+import com.azusachino.latte.plugin.PluginFeedPeriod
 import com.azusachino.latte.plugin.PluginFeedRequest
 import com.azusachino.latte.plugin.PluginFeedResult
 import com.azusachino.latte.plugin.PluginFeedSource
@@ -32,8 +34,13 @@ class MoebooruFeedSource(
         return runCatching {
             val posts = when (request.kind) {
                 PluginFeedKind.POPULAR -> api.getPopular(
-                    period = request.popularPeriod,
-                    date = request.popularDate,
+                    period = when (request.period) {
+                        PluginFeedPeriod.DAY -> PopularPeriod.DAY
+                        PluginFeedPeriod.WEEK -> PopularPeriod.WEEK
+                        PluginFeedPeriod.MONTH -> PopularPeriod.MONTH
+                        PluginFeedPeriod.YEAR -> PopularPeriod.YEAR
+                    },
+                    date = request.date,
                     page = request.page,
                 )
                 PluginFeedKind.NEWEST -> api.getPosts(page = request.page)

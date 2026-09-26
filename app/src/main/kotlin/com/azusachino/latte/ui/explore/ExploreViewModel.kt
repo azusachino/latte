@@ -4,7 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.azusachino.latte.data.model.PoolSummary
-import com.azusachino.latte.data.model.PopularPeriod
+import com.azusachino.latte.plugin.PluginFeedPeriod
 import com.azusachino.latte.data.model.FavoriteTag
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.model.PostRating
@@ -92,7 +92,7 @@ data class ExploreUiState(
     val pixivAuthorFollowed: Boolean? = null,
     val isTogglingPixivFollow: Boolean = false,
     val activePoolName: String? = null,
-    val popularPeriod: PopularPeriod = PopularPeriod.DAY,
+    val popularPeriod: PluginFeedPeriod = PluginFeedPeriod.DAY,
     val popularDate: LocalDate = LocalDate.now(),
     val selectedTab: Int = 0,
 ) {
@@ -325,15 +325,15 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         kind: PluginFeedKind,
         page: Int = 1,
         query: String? = null,
-        popularPeriod: PopularPeriod = _uiState.value.popularPeriod,
-        popularDate: LocalDate = _uiState.value.popularDate,
+        period: PluginFeedPeriod = _uiState.value.popularPeriod,
+        date: LocalDate = _uiState.value.popularDate,
     ): List<Post> {
         val result = activeFeedSource()?.load(PluginFeedRequest(
             kind = kind,
             page = page,
             query = query,
-            popularPeriod = popularPeriod,
-            popularDate = popularDate,
+            period = period,
+            date = date,
         )) ?: PluginFeedResult.TransportFailure("Active platform feed is not configured")
         return when (result) {
             is PluginFeedResult.Success -> applyLocalFilters(result.page.items)
@@ -419,7 +419,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     fun selectPopularTab() = selectTab(0)
     fun selectNewestTab() = selectTab(1)
 
-    fun selectPopularPeriod(period: PopularPeriod) {
+    fun selectPopularPeriod(period: PluginFeedPeriod) {
         _uiState.update { it.copy(popularPeriod = period) }
         loadPopularInitial()
     }
@@ -434,10 +434,10 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     fun shiftPopularDate(amount: Int) {
         val state = _uiState.value
         val nextDate = when (state.popularPeriod) {
-            PopularPeriod.DAY -> state.popularDate.plusDays(amount.toLong())
-            PopularPeriod.WEEK -> state.popularDate.plusWeeks(amount.toLong())
-            PopularPeriod.MONTH -> state.popularDate.plusMonths(amount.toLong())
-            PopularPeriod.YEAR -> state.popularDate.plusYears(amount.toLong())
+            PluginFeedPeriod.DAY -> state.popularDate.plusDays(amount.toLong())
+            PluginFeedPeriod.WEEK -> state.popularDate.plusWeeks(amount.toLong())
+            PluginFeedPeriod.MONTH -> state.popularDate.plusMonths(amount.toLong())
+            PluginFeedPeriod.YEAR -> state.popularDate.plusYears(amount.toLong())
         }
         val today = LocalDate.now()
         val clampedDate = if (nextDate.isAfter(today)) today else nextDate
@@ -453,8 +453,8 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                 val result = activeFeedSource()?.load(PluginFeedRequest(
                     kind = PluginFeedKind.POPULAR,
                     page = 1,
-                    popularPeriod = state.popularPeriod,
-                    popularDate = state.popularDate,
+                    period = state.popularPeriod,
+                    date = state.popularDate,
                     refresh = true,
                 )) ?: PluginFeedResult.TransportFailure("Active platform feed is not configured")
                 val posts = when (result) {
@@ -515,7 +515,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             val nextPage = feed.page + 1
             try {
                 val state = _uiState.value
-                val newPosts = loadPosts(PluginFeedKind.POPULAR, page = nextPage, popularPeriod = state.popularPeriod, popularDate = state.popularDate)
+                val newPosts = loadPosts(PluginFeedKind.POPULAR, page = nextPage, period = state.popularPeriod, date = state.popularDate)
                 _uiState.update {
                     it.copy(
                         popularFeed = it.popularFeed.copy(
@@ -599,7 +599,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             _uiState.update { it.copy(popularFeed = it.popularFeed.copy(isRefreshing = true, error = null)) }
             try {
                 val state = _uiState.value
-                val posts = loadPosts(PluginFeedKind.POPULAR, popularPeriod = state.popularPeriod, popularDate = state.popularDate)
+                val posts = loadPosts(PluginFeedKind.POPULAR, period = state.popularPeriod, date = state.popularDate)
                 _uiState.update {
                     it.copy(
                         popularFeed = it.popularFeed.copy(

@@ -1,6 +1,6 @@
 package com.azusachino.latte.plugin
 
-import com.azusachino.latte.data.model.PopularPeriod
+import com.azusachino.latte.data.model.PoolSummary
 import com.azusachino.latte.data.model.Post
 import java.time.LocalDate
 
@@ -9,6 +9,13 @@ import java.time.LocalDate
  * only these types; each plugin maps them onto its own transport. A plugin
  * that cannot serve feeds leaves [SitePlugin.feedSource] null.
  */
+enum class PluginFeedPeriod {
+    DAY,
+    WEEK,
+    MONTH,
+    YEAR,
+}
+
 enum class PluginFeedKind {
     POPULAR,
     NEWEST,
@@ -29,8 +36,8 @@ data class PluginFeedRequest(
     val kind: PluginFeedKind,
     val query: String? = null,
     val page: Int = 1,
-    val popularPeriod: PopularPeriod = PopularPeriod.DAY,
-    val popularDate: LocalDate = LocalDate.now(),
+    val period: PluginFeedPeriod = PluginFeedPeriod.DAY,
+    val date: LocalDate = LocalDate.now(),
     val authorId: Long? = null,
     val cursor: String? = null,
     val refresh: Boolean = false,
@@ -60,7 +67,7 @@ interface PluginFeedSource {
 }
 
 interface PluginPoolSource {
-    suspend fun load(query: String? = null, page: Int = 1): Result<List<com.azusachino.latte.data.model.PoolSummary>>
+    suspend fun load(query: String? = null, page: Int = 1): Result<List<PoolSummary>>
 }
 
 /** Platform-neutral search support: autocomplete plus trending seeds. */

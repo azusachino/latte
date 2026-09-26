@@ -1,6 +1,7 @@
 package com.azusachino.latte.plugin.yande
 
 import com.azusachino.latte.data.network.YandeApi
+import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.plugin.PluginFeedKind
 import com.azusachino.latte.plugin.PluginFeedRequest
 import com.azusachino.latte.plugin.PluginFeedResult
@@ -31,9 +32,12 @@ class MoebooruFeedSourceTest {
     @Test
     fun konachanPlatformUsesNetHostAndFavoriteQueryUsesSignedInUsername() = runTest {
         assertEquals("konachan.net", com.azusachino.latte.plugin.PlatformId.KONACHAN.apiUrl.toHttpUrl().host)
-        server.enqueue(MockResponse().setBody("[]"))
+        server.enqueue(MockResponse().setBody("[{\"id\":408739,\"rating\":\"s\"}]"))
         val source = MoebooruFeedSource(
-            api = YandeApi(server.url("/").toString().removeSuffix("/")),
+            api = YandeApi(
+                server.url("/").toString().removeSuffix("/"),
+                platform = PlatformId.KONACHAN,
+            ),
             username = { "test_artist" },
         )
 
@@ -41,6 +45,8 @@ class MoebooruFeedSourceTest {
         val request = server.takeRequest()
 
         assertTrue(result is PluginFeedResult.Success)
+        val post = (result as PluginFeedResult.Success).page.items.single()
+        assertEquals(PlatformId.KONACHAN, post.platform)
         assertEquals("/post.json?page=1&limit=100&tags=vote%3A3%3Atest_artist", request.path)
     }
 }

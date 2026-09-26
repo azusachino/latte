@@ -140,7 +140,7 @@ fun Post.forPage(index: Int): Post {
     )
 }
 
-fun YandePostDto.toDomain(): Post {
+fun YandePostDto.toDomain(platform: PlatformId = PlatformId.YANDE): Post {
     val preview = previewUrl ?: sampleUrl ?: fileUrl.orEmpty()
     val sample = sampleUrl ?: fileUrl.orEmpty()
     val original = fileUrl ?: sampleUrl.orEmpty()
@@ -195,7 +195,7 @@ fun YandePostDto.toDomain(): Post {
 
     return Post(
         id = id,
-        platform = PlatformId.YANDE,
+        platform = platform,
         rating = PostRating.fromCode(rating),
         tags = tags.split(" ").filter { it.isNotBlank() },
         score = score,

@@ -110,9 +110,9 @@ import coil3.compose.AsyncImage
 import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
 import com.azusachino.latte.data.model.PoolSummary
-import com.azusachino.latte.data.model.PopularPeriod
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.plugin.PluginFeedKind
+import com.azusachino.latte.plugin.PluginFeedPeriod
 import com.azusachino.latte.plugin.PlatformCapability
 import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.plugin.SitePlugin
@@ -1341,9 +1341,9 @@ private fun PostGridItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PopularControls(
-    period: PopularPeriod,
+    period: PluginFeedPeriod,
     date: LocalDate,
-    onPeriodSelect: (PopularPeriod) -> Unit,
+    onPeriodSelect: (PluginFeedPeriod) -> Unit,
     onShiftDate: (Int) -> Unit,
     onPickDate: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
@@ -1366,17 +1366,17 @@ private fun PopularControls(
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            PopularPeriod.entries.forEach { p ->
+            PluginFeedPeriod.entries.forEach { p ->
                 FilterChip(
                     selected = period == p,
                     onClick = { onPeriodSelect(p) },
                     label = {
                         Text(
                             when (p) {
-                                PopularPeriod.DAY -> "Day"
-                                PopularPeriod.WEEK -> "Week"
-                                PopularPeriod.MONTH -> "Month"
-                                PopularPeriod.YEAR -> "Year"
+                                PluginFeedPeriod.DAY -> "Day"
+                                PluginFeedPeriod.WEEK -> "Week"
+                                PluginFeedPeriod.MONTH -> "Month"
+                                PluginFeedPeriod.YEAR -> "Year"
                             }
                         )
                     },
@@ -1497,21 +1497,21 @@ private fun PopularControls(
     }
 }
 
-private fun formatPopularWindow(period: PopularPeriod, anchor: LocalDate): String {
+private fun formatPopularWindow(period: PluginFeedPeriod, anchor: LocalDate): String {
     val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
     return when (period) {
-        PopularPeriod.DAY -> anchor.format(dateFormatter)
-        PopularPeriod.WEEK -> {
+        PluginFeedPeriod.DAY -> anchor.format(dateFormatter)
+        PluginFeedPeriod.WEEK -> {
             val start = anchor.minusDays((anchor.dayOfWeek.value - 1).toLong())
             val end = start.plusDays(6)
             "${start.format(dateFormatter)} – ${end.format(dateFormatter)}"
         }
-        PopularPeriod.MONTH -> {
+        PluginFeedPeriod.MONTH -> {
             val start = anchor.withDayOfMonth(1)
             val end = anchor.withDayOfMonth(anchor.lengthOfMonth())
             "${start.format(dateFormatter)} – ${end.format(dateFormatter)}"
         }
-        PopularPeriod.YEAR -> {
+        PluginFeedPeriod.YEAR -> {
             val start = anchor.withDayOfYear(1)
             val end = anchor.withDayOfYear(anchor.lengthOfYear())
             "${start.format(dateFormatter)} – ${end.format(dateFormatter)}"
