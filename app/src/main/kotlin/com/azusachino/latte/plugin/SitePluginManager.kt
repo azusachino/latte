@@ -8,6 +8,9 @@ class SitePluginManager(val plugins: List<SitePlugin>) {
 
     fun get(platform: PlatformId): SitePlugin? = plugins.find { it.platform == platform }
 
+    /** Stable composition-root lookup for UI and feature coordinators. */
+    fun byPlatform(): Map<PlatformId, SitePlugin> = plugins.associateBy { it.platform }
+
     fun get(externalId: String): SitePlugin? =
         PlatformId.fromExternalId(externalId)?.let(::get)
 

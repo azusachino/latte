@@ -43,7 +43,7 @@ class ExplorePlatformStateTest {
             pixivSearchFeed = FeedState(posts = listOf(post.copy(id = 75034220))),
         )
 
-        assertTrue(state.isPixiv)
+        assertTrue(state.supportsUserFeeds)
         assertEquals("blue hair", state.activeSearchTags)
         assertEquals(75034220L, state.posts.single().id)
         // Tab 0 is Following on Pixiv; Popular is tab 1.

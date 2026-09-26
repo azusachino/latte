@@ -38,6 +38,7 @@ import com.azusachino.latte.BuildConfig
 import com.azusachino.latte.data.model.Post
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.azusachino.latte.data.download.DownloadManager
+import com.azusachino.latte.plugin.PlatformCapability
 import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.ui.common.ToastHost
 import com.azusachino.latte.ui.common.ToastManager
@@ -139,8 +140,10 @@ fun LatteApp(
     }
     val sitePluginManager = remember { SitePluginManager(listOf(yandePlugin, konachanPlugin, pixivPlugin)) }
 
-    LaunchedEffect(pixivPlugin) {
-        exploreViewModel.configurePixiv(pixivPlugin)
+    LaunchedEffect(yandePlugin, konachanPlugin, pixivPlugin) {
+        exploreViewModel.configurePlugin(yandePlugin)
+        exploreViewModel.configurePlugin(konachanPlugin)
+        exploreViewModel.configurePlugin(pixivPlugin)
     }
 
     var navigation by remember { mutableStateOf(ScreenStack()) }
@@ -168,7 +171,7 @@ fun LatteApp(
             }
             is Screen.TagSearch -> {
                 val state = exploreViewModel.uiState.value
-                val activeTags = if (state.isPixiv) state.pixivSearchTags else state.searchTags
+                val activeTags = if (state.supportsUserFeeds) state.pixivSearchTags else state.searchTags
                 if (activeTags != screen.query || !state.isSearch) {
                     exploreViewModel.search(screen.query)
                 }
@@ -216,6 +219,7 @@ fun LatteApp(
                                 },
                                 sitePlugin = yandePlugin,
                                 pixivPlugin = pixivPlugin,
+                                platformPlugins = sitePluginManager.byPlatform(),
                                 onPostClick = { index ->
                                     navigation = navigation.push(
                                         Screen.Detail(
@@ -256,7 +260,7 @@ fun LatteApp(
                                         .push(Screen.TagSearch(query = tag))
                                 },
                                 onAuthorClick = { post, postIndex, pageIndex ->
-                                    if (post.platform == PlatformId.PIXIV && post.authorId != null) {
+                                    if (PlatformCapability.USER_FEED in post.platform.capabilities && post.authorId != null) {
                                         exploreViewModel.loadPixivUserWorks(post.authorId, post.author.orEmpty())
                                     } else {
                                         post.author?.takeIf(String::isNotBlank)?.let {

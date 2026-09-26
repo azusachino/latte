@@ -113,6 +113,7 @@ import com.azusachino.latte.data.model.PoolSummary
 import com.azusachino.latte.data.model.PopularPeriod
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.plugin.PluginFeedKind
+import com.azusachino.latte.plugin.PlatformCapability
 import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.plugin.SitePlugin
 import kotlinx.coroutines.launch
@@ -152,6 +153,7 @@ fun ExploreScreen(
     title: String? = null,
     sitePlugin: SitePlugin? = null,
     pixivPlugin: SitePlugin? = null,
+    platformPlugins: Map<PlatformId, SitePlugin> = emptyMap(),
     onRequireLogin: (SitePlugin) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -166,7 +168,9 @@ fun ExploreScreen(
     val pixivFavoritesGridState = rememberLazyStaggeredGridState()
     val pixivSearchGridState = rememberLazyStaggeredGridState()
     val pixivUserWorksGridState = rememberLazyStaggeredGridState()
-    val tabCount = if (uiState.isPixiv) 3 else 4
+    val activePlugin = platformPlugins.getValue(uiState.platform)
+    val feedTabs = activePlugin?.feedTabs.orEmpty()
+    val tabCount = feedTabs.size.coerceAtLeast(1)
     val pagerState = rememberPagerState(initialPage = uiState.selectedTab.coerceAtMost(tabCount - 1)) { tabCount }
     val coroutineScope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -186,7 +190,7 @@ fun ExploreScreen(
 
     LaunchedEffect(pagerState.settledPage) {
         viewModel.selectTab(pagerState.settledPage)
-        searchQuery = if (!uiState.isPixiv && pagerState.settledPage == 3) {
+        searchQuery = if (!uiState.supportsUserFeeds && pagerState.settledPage == 3) {
             uiState.poolsFeed.query
         } else {
             uiState.activeSearchTags
@@ -221,15 +225,15 @@ fun ExploreScreen(
         if (pixivIsLoggedIn) viewModel.retryPixivAfterAuthentication()
     }
 
-    LaunchedEffect(isSearchExpanded, uiState.isPixiv, searchQuery) {
-        if (isSearchExpanded && uiState.isPixiv) {
+    LaunchedEffect(isSearchExpanded, uiState.supportsUserFeeds, searchQuery) {
+        if (isSearchExpanded && uiState.supportsUserFeeds) {
             delay(250)
             viewModel.loadPixivSearchSupport(searchQuery)
         }
     }
 
-    LaunchedEffect(isSearchExpanded, uiState.isPixiv, searchQuery) {
-        if (isSearchExpanded && !uiState.isPixiv) {
+    LaunchedEffect(isSearchExpanded, uiState.supportsUserFeeds, searchQuery) {
+        if (isSearchExpanded && !uiState.supportsUserFeeds) {
             delay(250)
             viewModel.loadYandeSearchSupport(searchQuery)
         }
@@ -348,9 +352,9 @@ DropdownMenuItem(
                                     text = {
                                         Text(
                                             text = "Pixiv",
-                                            color = if (uiState.platform == PlatformId.PIXIV) PIXIV_ACCENT
+                                            color = if (uiState.supportsUserFeeds) PIXIV_ACCENT
                                             else MaterialTheme.colorScheme.onSurface,
-                                            fontWeight = if (uiState.platform == PlatformId.PIXIV) {
+                                            fontWeight = if (uiState.supportsUserFeeds) {
                                                 FontWeight.SemiBold
                                             } else {
                                                 FontWeight.Normal
@@ -358,7 +362,7 @@ DropdownMenuItem(
                                         )
                                     },
                                     trailingIcon = {
-                                        if (uiState.platform == PlatformId.PIXIV) {
+                                        if (uiState.supportsUserFeeds) {
                                             Icon(
                                                 imageVector = Icons.Default.Check,
                                                 contentDescription = "Selected",
@@ -439,7 +443,7 @@ DropdownMenuItem(
 
                 // Expandable Search Bar -- searches pools while the Pools tab is
                 // active and no pool is open yet, otherwise searches post tags.
-                val isPoolsSearch = !uiState.isPixiv && pagerState.currentPage == 3 && !uiState.isSearch
+                val isPoolsSearch = !uiState.supportsUserFeeds && pagerState.currentPage == 3 && !uiState.isSearch
 
                 AnimatedVisibility(
                     visible = isSearchExpanded,
@@ -498,10 +502,10 @@ DropdownMenuItem(
                             },
                             shape = RoundedCornerShape(12.dp),
                         )
-                        if (uiState.isPixiv && isSearchExpanded) {
+                        if (uiState.supportsUserFeeds && isSearchExpanded) {
                             val supportTags = if (searchQuery.isBlank()) {
                                 uiState.favoriteTags
-                                    .filter { it.platform == PlatformId.PIXIV }
+                                    .filter { it.platform == uiState.platform }
                                     .map { it.tag } + uiState.pixivTrendingTags
                             } else {
                                 uiState.pixivSearchSuggestions
@@ -518,7 +522,7 @@ DropdownMenuItem(
                                         SearchTagChip(
                                             tag = tag,
                                             isFavorite = uiState.favoriteTags.any {
-                                                it.tag == tag && it.platform == PlatformId.PIXIV
+                                                it.tag == tag && it.platform == uiState.platform
                                             },
                                             onClick = {
                                                 searchQuery = tag
@@ -530,10 +534,10 @@ DropdownMenuItem(
                                 }
                             }
                         }
-                        if (!uiState.isPixiv && isSearchExpanded) {
+                        if (!uiState.supportsUserFeeds && isSearchExpanded) {
                             val supportTags = if (searchQuery.isBlank()) {
                                 uiState.favoriteTags
-                                    .filter { it.platform == PlatformId.YANDE }
+                                    .filter { it.platform == uiState.platform }
                                     .map { it.tag } + uiState.recentSearches
                             } else {
                                 uiState.yandeSearchSuggestions
@@ -550,7 +554,7 @@ DropdownMenuItem(
                                         SearchTagChip(
                                             tag = tag,
                                             isFavorite = uiState.favoriteTags.any {
-                                                it.tag == tag && it.platform == PlatformId.YANDE
+                                                it.tag == tag && it.platform == uiState.platform
                                             },
                                             onClick = {
                                                 searchQuery = tag
@@ -567,11 +571,7 @@ DropdownMenuItem(
 
                 // Front page tabs: Popular / Newest / Favorites / Pools (hidden during search)
                 if (!uiState.isSearch) {
-                    val tabTitles = if (uiState.isPixiv) {
-                        listOf("Following", "Popular", "Favorites")
-                    } else {
-                        listOf("Popular", "Newest", "Favorites", "Pools")
-                    }
+                    val tabTitles = feedTabs.map { it.title }
                     TabRow(
                         selectedTabIndex = pagerState.currentPage,
                         containerColor = MaterialTheme.colorScheme.surface,
@@ -594,7 +594,7 @@ DropdownMenuItem(
                 }
                 // Author works header: shows whose works these are and the
                 // follow toggle for the author (Pixiv only).
-                if (uiState.isPixiv && uiState.pixivAuthorId != null && uiState.pixivAuthorName != null) {
+                if (uiState.supportsUserFeeds && uiState.pixivAuthorId != null && uiState.pixivAuthorName != null) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -633,18 +633,18 @@ DropdownMenuItem(
             if (uiState.isSearch) {
                 FeedGrid(
                     feed = when {
-                        !uiState.isPixiv -> uiState.searchFeed
+                        !uiState.supportsUserFeeds -> uiState.searchFeed
                         uiState.pixivAuthorId != null -> uiState.pixivUserWorksFeed
                         else -> uiState.pixivSearchFeed
                     },
                     viewModel = viewModel,
                     gridKey = when {
-                        !uiState.isPixiv -> ExploreGridKey(PlatformId.YANDE, "search:${uiState.searchTags}")
+                        !uiState.supportsUserFeeds -> ExploreGridKey(PlatformId.YANDE, "search:${uiState.searchTags}")
                         uiState.pixivAuthorId != null -> ExploreGridKey(PlatformId.PIXIV, "user:${uiState.pixivAuthorId}")
                         else -> ExploreGridKey(PlatformId.PIXIV, "search:${uiState.pixivSearchTags}")
                     },
                     gridState = when {
-                        !uiState.isPixiv -> searchGridState
+                        !uiState.supportsUserFeeds -> searchGridState
                         uiState.pixivAuthorId != null -> pixivUserWorksGridState
                         else -> pixivSearchGridState
                     },
@@ -653,7 +653,7 @@ DropdownMenuItem(
                     onLoadMore = { viewModel.loadMoreSearch() },
                     onRetry = { viewModel.retrySearch() },
                     onRefresh = { viewModel.refreshSearch() },
-                    onRequireLogin = if (uiState.isPixiv && pixivPlugin != null) {
+                    onRequireLogin = if (uiState.supportsUserFeeds && pixivPlugin != null) {
                         { onRequireLogin(pixivPlugin) }
                     } else {
                         null
@@ -666,7 +666,7 @@ DropdownMenuItem(
                 ) { page ->
                     when (page) {
                         0 -> {
-                            if (uiState.isPixiv) {
+                            if (uiState.supportsUserFeeds) {
                                 PersonalFeedContent(
                                     viewModel = viewModel,
                                     plugin = pixivPlugin,
@@ -706,7 +706,7 @@ DropdownMenuItem(
                             }
                         }
                         1 -> {
-                            if (uiState.isPixiv) {
+                            if (uiState.supportsUserFeeds) {
                                 FeedGrid(
                                     feed = uiState.pixivPopularFeed,
                                     viewModel = viewModel,
@@ -740,27 +740,27 @@ DropdownMenuItem(
                         2 -> {
                             PersonalFeedContent(
                                 viewModel = viewModel,
-                                plugin = if (uiState.isPixiv) pixivPlugin else sitePlugin,
-                                feed = if (uiState.isPixiv) uiState.pixivFavoritesFeed else uiState.favoritesFeed,
-                                label = if (uiState.isPixiv) "Sign in to see Pixiv favorites" else "Sign in to see your favorites",
+                                plugin = if (uiState.supportsUserFeeds) pixivPlugin else sitePlugin,
+                                feed = if (uiState.supportsUserFeeds) uiState.pixivFavoritesFeed else uiState.favoritesFeed,
+                                label = if (uiState.supportsUserFeeds) "Sign in to see Pixiv favorites" else "Sign in to see your favorites",
                                 gridKey = ExploreGridKey(
-                                    if (uiState.isPixiv) PlatformId.PIXIV else PlatformId.YANDE,
+                                    if (uiState.supportsUserFeeds) PlatformId.PIXIV else PlatformId.YANDE,
                                     "favorites",
                                 ),
-                                gridState = if (uiState.isPixiv) pixivFavoritesGridState else favoritesGridState,
+                                gridState = if (uiState.supportsUserFeeds) pixivFavoritesGridState else favoritesGridState,
                                 columnCount = columnCount,
                                 onPostClick = onPostClick,
                                 onRequireLogin = onRequireLogin,
                                 onLoadMore = {
-                                    if (uiState.isPixiv) viewModel.loadMorePixiv(PluginFeedKind.FAVORITES)
+                                    if (uiState.supportsUserFeeds) viewModel.loadMorePixiv(PluginFeedKind.FAVORITES)
                                     else sitePlugin?.getDisplayUsername()?.let(viewModel::loadMoreFavorites)
                                 },
                                 onRetry = {
-                                    if (uiState.isPixiv) viewModel.loadPixivInitial(PluginFeedKind.FAVORITES)
+                                    if (uiState.supportsUserFeeds) viewModel.loadPixivInitial(PluginFeedKind.FAVORITES)
                                     else sitePlugin?.getDisplayUsername()?.let(viewModel::loadFavoritesInitial)
                                 },
                                 onRefresh = {
-                                    if (uiState.isPixiv) viewModel.refreshPixiv(PluginFeedKind.FAVORITES)
+                                    if (uiState.supportsUserFeeds) viewModel.refreshPixiv(PluginFeedKind.FAVORITES)
                                     else sitePlugin?.getDisplayUsername()?.let(viewModel::refreshFavorites)
                                 },
                             )
@@ -1004,7 +1004,7 @@ private fun PersonalFeedContent(
 
     val isLoggedIn: Boolean? by plugin.isLoggedInFlow.collectAsState(initial = null)
     val username = plugin.getDisplayUsername()
-    val needsUsername = plugin.platform != PlatformId.PIXIV
+    val needsUsername = PlatformCapability.USER_FEED !in plugin.capabilities
 
     if (isLoggedIn == null) {
         Box(

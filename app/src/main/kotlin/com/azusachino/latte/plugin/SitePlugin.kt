@@ -33,6 +33,11 @@ interface SitePlugin {
 
     /** Feed access for plugins that serve paged personal feeds; null otherwise. */
     val feedSource: PluginFeedSource? get() = null
+    val poolSource: PluginPoolSource? get() = null
+
+    /** Tabs exposed by this plugin; presentation does not infer them from identity. */
+    val feedTabs: List<PluginFeedTab>
+        get() = emptyList()
 
     /** Best-effort search support; null when the plugin has none. */
     suspend fun searchSupport(query: String): PluginSearchSupport? = null

@@ -153,7 +153,7 @@ fun DetailScreen(
     // recover a favorite (score 3) set in a prior session or on the web.
     LaunchedEffect(currentPost?.id, currentPlugin?.isLoggedIn) {
         val post = currentPost
-        if (post != null && post.platform != PlatformId.PIXIV && currentPlugin != null && currentPlugin.isLoggedIn && currentPlugin.getScore(post.id) == null) {
+        if (post != null && PlatformCapability.USER_FEED !in post.platform.capabilities && currentPlugin != null && currentPlugin.isLoggedIn && currentPlugin.getScore(post.id) == null) {
             currentPlugin.refreshScore(post.id)?.let { refreshed ->
                 localScores = localScores + (post.id to refreshed)
             }
@@ -388,7 +388,7 @@ fun DetailScreen(
                             modifier = Modifier.padding(bottom = 8.dp),
                         )
                     }
-                    if (currentPost?.platform == PlatformId.PIXIV && currentPost.pageCount > 1) {
+                    if (currentPost?.platform?.let { PlatformCapability.USER_FEED in it.capabilities } == true && currentPost.pageCount > 1) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -464,8 +464,8 @@ fun DetailScreen(
                             val isPluginLoggedIn by currentPlugin.isLoggedInFlow.collectAsState(initial = currentPlugin.isLoggedIn)
                             val post = displayPost
                             val currentScore = localScores[post.id] ?: currentPlugin.getScore(post.id) ?: 0
-                            val isPixivPost = post.platform == PlatformId.PIXIV
-                            val isFavorited = if (isPixivPost) {
+                            val hasUserFeedCapability = PlatformCapability.USER_FEED in post.platform.capabilities
+                            val isFavorited = if (hasUserFeedCapability) {
                                 localBookmarks[post.workIdentity.toString()] ?: post.isBookmarked
                             } else {
                                 currentScore == 3
@@ -479,14 +479,14 @@ fun DetailScreen(
                                         scope.launch {
                                             val targetScore = if (isFavorited) 0 else 3
                                             val targetBookmarked = !isFavorited
-                                            val result = if (isPixivPost) {
+                                            val result = if (hasUserFeedCapability) {
                                                 currentPlugin.setBookmark(post.id, targetBookmarked)
                                             } else {
                                                 currentPlugin.setScore(post.id, targetScore)
                                             }
                                             if (result.isSuccess) {
                                                 inlineActionError = null
-                                                if (isPixivPost) {
+                                                if (hasUserFeedCapability) {
                                                     localBookmarks = localBookmarks + (post.workIdentity.toString() to targetBookmarked)
                                                 } else {
                                                     localScores = localScores + (post.id to targetScore)
@@ -749,7 +749,7 @@ private fun MetadataTable(
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 
-            if (post.platform == PlatformId.PIXIV) {
+            if (PlatformCapability.USER_FEED in post.platform.capabilities) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
                 MetadataTableRow(label = "Pages", value = "${post.pageIndex + 1} / ${post.pageCount}")
                 post.bookmarkCount?.let { count ->

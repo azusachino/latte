@@ -7,7 +7,9 @@ import com.azusachino.latte.data.network.PixivAuthorizationRequest
 import com.azusachino.latte.data.network.PixivSession
 import com.azusachino.latte.data.network.PixivSupportResult
 import com.azusachino.latte.data.network.PixivUserDetailResult
+import com.azusachino.latte.plugin.PluginFeedKind
 import com.azusachino.latte.plugin.PluginFeedSource
+import com.azusachino.latte.plugin.PluginFeedTab
 import com.azusachino.latte.plugin.PluginSearchSupport
 import com.azusachino.latte.plugin.AuthType
 import com.azusachino.latte.plugin.PlatformId
@@ -33,6 +35,12 @@ class PixivPlugin(
     override val iconRes: Int? = null
     override val authType: AuthType = AuthType.OAUTH2
     override val feedSource: PluginFeedSource by lazy { PixivFeedSource(api) }
+
+    override val feedTabs: List<PluginFeedTab> = listOf(
+        PluginFeedTab("Following", PluginFeedKind.FOLLOWED, requiresAuthentication = true),
+        PluginFeedTab("Popular", PluginFeedKind.POPULAR),
+        PluginFeedTab("Favorites", PluginFeedKind.FAVORITES, requiresAuthentication = true),
+    )
     private var session: PixivSession? = loadSession()
     private val browserLoginMutex = Mutex()
     private val _isLoggedIn = MutableStateFlow(session?.accessToken?.isNotBlank() == true)

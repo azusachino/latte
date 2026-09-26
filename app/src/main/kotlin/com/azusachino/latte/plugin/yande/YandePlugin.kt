@@ -1,8 +1,12 @@
 package com.azusachino.latte.plugin.yande
 
 import com.azusachino.latte.data.network.SessionCookieStore
+import com.azusachino.latte.data.network.YandeApi
 import com.azusachino.latte.plugin.AuthType
 import com.azusachino.latte.plugin.PlatformId
+import com.azusachino.latte.plugin.PluginFeedKind
+import com.azusachino.latte.plugin.PluginFeedSource
+import com.azusachino.latte.plugin.PluginFeedTab
 import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.plugin.storage.PluginStorage
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +28,22 @@ open class YandePlugin(
     override val platform: PlatformId = PlatformId.YANDE,
     override val name: String = "yande.re",
 ) : SitePlugin {
+    private val moebooruFeedSource: MoebooruFeedSource by lazy {
+        MoebooruFeedSource(YandeApi(baseUrl), ::getDisplayUsername)
+    }
+    override val feedSource: PluginFeedSource get() = moebooruFeedSource
+    override val poolSource: com.azusachino.latte.plugin.PluginPoolSource get() = moebooruFeedSource
+
+    override suspend fun searchSupport(query: String): com.azusachino.latte.plugin.PluginSearchSupport =
+        com.azusachino.latte.plugin.PluginSearchSupport(
+            suggestions = YandeApi(baseUrl).getTagSuggestions(query),
+        )
+    override val feedTabs: List<PluginFeedTab> = listOf(
+        PluginFeedTab("Popular", PluginFeedKind.POPULAR),
+        PluginFeedTab("Newest", PluginFeedKind.NEWEST),
+        PluginFeedTab("Favorites", PluginFeedKind.FAVORITES, requiresAuthentication = true),
+        PluginFeedTab("Pools", PluginFeedKind.POOLS),
+    )
     override val iconRes: Int? = null
     override val authType: AuthType = AuthType.CREDENTIALS
     private var cachedUsername: String? = storage.get(id, KEY_USERNAME)

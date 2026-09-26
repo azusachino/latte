@@ -8,7 +8,7 @@ import com.azusachino.latte.data.model.PopularPeriod
 import com.azusachino.latte.data.model.FavoriteTag
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.model.PostRating
-import com.azusachino.latte.data.network.YandeApi
+import com.azusachino.latte.plugin.yande.MoebooruTags
 import com.azusachino.latte.plugin.PluginFeedKind
 import com.azusachino.latte.plugin.PluginFeedRequest
 import com.azusachino.latte.plugin.PluginFeedResult
@@ -16,6 +16,7 @@ import com.azusachino.latte.plugin.PluginFeedSource
 import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.ui.common.ToastManager
 import com.azusachino.latte.data.settings.LattePreferences
+import com.azusachino.latte.plugin.PlatformCapability
 import com.azusachino.latte.plugin.PlatformId
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -66,6 +67,8 @@ data class PoolListState(
 // Tab indices: 0 = Popular, 1 = Newest, 2 = Favorites, 3 = Pools
 data class ExploreUiState(
     val platform: PlatformId = PlatformId.YANDE,
+    /** Neutral feed store shared by every plugin; legacy mirrors migrate into this map. */
+    val feedStates: Map<PluginFeedKind, FeedState> = emptyMap(),
     val popularFeed: FeedState = FeedState(),
     val newestFeed: FeedState = FeedState(),
     val favoritesFeed: FeedState = FeedState(),
@@ -94,26 +97,35 @@ data class ExploreUiState(
     val selectedTab: Int = 0,
 ) {
     val activeSearchTags: String
-        get() = if (platform == PlatformId.PIXIV) {
+        get() = if (supportsUserFeeds) {
             pixivAuthorName ?: pixivSearchTags
         } else {
             searchTags
         }
 
-    val isPixiv: Boolean get() = platform == PlatformId.PIXIV
+    val supportsUserFeeds: Boolean get() = PlatformCapability.USER_FEED in platform.capabilities
+    fun feedState(kind: PluginFeedKind): FeedState = feedStates[kind] ?: when (kind) {
+        PluginFeedKind.POPULAR -> pixivPopularFeed
+        PluginFeedKind.FOLLOWED -> pixivFollowedFeed
+        PluginFeedKind.FAVORITES -> pixivFavoritesFeed
+        PluginFeedKind.SEARCH -> pixivSearchFeed
+        PluginFeedKind.AUTHOR_WORKS -> pixivUserWorksFeed
+        PluginFeedKind.NEWEST, PluginFeedKind.POOLS -> FeedState()
+    }
+
     val isPopular: Boolean get() = selectedTab == 0 && activeSearchTags.isBlank()
     val isSearch: Boolean get() = activeSearchTags.isNotBlank()
 
     val posts: List<Post>
         get() = when {
             isSearch -> when {
-                !isPixiv -> searchFeed.posts
+                !supportsUserFeeds -> searchFeed.posts
                 pixivAuthorId != null -> pixivUserWorksFeed.posts
                 else -> pixivSearchFeed.posts
             }
-            isPixiv && selectedTab == 0 -> pixivFollowedFeed.posts
-            isPixiv && selectedTab == 1 -> pixivPopularFeed.posts
-            isPixiv && selectedTab == 2 -> pixivFavoritesFeed.posts
+            supportsUserFeeds && selectedTab == 0 -> feedState(PluginFeedKind.FOLLOWED).posts
+            supportsUserFeeds && selectedTab == 1 -> feedState(PluginFeedKind.POPULAR).posts
+            supportsUserFeeds && selectedTab == 2 -> feedState(PluginFeedKind.FAVORITES).posts
             selectedTab == 0 -> popularFeed.posts
             selectedTab == 1 -> newestFeed.posts
             selectedTab == 2 -> favoritesFeed.posts
@@ -123,13 +135,13 @@ data class ExploreUiState(
     val isLoading: Boolean
         get() = when {
             isSearch -> when {
-                !isPixiv -> searchFeed.isLoading
+                !supportsUserFeeds -> searchFeed.isLoading
                 pixivAuthorId != null -> pixivUserWorksFeed.isLoading
                 else -> pixivSearchFeed.isLoading
             }
-            isPixiv && selectedTab == 0 -> pixivFollowedFeed.isLoading
-            isPixiv && selectedTab == 1 -> pixivPopularFeed.isLoading
-            isPixiv && selectedTab == 2 -> pixivFavoritesFeed.isLoading
+            supportsUserFeeds && selectedTab == 0 -> feedState(PluginFeedKind.FOLLOWED).isLoading
+            supportsUserFeeds && selectedTab == 1 -> feedState(PluginFeedKind.POPULAR).isLoading
+            supportsUserFeeds && selectedTab == 2 -> feedState(PluginFeedKind.FAVORITES).isLoading
             selectedTab == 0 -> popularFeed.isLoading
             selectedTab == 1 -> newestFeed.isLoading
             selectedTab == 2 -> favoritesFeed.isLoading
@@ -139,13 +151,13 @@ data class ExploreUiState(
     val isLoadingMore: Boolean
         get() = when {
             isSearch -> when {
-                !isPixiv -> searchFeed.isLoadingMore
+                !supportsUserFeeds -> searchFeed.isLoadingMore
                 pixivAuthorId != null -> pixivUserWorksFeed.isLoadingMore
                 else -> pixivSearchFeed.isLoadingMore
             }
-            isPixiv && selectedTab == 0 -> pixivFollowedFeed.isLoadingMore
-            isPixiv && selectedTab == 1 -> pixivPopularFeed.isLoadingMore
-            isPixiv && selectedTab == 2 -> pixivFavoritesFeed.isLoadingMore
+            supportsUserFeeds && selectedTab == 0 -> feedState(PluginFeedKind.FOLLOWED).isLoadingMore
+            supportsUserFeeds && selectedTab == 1 -> feedState(PluginFeedKind.POPULAR).isLoadingMore
+            supportsUserFeeds && selectedTab == 2 -> feedState(PluginFeedKind.FAVORITES).isLoadingMore
             selectedTab == 0 -> popularFeed.isLoadingMore
             selectedTab == 1 -> newestFeed.isLoadingMore
             selectedTab == 2 -> favoritesFeed.isLoadingMore
@@ -155,13 +167,13 @@ data class ExploreUiState(
     val isRefreshing: Boolean
         get() = when {
             isSearch -> when {
-                !isPixiv -> searchFeed.isRefreshing
+                !supportsUserFeeds -> searchFeed.isRefreshing
                 pixivAuthorId != null -> pixivUserWorksFeed.isRefreshing
                 else -> pixivSearchFeed.isRefreshing
             }
-            isPixiv && selectedTab == 0 -> pixivFollowedFeed.isRefreshing
-            isPixiv && selectedTab == 1 -> pixivPopularFeed.isRefreshing
-            isPixiv && selectedTab == 2 -> pixivFavoritesFeed.isRefreshing
+            supportsUserFeeds && selectedTab == 0 -> feedState(PluginFeedKind.FOLLOWED).isRefreshing
+            supportsUserFeeds && selectedTab == 1 -> feedState(PluginFeedKind.POPULAR).isRefreshing
+            supportsUserFeeds && selectedTab == 2 -> feedState(PluginFeedKind.FAVORITES).isRefreshing
             selectedTab == 0 -> popularFeed.isRefreshing
             selectedTab == 1 -> newestFeed.isRefreshing
             selectedTab == 2 -> favoritesFeed.isRefreshing
@@ -171,13 +183,13 @@ data class ExploreUiState(
     val error: String?
         get() = when {
             isSearch -> when {
-                !isPixiv -> searchFeed.error
+                !supportsUserFeeds -> searchFeed.error
                 pixivAuthorId != null -> pixivUserWorksFeed.error
                 else -> pixivSearchFeed.error
             }
-            isPixiv && selectedTab == 0 -> pixivFollowedFeed.error
-            isPixiv && selectedTab == 1 -> pixivPopularFeed.error
-            isPixiv && selectedTab == 2 -> pixivFavoritesFeed.error
+            supportsUserFeeds && selectedTab == 0 -> feedState(PluginFeedKind.FOLLOWED).error
+            supportsUserFeeds && selectedTab == 1 -> feedState(PluginFeedKind.POPULAR).error
+            supportsUserFeeds && selectedTab == 2 -> feedState(PluginFeedKind.FAVORITES).error
             selectedTab == 0 -> popularFeed.error
             selectedTab == 1 -> newestFeed.error
             selectedTab == 2 -> favoritesFeed.error
@@ -186,7 +198,7 @@ data class ExploreUiState(
 }
 
 internal fun ExploreUiState.pixivFeedToReloadAfterAuthentication(): PluginFeedKind? = when {
-    !isPixiv -> null
+    !supportsUserFeeds -> null
     isSearch && pixivAuthorId != null -> PluginFeedKind.AUTHOR_WORKS
     isSearch -> PluginFeedKind.SEARCH
     else -> pixivKindForTab(selectedTab)
@@ -211,12 +223,9 @@ internal suspend fun <T> applyIfActive(
 }
 
 class ExploreViewModel(application: Application) : AndroidViewModel(application) {
-    private val api = YandeApi()
-    private val konachanApi = YandeApi(baseUrl = PlatformId.KONACHAN.apiUrl)
-
-    private fun moebooruApi(): YandeApi =
-        if (_uiState.value.platform == PlatformId.KONACHAN) konachanApi else api
-    private var feedSource: PluginFeedSource? = null
+    private val plugins = mutableMapOf<PlatformId, SitePlugin>()
+    private val feedSources = mutableMapOf<PlatformId, PluginFeedSource>()
+    private val poolSources = mutableMapOf<PlatformId, com.azusachino.latte.plugin.PluginPoolSource>()
     private var pixivFollowProvider: SitePlugin? = null
     private var pixivLoadJob: Job? = null
     private val gridPositions = mutableMapOf<ExploreGridKey, GridPosition>()
@@ -242,8 +251,6 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     internal fun cachedPixivUserWorks(userId: Long): FeedState? = pixivUserWorksCache[userId]
 
     init {
-        loadPopularInitial()
-        loadNewestInitial()
         viewModelScope.launch {
             combine(
                 preferences.favoriteTags,
@@ -278,7 +285,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             )
         }
         val state = _uiState.value
-        if (state.isPixiv) {
+        if (state.supportsUserFeeds) {
             when {
                 state.pixivAuthorId != null -> loadPixivInitial(PluginFeedKind.AUTHOR_WORKS)
                 state.pixivSearchTags.isNotBlank() -> loadPixivInitial(PluginFeedKind.SEARCH, state.pixivSearchTags)
@@ -290,7 +297,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun applySafeMode(tags: String?): String? {
-        return YandeApi.safeModeTags(tags, preferences.safeMode.value)
+        return MoebooruTags.safeMode(tags, preferences.safeMode.value)
     }
 
     fun cycleColumns(): Int {
@@ -310,15 +317,55 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     private fun applyLocalFilters(posts: List<Post>): List<Post> =
         filterPosts(posts, preferences.safeMode.value)
 
-    fun configurePixiv(plugin: SitePlugin) {
-        val api = plugin.feedSource ?: return
-        if (feedSource === api && pixivFollowProvider === plugin) return
-        feedSource = api
-        pixivFollowProvider = plugin
-        if (_uiState.value.platform == PlatformId.PIXIV && _uiState.value.pixivFollowedFeed.posts.isEmpty()) {
-            loadPixivInitial(PluginFeedKind.FOLLOWED)
+    private suspend fun loadPools(query: String?, page: Int): List<PoolSummary> =
+        poolSources[_uiState.value.platform]?.load(query, page)?.getOrElse { throw it }
+            ?: error("Active platform pool source is not configured")
+
+    private suspend fun loadPosts(
+        kind: PluginFeedKind,
+        page: Int = 1,
+        query: String? = null,
+        popularPeriod: PopularPeriod = _uiState.value.popularPeriod,
+        popularDate: LocalDate = _uiState.value.popularDate,
+    ): List<Post> {
+        val result = activeFeedSource()?.load(PluginFeedRequest(
+            kind = kind,
+            page = page,
+            query = query,
+            popularPeriod = popularPeriod,
+            popularDate = popularDate,
+        )) ?: PluginFeedResult.TransportFailure("Active platform feed is not configured")
+        return when (result) {
+            is PluginFeedResult.Success -> applyLocalFilters(result.page.items)
+            is PluginFeedResult.AuthRequired -> error("Authentication required")
+            is PluginFeedResult.TransportFailure -> error(result.message)
+            is PluginFeedResult.RateLimited -> error("Rate limited")
+            is PluginFeedResult.UpstreamDrift -> error(result.operation)
+            PluginFeedResult.Empty -> emptyList()
         }
     }
+
+    fun configurePlugin(plugin: SitePlugin) {
+        plugins[plugin.platform] = plugin
+        plugin.feedSource?.let { feedSources[plugin.platform] = it }
+        plugin.poolSource?.let { poolSources[plugin.platform] = it }
+        if (plugin.platform == _uiState.value.platform && _uiState.value.popularFeed.posts.isEmpty()) {
+            loadPopularInitial()
+            loadNewestInitial()
+        }
+        if (PlatformCapability.USER_FEED in plugin.capabilities) {
+            if (pixivFollowProvider === plugin) return
+            pixivFollowProvider = plugin
+            if (_uiState.value.supportsUserFeeds && _uiState.value.pixivFollowedFeed.posts.isEmpty()) {
+                loadPixivInitial(PluginFeedKind.FOLLOWED)
+            }
+        }
+    }
+
+    fun configurePixiv(plugin: SitePlugin) = configurePlugin(plugin)
+
+    private fun activePlugin(): SitePlugin? = plugins[_uiState.value.platform]
+    private fun activeFeedSource(): PluginFeedSource? = feedSources[_uiState.value.platform]
 
     fun retryPixivAfterAuthentication() {
         val state = _uiState.value
@@ -334,12 +381,12 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         _uiState.update {
             it.copy(
                 platform = platform,
-                selectedTab = if (platform == PlatformId.PIXIV) 0 else it.selectedTab,
+                selectedTab = if (PlatformCapability.USER_FEED in platform.capabilities) 0 else it.selectedTab,
             )
         }
-        if (platform == PlatformId.PIXIV && _uiState.value.pixivFollowedFeed.posts.isEmpty()) {
+        if (PlatformCapability.USER_FEED in platform.capabilities && _uiState.value.pixivFollowedFeed.posts.isEmpty()) {
             loadPixivInitial(PluginFeedKind.FOLLOWED)
-        } else if (platform != PlatformId.PIXIV) {
+        } else if (PlatformCapability.USER_FEED !in platform.capabilities) {
             // A Moebooru switch changes the site under the shared tabs; the
             // cached feeds belong to the previous site, so reload them.
             loadPopularInitial()
@@ -350,7 +397,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     fun selectTab(tabIndex: Int) {
         val state = _uiState.value
         _uiState.update { it.copy(selectedTab = tabIndex) }
-        if (state.isPixiv && state.activeSearchTags.isBlank()) {
+        if (state.supportsUserFeeds && state.activeSearchTags.isBlank()) {
             pixivKindForTab(tabIndex)?.let { kind -> ensurePixivFeedLoaded(kind) }
         }
     }
@@ -389,15 +436,20 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             _uiState.update { it.copy(popularFeed = it.popularFeed.copy(isLoading = true, error = null, page = 1)) }
             try {
                 val state = _uiState.value
-                val posts = applyLocalFilters(moebooruApi().getPopular(state.popularPeriod, state.popularDate, page = 1, safeMode = preferences.safeMode.value))
+                val result = activeFeedSource()?.load(PluginFeedRequest(
+                    kind = PluginFeedKind.POPULAR,
+                    page = 1,
+                    popularPeriod = state.popularPeriod,
+                    popularDate = state.popularDate,
+                    refresh = true,
+                )) ?: PluginFeedResult.TransportFailure("Active platform feed is not configured")
+                val posts = when (result) {
+                    is PluginFeedResult.Success -> applyLocalFilters(result.page.items)
+                    else -> error(result.toString())
+                }
                 _uiState.update {
-                    it.copy(
-                        popularFeed = it.popularFeed.copy(
-                            posts = posts,
-                            isLoading = false,
-                            hasMore = posts.isNotEmpty(),
-                        )
-                    )
+                    val feed = it.popularFeed.copy(posts = posts, isLoading = false, hasMore = posts.isNotEmpty())
+                    it.copy(popularFeed = feed, feedStates = it.feedStates + (PluginFeedKind.POPULAR to feed))
                 }
             } catch (e: Exception) {
                 _uiState.update {
@@ -416,15 +468,16 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             _uiState.update { it.copy(newestFeed = it.newestFeed.copy(isLoading = true, error = null, page = 1)) }
             try {
-                val posts = applyLocalFilters(moebooruApi().getPosts(page = 1, tags = applySafeMode(null)))
+                val result = activeFeedSource()?.load(
+                    PluginFeedRequest(kind = PluginFeedKind.NEWEST, page = 1, refresh = true),
+                ) ?: PluginFeedResult.TransportFailure("Active platform feed is not configured")
+                val posts = when (result) {
+                    is PluginFeedResult.Success -> applyLocalFilters(result.page.items)
+                    else -> error(result.toString())
+                }
                 _uiState.update {
-                    it.copy(
-                        newestFeed = it.newestFeed.copy(
-                            posts = posts,
-                            isLoading = false,
-                            hasMore = posts.isNotEmpty(),
-                        )
-                    )
+                    val feed = it.newestFeed.copy(posts = posts, isLoading = false, hasMore = posts.isNotEmpty())
+                    it.copy(newestFeed = feed, feedStates = it.feedStates + (PluginFeedKind.NEWEST to feed))
                 }
             } catch (e: Exception) {
                 _uiState.update {
@@ -448,7 +501,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             val nextPage = feed.page + 1
             try {
                 val state = _uiState.value
-                val newPosts = applyLocalFilters(moebooruApi().getPopular(state.popularPeriod, state.popularDate, page = nextPage, safeMode = preferences.safeMode.value))
+                val newPosts = loadPosts(PluginFeedKind.POPULAR, page = nextPage, popularPeriod = state.popularPeriod, popularDate = state.popularDate)
                 _uiState.update {
                     it.copy(
                         popularFeed = it.popularFeed.copy(
@@ -473,7 +526,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val nextPage = feed.page + 1
             try {
-                val newPosts = applyLocalFilters(moebooruApi().getPosts(page = nextPage, tags = applySafeMode(null)))
+                val newPosts = loadPosts(PluginFeedKind.NEWEST, page = nextPage)
                 _uiState.update {
                     it.copy(
                         newestFeed = it.newestFeed.copy(
@@ -492,7 +545,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
 
     fun loadMoreSearch() {
         val state = _uiState.value
-        if (state.isPixiv) {
+        if (state.supportsUserFeeds) {
             if (state.pixivAuthorId != null) {
                 loadMorePixiv(PluginFeedKind.AUTHOR_WORKS)
             } else {
@@ -508,7 +561,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             val nextPage = feed.page + 1
             val searchKey = state.searchTags
             try {
-                val newPosts = applyLocalFilters(moebooruApi().getPosts(page = nextPage, tags = applySafeMode(searchKey)))
+                val newPosts = loadPosts(PluginFeedKind.SEARCH, page = nextPage, query = applySafeMode(searchKey))
                 _uiState.update {
                     val updatedFeed = it.searchFeed.copy(
                         posts = it.searchFeed.posts + newPosts,
@@ -532,7 +585,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             _uiState.update { it.copy(popularFeed = it.popularFeed.copy(isRefreshing = true, error = null)) }
             try {
                 val state = _uiState.value
-                val posts = applyLocalFilters(moebooruApi().getPopular(state.popularPeriod, state.popularDate, page = 1, safeMode = preferences.safeMode.value))
+                val posts = loadPosts(PluginFeedKind.POPULAR, popularPeriod = state.popularPeriod, popularDate = state.popularDate)
                 _uiState.update {
                     it.copy(
                         popularFeed = it.popularFeed.copy(
@@ -555,7 +608,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             _uiState.update { it.copy(newestFeed = it.newestFeed.copy(isRefreshing = true, error = null)) }
             try {
-                val posts = applyLocalFilters(moebooruApi().getPosts(page = 1, tags = applySafeMode(null)))
+                val posts = loadPosts(PluginFeedKind.NEWEST)
                 _uiState.update {
                     it.copy(
                         newestFeed = it.newestFeed.copy(
@@ -580,7 +633,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             clearSearch()
             return
         }
-        if (_uiState.value.isPixiv) {
+        if (_uiState.value.supportsUserFeeds) {
             searchPixiv(trimmed)
             return
         }
@@ -599,7 +652,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             _uiState.update { it.copy(searchFeed = it.searchFeed.copy(isLoading = true, error = null, page = 1)) }
             try {
-                val posts = applyLocalFilters(moebooruApi().getPosts(page = 1, tags = applySafeMode(trimmed)))
+                val posts = loadPosts(PluginFeedKind.SEARCH, query = applySafeMode(trimmed))
                 if (poolName == null) {
                     // Pool opens are internal `pool:<id>` queries, not user
                     // searches; keep them out of the recent-search chips.
@@ -751,7 +804,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             return
         }
         viewModelScope.launch {
-            runCatching { moebooruApi().getTagSuggestions(trimmed) }
+            runCatching { activePlugin()?.searchSupport(trimmed)?.suggestions.orEmpty() }
                 .onSuccess { suggestions ->
                     yandeSuggestionCache[trimmed] = suggestions
                     _uiState.update { it.copy(yandeSearchSuggestions = suggestions) }
@@ -776,7 +829,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun loadPixivInitial(kind: PluginFeedKind = selectedPixivKind(), query: String? = null) {
-        val client = feedSource ?: return updatePixivError(kind, "Pixiv is not configured")
+        val client = activeFeedSource() ?: return updatePixivError(kind, "Active platform feed is not configured")
         val activeQuery = query ?: _uiState.value.pixivSearchTags.takeIf { kind == PluginFeedKind.SEARCH }
         val activeUserId = _uiState.value.pixivAuthorId.takeIf { kind == PluginFeedKind.AUTHOR_WORKS }
         pixivLoadJob?.cancel()
@@ -805,7 +858,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         pixivLoadJob = viewModelScope.launch {
             applyIfActive(
                 request = {
-                    feedSource?.load(
+                    activeFeedSource()?.load(
                         PluginFeedRequest(kind = kind, query = activeQuery, authorId = activeUserId, cursor = cursor),
                     ) ?: PluginFeedResult.TransportFailure("Pixiv is not configured")
                 },
@@ -822,7 +875,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         pixivLoadJob = viewModelScope.launch {
             applyIfActive(
                 request = {
-                    feedSource?.load(
+                    activeFeedSource()?.load(
                         PluginFeedRequest(kind = kind, query = activeQuery, authorId = activeUserId, refresh = true),
                     ) ?: PluginFeedResult.TransportFailure("Pixiv is not configured")
                 },
@@ -895,34 +948,38 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
 
     private fun updatePixivFeed(kind: PluginFeedKind, transform: (FeedState) -> FeedState) {
         _uiState.update { state ->
-            val updated = transform(pixivFeed(state, kind))
+            val updated = transform(state.feedState(kind).takeIf { it != FeedState() } ?: pixivFeed(state, kind))
+            val next = state.copy(feedStates = state.feedStates + (kind to updated))
             when (kind) {
-                PluginFeedKind.POPULAR -> state.copy(pixivPopularFeed = updated)
-                PluginFeedKind.FOLLOWED -> state.copy(pixivFollowedFeed = updated)
-                PluginFeedKind.FAVORITES -> state.copy(pixivFavoritesFeed = updated)
+                PluginFeedKind.POPULAR -> next.copy(pixivPopularFeed = updated)
+                PluginFeedKind.FOLLOWED -> next.copy(pixivFollowedFeed = updated)
+                PluginFeedKind.FAVORITES -> next.copy(pixivFavoritesFeed = updated)
                 PluginFeedKind.SEARCH -> {
                     if (state.pixivSearchTags.isNotBlank()) {
                         pixivSearchCache[state.pixivSearchTags] = updated
                     }
-                    state.copy(pixivSearchFeed = updated)
+                    next.copy(pixivSearchFeed = updated)
                 }
                 PluginFeedKind.AUTHOR_WORKS -> {
                     state.pixivAuthorId?.let { authorId ->
                         pixivUserWorksCache[authorId] = updated
                     }
-                    state.copy(pixivUserWorksFeed = updated)
+                    next.copy(pixivUserWorksFeed = updated)
                 }
+                PluginFeedKind.NEWEST, PluginFeedKind.POOLS -> state
             }
         }
     }
 
-    private fun pixivFeed(state: ExploreUiState, kind: PluginFeedKind): FeedState = when (kind) {
-        PluginFeedKind.POPULAR -> state.pixivPopularFeed
-        PluginFeedKind.FOLLOWED -> state.pixivFollowedFeed
-        PluginFeedKind.FAVORITES -> state.pixivFavoritesFeed
-        PluginFeedKind.SEARCH -> state.pixivSearchFeed
-        PluginFeedKind.AUTHOR_WORKS -> state.pixivUserWorksFeed
-    }
+    private fun pixivFeed(state: ExploreUiState, kind: PluginFeedKind): FeedState =
+        state.feedStates[kind] ?: when (kind) {
+            PluginFeedKind.POPULAR -> state.pixivPopularFeed
+            PluginFeedKind.FOLLOWED -> state.pixivFollowedFeed
+            PluginFeedKind.FAVORITES -> state.pixivFavoritesFeed
+            PluginFeedKind.SEARCH -> state.pixivSearchFeed
+            PluginFeedKind.AUTHOR_WORKS -> state.pixivUserWorksFeed
+            PluginFeedKind.NEWEST, PluginFeedKind.POOLS -> FeedState()
+        }
 
     private fun selectedPixivKind(): PluginFeedKind = when (_uiState.value.selectedTab) {
         0 -> PluginFeedKind.FOLLOWED
@@ -949,7 +1006,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     fun clearSearch() {
         pixivLoadJob?.cancel()
         _uiState.update {
-            if (it.isPixiv) {
+            if (it.supportsUserFeeds) {
                 it.copy(
                     pixivSearchTags = "",
                     pixivAuthorId = null,
@@ -966,7 +1023,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
 
     fun refreshSearch() {
         val state = _uiState.value
-        if (state.isPixiv) {
+        if (state.supportsUserFeeds) {
             when {
                 state.pixivAuthorId != null -> refreshPixiv(PluginFeedKind.AUTHOR_WORKS)
                 state.pixivSearchTags.isNotBlank() -> refreshPixiv(PluginFeedKind.SEARCH, state.pixivSearchTags)
@@ -978,7 +1035,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             _uiState.update { it.copy(searchFeed = it.searchFeed.copy(isRefreshing = true, error = null)) }
             try {
-                val posts = applyLocalFilters(moebooruApi().getPosts(page = 1, tags = applySafeMode(state.searchTags)))
+                val posts = loadPosts(PluginFeedKind.SEARCH, query = applySafeMode(state.searchTags))
                 _uiState.update {
                     it.copy(
                         searchFeed = it.searchFeed.copy(
@@ -1000,7 +1057,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     fun retrySearch() {
         val state = _uiState.value
         if (!state.isSearch) return
-        if (state.isPixiv) {
+        if (state.supportsUserFeeds) {
             if (state.pixivAuthorId != null) {
                 loadPixivInitial(PluginFeedKind.AUTHOR_WORKS)
             } else {
@@ -1012,14 +1069,14 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun openPool(pool: PoolSummary) {
-        search(tags = YandeApi.poolTags(pool.id), poolName = "#${pool.id} · ${pool.displayName}")
+        search(tags = MoebooruTags.pool(pool.id), poolName = "#${pool.id} · ${pool.displayName}")
     }
 
     fun loadFavoritesInitial(username: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(favoritesFeed = it.favoritesFeed.copy(isLoading = true, error = null, page = 1)) }
             try {
-                val posts = applyLocalFilters(moebooruApi().getPosts(page = 1, tags = applySafeMode(YandeApi.favoriteTags(username))))
+                val posts = loadPosts(PluginFeedKind.FAVORITES)
                 _uiState.update {
                     it.copy(
                         favoritesFeed = it.favoritesFeed.copy(
@@ -1050,7 +1107,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val nextPage = feed.page + 1
             try {
-                val newPosts = applyLocalFilters(moebooruApi().getPosts(page = nextPage, tags = applySafeMode(YandeApi.favoriteTags(username))))
+                val newPosts = loadPosts(PluginFeedKind.FAVORITES, page = nextPage)
                 _uiState.update {
                     it.copy(
                         favoritesFeed = it.favoritesFeed.copy(
@@ -1071,7 +1128,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             _uiState.update { it.copy(favoritesFeed = it.favoritesFeed.copy(isRefreshing = true, error = null)) }
             try {
-                val posts = applyLocalFilters(moebooruApi().getPosts(page = 1, tags = applySafeMode(YandeApi.favoriteTags(username))))
+                val posts = loadPosts(PluginFeedKind.FAVORITES)
                 _uiState.update {
                     it.copy(
                         favoritesFeed = it.favoritesFeed.copy(
@@ -1094,7 +1151,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             _uiState.update { it.copy(poolsFeed = it.poolsFeed.copy(isLoading = true, error = null, page = 1, query = query)) }
             try {
-                val pools = moebooruApi().getPools(query = query.ifBlank { null }, page = 1)
+                val pools = loadPools(query.ifBlank { null }, 1)
                 _uiState.update {
                     it.copy(
                         poolsFeed = it.poolsFeed.copy(
@@ -1125,7 +1182,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val nextPage = feed.page + 1
             try {
-                val newPools = moebooruApi().getPools(query = feed.query.ifBlank { null }, page = nextPage)
+                val newPools = loadPools(feed.query.ifBlank { null }, nextPage)
                 _uiState.update {
                     it.copy(
                         poolsFeed = it.poolsFeed.copy(
@@ -1147,7 +1204,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             _uiState.update { it.copy(poolsFeed = it.poolsFeed.copy(isRefreshing = true, error = null)) }
             try {
-                val pools = moebooruApi().getPools(query = query.ifBlank { null }, page = 1)
+                val pools = loadPools(query.ifBlank { null }, 1)
                 _uiState.update {
                     it.copy(
                         poolsFeed = it.poolsFeed.copy(
@@ -1174,7 +1231,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         if (_uiState.value.poolCovers.containsKey(poolId)) return
         viewModelScope.launch {
             try {
-                val posts = moebooruApi().getPosts(page = 1, limit = 1, tags = YandeApi.poolTags(poolId))
+                val posts = loadPosts(PluginFeedKind.SEARCH, query = MoebooruTags.pool(poolId))
                 val coverUrl = posts.firstOrNull()?.previewUrl ?: return@launch
                 _uiState.update { it.copy(poolCovers = it.poolCovers + (poolId to coverUrl)) }
             } catch (e: Exception) {
@@ -1185,7 +1242,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
 
     fun loadMore() {
         val state = _uiState.value
-        if (state.isPixiv) {
+        if (state.supportsUserFeeds) {
             loadMorePixiv()
             return
         }
@@ -1198,7 +1255,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
 
     fun refresh() {
         val state = _uiState.value
-        if (state.isPixiv) {
+        if (state.supportsUserFeeds) {
             refreshPixiv()
             return
         }
@@ -1211,7 +1268,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
 
     fun loadInitial() {
         val state = _uiState.value
-        if (state.isPixiv) {
+        if (state.supportsUserFeeds) {
             loadPixivInitial()
             return
         }

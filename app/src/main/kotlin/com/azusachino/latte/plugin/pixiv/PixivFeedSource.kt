@@ -25,6 +25,8 @@ internal class PixivFeedSource(private val api: PixivApi) : PluginFeedSource {
     private fun PluginFeedRequest.toPixiv(): PixivFeedRequest = PixivFeedRequest(
         kind = when (kind) {
             PluginFeedKind.POPULAR -> PixivFeedKind.POPULAR
+            PluginFeedKind.NEWEST,
+            PluginFeedKind.POOLS -> error("Unsupported Pixiv feed kind: $kind")
             PluginFeedKind.FOLLOWED -> PixivFeedKind.FOLLOWED_UPDATES
             PluginFeedKind.FAVORITES -> PixivFeedKind.FAVORITES
             PluginFeedKind.SEARCH -> PixivFeedKind.SEARCH
