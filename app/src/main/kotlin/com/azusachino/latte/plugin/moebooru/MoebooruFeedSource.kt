@@ -9,6 +9,7 @@ import com.azusachino.latte.plugin.PluginFeedRequest
 import com.azusachino.latte.plugin.PluginFeedResult
 import com.azusachino.latte.plugin.PluginFeedSource
 import com.azusachino.latte.plugin.PluginPoolSource
+import kotlinx.coroutines.CancellationException
 
 /**
  * Neutral feed adapter for Moebooru-compatible sites.
@@ -42,12 +43,22 @@ class MoebooruFeedSource(
                     },
                     date = request.date,
                     page = request.page,
+                    safeMode = request.safeMode,
                 )
-                PluginFeedKind.NEWEST -> api.getPosts(page = request.page)
-                PluginFeedKind.SEARCH -> api.getPosts(page = request.page, tags = request.query)
+                PluginFeedKind.NEWEST -> api.getPosts(
+                    page = request.page,
+                    tags = MoebooruTags.safeMode(null, request.safeMode),
+                )
+                PluginFeedKind.SEARCH -> api.getPosts(
+                    page = request.page,
+                    tags = MoebooruTags.safeMode(request.query, request.safeMode),
+                )
                 PluginFeedKind.FAVORITES -> {
                     val user = username() ?: return PluginFeedResult.AuthRequired
-                    api.getPosts(page = request.page, tags = MoebooruApi.favoriteTags(user))
+                    api.getPosts(
+                        page = request.page,
+                        tags = MoebooruTags.safeMode(MoebooruApi.favoriteTags(user), request.safeMode),
+                    )
                 }
                 PluginFeedKind.FOLLOWED,
                 PluginFeedKind.AUTHOR_WORKS,
@@ -57,6 +68,7 @@ class MoebooruFeedSource(
             }
             PluginFeedResult.Success(PluginFeedPage(posts))
         }.getOrElse { error ->
+            if (error is CancellationException) throw error
             PluginFeedResult.TransportFailure(error.message ?: error::class.simpleName.orEmpty())
         }
     }

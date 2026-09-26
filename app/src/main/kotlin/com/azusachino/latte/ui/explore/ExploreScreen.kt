@@ -560,7 +560,7 @@ DropdownMenuItem(
                                                 searchQuery = tag
                                                 viewModel.search(tag)
                                             },
-                                            onLongClick = { viewModel.toggleFavoriteTag(tag, PlatformId.YANDE) },
+                                            onLongClick = { viewModel.toggleFavoriteTag(tag, uiState.platform) },
                                         )
                                     }
                                 }
@@ -639,7 +639,7 @@ DropdownMenuItem(
                     },
                     viewModel = viewModel,
                     gridKey = when {
-                        !uiState.supportsUserFeeds -> ExploreGridKey(PlatformId.YANDE, "search:${uiState.searchTags}")
+                        !uiState.supportsUserFeeds -> ExploreGridKey(uiState.platform, "search:${uiState.searchTags}")
                         uiState.pixivAuthorId != null -> ExploreGridKey(PlatformId.PIXIV, "user:${uiState.pixivAuthorId}")
                         else -> ExploreGridKey(PlatformId.PIXIV, "search:${uiState.pixivSearchTags}")
                     },
@@ -693,7 +693,7 @@ DropdownMenuItem(
                                     FeedGrid(
                                         feed = uiState.popularFeed,
                                         viewModel = viewModel,
-                                        gridKey = ExploreGridKey(PlatformId.YANDE, "popular"),
+                                        gridKey = ExploreGridKey(uiState.platform, "popular"),
                                         gridState = popularGridState,
                                         columnCount = columnCount,
                                         onPostClick = onPostClick,
@@ -727,7 +727,7 @@ DropdownMenuItem(
                                 FeedGrid(
                                     feed = uiState.newestFeed,
                                     viewModel = viewModel,
-                                    gridKey = ExploreGridKey(PlatformId.YANDE, "newest"),
+                                    gridKey = ExploreGridKey(uiState.platform, "newest"),
                                     gridState = newestGridState,
                                     columnCount = columnCount,
                                     onPostClick = onPostClick,
@@ -912,15 +912,13 @@ private fun FeedGrid(
                         ?.let { anchorId -> feed.posts.indexOfFirst { it.id == anchorId } }
                         ?.takeIf { it >= 0 }
                         ?: position.index
-                    if (restoredIndex > 0 || position.scrollOffset > 0) {
-                        // The staggered grid cannot honor scrollToItem until its first
-                        // layout has measured the current children.
-                        withFrameNanos { }
-                        gridState.scrollToItem(
-                            restoredIndex.coerceIn(0, feed.posts.lastIndex),
-                            position.scrollOffset,
-                        )
-                    }
+                    // The staggered grid cannot honor scrollToItem until its first
+                    // layout has measured the current children.
+                    withFrameNanos { }
+                    gridState.scrollToItem(
+                        restoredIndex.coerceIn(0, feed.posts.lastIndex),
+                        position.scrollOffset,
+                    )
                     snapshotFlow {
                         GridPosition(
                             index = gridState.firstVisibleItemIndex,

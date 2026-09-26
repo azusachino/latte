@@ -152,7 +152,7 @@ open class MoebooruPlugin(
         cachedUsername = null
         cachedCsrfToken = null
         userScores.clear()
-        cookieJar?.clear()
+        cookieJar?.clear(baseUrl.toHttpUrl().host)
         _isLoggedIn.value = false
     }
 

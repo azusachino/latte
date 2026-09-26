@@ -4,11 +4,11 @@
 
 **Created**: 2026-09-26
 
-**Status**: Implemented through unit-test, lint, and device-launch gates;
-PR pending. Owner-confirmed on device: Following-first tab order, follow
-toggle, detail-page tag favoriting, and the Favorite Tags view. Favorite-tag
-persistence across restart is unit-covered and awaits the owner's re-verify
-(dev-build storage was reset once during development).
+**Status**: PR pending. The original feature passed unit-test, lint, and
+device-launch gates. Review fixes for PR #6 are awaiting the owner's device
+verification; favorite-tag persistence across restart also awaits re-verification
+(dev-build storage was reset once during development). Codec round trips are
+unit-covered, but a DataStore restart is not.
 
 **Input**: [azusachino/latte#5](https://github.com/azusachino/latte/issues/5),
 extended after a survey of PixEz, Boorusama, Yummybooru, and neighbours with two
@@ -16,7 +16,7 @@ adjacent features (search history) that reuse the same seams.
 
 ## Objective
 
-Make the two platforms' personal-feed loops complete:
+Make the supported platforms' personal-feed loops complete:
 
 1. **Pixiv following** — follow and unfollow authors from their works view, and
    open Pixiv on the Following tab instead of Popular.
@@ -35,7 +35,7 @@ as today. Mapping against the Jetpack storage guidance:
 
 | Data | Store |
 | --- | --- |
-| Favorite tags | Preferences DataStore (`stringSetKey`) |
+| Favorite tags (tag and platform) | Preferences DataStore, one JSON-encoded `stringKey` |
 | Recent searches (ordered) | Preferences DataStore, one JSON-encoded `stringKey` (DataStore has no ordered set; kotlinx-serialization is already a dependency), bound to 20, LRU-deduped |
 | Existing keys (`columnCount`, `themeMode`, `safeMode`) | Migrated to the same DataStore in a one-time read of `latte_prefs`; the SharedPreferences file is retired |
 
@@ -44,10 +44,9 @@ toolchain. Room/SQLite is rejected: nothing is relational or queryable here.
 Revisit triggers: a local tag-autocomplete cache (Yummybooru-scale) or
 queryable download history — that is the `Room` row of the guidance table.
 
-Device acceptance runs on the connected OnePlus 8 (`IN2010`): manual verify
-of chip rows, star toggle, follow toggle against the live Pixiv account, and
-blacklist hiding on both platforms, in addition to the fixture-backed unit
-tests.
+Owner device acceptance covers chip rows, star toggle, follow toggle against
+the live Pixiv account, Konachan site switching, and persistence across restart,
+in addition to fixture-backed unit tests. The tag blacklist was descoped.
 
 ## User stories and acceptance
 

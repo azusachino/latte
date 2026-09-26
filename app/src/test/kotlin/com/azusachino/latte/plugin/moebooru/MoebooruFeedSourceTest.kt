@@ -14,6 +14,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.time.LocalDate
 
 class MoebooruFeedSourceTest {
     private lateinit var server: MockWebServer
@@ -48,5 +49,30 @@ class MoebooruFeedSourceTest {
         val post = (result as PluginFeedResult.Success).page.items.single()
         assertEquals(PlatformId.KONACHAN, post.platform)
         assertEquals("/post.json?page=1&limit=100&tags=vote%3A3%3Atest_artist", request.path)
+    }
+
+    @Test
+    fun safeModeFiltersMoebooruPagesAtTheSource() = runTest {
+        val source = MoebooruFeedSource(
+            api = MoebooruApi(server.url("/").toString().removeSuffix("/"), PlatformId.YANDE),
+            username = { "test_artist" },
+        )
+        listOf(
+            PluginFeedKind.POPULAR to "order:score date:2026-09-26 rating:safe",
+            PluginFeedKind.NEWEST to "rating:safe",
+            PluginFeedKind.SEARCH to "landscape rating:safe",
+            PluginFeedKind.FAVORITES to "vote:3:test_artist rating:safe",
+        ).forEach { (kind, tags) ->
+            server.enqueue(MockResponse().setBody("[]"))
+            source.load(
+                PluginFeedRequest(
+                    kind = kind,
+                    query = "landscape",
+                    date = LocalDate.of(2026, 9, 26),
+                    safeMode = true,
+                ),
+            )
+            assertEquals(tags, server.takeRequest().requestUrl?.queryParameter("tags"))
+        }
     }
 }

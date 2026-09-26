@@ -60,18 +60,23 @@ class MoebooruPluginTest {
     }
 
     private class InMemoryCookieStore : SessionCookieStore {
-        private val cookies = mutableMapOf<String, String>()
+        private val cookies = mutableMapOf<String, MutableMap<String, String>>()
 
         override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
-            cookies.forEach { cookie -> this.cookies[cookie.name] = cookie.value }
+            val hostCookies = this.cookies.getOrPut(url.host) { mutableMapOf() }
+            cookies.forEach { cookie -> hostCookies[cookie.name] = cookie.value }
         }
 
         override fun loadForRequest(url: HttpUrl): List<Cookie> = emptyList()
 
-        override fun getCookieValue(host: String, name: String): String? = cookies[name]
+        override fun getCookieValue(host: String, name: String): String? = cookies[host]?.get(name)
 
-        override fun clear() {
-            cookies.clear()
+        override fun clear(host: String) {
+            cookies.remove(host)
+        }
+
+        fun seed(host: String, name: String, value: String) {
+            cookies.getOrPut(host) { mutableMapOf() }[name] = value
         }
     }
 
@@ -221,5 +226,31 @@ class MoebooruPluginTest {
         assertFalse(plugin.isLoggedIn)
         assertNull(storage.get("yande.re", "username"))
         assertEquals(2, mockServer.requestCount)
+    }
+
+    @Test
+    fun logoutClearsOnlyTheCurrentSiteCookies() {
+        val storage = InMemoryStorage()
+        storage.save(PlatformId.YANDE.externalId, "username", "alice")
+        storage.save(PlatformId.KONACHAN.externalId, "username", "bob")
+        val cookieStore = InMemoryCookieStore().apply {
+            seed("yande.re", "user_id", "42")
+            seed("konachan.net", "user_id", "84")
+        }
+        val yande = MoebooruPlugin(
+            storage, httpClient, PlatformId.YANDE.apiUrl,
+            PlatformId.YANDE, PlatformId.YANDE.displayName, cookieStore,
+        )
+        val konachan = MoebooruPlugin(
+            storage, httpClient, PlatformId.KONACHAN.apiUrl,
+            PlatformId.KONACHAN, PlatformId.KONACHAN.displayName, cookieStore,
+        )
+
+        yande.logout()
+
+        assertFalse(yande.isLoggedIn)
+        assertNull(cookieStore.getCookieValue("yande.re", "user_id"))
+        assertTrue(konachan.isLoggedIn)
+        assertEquals("84", cookieStore.getCookieValue("konachan.net", "user_id"))
     }
 }

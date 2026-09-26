@@ -22,38 +22,36 @@ persistence task. Each task lands with its tests and leaves `make check` green.
    `loadPixivFollowState(userId)` on entering user works; `togglePixivFollow()`
    calls the API, updates state on success, clears the followed-feed cache and
    reloads the Following feed if it has content.
-5. `ExploreScreen`: Follow/Following `FilledTonalButton`/`OutlinedButton` in
+5. `ExploreScreen`: Follow/Following button in
    the user-works header beside `pixivAuthorName`; failure toast through
    `ToastHost`.
-6. Default tab: `selectPlatform(PIXIV)` sets `selectedTab = 1` (and initial
+6. Default tab: `selectPlatform(PIXIV)` sets `selectedTab = 0` (and initial
    restore when the platform is Pixiv) and ensures the followed feed loads.
 
-## Track B — Local tags, history, blacklist
+## Track B — Local tags and history
 
 1. Migrate `LattePreferences` from SharedPreferences to Preferences DataStore
    (`datastore-preferences` dependency): add the `dataStore` delegate on
-   `LatteApplication`, read once with a one-time migration of the existing
+   `Context`, read once with a one-time migration of the existing
    `latte_prefs` keys (`columnCount`, `themeMode`, `safeMode`), keep the public
    `StateFlow` + setter surface so callers do not change. DataStore writes are
    suspend/`edit {}` — collect the flow into a `MutableStateFlow` internally as
    today.
-2. Add `favoriteTags`, `recentSearches` (JSON-encoded ordered string key, bound
-   20), `blacklistTags` keys with mutators and round-trip tests.
+2. Add platform-aware `favoriteTags` and `recentSearches` as JSON-encoded string
+   keys (history bound to 20), with mutators and codec round-trip tests.
 3. History recording: `ExploreViewModel.search()` (yande branch) records the
    trimmed query on success.
-4. Yande suggestions: `YandeApi.getTagSuggestions(prefix)` via
+4. Moebooru suggestions: `MoebooruApi.getTagSuggestions(prefix)` via
    `/tag.json?name=<prefix>*&order=count&limit=8`, mapped to tag names;
-   `ExploreViewModel` caches per prefix; blank prefix shows favorites +
+   `ExploreViewModel` caches per platform and prefix; blank prefix shows favorites +
    recents instead.
 5. Search bar UI (`ExploreScreen`): when yande and expanded — blank query shows
    favorites then recents as chips; non-blank query shows suggestions and a
    star toggle for favoriting the active query.
-6. Blacklist filter: extract one `filterPosts(posts, safeMode, blacklist)`
-   seam; apply where `filterPixivPosts` runs today and in the yande
-   load/refresh/append paths; Settings screen adds a blacklist tag editor next
-   to Safe Mode.
-7. Wire blacklist changes into the existing `preferences.safeMode.drop(1)`
-   reload collector so feed caches invalidate identically.
+6. Keep one `filterPosts(posts, safeMode)` seam. Send `rating:safe` with
+   Moebooru feed requests and filter Pixiv results locally.
+
+The tag blacklist was descoped after owner review.
 
 ## Deferred follow-ups (file as issues after merge)
 

@@ -17,6 +17,33 @@ import org.junit.Test
 
 class ExplorePlatformStateTest {
     @Test
+    fun platformSwitchDropsThePreviousSitesFeedAndSearchState() {
+        val previous = ExploreUiState(
+            platform = PlatformId.YANDE,
+            selectedTab = 2,
+            searchTags = "landscape",
+            popularFeed = FeedState(isLoading = true),
+            searchFeed = FeedState(error = "old site"),
+            favoritesFeed = FeedState(error = "old account"),
+            poolsFeed = PoolListState(query = "old pool"),
+            poolCovers = mapOf(7L to "old cover"),
+            pixivFollowedFeed = FeedState(isLoadingMore = true),
+        )
+
+        val next = previous.forPlatform(PlatformId.KONACHAN)
+
+        assertEquals(PlatformId.KONACHAN, next.platform)
+        assertEquals(0, next.selectedTab)
+        assertEquals("", next.searchTags)
+        assertEquals(FeedState(), next.popularFeed)
+        assertEquals(FeedState(), next.searchFeed)
+        assertEquals(FeedState(), next.favoritesFeed)
+        assertEquals(PoolListState(), next.poolsFeed)
+        assertTrue(next.poolCovers.isEmpty())
+        assertEquals(FeedState(), next.pixivFollowedFeed)
+    }
+
+    @Test
     fun pixivStateUsesItsOwnFeedAndSearchContext() {
         val post = Post(
             id = 75034219,

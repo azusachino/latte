@@ -41,6 +41,7 @@ data class PluginFeedRequest(
     val authorId: Long? = null,
     val cursor: String? = null,
     val refresh: Boolean = false,
+    val safeMode: Boolean = false,
 )
 
 data class PluginFeedPage(
