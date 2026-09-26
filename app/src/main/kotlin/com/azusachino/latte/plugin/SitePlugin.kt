@@ -31,6 +31,12 @@ interface SitePlugin {
     val capabilities: Set<PlatformCapability>
         get() = platform.capabilities
 
+    /** Feed access for plugins that serve paged personal feeds; null otherwise. */
+    val feedSource: PluginFeedSource? get() = null
+
+    /** Best-effort search support; null when the plugin has none. */
+    suspend fun searchSupport(query: String): PluginSearchSupport? = null
+
     val isLoggedIn: Boolean
     val isLoggedInFlow: Flow<Boolean>
     fun getDisplayUsername(): String?
@@ -43,6 +49,13 @@ interface SitePlugin {
 
     suspend fun setBookmark(postId: Long, bookmarked: Boolean): Result<Unit> =
         Result.failure(UnsupportedOperationException("Bookmarks not supported by $name"))
+
+    suspend fun setAuthorFollowed(userId: Long, followed: Boolean): Result<Unit> =
+        Result.failure(UnsupportedOperationException("Following not supported by $name"))
+
+    // Best-effort read of the current follow state for an author -- null if
+    // the plugin cannot check it or is not authenticated.
+    suspend fun isAuthorFollowed(userId: Long): Boolean? = null
 
     fun getScore(postId: Long): Int? = null
 

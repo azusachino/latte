@@ -5,6 +5,7 @@ import com.azusachino.latte.data.model.PopularPeriod
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.model.YandePoolDto
 import com.azusachino.latte.data.model.YandePostDto
+import com.azusachino.latte.data.model.YandeTagDto
 import com.azusachino.latte.data.model.toDomain
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -84,6 +85,33 @@ class YandeApi(private val baseUrl: String = "https://yande.re") {
             }
 
             executeGetPools(urlBuilder.build().toString())
+        }
+
+    /** Tag autocomplete: ordered by post count, wildcard-prefixed. */
+    suspend fun getTagSuggestions(prefix: String, limit: Int = 8): List<String> =
+        withContext(Dispatchers.IO) {
+            val trimmed = prefix.trim()
+            if (trimmed.length < 2) return@withContext emptyList()
+
+            val url = "$baseUrl/tag.json".toHttpUrl().newBuilder()
+                .addQueryParameter("name", "$trimmed*")
+                .addQueryParameter("order", "count")
+                .addQueryParameter("limit", limit.toString())
+                .build()
+
+            val request = Request.Builder()
+                .url(url)
+                .header("Accept", "application/json")
+                .build()
+
+            val response = OkHttpProvider.client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                throw IOException("Unexpected HTTP response: ${response.code} ${response.message}")
+            }
+
+            val body = response.body?.string().orEmpty()
+            json.decodeFromString<List<YandeTagDto>>(body)
+                .mapNotNull { it.name.takeIf(String::isNotBlank) }
         }
 
     companion object {

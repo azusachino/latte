@@ -157,6 +157,40 @@ class PixivApiTest {
         assertEquals("/v2/illust/follow?cursor=opaque-token", server.takeRequest().path)
     }
 
+    @Test
+    fun followAuthorUsesFormBodyAndTypedFailures() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+        assertEquals(PixivBookmarkResult.Success, api().followAuthor(42, follow = true))
+        val add = server.takeRequest()
+        assertEquals("/v1/user/follow/add", add.path)
+        assertEquals("user_id=42&restrict=public", add.body.readUtf8())
+
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+        assertEquals(PixivBookmarkResult.Success, api().followAuthor(42, follow = false))
+        val delete = server.takeRequest()
+        assertEquals("/v1/user/follow/delete", delete.path)
+        assertEquals("user_id=42", delete.body.readUtf8())
+
+        server.enqueue(MockResponse().setResponseCode(401))
+        assertEquals(PixivBookmarkResult.AuthRequired, api().followAuthor(42, follow = true))
+    }
+
+    @Test
+    fun userDetailReadsFollowState() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"user":{"id":42,"is_followed":true}}"""),
+        )
+        assertEquals(PixivUserDetailResult.Success(isFollowed = true), api().userDetail(42))
+        val request = server.takeRequest()
+        assertEquals("/v1/user/detail?filter=for_android&user_id=42", request.path)
+
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"user":{}}"""))
+        assertEquals(PixivUserDetailResult.Success(isFollowed = false), api().userDetail(42))
+
+        server.enqueue(MockResponse().setResponseCode(401))
+        assertEquals(PixivUserDetailResult.AuthRequired, api().userDetail(42))
+    }
+
     private fun api(): PixivApi = PixivApi(
         httpClient = OkHttpClient(),
         baseUrl = server.url("/").toString().trimEnd('/'),

@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.0.4 - 2026-09-26
+
+### Added
+
+- Added Pixiv author follow/unfollow from the author works view, with the
+  current follow state read from Pixiv and the Following feed refreshed after
+  a change.
+- Pixiv now opens on the Following tab.
+- Added local favorite tags and recent searches for yande.re, with autocomplete
+  suggestions from tag counts in the search bar.
+- Added a local tag blacklist applied across both platforms beside Safe Mode.
+
+### Changed
+
+- Local settings moved from SharedPreferences to Preferences DataStore with a
+  one-time migration.
+- The Explore layer now consumes the platform-neutral plugin feed contract
+  (`PluginFeedSource`) instead of Pixiv transport types.
+
 ## 0.0.3 - 2026-09-21
 
 ### Added

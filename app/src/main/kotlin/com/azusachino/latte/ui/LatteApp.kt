@@ -121,8 +121,8 @@ fun LatteApp(
     }
     val sitePluginManager = remember { com.azusachino.latte.plugin.SitePluginManager(listOf(yandePlugin, pixivPlugin)) }
 
-    LaunchedEffect(pixivPlugin.api) {
-        exploreViewModel.configurePixiv(pixivPlugin.api)
+    LaunchedEffect(pixivPlugin) {
+        exploreViewModel.configurePixiv(pixivPlugin)
     }
 
     var navigation by remember { mutableStateOf(ScreenStack()) }

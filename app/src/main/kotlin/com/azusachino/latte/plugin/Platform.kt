@@ -19,7 +19,7 @@ enum class PlatformId(
         displayName = "Pixiv",
         webUrl = "https://www.pixiv.net",
         apiUrl = "https://app-api.pixiv.net",
-        capabilities = setOf(PlatformCapability.FAVORITES, PlatformCapability.USER_FEED),
+        capabilities = setOf(PlatformCapability.FAVORITES, PlatformCapability.USER_FEED, PlatformCapability.FOLLOW_AUTHORS),
     ),
     ;
 
@@ -34,4 +34,5 @@ enum class PlatformCapability {
     FAVORITES,
     REFERER_INJECT,
     USER_FEED,
+    FOLLOW_AUTHORS,
 }

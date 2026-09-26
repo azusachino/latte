@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -17,6 +18,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
@@ -31,6 +33,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -115,6 +118,8 @@ fun SettingsScreen(
                 checked = safeMode,
                 onCheckedChange = { preferences.setSafeMode(it) },
             )
+
+            BlacklistTagsEditor(preferences)
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
@@ -326,4 +331,61 @@ private fun formatFileSize(bytes: Long): String {
     if (digitGroups >= units.size) digitGroups = units.size - 1
     val df = java.text.DecimalFormat("#,##0.#")
     return "${df.format(bytes / Math.pow(1024.0, digitGroups.toDouble()))} ${units[digitGroups]}"
+}
+
+@Composable
+private fun BlacklistTagsEditor(preferences: LattePreferences, modifier: Modifier = Modifier) {
+    val blacklist by preferences.blacklistTags.collectAsState()
+    var newTag by remember { mutableStateOf("") }
+
+    Column(modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Text("Blacklisted Tags", style = MaterialTheme.typography.bodyLarge)
+        Text(
+            "Hide posts carrying these tags on every feed",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = newTag,
+                onValueChange = { newTag = it },
+                modifier = Modifier.weight(1f),
+                placeholder = { Text("e.g. comic") },
+                singleLine = true,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+            )
+            TextButton(
+                onClick = {
+                    preferences.setTagBlacklisted(newTag, true)
+                    newTag = ""
+                },
+                enabled = newTag.isNotBlank(),
+            ) {
+                Text("Add")
+            }
+        }
+        if (blacklist.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+            ) {
+                blacklist.sorted().forEach { tag ->
+                    FilterChip(
+                        selected = true,
+                        onClick = { preferences.setTagBlacklisted(tag, false) },
+                        label = { Text(tag) },
+                        trailingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Remove $tag",
+                                modifier = Modifier.height(16.dp).width(16.dp),
+                            )
+                        },
+                    )
+                }
+            }
+        }
+    }
 }

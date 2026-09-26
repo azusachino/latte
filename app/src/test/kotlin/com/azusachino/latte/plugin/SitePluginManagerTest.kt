@@ -99,7 +99,7 @@ class SitePluginManagerTest {
             manager.get("yande.re")?.capabilities,
         )
         assertEquals(
-            setOf(PlatformCapability.FAVORITES, PlatformCapability.USER_FEED),
+            setOf(PlatformCapability.FAVORITES, PlatformCapability.USER_FEED, PlatformCapability.FOLLOW_AUTHORS),
             manager.get("pixiv")?.capabilities,
         )
         assertTrue(manager.get("yande.re")?.supportedAuthFlows == setOf(AuthFlow.CREDENTIALS))

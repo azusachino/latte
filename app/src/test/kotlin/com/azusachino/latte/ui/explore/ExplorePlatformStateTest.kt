@@ -2,7 +2,7 @@ package com.azusachino.latte.ui.explore
 
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.model.PostRating
-import com.azusachino.latte.data.network.PixivFeedKind
+import com.azusachino.latte.plugin.PluginFeedKind
 import com.azusachino.latte.plugin.PlatformId
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -51,27 +51,27 @@ class ExplorePlatformStateTest {
     @Test
     fun pixivAuthenticationReloadsTheSelectedFeed() {
         assertEquals(
-            PixivFeedKind.POPULAR,
+            PluginFeedKind.POPULAR,
             ExploreUiState(platform = PlatformId.PIXIV, selectedTab = 0)
                 .pixivFeedToReloadAfterAuthentication(),
         )
         assertEquals(
-            PixivFeedKind.SEARCH,
+            PluginFeedKind.SEARCH,
             ExploreUiState(platform = PlatformId.PIXIV, pixivSearchTags = "blue hair")
                 .pixivFeedToReloadAfterAuthentication(),
         )
         assertEquals(
-            PixivFeedKind.FOLLOWED_UPDATES,
+            PluginFeedKind.FOLLOWED,
             ExploreUiState(platform = PlatformId.PIXIV, selectedTab = 1)
                 .pixivFeedToReloadAfterAuthentication(),
         )
         assertEquals(
-            PixivFeedKind.FAVORITES,
+            PluginFeedKind.FAVORITES,
             ExploreUiState(platform = PlatformId.PIXIV, selectedTab = 2)
                 .pixivFeedToReloadAfterAuthentication(),
         )
         assertEquals(
-            PixivFeedKind.USER_WORKS,
+            PluginFeedKind.AUTHOR_WORKS,
             ExploreUiState(
                 platform = PlatformId.PIXIV,
                 pixivAuthorId = 99,
@@ -82,9 +82,9 @@ class ExplorePlatformStateTest {
 
     @Test
     fun pixivTabsMapToIndependentFeedKinds() {
-        assertEquals(PixivFeedKind.POPULAR, pixivKindForTab(0))
-        assertEquals(PixivFeedKind.FOLLOWED_UPDATES, pixivKindForTab(1))
-        assertEquals(PixivFeedKind.FAVORITES, pixivKindForTab(2))
+        assertEquals(PluginFeedKind.POPULAR, pixivKindForTab(0))
+        assertEquals(PluginFeedKind.FOLLOWED, pixivKindForTab(1))
+        assertEquals(PluginFeedKind.FAVORITES, pixivKindForTab(2))
         assertEquals(null, pixivKindForTab(3))
     }
 
@@ -111,6 +111,40 @@ class ExplorePlatformStateTest {
 
         assertEquals(listOf(safe), filterPixivPosts(listOf(safe, explicit), safeMode = true))
         assertEquals(listOf(safe, explicit), filterPixivPosts(listOf(safe, explicit), safeMode = false))
+    }
+
+    @Test
+    fun blacklistComposesWithSafeModeInTheSharedFilterSeam() {
+        val safe = Post(
+            id = 1,
+            platform = PlatformId.YANDE,
+            rating = PostRating.SAFE,
+            tags = listOf("landscape"),
+            score = 0,
+            author = "Artist",
+            source = null,
+            createdAt = null,
+            width = 1,
+            height = 1,
+            previewUrl = "safe",
+            sampleUrl = "safe",
+            jpegUrl = null,
+            originalUrl = "safe",
+            variants = emptyList(),
+        )
+        val blacklistedSafe = safe.copy(id = 2, tags = listOf("comic"))
+        val explicit = safe.copy(id = 3, rating = PostRating.EXPLICIT)
+        val blacklist = setOf("comic")
+        val all = listOf(safe, blacklistedSafe, explicit)
+
+        // Blacklist alone hides matching tags on any rating.
+        assertEquals(listOf(safe, explicit), filterPosts(all, safeMode = false, blacklist = blacklist))
+        // Safe Mode alone hides non-safe ratings.
+        assertEquals(listOf(safe, blacklistedSafe), filterPosts(all, safeMode = true, blacklist = emptySet()))
+        // Composition drops by either rule, not precedence.
+        assertEquals(listOf(safe), filterPosts(all, safeMode = true, blacklist = blacklist))
+        // Empty filter config short-circuits without copying semantics changes.
+        assertEquals(all, filterPosts(all, safeMode = false, blacklist = emptySet()))
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)

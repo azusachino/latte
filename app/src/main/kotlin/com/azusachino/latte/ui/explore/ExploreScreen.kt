@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.GridView
@@ -109,7 +110,7 @@ import coil3.request.ImageRequest
 import com.azusachino.latte.data.model.PoolSummary
 import com.azusachino.latte.data.model.PopularPeriod
 import com.azusachino.latte.data.model.Post
-import com.azusachino.latte.data.network.PixivFeedKind
+import com.azusachino.latte.plugin.PluginFeedKind
 import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.plugin.SitePlugin
 import kotlinx.coroutines.launch
@@ -200,6 +201,13 @@ fun ExploreScreen(
         if (isSearchExpanded && uiState.isPixiv) {
             delay(250)
             viewModel.loadPixivSearchSupport(searchQuery)
+        }
+    }
+
+    LaunchedEffect(isSearchExpanded, uiState.isPixiv, searchQuery) {
+        if (isSearchExpanded && !uiState.isPixiv) {
+            delay(250)
+            viewModel.loadYandeSearchSupport(searchQuery)
         }
     }
 
@@ -396,6 +404,16 @@ fun ExploreScreen(
                                 },
                             ),
                             trailingIcon = {
+                                if (!uiState.isPixiv && searchQuery.isNotBlank()) {
+                                    val isFavorite = uiState.favoriteTags.contains(searchQuery.trim())
+                                    IconButton(onClick = { viewModel.toggleFavoriteTag(searchQuery) }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Star,
+                                            contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
+                                            tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
                                 if (searchQuery.isNotBlank()) {
                                     IconButton(onClick = {
                                         searchQuery = ""
@@ -438,6 +456,33 @@ fun ExploreScreen(
                                 }
                             }
                         }
+                        if (!uiState.isPixiv && isSearchExpanded) {
+                            val supportTags = if (searchQuery.isBlank()) {
+                                uiState.favoriteTags.toList() + uiState.recentSearches.filter { it !in uiState.favoriteTags }
+                            } else {
+                                uiState.yandeSearchSuggestions
+                            }
+                            if (supportTags.isNotEmpty()) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 64.dp)
+                                        .horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    supportTags.take(10).forEach { tag ->
+                                        FilterChip(
+                                            selected = uiState.favoriteTags.contains(tag) && searchQuery.isBlank(),
+                                            onClick = {
+                                                searchQuery = tag
+                                                viewModel.search(tag)
+                                            },
+                                            label = { Text(tag) },
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -465,6 +510,36 @@ fun ExploreScreen(
                                     )
                                 },
                             )
+                        }
+                    }
+                }
+                // Author works header: shows whose works these are and the
+                // follow toggle for the author (Pixiv only).
+                if (uiState.isPixiv && uiState.pixivAuthorId != null && uiState.pixivAuthorName != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                    ) {
+                        Text(
+                            text = "Works by ${uiState.pixivAuthorName}",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        val followed = uiState.pixivAuthorFollowed
+                        if (followed != null) {
+                            Button(
+                                onClick = { viewModel.togglePixivFollow() },
+                                enabled = !uiState.isTogglingPixivFollow,
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                                modifier = Modifier.padding(start = 8.dp),
+                            ) {
+                                Text(if (followed) "Following" else "Follow")
+                            }
                         }
                     }
                 }
@@ -556,9 +631,9 @@ fun ExploreScreen(
                                     columnCount = columnCount,
                                     onPostClick = onPostClick,
                                     onRequireLogin = onRequireLogin,
-                                    onLoadMore = { viewModel.loadMorePixiv(PixivFeedKind.FOLLOWED_UPDATES) },
-                                    onRetry = { viewModel.loadPixivInitial(PixivFeedKind.FOLLOWED_UPDATES) },
-                                    onRefresh = { viewModel.refreshPixiv(PixivFeedKind.FOLLOWED_UPDATES) },
+                                    onLoadMore = { viewModel.loadMorePixiv(PluginFeedKind.FOLLOWED) },
+                                    onRetry = { viewModel.loadPixivInitial(PluginFeedKind.FOLLOWED) },
+                                    onRefresh = { viewModel.refreshPixiv(PluginFeedKind.FOLLOWED) },
                                 )
                             } else {
                                 FeedGrid(
@@ -589,15 +664,15 @@ fun ExploreScreen(
                                 onPostClick = onPostClick,
                                 onRequireLogin = onRequireLogin,
                                 onLoadMore = {
-                                    if (uiState.isPixiv) viewModel.loadMorePixiv(PixivFeedKind.FAVORITES)
+                                    if (uiState.isPixiv) viewModel.loadMorePixiv(PluginFeedKind.FAVORITES)
                                     else sitePlugin?.getDisplayUsername()?.let(viewModel::loadMoreFavorites)
                                 },
                                 onRetry = {
-                                    if (uiState.isPixiv) viewModel.loadPixivInitial(PixivFeedKind.FAVORITES)
+                                    if (uiState.isPixiv) viewModel.loadPixivInitial(PluginFeedKind.FAVORITES)
                                     else sitePlugin?.getDisplayUsername()?.let(viewModel::loadFavoritesInitial)
                                 },
                                 onRefresh = {
-                                    if (uiState.isPixiv) viewModel.refreshPixiv(PixivFeedKind.FAVORITES)
+                                    if (uiState.isPixiv) viewModel.refreshPixiv(PluginFeedKind.FAVORITES)
                                     else sitePlugin?.getDisplayUsername()?.let(viewModel::refreshFavorites)
                                 },
                             )

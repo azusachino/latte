@@ -5,6 +5,10 @@ import com.azusachino.latte.data.network.PixivBookmarkResult
 import com.azusachino.latte.data.network.PixivOAuthClient
 import com.azusachino.latte.data.network.PixivAuthorizationRequest
 import com.azusachino.latte.data.network.PixivSession
+import com.azusachino.latte.data.network.PixivSupportResult
+import com.azusachino.latte.data.network.PixivUserDetailResult
+import com.azusachino.latte.plugin.PluginFeedSource
+import com.azusachino.latte.plugin.PluginSearchSupport
 import com.azusachino.latte.plugin.AuthType
 import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.plugin.SitePlugin
@@ -28,6 +32,7 @@ class PixivPlugin(
     override val name: String = "Pixiv"
     override val iconRes: Int? = null
     override val authType: AuthType = AuthType.OAUTH2
+    override val feedSource: PluginFeedSource by lazy { PixivFeedSource(api) }
     private var session: PixivSession? = loadSession()
     private val browserLoginMutex = Mutex()
     private val _isLoggedIn = MutableStateFlow(session?.accessToken?.isNotBlank() == true)
@@ -90,6 +95,45 @@ class PixivPlugin(
             is PixivBookmarkResult.RateLimited -> Result.failure(IllegalStateException("Pixiv is rate limiting requests"))
             is PixivBookmarkResult.UpstreamDrift -> Result.failure(IllegalStateException("Pixiv bookmark response changed"))
             is PixivBookmarkResult.TransportFailure -> Result.failure(IllegalStateException(result.message))
+        }
+
+    override suspend fun searchSupport(query: String): PluginSearchSupport? {
+        val trimmed = query.trim()
+        val suggestions = if (trimmed.isBlank()) {
+            emptyList()
+        } else {
+            when (val result = api.autocomplete(trimmed)) {
+                is PixivSupportResult.Success -> result.values
+                else -> return null
+            }
+        }
+        val trending = if (trimmed.isBlank()) {
+            when (val result = api.trendingTags()) {
+                is PixivSupportResult.Success -> result.values
+                else -> emptyList()
+            }
+        } else {
+            emptyList()
+        }
+        return PluginSearchSupport(suggestions = suggestions, trending = trending)
+    }
+
+    override suspend fun setAuthorFollowed(userId: Long, followed: Boolean): Result<Unit> =
+        when (val result = api.followAuthor(userId, followed)) {
+            PixivBookmarkResult.Success -> Result.success(Unit)
+            PixivBookmarkResult.AuthRequired -> Result.failure(IllegalStateException("Pixiv sign-in required"))
+            is PixivBookmarkResult.RateLimited -> Result.failure(IllegalStateException("Pixiv is rate limiting requests"))
+            is PixivBookmarkResult.UpstreamDrift -> Result.failure(IllegalStateException("Pixiv follow response changed"))
+            is PixivBookmarkResult.TransportFailure -> Result.failure(IllegalStateException(result.message))
+        }
+
+    override suspend fun isAuthorFollowed(userId: Long): Boolean? =
+        when (val result = api.userDetail(userId)) {
+            is PixivUserDetailResult.Success -> result.isFollowed
+            PixivUserDetailResult.AuthRequired -> null
+            is PixivUserDetailResult.RateLimited -> null
+            is PixivUserDetailResult.UpstreamDrift -> null
+            is PixivUserDetailResult.TransportFailure -> null
         }
 
     private suspend fun refreshSession(): PixivSession? {

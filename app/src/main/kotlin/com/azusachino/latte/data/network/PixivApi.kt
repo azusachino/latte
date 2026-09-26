@@ -112,6 +112,54 @@ class PixivApi(
             }
         }
 
+    suspend fun followAuthor(userId: Long, follow: Boolean): PixivBookmarkResult =
+        withContext(Dispatchers.IO) {
+            if (userId <= 0) return@withContext PixivBookmarkResult.UpstreamDrift("follow author")
+            if (sessionProvider()?.accessToken.isNullOrBlank()) {
+                return@withContext PixivBookmarkResult.AuthRequired
+            }
+
+            val path = if (follow) {
+                "v1/user/follow/add"
+            } else {
+                "v1/user/follow/delete"
+            }
+            val bodyBuilder = FormBody.Builder().add("user_id", userId.toString())
+            if (follow) bodyBuilder.add("restrict", "public")
+            val url = baseUrl.toHttpUrl().newBuilder().addPathSegments(path).build()
+
+            when (val response = execute(
+                requestFactory = { request(url).post(bodyBuilder.build()).build() },
+                operation = "follow author",
+                decode = { Unit },
+            )) {
+                is ReadResult.Success -> PixivBookmarkResult.Success
+                ReadResult.AuthRequired -> PixivBookmarkResult.AuthRequired
+                is ReadResult.RateLimited -> PixivBookmarkResult.RateLimited(response.retryAfterSeconds)
+                is ReadResult.UpstreamDrift -> PixivBookmarkResult.UpstreamDrift(response.operation)
+                is ReadResult.TransportFailure -> PixivBookmarkResult.TransportFailure(response.message)
+            }
+        }
+
+    suspend fun userDetail(userId: Long): PixivUserDetailResult = withContext(Dispatchers.IO) {
+        if (userId <= 0) return@withContext PixivUserDetailResult.UpstreamDrift("user detail")
+        val url = baseUrl.toHttpUrl().newBuilder()
+            .addPathSegments("v1/user/detail")
+            .addQueryParameter("filter", "for_android")
+            .addQueryParameter("user_id", userId.toString())
+            .build()
+
+        when (val response = executeJson(url, "user detail") {
+            json.decodeFromString<PixivUserDetailResponse>(it)
+        }) {
+            is ReadResult.Success -> PixivUserDetailResult.Success(response.value.user?.isFollowed == true)
+            ReadResult.AuthRequired -> PixivUserDetailResult.AuthRequired
+            is ReadResult.RateLimited -> PixivUserDetailResult.RateLimited(response.retryAfterSeconds)
+            is ReadResult.UpstreamDrift -> PixivUserDetailResult.UpstreamDrift(response.operation)
+            is ReadResult.TransportFailure -> PixivUserDetailResult.TransportFailure(response.message)
+        }
+    }
+
     suspend fun autocomplete(query: String): PixivSupportResult = withContext(Dispatchers.IO) {
         if (query.isBlank()) return@withContext PixivSupportResult.Success(emptyList())
         val url = baseUrl.toHttpUrl().newBuilder()
@@ -291,6 +339,16 @@ class PixivApi(
         data class TransportFailure(val message: String) : ReadResult<Nothing>
     }
 }
+
+@Serializable
+private data class PixivUserDetailResponse(
+    val user: PixivUserDetailDto? = null,
+)
+
+@Serializable
+private data class PixivUserDetailDto(
+    @SerialName("is_followed") val isFollowed: Boolean = false,
+)
 
 @Serializable
 private data class PixivAutocompleteResponse(
