@@ -113,7 +113,7 @@ fun LatteApp(
     val palette = when (exploreUiState.platform) {
         PlatformId.PIXIV -> LattePalette.PIXIV
         PlatformId.YANDE -> LattePalette.YANDE
-        PlatformId.KONACHAN -> LattePalette.YANDE
+        PlatformId.KONACHAN -> LattePalette.KONACHAN
     }
 
     val pluginStorage = remember { SecurePluginStorage(context) }

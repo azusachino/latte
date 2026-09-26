@@ -130,6 +130,12 @@ private val PIXIV_ACCENT = Color(0xFF0096FA)
 internal fun shouldHandleSearchBack(isRootScreen: Boolean, isSearch: Boolean): Boolean =
     isRootScreen && isSearch
 
+internal fun platformLogoLabel(platform: PlatformId): String = when (platform) {
+    PlatformId.YANDE -> "y"
+    PlatformId.KONACHAN -> "k"
+    PlatformId.PIXIV -> "p"
+}
+
 internal fun dispatchExploreBack(onNestedBack: (() -> Unit)?, onClearSearch: () -> Unit) {
     if (onNestedBack != null) onNestedBack() else onClearSearch()
 }
@@ -168,7 +174,11 @@ fun ExploreScreen(
     var isSearchExpanded by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf(uiState.activeSearchTags) }
     var platformMenuOpen by remember { mutableStateOf(false) }
-    val platformAccent = MaterialTheme.colorScheme.primary
+    val platformAccent = when (uiState.platform) {
+        PlatformId.YANDE -> YANDE_ACCENT
+        PlatformId.KONACHAN -> KONACHAN_ACCENT
+        PlatformId.PIXIV -> PIXIV_ACCENT
+    }
     val pixivIsLoggedIn = pixivPlugin?.let { plugin ->
         val isLoggedIn by plugin.isLoggedInFlow.collectAsState(initial = plugin.isLoggedIn)
         isLoggedIn
@@ -241,7 +251,7 @@ fun ExploreScreen(
                                     text = title
                                         ?: uiState.activePoolName
                                         ?: if (uiState.isSearch) uiState.activeSearchTags
-                                        else "Latte",
+                                        else uiState.platform.displayName,
                                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
                                     color = platformAccent,
                                     maxLines = 1,
@@ -249,13 +259,9 @@ fun ExploreScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 PlatformLogo(
-                                    label = if (uiState.isPixiv) "p" else "y",
+                                    label = platformLogoLabel(uiState.platform),
                                     color = platformAccent,
-                                    contentDescription = if (uiState.isPixiv) {
-                                        "Current platform: Pixiv"
-                                    } else {
-                                        "Current platform: Yande"
-                                    },
+                                    contentDescription = "Current platform: ${uiState.platform.displayName}",
                                     modifier = Modifier.size(28.dp),
                                 )
                             }
