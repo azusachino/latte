@@ -397,8 +397,22 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     fun selectTab(tabIndex: Int) {
         val state = _uiState.value
         _uiState.update { it.copy(selectedTab = tabIndex) }
-        if (state.supportsUserFeeds && state.activeSearchTags.isBlank()) {
-            pixivKindForTab(tabIndex)?.let { kind -> ensurePixivFeedLoaded(kind) }
+        if (state.activeSearchTags.isNotBlank()) return
+
+        val tab = activePlugin()?.feedTabs?.getOrNull(tabIndex) ?: return
+        when (tab.kind) {
+            PluginFeedKind.FAVORITES -> {
+                val plugin = activePlugin() ?: return
+                if (!plugin.isLoggedIn) return
+                if (PlatformCapability.USER_FEED in plugin.capabilities) {
+                    loadPixivInitial(PluginFeedKind.FAVORITES)
+                } else {
+                    loadFavoritesInitial(plugin.getDisplayUsername().orEmpty())
+                }
+            }
+            else -> if (state.supportsUserFeeds) {
+                pixivKindForTab(tabIndex)?.let(::ensurePixivFeedLoaded)
+            }
         }
     }
 
