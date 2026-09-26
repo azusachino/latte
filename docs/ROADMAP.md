@@ -13,14 +13,14 @@
 
 ## Overview
 
-Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenticated, multi-platform personal art workstation (`0.0.2` and `0.0.3`). This roadmap establishes the sequence of milestones, architectural requirements, UX standards, and cache policies.
+Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenticated, multi-platform personal art workstation (`0.0.2`, `0.0.3`, and `0.1.0`). This roadmap establishes the sequence of milestones, architectural requirements, UX standards, and cache policies.
 
 ```text
-0.0.1 (Delivered) ──> 0.0.2 (Auth, Scoring & UX Hardening) ──> 0.0.3 (Pixiv Multi-Platform) ──> 0.0.4 (Favorites & Konachan.net)
-  • Yande browse        • Yande login & password hash             • Pixiv OAuth2 PKCE
-  • Masonry feed        • 0–3 scoring & Add to Favorite           • Referer header injection
-  • Detail pager        • Search swipe-back & sheet drag fix      • 1:N multi-page illusts
-  • WorkManager save    • Clean dialog for already-saved          • Subscribed updates feed
+0.0.1 (Delivered) ──> 0.0.2 (Auth, Scoring & UX Hardening) ──> 0.0.3 (Pixiv Multi-Platform) ──> 0.1.0 (Favorites, Following & Konachan.net)
+  • Yande browse        • Yande login & password hash             • Pixiv OAuth2 PKCE             • Favorite tags & chip favoriting
+  • Masonry feed        • 0–3 scoring & Add to Favorite           • Referer header injection      • Pixiv Following-first & follow toggle
+  • Detail pager        • Search swipe-back & sheet drag fix      • 1:N multi-page illusts        • Konachan.net SFW Moebooru platform
+  • WorkManager save    • Clean dialog for already-saved          • Subscribed updates feed       • Plugin feed abstraction layer
                         • Unified cache manager in settings       • Search and author works
 ```
 
@@ -28,7 +28,7 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
 
 ## Konachan
 
-`konachan.net` (SFW mirror) ships in 0.0.4 as a third Moebooru platform: the
+`konachan.net` (SFW mirror) ships in 0.1.0 as a third Moebooru platform: the
 Yande plugin and Moebooru API were parameterized by site identity with no new
 transport code. `konachan.com` stays on the roadmap behind its Cloudflare
 wall: the plain OkHttp client receives a JS challenge there, and bypassing it
@@ -137,6 +137,41 @@ a defect.
 - Handle OAuth2 PKCE token exchange (`access_token` and `refresh_token`) and automated token refresh interceptor.
 - The verified Popular surface uses the daily ranking operation. Additional
   Pixiv ranking modes remain a follow-up and are not advertised by 0.0.3.
+
+---
+
+## Milestone 0.1.0: Favorite Tags, Pixiv Following, and Konachan.net
+
+> **Status**: Released as `v0.1.0` on 2026-09-26. Platform-aware favorite
+> tags, detail-page long-press favoriting, Pixiv Following-first feeds with
+> author follow/unfollow, and Konachan.net as a third Moebooru platform are
+> verified. Common plugin feed abstractions (`PluginFeedSource`) and
+> capability-based behavior replace platform identity branching.
+> **Active Feature Spec**: [005 Favorite Tags & Following](../specs/005-favorite-tags-and-following/spec.md)
+> **Tasks**: [005 Tasks](../specs/005-favorite-tags-and-following/tasks.md)
+
+### 1. Favorite Tags & Search Experience
+
+- **Favorite Tags**:
+  - Saved tags bound to each platform (`yande.re`, `konachan.net`).
+  - Add/remove tags from the image detail page, search bar star toggle, or long-pressing tag chips.
+  - Dedicated `FavoriteTagsScreen` accessible from toolbar star, allowing direct feed navigation.
+- **Search Enhancements**:
+  - Autocomplete tag suggestions with post count badges from Moebooru API.
+  - Recent searches persistence in Preferences DataStore.
+
+### 2. Pixiv Following-First Experience
+
+- **Following Feed & Author Management**:
+  - Direct follow/unfollow toggle from the author works view, reflecting live follow status.
+  - Pixiv platform defaults to opening on the Following tab.
+  - Automatic cache invalidation and feed refresh upon follow/unfollow.
+
+### 3. Konachan.net Moebooru Integration
+
+- Parameterized Moebooru API and feed source to support `konachan.net` alongside `yande.re`.
+- Preserved independent per-platform state, cookies, and search/suggestion caches.
+- `konachan.com` remains deferred due to Cloudflare challenge.
 
 ---
 

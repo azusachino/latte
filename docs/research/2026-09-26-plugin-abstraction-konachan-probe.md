@@ -2,7 +2,7 @@
 
 **Date**: 2026-09-26
 **Branch**: `experiment/konachan-plugin` (folded into `feat/favorite-tags-and-following`)
-**Question**: does the 0.0.4 plugin architecture actually absorb a third
+**Question**: does the 0.1.0 plugin architecture actually absorb a third
 platform, or does it only look that way?
 
 ## What was done

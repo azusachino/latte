@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.0.4 - 2026-09-26
+## 0.1.0 - 2026-09-26
 
 ### Added
 
@@ -11,11 +11,10 @@
 - Added Pixiv author follow/unfollow from the author works view, with the
   current follow state read from Pixiv and the Following feed refreshed after
   a change.
-- Pixiv now opens on the Following tab.
 - Added local favorite tags and recent searches for yande.re, with autocomplete
   suggestions from tag counts, a Favorite Tags view reached from the toolbar
   star, long-press chip favoriting, and the star toggle in the search bar.
-- Pixiv now opens on the Following tab.
+- Pixiv now opens on the Following tab by default.
 
 ### Changed
 
@@ -29,6 +28,7 @@
 - Platform switching now snaps the pager to the selected tab so the stale
   page cannot override the Pixiv Following default.
 - Pixiv feed failures are logged (`LatteExplore`) for device diagnostics.
+- Resolved coroutine return label scoping in `ExploreViewModel.loadPoolCover()`.
 
 ## 0.0.3 - 2026-09-21
 
