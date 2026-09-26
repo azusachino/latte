@@ -124,6 +124,7 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 private val YANDE_ACCENT = Color(0xFF3F6F8F)
+private val KONACHAN_ACCENT = Color(0xFF8D6E2F)
 private val PIXIV_ACCENT = Color(0xFF0096FA)
 
 internal fun shouldHandleSearchBack(isRootScreen: Boolean, isSearch: Boolean): Boolean =
@@ -296,7 +297,41 @@ fun ExploreScreen(
                                         viewModel.selectPlatform(PlatformId.YANDE)
                                     },
                                 )
-                                DropdownMenuItem(
+                                                                DropdownMenuItem(
+                                    leadingIcon = {
+                                        PlatformLogo(
+                                            label = "k",
+                                            color = KONACHAN_ACCENT,
+                                            contentDescription = "Konachan platform",
+                                        )
+                                    },
+                                    text = {
+                                        Text(
+                                            text = "Konachan",
+                                            color = if (uiState.platform == PlatformId.KONACHAN) KONACHAN_ACCENT
+                                            else MaterialTheme.colorScheme.onSurface,
+                                            fontWeight = if (uiState.platform == PlatformId.KONACHAN) {
+                                                FontWeight.SemiBold
+                                            } else {
+                                                FontWeight.Normal
+                                            },
+                                        )
+                                    },
+                                    trailingIcon = {
+                                        if (uiState.platform == PlatformId.KONACHAN) {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = "Selected",
+                                                tint = KONACHAN_ACCENT,
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        platformMenuOpen = false
+                                        viewModel.selectPlatform(PlatformId.KONACHAN)
+                                    },
+                                )
+DropdownMenuItem(
                                     leadingIcon = {
                                         PlatformLogo(
                                             label = "p",

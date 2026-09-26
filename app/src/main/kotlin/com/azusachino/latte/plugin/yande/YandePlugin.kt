@@ -16,15 +16,14 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.IOException
 
-class YandePlugin(
+open class YandePlugin(
     private val storage: PluginStorage,
     private val httpClient: OkHttpClient,
     private val cookieJar: SessionCookieStore? = null,
     private val baseUrl: String = PlatformId.YANDE.apiUrl,
+    override val platform: PlatformId = PlatformId.YANDE,
+    override val name: String = "yande.re",
 ) : SitePlugin {
-
-    override val platform: PlatformId = PlatformId.YANDE
-    override val name: String = "yande.re"
     override val iconRes: Int? = null
     override val authType: AuthType = AuthType.CREDENTIALS
     private var cachedUsername: String? = storage.get(id, KEY_USERNAME)

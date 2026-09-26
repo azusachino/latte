@@ -71,9 +71,19 @@ shared `filterPosts` seam remains in place for a future issue.
   the Following feed updates and Pixiv opens on Following (owner-confirmed
   after the pager-snap race fix, commit 274381e)
 
-## Phase 6: Closeout
+## Phase 6: Konachan.net platform (added mid-feature, see docs/research/2026-09-26-plugin-abstraction-konachan-probe.md)
+
+- [x] T023 `PlatformId.KONACHAN` + `KonachanPlugin` via constructor-injected
+  site identity; no new transport code
+- [x] T024 Per-platform Moebooru API in the ViewModel; feed reload on
+  Moebooru-to-Moebooru platform switch
+- [x] T025 Platform switcher entry; device-verified browse, detail, and search
+  against konachan.net
+
+## Phase 7: Closeout
 
 - [ ] T021 `make check`, `make lint`, `make validate` green; CHANGELOG entry;
   PR linked to issue #5
 - [ ] T022 File deferred follow-up issues (bulk download, backup/export, tag
-  collections, optional tag blacklist)
+  collections, optional tag blacklist, konachan.com Cloudflare handling,
+  de-binary the UI platform branches, YandeApi -> MoebooruApi rename)

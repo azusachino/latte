@@ -118,4 +118,5 @@ fun FavoriteTagsScreen(
 private fun platformLabel(platform: PlatformId): String = when (platform) {
     PlatformId.YANDE -> "yande.re"
     PlatformId.PIXIV -> "Pixiv"
+    PlatformId.KONACHAN -> "Konachan"
 }

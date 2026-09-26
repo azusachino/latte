@@ -212,6 +212,10 @@ internal suspend fun <T> applyIfActive(
 
 class ExploreViewModel(application: Application) : AndroidViewModel(application) {
     private val api = YandeApi()
+    private val konachanApi = YandeApi(baseUrl = PlatformId.KONACHAN.apiUrl)
+
+    private fun moebooruApi(): YandeApi =
+        if (_uiState.value.platform == PlatformId.KONACHAN) konachanApi else api
     private var feedSource: PluginFeedSource? = null
     private var pixivFollowProvider: SitePlugin? = null
     private var pixivLoadJob: Job? = null
@@ -335,6 +339,11 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         }
         if (platform == PlatformId.PIXIV && _uiState.value.pixivFollowedFeed.posts.isEmpty()) {
             loadPixivInitial(PluginFeedKind.FOLLOWED)
+        } else if (platform != PlatformId.PIXIV) {
+            // A Moebooru switch changes the site under the shared tabs; the
+            // cached feeds belong to the previous site, so reload them.
+            loadPopularInitial()
+            loadNewestInitial()
         }
     }
 
@@ -380,7 +389,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             _uiState.update { it.copy(popularFeed = it.popularFeed.copy(isLoading = true, error = null, page = 1)) }
             try {
                 val state = _uiState.value
-                val posts = applyLocalFilters(api.getPopular(state.popularPeriod, state.popularDate, page = 1, safeMode = preferences.safeMode.value))
+                val posts = applyLocalFilters(moebooruApi().getPopular(state.popularPeriod, state.popularDate, page = 1, safeMode = preferences.safeMode.value))
                 _uiState.update {
                     it.copy(
                         popularFeed = it.popularFeed.copy(
@@ -407,7 +416,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             _uiState.update { it.copy(newestFeed = it.newestFeed.copy(isLoading = true, error = null, page = 1)) }
             try {
-                val posts = applyLocalFilters(api.getPosts(page = 1, tags = applySafeMode(null)))
+                val posts = applyLocalFilters(moebooruApi().getPosts(page = 1, tags = applySafeMode(null)))
                 _uiState.update {
                     it.copy(
                         newestFeed = it.newestFeed.copy(
@@ -439,7 +448,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             val nextPage = feed.page + 1
             try {
                 val state = _uiState.value
-                val newPosts = applyLocalFilters(api.getPopular(state.popularPeriod, state.popularDate, page = nextPage, safeMode = preferences.safeMode.value))
+                val newPosts = applyLocalFilters(moebooruApi().getPopular(state.popularPeriod, state.popularDate, page = nextPage, safeMode = preferences.safeMode.value))
                 _uiState.update {
                     it.copy(
                         popularFeed = it.popularFeed.copy(
@@ -464,7 +473,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val nextPage = feed.page + 1
             try {
-                val newPosts = applyLocalFilters(api.getPosts(page = nextPage, tags = applySafeMode(null)))
+                val newPosts = applyLocalFilters(moebooruApi().getPosts(page = nextPage, tags = applySafeMode(null)))
                 _uiState.update {
                     it.copy(
                         newestFeed = it.newestFeed.copy(
@@ -499,7 +508,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             val nextPage = feed.page + 1
             val searchKey = state.searchTags
             try {
-                val newPosts = applyLocalFilters(api.getPosts(page = nextPage, tags = applySafeMode(searchKey)))
+                val newPosts = applyLocalFilters(moebooruApi().getPosts(page = nextPage, tags = applySafeMode(searchKey)))
                 _uiState.update {
                     val updatedFeed = it.searchFeed.copy(
                         posts = it.searchFeed.posts + newPosts,
@@ -523,7 +532,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             _uiState.update { it.copy(popularFeed = it.popularFeed.copy(isRefreshing = true, error = null)) }
             try {
                 val state = _uiState.value
-                val posts = applyLocalFilters(api.getPopular(state.popularPeriod, state.popularDate, page = 1, safeMode = preferences.safeMode.value))
+                val posts = applyLocalFilters(moebooruApi().getPopular(state.popularPeriod, state.popularDate, page = 1, safeMode = preferences.safeMode.value))
                 _uiState.update {
                     it.copy(
                         popularFeed = it.popularFeed.copy(
@@ -546,7 +555,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             _uiState.update { it.copy(newestFeed = it.newestFeed.copy(isRefreshing = true, error = null)) }
             try {
-                val posts = applyLocalFilters(api.getPosts(page = 1, tags = applySafeMode(null)))
+                val posts = applyLocalFilters(moebooruApi().getPosts(page = 1, tags = applySafeMode(null)))
                 _uiState.update {
                     it.copy(
                         newestFeed = it.newestFeed.copy(
@@ -590,8 +599,12 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             _uiState.update { it.copy(searchFeed = it.searchFeed.copy(isLoading = true, error = null, page = 1)) }
             try {
-                val posts = applyLocalFilters(api.getPosts(page = 1, tags = applySafeMode(trimmed)))
-                preferences.recordRecentSearch(trimmed)
+                val posts = applyLocalFilters(moebooruApi().getPosts(page = 1, tags = applySafeMode(trimmed)))
+                if (poolName == null) {
+                    // Pool opens are internal `pool:<id>` queries, not user
+                    // searches; keep them out of the recent-search chips.
+                    preferences.recordRecentSearch(trimmed)
+                }
                 _uiState.update {
                     val updatedFeed = it.searchFeed.copy(
                         posts = posts,
@@ -716,7 +729,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                             pixivFollowedFeed = FeedState(),
                         )
                     }
-                    if (state.selectedTab == 1) {
+                    if (state.selectedTab == 0) {
                         loadPixivInitial(PluginFeedKind.FOLLOWED)
                     }
                 }
@@ -738,7 +751,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             return
         }
         viewModelScope.launch {
-            runCatching { api.getTagSuggestions(trimmed) }
+            runCatching { moebooruApi().getTagSuggestions(trimmed) }
                 .onSuccess { suggestions ->
                     yandeSuggestionCache[trimmed] = suggestions
                     _uiState.update { it.copy(yandeSearchSuggestions = suggestions) }
@@ -965,7 +978,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             _uiState.update { it.copy(searchFeed = it.searchFeed.copy(isRefreshing = true, error = null)) }
             try {
-                val posts = applyLocalFilters(api.getPosts(page = 1, tags = applySafeMode(state.searchTags)))
+                val posts = applyLocalFilters(moebooruApi().getPosts(page = 1, tags = applySafeMode(state.searchTags)))
                 _uiState.update {
                     it.copy(
                         searchFeed = it.searchFeed.copy(
@@ -1006,7 +1019,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             _uiState.update { it.copy(favoritesFeed = it.favoritesFeed.copy(isLoading = true, error = null, page = 1)) }
             try {
-                val posts = applyLocalFilters(api.getPosts(page = 1, tags = applySafeMode(YandeApi.favoriteTags(username))))
+                val posts = applyLocalFilters(moebooruApi().getPosts(page = 1, tags = applySafeMode(YandeApi.favoriteTags(username))))
                 _uiState.update {
                     it.copy(
                         favoritesFeed = it.favoritesFeed.copy(
@@ -1037,7 +1050,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val nextPage = feed.page + 1
             try {
-                val newPosts = applyLocalFilters(api.getPosts(page = nextPage, tags = applySafeMode(YandeApi.favoriteTags(username))))
+                val newPosts = applyLocalFilters(moebooruApi().getPosts(page = nextPage, tags = applySafeMode(YandeApi.favoriteTags(username))))
                 _uiState.update {
                     it.copy(
                         favoritesFeed = it.favoritesFeed.copy(
@@ -1058,7 +1071,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             _uiState.update { it.copy(favoritesFeed = it.favoritesFeed.copy(isRefreshing = true, error = null)) }
             try {
-                val posts = applyLocalFilters(api.getPosts(page = 1, tags = applySafeMode(YandeApi.favoriteTags(username))))
+                val posts = applyLocalFilters(moebooruApi().getPosts(page = 1, tags = applySafeMode(YandeApi.favoriteTags(username))))
                 _uiState.update {
                     it.copy(
                         favoritesFeed = it.favoritesFeed.copy(
@@ -1081,7 +1094,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             _uiState.update { it.copy(poolsFeed = it.poolsFeed.copy(isLoading = true, error = null, page = 1, query = query)) }
             try {
-                val pools = api.getPools(query = query.ifBlank { null }, page = 1)
+                val pools = moebooruApi().getPools(query = query.ifBlank { null }, page = 1)
                 _uiState.update {
                     it.copy(
                         poolsFeed = it.poolsFeed.copy(
@@ -1112,7 +1125,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val nextPage = feed.page + 1
             try {
-                val newPools = api.getPools(query = feed.query.ifBlank { null }, page = nextPage)
+                val newPools = moebooruApi().getPools(query = feed.query.ifBlank { null }, page = nextPage)
                 _uiState.update {
                     it.copy(
                         poolsFeed = it.poolsFeed.copy(
@@ -1134,7 +1147,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             _uiState.update { it.copy(poolsFeed = it.poolsFeed.copy(isRefreshing = true, error = null)) }
             try {
-                val pools = api.getPools(query = query.ifBlank { null }, page = 1)
+                val pools = moebooruApi().getPools(query = query.ifBlank { null }, page = 1)
                 _uiState.update {
                     it.copy(
                         poolsFeed = it.poolsFeed.copy(
@@ -1161,7 +1174,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         if (_uiState.value.poolCovers.containsKey(poolId)) return
         viewModelScope.launch {
             try {
-                val posts = api.getPosts(page = 1, limit = 1, tags = YandeApi.poolTags(poolId))
+                val posts = moebooruApi().getPosts(page = 1, limit = 1, tags = YandeApi.poolTags(poolId))
                 val coverUrl = posts.firstOrNull()?.previewUrl ?: return@launch
                 _uiState.update { it.copy(poolCovers = it.poolCovers + (poolId to coverUrl)) }
             } catch (e: Exception) {

@@ -14,6 +14,13 @@ enum class PlatformId(
         apiUrl = "https://yande.re",
         capabilities = setOf(PlatformCapability.SCORING, PlatformCapability.FAVORITES),
     ),
+    KONACHAN(
+        externalId = "konachan.net",
+        displayName = "Konachan",
+        webUrl = "https://konachan.net",
+        apiUrl = "https://konachan.net",
+        capabilities = setOf(PlatformCapability.SCORING, PlatformCapability.FAVORITES),
+    ),
     PIXIV(
         externalId = "pixiv",
         displayName = "Pixiv",

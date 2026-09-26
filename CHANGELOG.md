@@ -4,6 +4,10 @@
 
 ### Added
 
+- Added konachan.net as a third Moebooru platform: the Yande plugin and API
+  are parameterized by site identity, so browsing, search, pools, and favorite
+  tags work with no new transport code. konachan.com remains behind its
+  Cloudflare wall.
 - Added Pixiv author follow/unfollow from the author works view, with the
   current follow state read from Pixiv and the Following feed refreshed after
   a change.

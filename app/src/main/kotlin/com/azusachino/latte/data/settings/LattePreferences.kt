@@ -169,9 +169,16 @@ class LattePreferences(private val context: Context) {
     }
 
     fun recordRecentSearch(query: String) {
-        val updated = LattePreferenceCodecs.recordRecentSearch(_recentSearches.value, query)
+        // Compute inside the edit so concurrent records serialize against the
+        // stored value instead of racing on a stale StateFlow snapshot.
         scope.launch {
-            dataStore.edit { it[KEY_RECENT_SEARCHES] = LattePreferenceCodecs.encodeRecentSearches(updated) }
+            dataStore.edit { values ->
+                val existing = values[KEY_RECENT_SEARCHES]
+                    ?.let(LattePreferenceCodecs::decodeRecentSearches)
+                    ?: emptyList()
+                val updated = LattePreferenceCodecs.recordRecentSearch(existing, query)
+                values[KEY_RECENT_SEARCHES] = LattePreferenceCodecs.encodeRecentSearches(updated)
+            }
         }
     }
 

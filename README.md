@@ -2,8 +2,8 @@
 
 [![CI](https://github.com/azusachino/latte/actions/workflows/ci.yml/badge.svg)](https://github.com/azusachino/latte/actions/workflows/ci.yml)
 
-Latte is a personal image-board client for [yande.re](https://yande.re/) and
-[Pixiv](https://www.pixiv.net/), built with Kotlin, Jetpack Compose, Material 3,
+Latte is a personal image-board client for [yande.re](https://yande.re/),
+[konachan.net](https://konachan.net/), and [Pixiv](https://www.pixiv.net/), built with Kotlin, Jetpack Compose, Material 3,
 and Coil 3. It focuses on the daily loop — explore feeds, read detail pages,
 continue with a tag — with follow, favorite tags, and local saves on both
 platforms. Its architecture cleanly isolates network models, domain entities,

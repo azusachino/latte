@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import com.azusachino.latte.plugin.storage.SecurePluginStorage
+import com.azusachino.latte.plugin.konachan.KonachanPlugin
 import com.azusachino.latte.plugin.yande.YandePlugin
 import com.azusachino.latte.data.network.PixivOAuthClient
 import com.azusachino.latte.plugin.pixiv.PixivPlugin
@@ -109,10 +110,10 @@ fun LatteApp(
     val downloadManager = remember { DownloadManager(context) }
     val themeMode by exploreViewModel.preferences.themeMode.collectAsState()
     val exploreUiState by exploreViewModel.uiState.collectAsState()
-    val exploreState by exploreViewModel.uiState.collectAsState()
-    val palette = when (exploreState.platform) {
+    val palette = when (exploreUiState.platform) {
         PlatformId.PIXIV -> LattePalette.PIXIV
         PlatformId.YANDE -> LattePalette.YANDE
+        PlatformId.KONACHAN -> LattePalette.YANDE
     }
 
     val pluginStorage = remember { SecurePluginStorage(context) }
@@ -133,7 +134,10 @@ fun LatteApp(
             oauthClient = pixivOAuthClient,
         )
     }
-    val sitePluginManager = remember { SitePluginManager(listOf(yandePlugin, pixivPlugin)) }
+    val konachanPlugin = remember {
+        KonachanPlugin(pluginStorage, OkHttpProvider.client, OkHttpProvider.cookieJar)
+    }
+    val sitePluginManager = remember { SitePluginManager(listOf(yandePlugin, konachanPlugin, pixivPlugin)) }
 
     LaunchedEffect(pixivPlugin) {
         exploreViewModel.configurePixiv(pixivPlugin)
