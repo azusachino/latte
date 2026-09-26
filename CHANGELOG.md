@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.0.4 - 2026-09-26
+
+### Added
+
+- Added konachan.net as a third Moebooru platform: the Yande plugin and API
+  are parameterized by site identity, so browsing, search, pools, and favorite
+  tags work with no new transport code. konachan.com remains behind its
+  Cloudflare wall.
+- Added Pixiv author follow/unfollow from the author works view, with the
+  current follow state read from Pixiv and the Following feed refreshed after
+  a change.
+- Pixiv now opens on the Following tab.
+- Added local favorite tags and recent searches for yande.re, with autocomplete
+  suggestions from tag counts, a Favorite Tags view reached from the toolbar
+  star, long-press chip favoriting, and the star toggle in the search bar.
+- Pixiv now opens on the Following tab.
+
+### Changed
+
+- Local settings moved from SharedPreferences to Preferences DataStore with a
+  one-time migration.
+- The Explore layer now consumes the platform-neutral plugin feed contract
+  (`PluginFeedSource`) instead of Pixiv transport types.
+
+### Fixed
+
+- Platform switching now snaps the pager to the selected tab so the stale
+  page cannot override the Pixiv Following default.
+- Pixiv feed failures are logged (`LatteExplore`) for device diagnostics.
+
 ## 0.0.3 - 2026-09-21
 
 ### Added

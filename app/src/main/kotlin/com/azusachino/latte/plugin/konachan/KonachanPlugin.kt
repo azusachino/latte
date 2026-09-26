@@ -1,21 +1,21 @@
-package com.azusachino.latte.plugin.yande
+package com.azusachino.latte.plugin.konachan
 
 import com.azusachino.latte.data.network.SessionCookieStore
 import com.azusachino.latte.plugin.PlatformId
-import com.azusachino.latte.plugin.moebooru.MoebooruPlugin
 import com.azusachino.latte.plugin.storage.PluginStorage
+import com.azusachino.latte.plugin.moebooru.MoebooruPlugin
 import okhttp3.OkHttpClient
 
-/** The yande.re site binding for the shared Moebooru implementation. */
-class YandePlugin(
+/** Site-specific Konachan binding over the shared Moebooru implementation. */
+class KonachanPlugin(
     storage: PluginStorage,
     httpClient: OkHttpClient,
     cookieJar: SessionCookieStore? = null,
 ) : MoebooruPlugin(
     storage = storage,
     httpClient = httpClient,
-    baseUrl = PlatformId.YANDE.apiUrl,
-    platform = PlatformId.YANDE,
-    name = PlatformId.YANDE.displayName,
     cookieJar = cookieJar,
+    baseUrl = PlatformId.KONACHAN.apiUrl,
+    platform = PlatformId.KONACHAN,
+    name = "Konachan",
 )

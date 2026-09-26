@@ -23,13 +23,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
+import com.azusachino.latte.plugin.storage.SecurePluginStorage
+import com.azusachino.latte.plugin.konachan.KonachanPlugin
+import com.azusachino.latte.plugin.yande.YandePlugin
+import com.azusachino.latte.data.network.PixivOAuthClient
+import com.azusachino.latte.plugin.pixiv.PixivPlugin
+import com.azusachino.latte.plugin.SitePluginManager
+import com.azusachino.latte.ui.account.AccountManagerScreen
+import com.azusachino.latte.ui.account.PluginLoginDialog
+import com.azusachino.latte.data.network.OkHttpProvider
+import com.azusachino.latte.data.network.PixivOAuthConfiguration
+import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.BuildConfig
 import com.azusachino.latte.data.model.Post
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.azusachino.latte.data.download.DownloadManager
+import com.azusachino.latte.plugin.PlatformCapability
 import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.ui.common.ToastHost
 import com.azusachino.latte.ui.common.ToastManager
+import com.azusachino.latte.ui.explore.FavoriteTagsScreen
 import com.azusachino.latte.ui.detail.DetailScreen
 import com.azusachino.latte.ui.explore.ExploreScreen
 import com.azusachino.latte.ui.explore.ExploreViewModel
@@ -43,6 +56,7 @@ sealed interface Screen {
     data class TagSearch(val query: String) : Screen
     data class Detail(val posts: List<Post>, val initialIndex: Int, val initialPageIndex: Int = 0) : Screen
     data object Settings : Screen
+    data object FavoriteTags : Screen
     data object AccountManager : Screen
 }
 
@@ -77,6 +91,7 @@ private val Screen.stateKey: String
         is Screen.TagSearch -> "tag-search:${query}"
         is Screen.Detail -> "detail:${posts.getOrNull(initialIndex)?.workIdentity ?: initialIndex}:$initialPageIndex"
         is Screen.Settings -> "settings"
+        is Screen.FavoriteTags -> "favorite-tags"
         is Screen.AccountManager -> "account-manager"
     }
 
@@ -95,38 +110,46 @@ fun LatteApp(
     val context = LocalContext.current
     val downloadManager = remember { DownloadManager(context) }
     val themeMode by exploreViewModel.preferences.themeMode.collectAsState()
-    val exploreState by exploreViewModel.uiState.collectAsState()
-    val palette = when (exploreState.platform) {
+    val exploreUiState by exploreViewModel.uiState.collectAsState()
+    val palette = when (exploreUiState.platform) {
         PlatformId.PIXIV -> LattePalette.PIXIV
         PlatformId.YANDE -> LattePalette.YANDE
+        PlatformId.KONACHAN -> LattePalette.KONACHAN
     }
 
-    val pluginStorage = remember { com.azusachino.latte.plugin.storage.SecurePluginStorage(context) }
-    val yandePlugin = remember { com.azusachino.latte.plugin.yande.YandePlugin(pluginStorage, com.azusachino.latte.data.network.OkHttpProvider.client, com.azusachino.latte.data.network.OkHttpProvider.cookieJar) }
+    val pluginStorage = remember { SecurePluginStorage(context) }
+    val yandePlugin = remember {
+        YandePlugin(pluginStorage, OkHttpProvider.client, OkHttpProvider.cookieJar)
+    }
     val pixivOAuthClient = remember {
-        com.azusachino.latte.data.network.PixivOAuthClient(
-            httpClient = com.azusachino.latte.data.network.OkHttpProvider.client,
-            configuration = com.azusachino.latte.data.network.PixivOAuthConfiguration.pixivAndroid(
+        PixivOAuthClient(
+            httpClient = OkHttpProvider.client,
+            configuration = PixivOAuthConfiguration.pixivAndroid(
                 clientId = BuildConfig.PIXIV_OAUTH_CLIENT_ID.takeIf(String::isNotBlank),
                 clientSecret = BuildConfig.PIXIV_OAUTH_CLIENT_SECRET.takeIf(String::isNotBlank),
             ),
         )
     }
     val pixivPlugin = remember {
-        com.azusachino.latte.plugin.pixiv.PixivPlugin(
+        PixivPlugin(
             storage = pluginStorage,
-            httpClient = com.azusachino.latte.data.network.OkHttpProvider.client,
+            httpClient = OkHttpProvider.client,
             oauthClient = pixivOAuthClient,
         )
     }
-    val sitePluginManager = remember { com.azusachino.latte.plugin.SitePluginManager(listOf(yandePlugin, pixivPlugin)) }
+    val konachanPlugin = remember {
+        KonachanPlugin(pluginStorage, OkHttpProvider.client, OkHttpProvider.cookieJar)
+    }
+    val sitePluginManager = remember { SitePluginManager(listOf(yandePlugin, konachanPlugin, pixivPlugin)) }
 
-    LaunchedEffect(pixivPlugin.api) {
-        exploreViewModel.configurePixiv(pixivPlugin.api)
+    LaunchedEffect(yandePlugin, konachanPlugin, pixivPlugin) {
+        exploreViewModel.configurePlugin(yandePlugin)
+        exploreViewModel.configurePlugin(konachanPlugin)
+        exploreViewModel.configurePlugin(pixivPlugin)
     }
 
     var navigation by remember { mutableStateOf(ScreenStack()) }
-    var activeLoginPlugin by remember { mutableStateOf<com.azusachino.latte.plugin.SitePlugin?>(null) }
+    var activeLoginPlugin by remember { mutableStateOf<SitePlugin?>(null) }
     val saveableStateHolder = rememberSaveableStateHolder()
 
     fun popNavigation() {
@@ -150,7 +173,7 @@ fun LatteApp(
             }
             is Screen.TagSearch -> {
                 val state = exploreViewModel.uiState.value
-                val activeTags = if (state.isPixiv) state.pixivSearchTags else state.searchTags
+                val activeTags = if (state.supportsUserFeeds) state.pixivSearchTags else state.searchTags
                 if (activeTags != screen.query || !state.isSearch) {
                     exploreViewModel.search(screen.query)
                 }
@@ -198,6 +221,7 @@ fun LatteApp(
                                 },
                                 sitePlugin = yandePlugin,
                                 pixivPlugin = pixivPlugin,
+                                platformPlugins = sitePluginManager.byPlatform(),
                                 onPostClick = { index ->
                                     navigation = navigation.push(
                                         Screen.Detail(
@@ -208,6 +232,9 @@ fun LatteApp(
                                 },
                                 onOpenSettings = {
                                     navigation = navigation.push(Screen.Settings)
+                                },
+                                onOpenFavoriteTags = {
+                                    navigation = navigation.push(Screen.FavoriteTags)
                                 },
                                 onRequireLogin = { plugin ->
                                     activeLoginPlugin = plugin
@@ -221,6 +248,10 @@ fun LatteApp(
                                 initialPageIndex = screen.initialPageIndex,
                                 downloadManager = downloadManager,
                                 pluginManager = sitePluginManager,
+                                favoriteTags = exploreUiState.favoriteTags,
+                                onToggleFavoriteTag = { tag, platform ->
+                                    exploreViewModel.toggleFavoriteTag(tag, platform)
+                                },
                                 onBack = {
                                     popNavigation()
                                 },
@@ -231,7 +262,7 @@ fun LatteApp(
                                         .push(Screen.TagSearch(query = tag))
                                 },
                                 onAuthorClick = { post, postIndex, pageIndex ->
-                                    if (post.platform == PlatformId.PIXIV && post.authorId != null) {
+                                    if (PlatformCapability.USER_FEED in post.platform.capabilities && post.authorId != null) {
                                         exploreViewModel.loadPixivUserWorks(post.authorId, post.author.orEmpty())
                                     } else {
                                         post.author?.takeIf(String::isNotBlank)?.let {
@@ -263,8 +294,19 @@ fun LatteApp(
                                 },
                             )
                         }
+                        is Screen.FavoriteTags -> {
+                            FavoriteTagsScreen(
+                                viewModel = exploreViewModel,
+                                onBack = { popNavigation() },
+                                onOpenTag = { favorite ->
+                                    exploreViewModel.selectPlatform(favorite.platform)
+                                    exploreViewModel.search(favorite.tag)
+                                    navigation = navigation.push(Screen.TagSearch(query = favorite.tag))
+                                },
+                            )
+                        }
                         is Screen.AccountManager -> {
-                            com.azusachino.latte.ui.account.AccountManagerScreen(
+                            AccountManagerScreen(
                                 pluginManager = sitePluginManager,
                                 onBack = {
                                     popNavigation()
@@ -277,7 +319,7 @@ fun LatteApp(
 
             // Global Login Dialog
             activeLoginPlugin?.let { plugin ->
-                com.azusachino.latte.ui.account.PluginLoginDialog(
+                PluginLoginDialog(
                     plugin = plugin,
                     onDismissRequest = { activeLoginPlugin = null },
                     onLoginSuccess = {

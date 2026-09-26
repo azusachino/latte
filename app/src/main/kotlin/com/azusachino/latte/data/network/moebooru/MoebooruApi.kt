@@ -1,11 +1,10 @@
-package com.azusachino.latte.data.network
+package com.azusachino.latte.data.network.moebooru
 
 import com.azusachino.latte.data.model.PoolSummary
 import com.azusachino.latte.data.model.PopularPeriod
 import com.azusachino.latte.data.model.Post
-import com.azusachino.latte.data.model.YandePoolDto
-import com.azusachino.latte.data.model.YandePostDto
-import com.azusachino.latte.data.model.toDomain
+import com.azusachino.latte.data.network.OkHttpProvider
+import com.azusachino.latte.plugin.PlatformId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -15,7 +14,10 @@ import java.io.IOException
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-class YandeApi(private val baseUrl: String = "https://yande.re") {
+class MoebooruApi(
+    private val baseUrl: String,
+    private val platform: PlatformId,
+) {
     private val json = Json {
         ignoreUnknownKeys = true
         coerceInputValues = true
@@ -86,6 +88,33 @@ class YandeApi(private val baseUrl: String = "https://yande.re") {
             executeGetPools(urlBuilder.build().toString())
         }
 
+    /** Tag autocomplete: ordered by post count, wildcard-prefixed. */
+    suspend fun getTagSuggestions(prefix: String, limit: Int = 8): List<String> =
+        withContext(Dispatchers.IO) {
+            val trimmed = prefix.trim()
+            if (trimmed.length < 2) return@withContext emptyList()
+
+            val url = "$baseUrl/tag.json".toHttpUrl().newBuilder()
+                .addQueryParameter("name", "$trimmed*")
+                .addQueryParameter("order", "count")
+                .addQueryParameter("limit", limit.toString())
+                .build()
+
+            val request = Request.Builder()
+                .url(url)
+                .header("Accept", "application/json")
+                .build()
+
+            val response = OkHttpProvider.client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                throw IOException("Unexpected HTTP response: ${response.code} ${response.message}")
+            }
+
+            val body = response.body?.string().orEmpty()
+            json.decodeFromString<List<MoebooruTagDto>>(body)
+                .mapNotNull { it.name.takeIf(String::isNotBlank) }
+        }
+
     companion object {
         fun favoriteTags(username: String): String = "vote:3:${username.trim()}"
 
@@ -115,8 +144,8 @@ class YandeApi(private val baseUrl: String = "https://yande.re") {
         }
 
         val body = response.body?.string().orEmpty()
-        val dtos = json.decodeFromString<List<YandePostDto>>(body)
-        return dtos.map { it.toDomain() }
+        val dtos = json.decodeFromString<List<MoebooruPostDto>>(body)
+        return dtos.map { it.toDomain(platform) }
     }
 
     private fun executeGetPools(urlString: String): List<PoolSummary> {
@@ -131,7 +160,7 @@ class YandeApi(private val baseUrl: String = "https://yande.re") {
         }
 
         val body = response.body?.string().orEmpty()
-        val dtos = json.decodeFromString<List<YandePoolDto>>(body)
+        val dtos = json.decodeFromString<List<MoebooruPoolDto>>(body)
         return dtos.map { it.toDomain() }
     }
 }

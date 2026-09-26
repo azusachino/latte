@@ -13,6 +13,7 @@ import com.azusachino.latte.data.settings.ThemeMode
 
 enum class LattePalette {
     YANDE,
+    KONACHAN,
     PIXIV,
 }
 
@@ -77,6 +78,7 @@ fun LatteTheme(
     }
     val colorScheme = when (palette) {
         LattePalette.YANDE -> baseColorScheme.withYandePalette(darkTheme)
+        LattePalette.KONACHAN -> baseColorScheme.withKonachanPalette(darkTheme)
         LattePalette.PIXIV -> baseColorScheme.withPixivPalette(darkTheme)
     }
 
@@ -126,4 +128,25 @@ private fun androidx.compose.material3.ColorScheme.withPixivPalette(darkTheme: B
     onSurface = if (darkTheme) androidx.compose.ui.graphics.Color(0xFFE1E6EF) else androidx.compose.ui.graphics.Color(0xFF181C20),
     surfaceVariant = if (darkTheme) androidx.compose.ui.graphics.Color(0xFF41474F) else androidx.compose.ui.graphics.Color(0xFFDDE3EC),
     onSurfaceVariant = if (darkTheme) androidx.compose.ui.graphics.Color(0xFFC1C7D0) else androidx.compose.ui.graphics.Color(0xFF41474F),
+)
+
+private fun androidx.compose.material3.ColorScheme.withKonachanPalette(darkTheme: Boolean) = copy(
+    primary = if (darkTheme) androidx.compose.ui.graphics.Color(0xFFE5C286) else androidx.compose.ui.graphics.Color(0xFF7A5A1E),
+    onPrimary = if (darkTheme) androidx.compose.ui.graphics.Color(0xFF412D00) else androidx.compose.ui.graphics.Color.White,
+    primaryContainer = if (darkTheme) androidx.compose.ui.graphics.Color(0xFF5E431A) else androidx.compose.ui.graphics.Color(0xFFFFDFA5),
+    onPrimaryContainer = if (darkTheme) androidx.compose.ui.graphics.Color(0xFFFFDFA5) else androidx.compose.ui.graphics.Color(0xFF261A00),
+    secondary = if (darkTheme) androidx.compose.ui.graphics.Color(0xFFD8C4A4) else androidx.compose.ui.graphics.Color(0xFF6C5C42),
+    onSecondary = if (darkTheme) androidx.compose.ui.graphics.Color(0xFF392E1A) else androidx.compose.ui.graphics.Color.White,
+    secondaryContainer = if (darkTheme) androidx.compose.ui.graphics.Color(0xFF514429) else androidx.compose.ui.graphics.Color(0xFFF5E0BE),
+    onSecondaryContainer = if (darkTheme) androidx.compose.ui.graphics.Color(0xFFF5E0BE) else androidx.compose.ui.graphics.Color(0xFF1A1207),
+    tertiary = if (darkTheme) androidx.compose.ui.graphics.Color(0xFFB9CEA8) else androidx.compose.ui.graphics.Color(0xFF4F6540),
+    onTertiary = if (darkTheme) androidx.compose.ui.graphics.Color(0xFF2A361D) else androidx.compose.ui.graphics.Color.White,
+    tertiaryContainer = if (darkTheme) androidx.compose.ui.graphics.Color(0xFF404D33) else androidx.compose.ui.graphics.Color(0xFFD1E8BC),
+    onTertiaryContainer = if (darkTheme) androidx.compose.ui.graphics.Color(0xFFD1E8BC) else androidx.compose.ui.graphics.Color(0xFF0F1906),
+    background = if (darkTheme) androidx.compose.ui.graphics.Color(0xFF15120D) else androidx.compose.ui.graphics.Color(0xFFFCF9F4),
+    onBackground = if (darkTheme) androidx.compose.ui.graphics.Color(0xFFE6E1D8) else androidx.compose.ui.graphics.Color(0xFF1C1B16),
+    surface = if (darkTheme) androidx.compose.ui.graphics.Color(0xFF15120D) else androidx.compose.ui.graphics.Color(0xFFFCF9F4),
+    onSurface = if (darkTheme) androidx.compose.ui.graphics.Color(0xFFE6E1D8) else androidx.compose.ui.graphics.Color(0xFF1C1B16),
+    surfaceVariant = if (darkTheme) androidx.compose.ui.graphics.Color(0xFF4A463D) else androidx.compose.ui.graphics.Color(0xFFE9E2D4),
+    onSurfaceVariant = if (darkTheme) androidx.compose.ui.graphics.Color(0xFFCCC5B4) else androidx.compose.ui.graphics.Color(0xFF4A463D),
 )

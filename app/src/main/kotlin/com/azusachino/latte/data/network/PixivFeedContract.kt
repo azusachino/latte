@@ -54,6 +54,18 @@ sealed interface PixivBookmarkResult {
     data class TransportFailure(val message: String) : PixivBookmarkResult
 }
 
+sealed interface PixivUserDetailResult {
+    data class Success(val isFollowed: Boolean) : PixivUserDetailResult
+
+    data object AuthRequired : PixivUserDetailResult
+
+    data class RateLimited(val retryAfterSeconds: Long?) : PixivUserDetailResult
+
+    data class UpstreamDrift(val operation: String) : PixivUserDetailResult
+
+    data class TransportFailure(val message: String) : PixivUserDetailResult
+}
+
 sealed interface PixivSupportResult {
     data class Success(val values: List<String>) : PixivSupportResult
 

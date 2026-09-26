@@ -13,8 +13,10 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -89,6 +91,7 @@ import coil3.request.ImageRequest
 import com.azusachino.latte.data.download.DownloadManager
 import com.azusachino.latte.data.download.DownloadResult
 import com.azusachino.latte.data.model.Post
+import com.azusachino.latte.data.model.FavoriteTag
 import com.azusachino.latte.data.model.PostRating
 import com.azusachino.latte.data.model.forPage
 import com.azusachino.latte.plugin.PlatformCapability
@@ -114,6 +117,8 @@ fun DetailScreen(
     onAuthorClick: (post: Post, postIndex: Int, pageIndex: Int) -> Unit = { _, _, _ -> },
     pluginManager: SitePluginManager,
     onRequireLogin: (SitePlugin) -> Unit = {},
+    favoriteTags: List<FavoriteTag> = emptyList(),
+    onToggleFavoriteTag: ((tag: String, platform: PlatformId) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val detailPosts = posts
@@ -148,7 +153,7 @@ fun DetailScreen(
     // recover a favorite (score 3) set in a prior session or on the web.
     LaunchedEffect(currentPost?.id, currentPlugin?.isLoggedIn) {
         val post = currentPost
-        if (post != null && post.platform != PlatformId.PIXIV && currentPlugin != null && currentPlugin.isLoggedIn && currentPlugin.getScore(post.id) == null) {
+        if (post != null && PlatformCapability.USER_FEED !in post.platform.capabilities && currentPlugin != null && currentPlugin.isLoggedIn && currentPlugin.getScore(post.id) == null) {
             currentPlugin.refreshScore(post.id)?.let { refreshed ->
                 localScores = localScores + (post.id to refreshed)
             }
@@ -383,7 +388,7 @@ fun DetailScreen(
                             modifier = Modifier.padding(bottom = 8.dp),
                         )
                     }
-                    if (currentPost?.platform == PlatformId.PIXIV && currentPost.pageCount > 1) {
+                    if (currentPost?.platform?.let { PlatformCapability.USER_FEED in it.capabilities } == true && currentPost.pageCount > 1) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -459,8 +464,8 @@ fun DetailScreen(
                             val isPluginLoggedIn by currentPlugin.isLoggedInFlow.collectAsState(initial = currentPlugin.isLoggedIn)
                             val post = displayPost
                             val currentScore = localScores[post.id] ?: currentPlugin.getScore(post.id) ?: 0
-                            val isPixivPost = post.platform == PlatformId.PIXIV
-                            val isFavorited = if (isPixivPost) {
+                            val hasUserFeedCapability = PlatformCapability.USER_FEED in post.platform.capabilities
+                            val isFavorited = if (hasUserFeedCapability) {
                                 localBookmarks[post.workIdentity.toString()] ?: post.isBookmarked
                             } else {
                                 currentScore == 3
@@ -474,14 +479,14 @@ fun DetailScreen(
                                         scope.launch {
                                             val targetScore = if (isFavorited) 0 else 3
                                             val targetBookmarked = !isFavorited
-                                            val result = if (isPixivPost) {
+                                            val result = if (hasUserFeedCapability) {
                                                 currentPlugin.setBookmark(post.id, targetBookmarked)
                                             } else {
                                                 currentPlugin.setScore(post.id, targetScore)
                                             }
                                             if (result.isSuccess) {
                                                 inlineActionError = null
-                                                if (isPixivPost) {
+                                                if (hasUserFeedCapability) {
                                                     localBookmarks = localBookmarks + (post.workIdentity.toString() to targetBookmarked)
                                                 } else {
                                                     localScores = localScores + (post.id to targetScore)
@@ -664,11 +669,19 @@ fun DetailScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         currentPost.tags.forEach { tag ->
+                            val canFavorite = onToggleFavoriteTag != null
                             TagChip(
                                 tag = tag,
                                 onClick = {
                                     showInspectSheet = false
                                     onTagClick(tag, pagerState.currentPage, pixivPageIndex)
+                                },
+                                isFavorite = canFavorite &&
+                                    favoriteTags.any { it.tag == tag && it.platform == currentPost.platform },
+                                onLongClick = if (canFavorite) {
+                                    { onToggleFavoriteTag?.invoke(tag, currentPost.platform) }
+                                } else {
+                                    null
                                 },
                             )
                         }
@@ -736,7 +749,7 @@ private fun MetadataTable(
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 
-            if (post.platform == PlatformId.PIXIV) {
+            if (PlatformCapability.USER_FEED in post.platform.capabilities) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
                 MetadataTableRow(label = "Pages", value = "${post.pageIndex + 1} / ${post.pageCount}")
                 post.bookmarkCount?.let { count ->
@@ -844,20 +857,34 @@ private val TagPalette = listOf(
     Color(0xFF90A4AE), // Blue Grey
 )
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TagChip(
     tag: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isFavorite: Boolean = false,
+    onLongClick: (() -> Unit)? = null,
 ) {
     val baseColor = TagPalette[abs(tag.hashCode()) % TagPalette.size]
-    val containerColor = baseColor.copy(alpha = 0.15f)
-    val borderColor = baseColor.copy(alpha = 0.45f)
+    val containerColor = if (isFavorite) {
+        baseColor.copy(alpha = 0.32f)
+    } else {
+        baseColor.copy(alpha = 0.15f)
+    }
+    val borderColor = if (isFavorite) {
+        baseColor.copy(alpha = 0.9f)
+    } else {
+        baseColor.copy(alpha = 0.45f)
+    }
 
     Surface(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
-            .clickable(onClick = onClick),
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick,
+            ),
         shape = RoundedCornerShape(10.dp),
         color = containerColor,
         border = BorderStroke(1.dp, borderColor),
@@ -879,6 +906,15 @@ private fun TagChip(
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Medium,
             )
+            if (isFavorite) {
+                Spacer(modifier = Modifier.width(6.dp))
+                Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = "Favorited tag",
+                    tint = baseColor,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
         }
     }
 }

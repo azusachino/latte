@@ -74,6 +74,7 @@ fun PluginProfileDialog(
                                 PlatformCapability.FAVORITES -> "Favorites synchronization"
                                 PlatformCapability.REFERER_INJECT -> "Referer header injection for media"
                                 PlatformCapability.USER_FEED -> "Following artist updates"
+                                PlatformCapability.FOLLOW_AUTHORS -> "Follow and unfollow artists"
                             },
                             style = MaterialTheme.typography.bodyMedium,
                         )

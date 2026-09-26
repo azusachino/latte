@@ -9,9 +9,16 @@ enum class PlatformId(
 ) {
     YANDE(
         externalId = "yande.re",
-        displayName = "yande.re",
+        displayName = "Yande",
         webUrl = "https://yande.re",
         apiUrl = "https://yande.re",
+        capabilities = setOf(PlatformCapability.SCORING, PlatformCapability.FAVORITES),
+    ),
+    KONACHAN(
+        externalId = "konachan.net",
+        displayName = "Konachan",
+        webUrl = "https://konachan.net",
+        apiUrl = "https://konachan.net",
         capabilities = setOf(PlatformCapability.SCORING, PlatformCapability.FAVORITES),
     ),
     PIXIV(
@@ -19,7 +26,7 @@ enum class PlatformId(
         displayName = "Pixiv",
         webUrl = "https://www.pixiv.net",
         apiUrl = "https://app-api.pixiv.net",
-        capabilities = setOf(PlatformCapability.FAVORITES, PlatformCapability.USER_FEED),
+        capabilities = setOf(PlatformCapability.FAVORITES, PlatformCapability.USER_FEED, PlatformCapability.FOLLOW_AUTHORS),
     ),
     ;
 
@@ -34,4 +41,5 @@ enum class PlatformCapability {
     FAVORITES,
     REFERER_INJECT,
     USER_FEED,
+    FOLLOW_AUTHORS,
 }

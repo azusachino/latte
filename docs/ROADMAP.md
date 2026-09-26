@@ -1,7 +1,7 @@
 # Latte Product & Architecture Roadmap
 
 > **Status**: Active execution roadmap  
-> **Updated**: 2026-09-21
+> **Updated**: 2026-09-26
 > **Source Documents**:
 >
 > - [002 Active Feature Spec](../specs/002-account-manager/spec.md)
@@ -16,13 +16,24 @@
 Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenticated, multi-platform personal art workstation (`0.0.2` and `0.0.3`). This roadmap establishes the sequence of milestones, architectural requirements, UX standards, and cache policies.
 
 ```text
-0.0.1 (Delivered) ──> 0.0.2 (Auth, Scoring & UX Hardening) ──> 0.0.3 (Pixiv Multi-Platform)
+0.0.1 (Delivered) ──> 0.0.2 (Auth, Scoring & UX Hardening) ──> 0.0.3 (Pixiv Multi-Platform) ──> 0.0.4 (Favorites & Konachan.net)
   • Yande browse        • Yande login & password hash             • Pixiv OAuth2 PKCE
   • Masonry feed        • 0–3 scoring & Add to Favorite           • Referer header injection
   • Detail pager        • Search swipe-back & sheet drag fix      • 1:N multi-page illusts
   • WorkManager save    • Clean dialog for already-saved          • Subscribed updates feed
                         • Unified cache manager in settings       • Search and author works
 ```
+
+---
+
+## Konachan
+
+`konachan.net` (SFW mirror) ships in 0.0.4 as a third Moebooru platform: the
+Yande plugin and Moebooru API were parameterized by site identity with no new
+transport code. `konachan.com` stays on the roadmap behind its Cloudflare
+wall: the plain OkHttp client receives a JS challenge there, and bypassing it
+(webview challenge solving, as Boorusama does) is deliberate future work, not
+a defect.
 
 ---
 

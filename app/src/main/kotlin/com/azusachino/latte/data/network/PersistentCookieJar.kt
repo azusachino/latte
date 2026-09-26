@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 interface SessionCookieStore : CookieJar {
     fun getCookieValue(host: String, name: String): String?
-    fun clear()
+    fun clear(host: String)
 }
 
 class PersistentCookieJar(context: Context) : SessionCookieStore {
@@ -69,9 +69,15 @@ class PersistentCookieJar(context: Context) : SessionCookieStore {
     }
 
     @Synchronized
-    override fun clear() {
-        memoryStore.clear()
-        prefs.edit().clear().apply()
+    override fun clear(host: String) {
+        val hosts = (memoryStore.keys + prefs.all.keys)
+            .filter { it == host || it.endsWith(".$host") }
+        val editor = prefs.edit()
+        hosts.forEach {
+            memoryStore.remove(it)
+            editor.remove(it)
+        }
+        editor.apply()
     }
 
     private fun hostMatches(storedHost: String, requestHost: String): Boolean {

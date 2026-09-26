@@ -82,7 +82,7 @@ class PixivArtworkTest {
         assertEquals("https://i.pximg.net/original/p1.png", secondPage.sampleUrl)
         assertEquals(1, secondPage.pageIndex)
         assertEquals(2, secondPage.pageCount)
-        assertEquals("pixiv-cat", secondPage.bestVariant.id)
+        assertEquals("mirror-fallback", secondPage.bestVariant.id)
         assertEquals("pixiv", artwork.workIdentity.sourceId)
         assertEquals("pixiv:75034219:1", artwork.pages[1].identity)
     }

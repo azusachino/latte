@@ -1,6 +1,7 @@
-package com.azusachino.latte.plugin.yande
+package com.azusachino.latte.plugin.moebooru
 
 import com.azusachino.latte.data.network.SessionCookieStore
+import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.plugin.storage.PluginStorage
 import kotlinx.coroutines.test.runTest
 import okhttp3.Cookie
@@ -16,7 +17,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-class YandePluginTest {
+class MoebooruPluginTest {
 
     private lateinit var mockServer: MockWebServer
     private lateinit var httpClient: OkHttpClient
@@ -59,26 +60,31 @@ class YandePluginTest {
     }
 
     private class InMemoryCookieStore : SessionCookieStore {
-        private val cookies = mutableMapOf<String, String>()
+        private val cookies = mutableMapOf<String, MutableMap<String, String>>()
 
         override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
-            cookies.forEach { cookie -> this.cookies[cookie.name] = cookie.value }
+            val hostCookies = this.cookies.getOrPut(url.host) { mutableMapOf() }
+            cookies.forEach { cookie -> hostCookies[cookie.name] = cookie.value }
         }
 
         override fun loadForRequest(url: HttpUrl): List<Cookie> = emptyList()
 
-        override fun getCookieValue(host: String, name: String): String? = cookies[name]
+        override fun getCookieValue(host: String, name: String): String? = cookies[host]?.get(name)
 
-        override fun clear() {
-            cookies.clear()
+        override fun clear(host: String) {
+            cookies.remove(host)
+        }
+
+        fun seed(host: String, name: String, value: String) {
+            cookies.getOrPut(host) { mutableMapOf() }[name] = value
         }
     }
 
     @Test
-    fun testYandePasswordHasher() {
+    fun testMoebooruPasswordHasher() {
         assertEquals(
             "b3c976b76ba4505518baa3dd35fd5d335069963c",
-            YandePasswordHasher.hash("password"),
+            MoebooruPasswordHasher.hash("password"),
         )
     }
 
@@ -93,23 +99,23 @@ class YandePluginTest {
             </head>
             </html>
         """.trimIndent()
-        assertEquals("test_token_12345", YandePlugin.extractCsrfToken(html1))
+        assertEquals("test_token_12345", MoebooruPlugin.extractCsrfToken(html1))
 
         val html2 = """
             <head>
                 <meta content="alt_token_67890" name="csrf-token" />
             </head>
         """.trimIndent()
-        assertEquals("alt_token_67890", YandePlugin.extractCsrfToken(html2))
+        assertEquals("alt_token_67890", MoebooruPlugin.extractCsrfToken(html2))
 
         val htmlEmpty = "<html><head></head></html>"
-        assertNull(YandePlugin.extractCsrfToken(htmlEmpty))
+        assertNull(MoebooruPlugin.extractCsrfToken(htmlEmpty))
     }
 
     @Test
     fun testSetScoreRequiresLogin() = runTest {
         val storage = InMemoryStorage()
-        val plugin = YandePlugin(storage, httpClient, baseUrl = mockServer.url("/").toString().removeSuffix("/"))
+        val plugin = MoebooruPlugin(storage, httpClient, baseUrl = mockServer.url("/").toString().removeSuffix("/"), platform = PlatformId.YANDE, name = PlatformId.YANDE.displayName)
 
         assertFalse(plugin.isLoggedIn)
         val result = plugin.setScore(123L, 3)
@@ -121,7 +127,7 @@ class YandePluginTest {
     fun testSetScoreAndCache() = runTest {
         val storage = InMemoryStorage()
         storage.save("yande.re", "username", "alice")
-        val plugin = YandePlugin(storage, httpClient, baseUrl = mockServer.url("/").toString().removeSuffix("/"))
+        val plugin = MoebooruPlugin(storage, httpClient, baseUrl = mockServer.url("/").toString().removeSuffix("/"), platform = PlatformId.YANDE, name = PlatformId.YANDE.displayName)
 
         assertTrue(plugin.isLoggedIn)
         assertEquals("alice", plugin.getDisplayUsername())
@@ -176,11 +182,13 @@ class YandePluginTest {
                 .addHeader("Set-Cookie", "user_id=42; Path=/"),
         )
 
-        val plugin = YandePlugin(
+        val plugin = MoebooruPlugin(
             storage = storage,
             httpClient = loginHttpClient,
             cookieJar = cookieStore,
             baseUrl = mockServer.url("/").toString().removeSuffix("/"),
+            platform = PlatformId.YANDE,
+            name = PlatformId.YANDE.displayName,
         )
 
         val result = plugin.login(mapOf("username" to "alice", "password" to "password"))
@@ -203,11 +211,13 @@ class YandePluginTest {
         )
         mockServer.enqueue(MockResponse().setResponseCode(200).setBody("alice"))
 
-        val plugin = YandePlugin(
+        val plugin = MoebooruPlugin(
             storage = storage,
             httpClient = loginHttpClient,
             cookieJar = cookieStore,
             baseUrl = mockServer.url("/").toString().removeSuffix("/"),
+            platform = PlatformId.YANDE,
+            name = PlatformId.YANDE.displayName,
         )
 
         val result = plugin.login(mapOf("username" to "alice", "password" to "wrong"))
@@ -216,5 +226,31 @@ class YandePluginTest {
         assertFalse(plugin.isLoggedIn)
         assertNull(storage.get("yande.re", "username"))
         assertEquals(2, mockServer.requestCount)
+    }
+
+    @Test
+    fun logoutClearsOnlyTheCurrentSiteCookies() {
+        val storage = InMemoryStorage()
+        storage.save(PlatformId.YANDE.externalId, "username", "alice")
+        storage.save(PlatformId.KONACHAN.externalId, "username", "bob")
+        val cookieStore = InMemoryCookieStore().apply {
+            seed("yande.re", "user_id", "42")
+            seed("konachan.net", "user_id", "84")
+        }
+        val yande = MoebooruPlugin(
+            storage, httpClient, PlatformId.YANDE.apiUrl,
+            PlatformId.YANDE, PlatformId.YANDE.displayName, cookieStore,
+        )
+        val konachan = MoebooruPlugin(
+            storage, httpClient, PlatformId.KONACHAN.apiUrl,
+            PlatformId.KONACHAN, PlatformId.KONACHAN.displayName, cookieStore,
+        )
+
+        yande.logout()
+
+        assertFalse(yande.isLoggedIn)
+        assertNull(cookieStore.getCookieValue("yande.re", "user_id"))
+        assertTrue(konachan.isLoggedIn)
+        assertEquals("84", cookieStore.getCookieValue("konachan.net", "user_id"))
     }
 }

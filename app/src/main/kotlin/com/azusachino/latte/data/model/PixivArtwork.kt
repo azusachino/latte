@@ -114,6 +114,7 @@ fun PixivIllustDto.toPost(): Post {
                 width = width,
                 height = height,
                 extension = extension,
+                downloadPriority = 3,
             ),
             proxyUrl = pathProxyUrl,
             fallbackUrl = idProxyUrl.takeUnless { it == directPreviewUrl },
@@ -146,24 +147,29 @@ fun PixivIllustDto.toPost(): Post {
                 url = firstPage.previewUrl,
                 width = firstPage.width,
                 height = firstPage.height,
+                downloadPriority = 0,
             ),
             firstPage.mediaRef,
             firstPage.proxyUrl?.let {
                 MediaVariant(
-                    id = "pixiv-re",
+                    id = "path-proxy",
                     url = it,
                     width = firstPage.width,
                     height = firstPage.height,
                     extension = firstPage.mediaRef.extension,
+                    downloadPriority = 2,
+                    fallbackOnPreviewFailure = true,
                 )
             },
             firstPage.fallbackUrl?.let {
                 MediaVariant(
-                    id = "pixiv-cat",
+                    id = "mirror-fallback",
                     url = it,
                     width = firstPage.width,
                     height = firstPage.height,
                     extension = firstPage.mediaRef.extension,
+                    downloadPriority = 5,
+                    fallbackOnPreviewFailure = true,
                 )
             },
             MediaVariant(
@@ -172,6 +178,7 @@ fun PixivIllustDto.toPost(): Post {
                 width = firstPage.width,
                 height = firstPage.height,
                 extension = firstPage.mediaRef.extension,
+                downloadPriority = 3,
             ),
         ),
         title = title.takeIf(String::isNotBlank),
