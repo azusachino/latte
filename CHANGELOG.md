@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.1 - 2026-09-27
+
+### Fixed
+
+- Resolved Pixiv multi-image download page index mismatch where proxy URL was
+  resolving to the previous page.
+- Raised default toast vertical offset so download notifications do not obstruct
+  the multi-image page swiper.
+- Attached `Referer` headers for Pixiv CDN download worker requests.
+
 ## 0.1.0 - 2026-09-26
 
 ### Added
