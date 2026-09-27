@@ -14,6 +14,7 @@ import androidx.work.WorkManager
 import com.azusachino.latte.DownloadWorker
 import com.azusachino.latte.data.model.MediaVariant
 import com.azusachino.latte.data.model.Post
+import com.azusachino.latte.plugin.PlatformId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
@@ -51,12 +52,18 @@ class DownloadManager(private val context: Context) {
             }
 
             // 3. Enqueue download
+            val headers = if (post.platform == PlatformId.PIXIV && (variant.url.contains("pximg.net") || post.originalUrl.contains("pximg.net"))) {
+                mapOf("Referer" to "https://app-api.pixiv.net/")
+            } else {
+                emptyMap()
+            }
             val request = OneTimeWorkRequestBuilder<DownloadWorker>()
                 .setInputData(
                     DownloadWorker.inputData(
                         sourceUrl = variant.url,
                         displayName = displayName,
                         mimeType = mimeType,
+                        headers = headers,
                     )
                 )
                 .setBackoffCriteria(

@@ -20,7 +20,8 @@ class PixivContractTest {
         val resolver = PixivCatResolver()
 
         assertEquals("https://pixiv.cat/75034219.jpg", resolver.url(75034219, 0, "jpg"))
-        assertEquals("https://pixiv.cat/75034219-1.png", resolver.url(75034219, 1, "png"))
+        assertEquals("https://pixiv.cat/75034219-1.png", resolver.url(75034219, 0, "png", pageCount = 2))
+        assertEquals("https://pixiv.cat/75034219-2.png", resolver.url(75034219, 1, "png", pageCount = 2))
 
         val response = resolver.classifyResponse(
             code = 200,

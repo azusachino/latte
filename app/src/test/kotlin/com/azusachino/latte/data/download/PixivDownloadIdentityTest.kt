@@ -14,14 +14,14 @@ class PixivDownloadIdentityTest {
     fun multiPagePixivFilenameIsStableAcrossProxyAndOriginalVariants() {
         val proxy = MediaVariant(
             id = "mirror-fallback",
-            url = "https://pixiv.cat/75034219-1.png",
+            url = "https://pixiv.cat/75034219-2.png",
             width = 1000,
             height = 1400,
             extension = "png",
         )
         val original = proxy.copy(
             id = "original",
-            url = "https://i.pximg.net/original/75034219-1.jpg",
+            url = "https://i.pximg.net/original/75034219_p1.jpg",
             extension = "jpg",
         )
         val page = Post(

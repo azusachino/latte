@@ -10,8 +10,10 @@ class PixivCatResolverTest {
 
     @Test
     fun pageZeroAndLaterPagesHaveStableProxyNames() {
-        assertEquals("https://pixiv.cat/75034219.jpg", resolver.url(75034219, 0, ".jpg"))
-        assertEquals("https://pixiv.cat/75034219-2.png", resolver.url(75034219, 2, "png"))
+        assertEquals("https://pixiv.cat/75034219.jpg", resolver.url(75034219, 0, ".jpg", pageCount = 1))
+        assertEquals("https://pixiv.cat/75034219-1.jpg", resolver.url(75034219, 0, ".jpg", pageCount = 2))
+        assertEquals("https://pixiv.cat/75034219-2.png", resolver.url(75034219, 1, "png", pageCount = 2))
+        assertEquals("https://pixiv.cat/75034219-3.png", resolver.url(75034219, 2, "png", pageCount = 3))
     }
 
     @Test
