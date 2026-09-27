@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.CoroutineScope
@@ -77,7 +78,10 @@ object ToastManager {
 }
 
 @Composable
-fun ToastHost(modifier: Modifier = Modifier) {
+fun ToastHost(
+    modifier: Modifier = Modifier,
+    bottomPadding: Dp = 144.dp,
+) {
     val messages by ToastManager.messages.collectAsState()
 
     Box(
@@ -85,7 +89,7 @@ fun ToastHost(modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .navigationBarsPadding()
             .padding(horizontal = 16.dp)
-            .padding(bottom = 96.dp),
+            .padding(bottom = bottomPadding),
         contentAlignment = Alignment.BottomCenter,
     ) {
         Column(

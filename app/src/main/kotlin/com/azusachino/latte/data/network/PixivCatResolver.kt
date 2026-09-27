@@ -22,14 +22,14 @@ class PixivCatResolver(
         }
     }
 
-    fun url(workId: Long, pageIndex: Int, extension: String): String {
+    fun url(workId: Long, pageIndex: Int, extension: String, pageCount: Int = 1): String {
         require(workId > 0) { "workId must be positive" }
         require(pageIndex >= 0) { "pageIndex must not be negative" }
         val normalizedExtension = extension.trim().lowercase().removePrefix(".")
         require(normalizedExtension in ALLOWED_EXTENSIONS) {
             "unsupported Pixiv media extension: $extension"
         }
-        val pageSuffix = if (pageIndex == 0) "" else "-$pageIndex"
+        val pageSuffix = if (pageCount > 1 || pageIndex > 0) "-${pageIndex + 1}" else ""
         return "${baseUrl.trimEnd('/')}/$workId$pageSuffix.$normalizedExtension"
     }
 

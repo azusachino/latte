@@ -1,5 +1,6 @@
 package com.azusachino.latte.data.model
 
+import com.azusachino.latte.data.network.PixivCatResolver
 import com.azusachino.latte.plugin.PlatformId
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -81,6 +82,7 @@ data class PixivTagDto(
 )
 
 fun PixivIllustDto.toPost(): Post {
+    val totalPages = maxOf(pageCount, if (metaPages.isNotEmpty()) metaPages.size else 1)
     val pages = if (metaPages.isEmpty()) {
         listOf(imageUrls)
     } else {
@@ -99,7 +101,7 @@ fun PixivIllustDto.toPost(): Post {
             .mapNotNull(::pixivImageProxyUrl)
             .distinct()
             .firstOrNull()
-        val idProxyUrl = pixivIdProxyUrl(id, index, extension)
+        val idProxyUrl = pixivIdProxyUrl(id, index, extension, totalPages)
         ArtworkPage(
             pageIndex = index,
             width = width,
@@ -117,7 +119,7 @@ fun PixivIllustDto.toPost(): Post {
                 downloadPriority = 3,
             ),
             proxyUrl = pathProxyUrl,
-            fallbackUrl = idProxyUrl.takeUnless { it == directPreviewUrl },
+            fallbackUrl = idProxyUrl,
         )
     }
     val firstPage = pages.first()
@@ -204,7 +206,6 @@ private fun pixivImageProxyUrl(url: String?): String? {
     }
 }
 
-private fun pixivIdProxyUrl(id: Long, pageIndex: Int, extension: String): String {
-    val pageSuffix = if (pageIndex == 0) "" else "-$pageIndex"
-    return "https://pixiv.cat/$id$pageSuffix.$extension"
+private fun pixivIdProxyUrl(id: Long, pageIndex: Int, extension: String, pageCount: Int = 1): String {
+    return PixivCatResolver().url(id, pageIndex, extension, pageCount)
 }
