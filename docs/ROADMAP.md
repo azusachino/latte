@@ -1,7 +1,7 @@
 # Latte Product & Architecture Roadmap
 
 > **Status**: Active execution roadmap  
-> **Updated**: 2026-09-26
+> **Updated**: 2026-09-27
 > **Source Documents**:
 >
 > - [002 Active Feature Spec](../specs/002-account-manager/spec.md)
@@ -13,15 +13,15 @@
 
 ## Overview
 
-Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenticated, multi-platform personal art workstation (`0.0.2`, `0.0.3`, and `0.1.0`). This roadmap establishes the sequence of milestones, architectural requirements, UX standards, and cache policies.
+Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenticated, multi-platform personal art workstation (`0.0.2`, `0.0.3`, `0.1.0`, and `0.1.1`). This roadmap establishes the sequence of milestones, architectural requirements, UX standards, and cache policies.
 
 ```text
-0.0.1 (Delivered) ──> 0.0.2 (Auth, Scoring & UX Hardening) ──> 0.0.3 (Pixiv Multi-Platform) ──> 0.1.0 (Favorites, Following & Konachan.net)
-  • Yande browse        • Yande login & password hash             • Pixiv OAuth2 PKCE             • Favorite tags & chip favoriting
-  • Masonry feed        • 0–3 scoring & Add to Favorite           • Referer header injection      • Pixiv Following-first & follow toggle
-  • Detail pager        • Search swipe-back & sheet drag fix      • 1:N multi-page illusts        • Konachan.net SFW Moebooru platform
-  • WorkManager save    • Clean dialog for already-saved          • Subscribed updates feed       • Plugin feed abstraction layer
-                        • Unified cache manager in settings       • Search and author works
+0.0.1 (Delivered) ──> 0.0.2 (Auth & Scoring) ──> 0.0.3 (Pixiv Multi-Platform) ──> 0.1.0 (Favorites & Following) ──> 0.1.1 (Multi-Image Fixes)
+  • Yande browse        • Yande login & hash      • Pixiv OAuth2 PKCE             • Favorite tags & chips           • Proxy index alignment
+  • Masonry feed        • 0–3 scoring & Fav       • Referer header injection      • Pixiv Following-first           • Toast clearance offset
+  • Detail pager        • Search swipe-back       • 1:N multi-page illusts        • Konachan.net SFW platform       • Referer on save worker
+  • WorkManager save    • Already-saved dialog    • Subscribed updates feed       • Plugin feed abstraction layer
+                        • Unified cache manager   • Search and author works
 ```
 
 ---
@@ -172,6 +172,22 @@ a defect.
 - Parameterized Moebooru API and feed source to support `konachan.net` alongside `yande.re`.
 - Preserved independent per-platform state, cookies, and search/suggestion caches.
 - `konachan.com` remains deferred due to Cloudflare challenge.
+
+---
+
+## Milestone 0.1.1: Pixiv Multi-Image Download & Toast Offset
+
+> **Status**: Released as `v0.1.1` on 2026-09-27. Multi-image proxy index alignment, toast clearance above the page swiper, and Pixiv CDN Referer headers for WorkManager saves.
+
+### 1. Multi-Image Download Alignment
+
+- Corrected `PixivCatResolver` URL construction for multi-page works (`pixiv.cat/<id>-<page-number>.<ext>` using 1-based page indices), resolving the 1-off mismatch where saving page 2 downloaded page 1.
+- Ensured single-page illustrations continue without suffix (`pixiv.cat/<id>.<ext>`).
+- Forwarded `Referer: https://app-api.pixiv.net/` through `DownloadManager` for official `pximg.net` media URLs.
+
+### 2. UI Overlay Clearance
+
+- Elevated `ToastHost` default bottom padding from 96dp to 144dp, ensuring download start and duplicate notices stay clear of the `DetailScreen` multi-image pagination bar and action pills.
 
 ---
 
