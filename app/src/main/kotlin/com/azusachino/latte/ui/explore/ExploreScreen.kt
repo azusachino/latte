@@ -37,6 +37,8 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.activity.compose.BackHandler
@@ -46,6 +48,7 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -109,13 +112,16 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
+import com.azusachino.latte.data.download.DownloadManager
 import com.azusachino.latte.data.model.PoolSummary
 import com.azusachino.latte.data.model.Post
+import com.azusachino.latte.data.model.forPage
 import com.azusachino.latte.plugin.PluginFeedKind
 import com.azusachino.latte.plugin.PluginFeedPeriod
 import com.azusachino.latte.plugin.PlatformCapability
 import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.plugin.SitePlugin
+import com.azusachino.latte.ui.common.ToastManager
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -123,6 +129,8 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+
+private const val MAX_SELECTION_SIZE = 10
 
 private val YANDE_ACCENT = Color(0xFF3F6F8F)
 private val KONACHAN_ACCENT = Color(0xFF8D6E2F)
@@ -155,6 +163,7 @@ fun ExploreScreen(
     pixivPlugin: SitePlugin? = null,
     platformPlugins: Map<PlatformId, SitePlugin> = emptyMap(),
     onRequireLogin: (SitePlugin) -> Unit = {},
+    downloadManager: DownloadManager? = null,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -174,6 +183,22 @@ fun ExploreScreen(
     val pagerState = rememberPagerState(initialPage = uiState.selectedTab.coerceAtMost(tabCount - 1)) { tabCount }
     val coroutineScope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
+
+    var selectedPostIds by remember { mutableStateOf(emptySet<Long>()) }
+    val isSelectionMode = selectedPostIds.isNotEmpty()
+
+    val onToggleSelect: (Long) -> Unit = { id ->
+        selectedPostIds = if (selectedPostIds.contains(id)) {
+            selectedPostIds - id
+        } else {
+            if (selectedPostIds.size >= MAX_SELECTION_SIZE) {
+                ToastManager.showWarning("Maximum of $MAX_SELECTION_SIZE items can be selected")
+                selectedPostIds
+            } else {
+                selectedPostIds + id
+            }
+        }
+    }
 
     var isSearchExpanded by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf(uiState.activeSearchTags) }
@@ -197,6 +222,10 @@ fun ExploreScreen(
         }
     }
 
+    LaunchedEffect(pagerState.currentPage) {
+        selectedPostIds = emptySet()
+    }
+
     LaunchedEffect(uiState.selectedTab) {
         if (pagerState.currentPage != uiState.selectedTab) {
             pagerState.scrollToPage(uiState.selectedTab)
@@ -207,17 +236,23 @@ fun ExploreScreen(
     // snap the pager immediately so the settled-page collector cannot push
     // the stale page back into the view model first.
     LaunchedEffect(uiState.platform) {
+        selectedPostIds = emptySet()
         val target = uiState.selectedTab.coerceAtMost(tabCount - 1)
         if (pagerState.currentPage != target) {
             pagerState.scrollToPage(target)
         }
     }
 
-    BackHandler(enabled = shouldHandleSearchBack(handleSearchBack, uiState.isSearch)) {
+    BackHandler(enabled = isSelectionMode) {
+        selectedPostIds = emptySet()
+    }
+
+    BackHandler(enabled = !isSelectionMode && shouldHandleSearchBack(handleSearchBack, uiState.isSearch)) {
         viewModel.clearSearch()
     }
 
     LaunchedEffect(uiState.activeSearchTags) {
+        selectedPostIds = emptySet()
         searchQuery = uiState.activeSearchTags
     }
 
@@ -248,7 +283,89 @@ fun ExploreScreen(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             Column(modifier = Modifier.fillMaxWidth()) {
-                TopAppBar(
+                if (isSelectionMode) {
+                    TopAppBar(
+                        title = {
+                            Text(
+                                text = "${selectedPostIds.size}/$MAX_SELECTION_SIZE selected",
+                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                            )
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = { selectedPostIds = emptySet() }) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Close selection",
+                                )
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            titleContentColor = MaterialTheme.colorScheme.onSurface,
+                        ),
+                        actions = {
+                            val currentPosts = uiState.posts
+                            val selectableCount = minOf(MAX_SELECTION_SIZE, currentPosts.size)
+                            val isMaxSelected = selectedPostIds.size >= selectableCount && selectableCount > 0
+                            TextButton(
+                                onClick = {
+                                    selectedPostIds = if (isMaxSelected) {
+                                        emptySet()
+                                    } else {
+                                        currentPosts.take(MAX_SELECTION_SIZE).map { it.id }.toSet()
+                                    }
+                                },
+                            ) {
+                                Text(
+                                    text = if (isMaxSelected) {
+                                        "Deselect all"
+                                    } else if (currentPosts.size > MAX_SELECTION_SIZE) {
+                                        "Select $MAX_SELECTION_SIZE"
+                                    } else {
+                                        "Select all"
+                                    },
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                            }
+
+                            IconButton(
+                                onClick = {
+                                    val postsToDownload = currentPosts
+                                        .filter { it.id in selectedPostIds }
+                                        .map { it.forPage(0) }
+                                    if (downloadManager != null && postsToDownload.isNotEmpty()) {
+                                        coroutineScope.launch {
+                                            val result = downloadManager.enqueueBatchDownload(postsToDownload)
+                                            when {
+                                                result.started > 0 -> {
+                                                    val suffix = if (result.alreadySaved > 0) " (${result.alreadySaved} already saved)" else ""
+                                                    ToastManager.showSuccess("Queued ${result.started} of ${result.total} downloads$suffix")
+                                                }
+                                                result.alreadySaved == result.total -> {
+                                                    ToastManager.showWarning("All ${result.total} images already saved")
+                                                }
+                                                result.alreadyRunning > 0 -> {
+                                                    ToastManager.showWarning("Downloads already in progress")
+                                                }
+                                                else -> {
+                                                    ToastManager.showWarning("Failed to queue downloads")
+                                                }
+                                            }
+                                            selectedPostIds = emptySet()
+                                        }
+                                    }
+                                },
+                                enabled = selectedPostIds.isNotEmpty(),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Download,
+                                    contentDescription = "Download selected",
+                                )
+                            }
+                        },
+                    )
+                } else {
+                    TopAppBar(
                     title = {
                         Box {
                             Row(
@@ -444,13 +561,14 @@ DropdownMenuItem(
                         }
                     },
                 )
+                }
 
                 // Expandable Search Bar -- searches pools while the Pools tab is
                 // active and no pool is open yet, otherwise searches post tags.
                 val isPoolsSearch = !uiState.supportsUserFeeds && pagerState.currentPage == 3 && !uiState.isSearch
 
                 AnimatedVisibility(
-                    visible = isSearchExpanded,
+                    visible = !isSelectionMode && isSearchExpanded,
                     enter = expandVertically() + fadeIn(),
                     exit = shrinkVertically() + fadeOut(),
                 ) {
@@ -574,7 +692,7 @@ DropdownMenuItem(
                 }
 
                 // Front page tabs: Popular / Newest / Favorites / Pools (hidden during search)
-                if (!uiState.isSearch) {
+                if (!uiState.isSearch && !isSelectionMode) {
                     val tabTitles = feedTabs.map { it.title }
                     TabRow(
                         selectedTabIndex = pagerState.currentPage,
@@ -598,7 +716,7 @@ DropdownMenuItem(
                 }
                 // Author works header: shows whose works these are and the
                 // follow toggle for the author (Pixiv only).
-                if (uiState.supportsUserFeeds && uiState.pixivAuthorId != null && uiState.pixivAuthorName != null) {
+                if (!isSelectionMode && uiState.supportsUserFeeds && uiState.pixivAuthorId != null && uiState.pixivAuthorName != null) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -662,10 +780,13 @@ DropdownMenuItem(
                     } else {
                         null
                     },
+                    selectedPostIds = selectedPostIds,
+                    onToggleSelect = onToggleSelect,
                 )
             } else {
                 HorizontalPager(
                     state = pagerState,
+                    userScrollEnabled = !isSelectionMode,
                     modifier = Modifier.fillMaxSize(),
                 ) { page ->
                     when (page) {
@@ -684,16 +805,20 @@ DropdownMenuItem(
                                     onLoadMore = { viewModel.loadMorePixiv(PluginFeedKind.FOLLOWED) },
                                     onRetry = { viewModel.loadPixivInitial(PluginFeedKind.FOLLOWED) },
                                     onRefresh = { viewModel.refreshPixiv(PluginFeedKind.FOLLOWED) },
+                                    selectedPostIds = selectedPostIds,
+                                    onToggleSelect = onToggleSelect,
                                 )
                             } else {
                                 Column(modifier = Modifier.fillMaxSize()) {
-                                    PopularControls(
-                                        period = uiState.popularPeriod,
-                                        date = uiState.popularDate,
-                                        onPeriodSelect = { viewModel.selectPopularPeriod(it) },
-                                        onShiftDate = { viewModel.shiftPopularDate(it) },
-                                        onPickDate = { viewModel.setPopularDate(it) },
-                                    )
+                                    if (!isSelectionMode) {
+                                        PopularControls(
+                                            period = uiState.popularPeriod,
+                                            date = uiState.popularDate,
+                                            onPeriodSelect = { viewModel.selectPopularPeriod(it) },
+                                            onShiftDate = { viewModel.shiftPopularDate(it) },
+                                            onPickDate = { viewModel.setPopularDate(it) },
+                                        )
+                                    }
                                     FeedGrid(
                                         feed = uiState.popularFeed,
                                         viewModel = viewModel,
@@ -704,6 +829,8 @@ DropdownMenuItem(
                                         onLoadMore = { viewModel.loadMorePopular() },
                                         onRetry = { viewModel.loadPopularInitial() },
                                         onRefresh = { viewModel.refreshPopular() },
+                                        selectedPostIds = selectedPostIds,
+                                        onToggleSelect = onToggleSelect,
                                         modifier = Modifier.weight(1f),
                                     )
                                 }
@@ -726,6 +853,8 @@ DropdownMenuItem(
                                     } else {
                                         null
                                     },
+                                    selectedPostIds = selectedPostIds,
+                                    onToggleSelect = onToggleSelect,
                                 )
                             } else {
                                 FeedGrid(
@@ -738,6 +867,8 @@ DropdownMenuItem(
                                     onLoadMore = { viewModel.loadMoreNewest() },
                                     onRetry = { viewModel.loadNewestInitial() },
                                     onRefresh = { viewModel.refreshNewest() },
+                                    selectedPostIds = selectedPostIds,
+                                    onToggleSelect = onToggleSelect,
                                 )
                             }
                         }
@@ -764,6 +895,8 @@ DropdownMenuItem(
                                     if (uiState.supportsUserFeeds) viewModel.refreshPixiv(PluginFeedKind.FAVORITES)
                                     else activePlugin?.getDisplayUsername()?.let(viewModel::refreshFavorites)
                                 },
+                                selectedPostIds = selectedPostIds,
+                                onToggleSelect = onToggleSelect,
                             )
                         }
                         else -> {
@@ -821,6 +954,8 @@ private fun FeedGrid(
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
     onRequireLogin: (() -> Unit)? = null,
+    selectedPostIds: Set<Long> = emptySet(),
+    onToggleSelect: ((Long) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val shouldLoadMore by remember {
@@ -947,20 +1082,31 @@ private fun FeedGrid(
                         items = feed.posts,
                         key = { _, post -> post.id },
                     ) { index, post ->
+                        val isSelectionMode = selectedPostIds.isNotEmpty()
+                        val isSelected = post.id in selectedPostIds
                         PostGridItem(
                             post = post,
+                            isSelectionMode = isSelectionMode,
+                            isSelected = isSelected,
                             onClick = {
-                                viewModel.saveGridPosition(
-                                    gridKey,
-                                    GridPosition(
-                                        index = gridState.firstVisibleItemIndex,
-                                        scrollOffset = gridState.firstVisibleItemScrollOffset,
-                                        anchorPostId = feed.posts
-                                            .getOrNull(gridState.firstVisibleItemIndex)
-                                            ?.id,
-                                    ),
-                                )
-                                onPostClick(index)
+                                if (isSelectionMode) {
+                                    onToggleSelect?.invoke(post.id)
+                                } else {
+                                    viewModel.saveGridPosition(
+                                        gridKey,
+                                        GridPosition(
+                                            index = gridState.firstVisibleItemIndex,
+                                            scrollOffset = gridState.firstVisibleItemScrollOffset,
+                                            anchorPostId = feed.posts
+                                                .getOrNull(gridState.firstVisibleItemIndex)
+                                                ?.id,
+                                        ),
+                                    )
+                                    onPostClick(index)
+                                }
+                            },
+                            onLongClick = {
+                                onToggleSelect?.invoke(post.id)
                             },
                         )
                     }
@@ -997,6 +1143,8 @@ private fun PersonalFeedContent(
     onLoadMore: () -> Unit,
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
+    selectedPostIds: Set<Long> = emptySet(),
+    onToggleSelect: ((Long) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     if (plugin == null) return
@@ -1067,6 +1215,8 @@ private fun PersonalFeedContent(
         onRetry = onRetry,
         onRefresh = onRefresh,
         onRequireLogin = { onRequireLogin(plugin) },
+        selectedPostIds = selectedPostIds,
+        onToggleSelect = onToggleSelect,
         modifier = modifier,
     )
 }
@@ -1241,10 +1391,14 @@ private fun PoolListItem(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PostGridItem(
     post: Post,
+    isSelectionMode: Boolean = false,
+    isSelected: Boolean = false,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val imageSources = remember(post.siteId, post.id, post.pageIndex) { post.imageSources }
@@ -1270,73 +1424,109 @@ private fun PostGridItem(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick),
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick,
+            ),
         shape = RoundedCornerShape(8.dp),
+        border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        if (imageRequest == null) {
-            Box(
-                modifier = imageModifier.padding(8.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "Image unavailable",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        } else {
-            SubcomposeAsyncImage(
-                model = imageRequest,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                loading = {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.size(28.dp))
-                    }
-                },
-                error = {
-                    if (safeImageSourceIndex < imageSources.lastIndex) {
+        Box(modifier = imageModifier) {
+            if (imageRequest == null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(8.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "Image unavailable",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
+                SubcomposeAsyncImage(
+                    model = imageRequest,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    loading = {
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center,
                         ) {
                             CircularProgressIndicator(modifier = Modifier.size(28.dp))
                         }
-                    } else {
-                        Box(
-                            modifier = Modifier.fillMaxSize().padding(8.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = "Image unavailable",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                TextButton(
-                                    onClick = {
-                                        imageSourceIndex = 0
-                                        imageRetryCount++
-                                    },
-                                ) {
-                                    Text("Retry")
+                    },
+                    error = {
+                        if (safeImageSourceIndex < imageSources.lastIndex) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier.fillMaxSize().padding(8.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "Image unavailable",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    TextButton(
+                                        onClick = {
+                                            imageSourceIndex = 0
+                                            imageRetryCount++
+                                        },
+                                    ) {
+                                        Text("Retry")
+                                    }
                                 }
                             }
                         }
+                    },
+                    onError = {
+                        if (safeImageSourceIndex < imageSources.lastIndex) imageSourceIndex = safeImageSourceIndex + 1
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+
+            if (isSelectionMode) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp)
+                        .size(24.dp)
+                        .background(
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Black.copy(alpha = 0.45f),
+                            shape = CircleShape,
+                        )
+                        .border(
+                            width = 1.5.dp,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else Color.White,
+                            shape = CircleShape,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (isSelected) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Selected",
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(16.dp),
+                        )
                     }
-                },
-                onError = {
-                    if (safeImageSourceIndex < imageSources.lastIndex) imageSourceIndex = safeImageSourceIndex + 1
-                },
-                modifier = imageModifier,
-            )
+                }
+            }
         }
     }
 }

@@ -26,8 +26,39 @@ sealed class DownloadResult {
     data class Failed(val message: String) : DownloadResult()
 }
 
+data class BatchDownloadResult(
+    val total: Int,
+    val started: Int,
+    val alreadySaved: Int,
+    val alreadyRunning: Int,
+    val failed: Int,
+)
+
 class DownloadManager(private val context: Context) {
     private val workManager = WorkManager.getInstance(context)
+
+    suspend fun enqueueBatchDownload(posts: List<Post>): BatchDownloadResult =
+        withContext(Dispatchers.IO) {
+            var started = 0
+            var alreadySaved = 0
+            var alreadyRunning = 0
+            var failed = 0
+            for (post in posts) {
+                when (enqueueDownload(post)) {
+                    is DownloadResult.Started -> started++
+                    is DownloadResult.AlreadySaved -> alreadySaved++
+                    is DownloadResult.AlreadyRunning -> alreadyRunning++
+                    is DownloadResult.Failed -> failed++
+                }
+            }
+            BatchDownloadResult(
+                total = posts.size,
+                started = started,
+                alreadySaved = alreadySaved,
+                alreadyRunning = alreadyRunning,
+                failed = failed,
+            )
+        }
 
     suspend fun enqueueDownload(post: Post, preferredVariant: MediaVariant? = null): DownloadResult =
         withContext(Dispatchers.IO) {
