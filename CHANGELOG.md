@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Clear stale authentication-required errors across all Pixiv feeds upon login so that background tabs (such as Following) unblock and reload cleanly instead of staying in an error state (#9).
+- Reset user-specific Pixiv feeds upon logout to avoid displaying stale session state.
+
 ## 0.1.1 - 2026-09-27
 
 ### Fixed

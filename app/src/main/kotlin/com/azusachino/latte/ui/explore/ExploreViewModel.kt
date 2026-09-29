@@ -229,6 +229,13 @@ internal fun ExploreUiState.pixivFeedToReloadAfterAuthentication(): PluginFeedKi
     else -> pixivKindForTab(selectedTab)
 }
 
+internal fun ExploreUiState.clearStalePixivAuthErrors(): ExploreUiState = copy(
+    pixivFollowedFeed = if (pixivFollowedFeed.authRequired) FeedState() else pixivFollowedFeed,
+    pixivFavoritesFeed = if (pixivFavoritesFeed.authRequired) FeedState() else pixivFavoritesFeed,
+    pixivSearchFeed = if (pixivSearchFeed.authRequired) FeedState() else pixivSearchFeed,
+    pixivUserWorksFeed = if (pixivUserWorksFeed.authRequired) FeedState() else pixivUserWorksFeed,
+)
+
 internal fun pixivKindForTab(tabIndex: Int): PluginFeedKind? = when (tabIndex) {
     0 -> PluginFeedKind.FOLLOWED
     1 -> PluginFeedKind.POPULAR
@@ -410,9 +417,24 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
 
     fun retryPixivAfterAuthentication() {
         val state = _uiState.value
-        val kind = state.pixivFeedToReloadAfterAuthentication() ?: return
-        if (!pixivFeed(state, kind).authRequired) return
-        loadPixivInitial(kind)
+        if (!state.supportsUserFeeds) return
+        _uiState.update { it.clearStalePixivAuthErrors() }
+        val activeKind = _uiState.value.pixivFeedToReloadAfterAuthentication() ?: return
+        val activeFeed = pixivFeed(_uiState.value, activeKind)
+        if (activeFeed.posts.isEmpty() || activeFeed.authRequired) {
+            loadPixivInitial(activeKind)
+        }
+    }
+
+    fun onPixivLoggedOut() {
+        _uiState.update { current ->
+            current.copy(
+                pixivFollowedFeed = FeedState(),
+                pixivFavoritesFeed = FeedState(),
+                pixivAuthorFollowed = null,
+            )
+        }
+        pixivAuthorFollowStates.clear()
     }
 
     fun selectPlatform(platform: PlatformId) {
@@ -1065,11 +1087,13 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
 
     private fun ensurePixivFeedLoaded(kind: PluginFeedKind) {
         val feed = pixivFeed(_uiState.value, kind)
+        val isLoggedIn = activePlugin()?.isLoggedIn == true
+        val hasBlockingError = feed.error != null && !(feed.authRequired && isLoggedIn)
         if (
             feed.posts.isNotEmpty() ||
             feed.isLoading ||
             feed.isRefreshing ||
-            feed.error != null ||
+            hasBlockingError ||
             !feed.hasMore
         ) return
         loadPixivInitial(kind)

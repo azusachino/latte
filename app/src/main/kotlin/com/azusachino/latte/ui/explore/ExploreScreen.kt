@@ -222,7 +222,11 @@ fun ExploreScreen(
     }
 
     LaunchedEffect(pixivIsLoggedIn) {
-        if (pixivIsLoggedIn) viewModel.retryPixivAfterAuthentication()
+        if (pixivIsLoggedIn) {
+            viewModel.retryPixivAfterAuthentication()
+        } else if (uiState.supportsUserFeeds) {
+            viewModel.onPixivLoggedOut()
+        }
     }
 
     LaunchedEffect(isSearchExpanded, uiState.supportsUserFeeds, searchQuery) {
@@ -1037,7 +1041,8 @@ private fun PersonalFeedContent(
         return
     }
 
-    LaunchedEffect(isLoggedIn, username, feed.posts.isEmpty(), feed.hasMore, feed.isLoading, feed.error) {
+    LaunchedEffect(isLoggedIn, username, feed.posts.isEmpty(), feed.hasMore, feed.isLoading, feed.error, feed.authRequired) {
+        val shouldRetryStaleAuth = feed.authRequired && isLoggedIn == true
         if (
             isLoggedIn == true &&
             (!needsUsername || !username.isNullOrBlank()) &&
@@ -1045,7 +1050,7 @@ private fun PersonalFeedContent(
             feed.hasMore &&
             !feed.isLoading &&
             !feed.isRefreshing &&
-            feed.error == null
+            (feed.error == null || shouldRetryStaleAuth)
         ) {
             onRetry()
         }
