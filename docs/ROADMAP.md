@@ -13,14 +13,14 @@
 
 ## Overview
 
-Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenticated, multi-platform personal art workstation (`0.0.2`, `0.0.3`, `0.1.0`, and `0.1.1`). This roadmap establishes the sequence of milestones, architectural requirements, UX standards, and cache policies.
+Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenticated, multi-platform personal art workstation (`0.0.2`, `0.0.3`, `0.1.0`, `0.1.1`, and `0.1.2`). This roadmap establishes the sequence of milestones, architectural requirements, UX standards, and cache policies.
 
 ```text
-0.0.1 (Delivered) ──> 0.0.2 (Auth & Scoring) ──> 0.0.3 (Pixiv Multi-Platform) ──> 0.1.0 (Favorites & Following) ──> 0.1.1 (Multi-Image Fixes)
-  • Yande browse        • Yande login & hash      • Pixiv OAuth2 PKCE             • Favorite tags & chips           • Proxy index alignment
-  • Masonry feed        • 0–3 scoring & Fav       • Referer header injection      • Pixiv Following-first           • Toast clearance offset
-  • Detail pager        • Search swipe-back       • 1:N multi-page illusts        • Konachan.net SFW platform       • Referer on save worker
-  • WorkManager save    • Already-saved dialog    • Subscribed updates feed       • Plugin feed abstraction layer
+0.0.1 (Delivered) ──> 0.0.2 (Auth & Scoring) ──> 0.0.3 (Pixiv Multi-Platform) ──> 0.1.0 (Favorites & Following) ──> 0.1.1 (Multi-Image Fixes) ──> 0.1.2 (Multi-Select & Feed Resilience)
+  • Yande browse        • Yande login & hash      • Pixiv OAuth2 PKCE             • Favorite tags & chips           • Proxy index alignment           • Explore multi-select batch download
+  • Masonry feed        • 0–3 scoring & Fav       • Referer header injection      • Pixiv Following-first           • Toast clearance offset          • Floating action button with insets
+  • Detail pager        • Search swipe-back       • 1:N multi-page illusts        • Konachan.net SFW platform       • Referer on save worker          • Multi-page Pixiv p0-only default
+  • WorkManager save    • Already-saved dialog    • Subscribed updates feed       • Plugin feed abstraction layer                                     • Unblock Pixiv background feeds (#9)
                         • Unified cache manager   • Search and author works
 ```
 
@@ -188,6 +188,24 @@ a defect.
 ### 2. UI Overlay Clearance
 
 - Elevated `ToastHost` default bottom padding from 96dp to 144dp, ensuring download start and duplicate notices stay clear of the `DetailScreen` multi-image pagination bar and action pills.
+
+---
+
+## Milestone 0.1.2: Explore Multi-Select Batch Download & Feed Resilience
+
+> **Status**: Released as `v0.1.2` on 2026-09-29. Multi-select batch download at the Explore screen across all platforms (Yande, Konachan, Pixiv) with a bottom-right floating action button, multi-page Pixiv first-page (`p0`) download default, 10-item selection cap, and resolution of stale Pixiv authentication feed blocking (#9).
+
+### 1. Explore Multi-Select Batch Download
+
+- Multi-select interaction across all platforms on the Explore screen: long-press to select, tap to toggle, with a 10-item cap.
+- Visual selection state with 2.dp primary card border and top-right check badge.
+- Floating bottom-right `ExtendedFloatingActionButton` with navigation bar padding for thumb reach and navigation bar clearance.
+- Downloads first page (`p0`) only for multi-page Pixiv illustrations by default.
+
+### 2. Pixiv Feed Authentication Resilience (#9)
+
+- Clear stale authentication-required errors across all Pixiv feeds upon login so background feeds (such as Following) reload cleanly.
+- Reset user-specific Pixiv feeds upon logout to avoid displaying stale session state.
 
 ---
 

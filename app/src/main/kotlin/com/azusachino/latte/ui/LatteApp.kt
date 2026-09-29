@@ -208,6 +208,7 @@ fun LatteApp(
                         is Screen.Explore, is Screen.AuthorWorks, is Screen.TagSearch -> {
                             ExploreScreen(
                                 viewModel = exploreViewModel,
+                                downloadManager = downloadManager,
                                 title = when (screen) {
                                     is Screen.AuthorWorks -> screen.authorName.ifBlank { null }
                                     is Screen.TagSearch -> screen.query

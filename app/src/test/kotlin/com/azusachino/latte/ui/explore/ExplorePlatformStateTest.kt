@@ -235,4 +235,125 @@ class ExplorePlatformStateTest {
         val filtered = filterPosts(listOf(explicit1, explicit2), safeMode = true)
         assertTrue(filtered.isEmpty())
     }
+
+    @Test
+    fun clearStalePixivAuthErrorsClearsOnlyAuthRequiredFeeds() {
+        val post = Post(
+            id = 1,
+            platform = PlatformId.PIXIV,
+            rating = PostRating.SAFE,
+            tags = emptyList(),
+            score = 0,
+            author = "Artist",
+            source = null,
+            createdAt = null,
+            width = 100,
+            height = 100,
+            previewUrl = "p",
+            sampleUrl = "s",
+            jpegUrl = null,
+            originalUrl = "o",
+            variants = emptyList(),
+        )
+        val state = ExploreUiState(
+            platform = PlatformId.PIXIV,
+            pixivFollowedFeed = FeedState(error = "Sign in to Pixiv to continue", authRequired = true),
+            pixivPopularFeed = FeedState(posts = listOf(post)),
+            pixivFavoritesFeed = FeedState(error = "Sign in to Pixiv to continue", authRequired = true),
+            pixivSearchFeed = FeedState(error = "Network timeout", authRequired = false),
+            pixivUserWorksFeed = FeedState(error = "Sign in to Pixiv to continue", authRequired = true),
+        )
+
+        val cleared = state.clearStalePixivAuthErrors()
+
+        // Auth-required feeds are reset so they can reload cleanly
+        assertEquals(FeedState(), cleared.pixivFollowedFeed)
+        assertEquals(FeedState(), cleared.pixivFavoritesFeed)
+        assertEquals(FeedState(), cleared.pixivUserWorksFeed)
+        // Non-auth error and successful feeds are preserved
+        assertEquals(listOf(post), cleared.pixivPopularFeed.posts)
+        assertEquals("Network timeout", cleared.pixivSearchFeed.error)
+        assertEquals(false, cleared.pixivSearchFeed.authRequired)
+    }
+
+    @Test
+    fun pixivAuthRecoveryEnablesFollowingTabReloadAfterLoginFromOtherTabs() {
+        // Issue #9 reproduction:
+        // 1. Unauthenticated user opens Pixiv (Following feed fails with authRequired = true)
+        // 2. User navigates to Popular (loads successfully) and Favorites (tab 2)
+        // 3. User logs in while on Favorites tab (selectedTab = 2)
+        val stateAfterBrowsing = ExploreUiState(
+            platform = PlatformId.PIXIV,
+            selectedTab = 2,
+            pixivFollowedFeed = FeedState(
+                posts = emptyList(),
+                error = "Sign in to Pixiv to continue",
+                authRequired = true,
+            ),
+            pixivPopularFeed = FeedState(
+                posts = listOf(
+                    Post(
+                        id = 10,
+                        platform = PlatformId.PIXIV,
+                        rating = PostRating.SAFE,
+                        tags = emptyList(),
+                        score = 0,
+                        author = "Artist",
+                        source = null,
+                        createdAt = null,
+                        width = 1,
+                        height = 1,
+                        previewUrl = "p",
+                        sampleUrl = "s",
+                        jpegUrl = null,
+                        originalUrl = "o",
+                        variants = emptyList(),
+                    )
+                ),
+            ),
+            pixivFavoritesFeed = FeedState(),
+        )
+
+        // On authentication, clearing stale errors must unblock Following tab
+        val cleared = stateAfterBrowsing.clearStalePixivAuthErrors()
+        assertEquals(FeedState(), cleared.pixivFollowedFeed)
+        assertEquals(null, cleared.pixivFollowedFeed.error)
+        assertEquals(false, cleared.pixivFollowedFeed.authRequired)
+
+        // When switching back to Following (tab 0), kind is FOLLOWED and it has no blocking error
+        val followingKind = pixivKindForTab(0)
+        assertEquals(PluginFeedKind.FOLLOWED, followingKind)
+        val feed = cleared.pixivFollowedFeed
+        assertTrue(feed.posts.isEmpty() && feed.error == null && !feed.isLoading)
+    }
+
+    @Test
+    fun pixivFeedRetrievesCorrectFeedPerKind() {
+        val post = Post(
+            id = 1,
+            platform = PlatformId.PIXIV,
+            rating = PostRating.SAFE,
+            tags = emptyList(),
+            score = 0,
+            author = "Artist",
+            source = null,
+            createdAt = null,
+            width = 1,
+            height = 1,
+            previewUrl = "p",
+            sampleUrl = "s",
+            jpegUrl = null,
+            originalUrl = "o",
+            variants = emptyList(),
+        )
+        val state = ExploreUiState(
+            platform = PlatformId.PIXIV,
+            pixivFollowedFeed = FeedState(posts = listOf(post.copy(id = 1))),
+            pixivPopularFeed = FeedState(posts = listOf(post.copy(id = 2))),
+            pixivFavoritesFeed = FeedState(posts = listOf(post.copy(id = 3))),
+        )
+        assertEquals(1L, pixivFeed(state, PluginFeedKind.FOLLOWED).posts.single().id)
+        assertEquals(2L, pixivFeed(state, PluginFeedKind.POPULAR).posts.single().id)
+        assertEquals(3L, pixivFeed(state, PluginFeedKind.FAVORITES).posts.single().id)
+    }
 }

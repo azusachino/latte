@@ -2,16 +2,9 @@ package com.azusachino.latte.ui.detail
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -86,8 +79,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.azusachino.latte.data.download.DownloadManager
 import com.azusachino.latte.data.download.DownloadResult
 import com.azusachino.latte.data.model.Post
@@ -134,18 +129,14 @@ fun DetailScreen(
     var localScores by remember { mutableStateOf(mapOf<Long, Int>()) }
     var localBookmarks by remember { mutableStateOf(mapOf<String, Boolean>()) }
     var inlineActionError by remember { mutableStateOf<String?>(null) }
-    var pixivPageIndex by rememberSaveable { mutableStateOf(initialPageIndex) }
-
     val currentPost = detailPosts.getOrNull(pagerState.currentPage)
-    var activePostId by rememberSaveable { mutableStateOf(currentPost?.id) }
+    var pixivPageIndex by rememberSaveable(currentPost?.siteId, currentPost?.id) {
+        mutableStateOf(if (pagerState.currentPage == initialIndex) initialPageIndex.coerceAtLeast(0) else 0)
+    }
     val displayPost = currentPost?.forPage(pixivPageIndex)
     val currentPlugin = currentPost?.let { pluginManager.get(it.platform) }
 
     LaunchedEffect(currentPost?.siteId, currentPost?.id) {
-        if (currentPost?.id != activePostId) {
-            activePostId = currentPost?.id
-            pixivPageIndex = 0
-        }
         inlineActionError = null
     }
 
@@ -165,130 +156,24 @@ fun DetailScreen(
             .fillMaxSize()
             .background(Color.Black),
     ) {
-        // Horizontal Pager with beyondViewportPageCount = 1 for butter-smooth swiping
+        // Horizontal Pager for browsing posts
         HorizontalPager(
             state = pagerState,
             beyondViewportPageCount = 1,
             modifier = Modifier.fillMaxSize(),
         ) { page ->
-            val post = detailPosts[page].forPage(if (page == pagerState.currentPage) pixivPageIndex else 0)
-            AnimatedContent(
-                targetState = post,
-                transitionSpec = {
-                    if (initialState.workIdentity == targetState.workIdentity &&
-                        initialState.pageIndex != targetState.pageIndex
-                    ) {
-                        val direction = if (targetState.pageIndex > initialState.pageIndex) 1 else -1
-                        (slideInHorizontally(tween(220)) { width -> direction * width / 3 } + fadeIn(tween(220)))
-                            .togetherWith(slideOutHorizontally(tween(160)) { width -> -direction * width / 3 } + fadeOut(tween(160)))
-                    } else {
-                        EnterTransition.None togetherWith ExitTransition.None
-                    }
-                },
-                label = "PixivPageTransition",
-                modifier = Modifier.fillMaxSize(),
-            ) { targetPost ->
-                ZoomableBox(
-                    modifier = Modifier.fillMaxSize(),
-                    onTap = { showControls = !showControls },
-                ) {
-                    val imageSources = remember(targetPost.siteId, targetPost.id, targetPost.pageIndex) {
-                        buildList {
-                            add(targetPost.sampleUrl)
-                            add(targetPost.previewUrl)
-                            addAll(targetPost.imageSources)
-                        }.filter(String::isNotBlank).distinct()
-                    }
-                    if (imageSources.isEmpty()) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text("Image unavailable", color = Color.White)
-                        }
-                    } else {
-                        var imageSourceIndex by rememberSaveable(
-                            targetPost.siteId,
-                            targetPost.id,
-                            targetPost.pageIndex,
-                        ) { mutableStateOf(0) }
-                        var imageRetryCount by rememberSaveable(
-                            targetPost.siteId,
-                            targetPost.id,
-                            targetPost.pageIndex,
-                        ) { mutableStateOf(0) }
-                        val safeImageSourceIndex = imageSourceIndex.coerceIn(imageSources.indices)
-                        val imageRequest = remember(imageSources[safeImageSourceIndex], imageRetryCount) {
-                            ImageRequest.Builder(context)
-                                .data(imageSources[safeImageSourceIndex])
-                                .build()
-                        }
-                        SubcomposeAsyncImage(
-                            model = imageRequest,
-                            contentDescription = null,
-                            contentScale = ContentScale.Fit,
-                            loading = {
-                                if (targetPost.previewUrl.isBlank() ||
-                                    imageSources[safeImageSourceIndex] == targetPost.previewUrl
-                                ) {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        CircularProgressIndicator(color = Color.White)
-                                    }
-                                } else {
-                                    SubcomposeAsyncImage(
-                                        model = targetPost.previewUrl,
-                                        contentDescription = null,
-                                        contentScale = ContentScale.Fit,
-                                        loading = {
-                                            CircularProgressIndicator(color = Color.White)
-                                        },
-                                        error = {
-                                            CircularProgressIndicator(color = Color.White)
-                                        },
-                                        modifier = Modifier.fillMaxSize(),
-                                    )
-                                }
-                            },
-                            error = {
-                                if (safeImageSourceIndex < imageSources.lastIndex) {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        CircularProgressIndicator(color = Color.White)
-                                    }
-                                } else {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            Text("Image unavailable", color = Color.White)
-                                            TextButton(
-                                                onClick = {
-                                                    imageSourceIndex = 0
-                                                    imageRetryCount++
-                                                },
-                                            ) {
-                                                Text("Retry")
-                                            }
-                                        }
-                                    }
-                                }
-                            },
-                            onError = {
-                                if (safeImageSourceIndex < imageSources.lastIndex) {
-                                    imageSourceIndex = safeImageSourceIndex + 1
-                                }
-                            },
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
+            val parentPost = detailPosts[page]
+            val post = remember(parentPost, page, pagerState.currentPage, pixivPageIndex) {
+                if (page == pagerState.currentPage) {
+                    parentPost.forPage(pixivPageIndex)
+                } else {
+                    parentPost.forPage(0)
                 }
             }
+            DetailImageView(
+                targetPost = post,
+                onTap = { showControls = !showControls },
+            )
         }
 
         // Top Controls Overlay
@@ -397,7 +282,11 @@ fun DetailScreen(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             IconButton(
-                                onClick = { pixivPageIndex-- },
+                                onClick = {
+                                    if (pixivPageIndex > 0) {
+                                        pixivPageIndex--
+                                    }
+                                },
                                 enabled = pixivPageIndex > 0,
                             ) {
                                 Icon(
@@ -412,7 +301,11 @@ fun DetailScreen(
                                 style = MaterialTheme.typography.labelLarge,
                             )
                             IconButton(
-                                onClick = { pixivPageIndex++ },
+                                onClick = {
+                                    if (pixivPageIndex < currentPost.pageCount - 1) {
+                                        pixivPageIndex++
+                                    }
+                                },
                                 enabled = pixivPageIndex < currentPost.pageCount - 1,
                             ) {
                                 Icon(
@@ -687,6 +580,131 @@ fun DetailScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailImageView(
+    targetPost: Post,
+    onTap: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    ZoomableBox(
+        modifier = modifier.fillMaxSize(),
+        onTap = onTap,
+    ) {
+        val imageSources = remember(targetPost.siteId, targetPost.id, targetPost.pageIndex) {
+            buildList {
+                add(targetPost.sampleUrl)
+                add(targetPost.previewUrl)
+                addAll(targetPost.imageSources)
+            }.filter(String::isNotBlank).distinct()
+        }
+        if (imageSources.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("Image unavailable", color = Color.White)
+            }
+        } else {
+            var imageSourceIndex by rememberSaveable(
+                targetPost.siteId,
+                targetPost.id,
+                targetPost.pageIndex,
+            ) { mutableStateOf(0) }
+            var imageRetryCount by rememberSaveable(
+                targetPost.siteId,
+                targetPost.id,
+                targetPost.pageIndex,
+            ) { mutableStateOf(0) }
+            val safeImageSourceIndex = imageSourceIndex.coerceIn(imageSources.indices)
+            val currentImageUrl = imageSources[safeImageSourceIndex]
+            val hasPreview = targetPost.previewUrl.isNotBlank() && targetPost.previewUrl != currentImageUrl
+
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                // If a low-res preview is available, display it immediately so the screen never blanks black
+                if (hasPreview) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(targetPost.previewUrl)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+
+                val imageRequest = remember(currentImageUrl, imageRetryCount) {
+                    ImageRequest.Builder(context)
+                        .data(currentImageUrl)
+                        .crossfade(200)
+                        .build()
+                }
+
+                SubcomposeAsyncImage(
+                    model = imageRequest,
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    loading = {
+                        // Subtle, small loading indicator (24dp, 2dp stroke, semi-transparent)
+                        // Never an unsized huge spinner covering the screen
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.White.copy(alpha = 0.5f),
+                            )
+                        }
+                    },
+                    error = {
+                        if (safeImageSourceIndex < imageSources.lastIndex) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    strokeWidth = 2.dp,
+                                    color = Color.White.copy(alpha = 0.5f),
+                                )
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("Image unavailable", color = Color.White.copy(alpha = 0.8f))
+                                    TextButton(
+                                        onClick = {
+                                            imageSourceIndex = 0
+                                            imageRetryCount++
+                                        },
+                                    ) {
+                                        Text("Retry")
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    onError = {
+                        if (safeImageSourceIndex < imageSources.lastIndex) {
+                            imageSourceIndex = safeImageSourceIndex + 1
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
         }
     }

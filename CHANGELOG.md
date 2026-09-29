@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.2 - 2026-09-29
+
+### Added
+
+- Multi-select batch download at the Explore screen across all platforms (Yande, Konachan, Pixiv): long-press any card to enter multi-select mode and select up to 10 artworks with a bottom-right floating download action, downloading the first page (`p0`) for multi-page Pixiv works.
+
+### Fixed
+
+- Clear stale authentication-required errors across all Pixiv feeds upon login so that background tabs (such as Following) unblock and reload cleanly instead of staying in an error state (#9).
+- Reset user-specific Pixiv feeds upon logout to avoid displaying stale session state.
+- Elevated Explore floating batch download button with navigation bar padding to prevent obstruction on gesture navigation devices.
+
 ## 0.1.1 - 2026-09-27
 
 ### Fixed

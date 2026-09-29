@@ -129,3 +129,8 @@ fun Post.forPage(index: Int): Post {
         authorId = authorId,
     )
 }
+
+fun Post.allPages(): List<Post> {
+    if (pages.isEmpty() || pageCount <= 1) return listOf(this)
+    return pages.indices.map { forPage(it) }
+}
