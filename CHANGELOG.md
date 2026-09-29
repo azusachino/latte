@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.2 - 2026-09-29
 
 ### Added
 
@@ -10,6 +10,7 @@
 
 - Clear stale authentication-required errors across all Pixiv feeds upon login so that background tabs (such as Following) unblock and reload cleanly instead of staying in an error state (#9).
 - Reset user-specific Pixiv feeds upon logout to avoid displaying stale session state.
+- Elevated Explore floating batch download button with navigation bar padding to prevent obstruction on gesture navigation devices.
 
 ## 0.1.1 - 2026-09-27
 

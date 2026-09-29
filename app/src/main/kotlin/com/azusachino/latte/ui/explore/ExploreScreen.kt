@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.size
@@ -289,6 +290,9 @@ fun ExploreScreen(
                 visible = isSelectionMode,
                 enter = fadeIn() + scaleIn(),
                 exit = fadeOut() + scaleOut(),
+                modifier = Modifier
+                    .navigationBarsPadding()
+                    .padding(bottom = 16.dp, end = 4.dp),
             ) {
                 ExtendedFloatingActionButton(
                     onClick = {
