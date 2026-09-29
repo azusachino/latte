@@ -125,14 +125,4 @@ class ExploreBatchDownloadSelectionTest {
         assertEquals(10, selectedIds.size)
         assertTrue(allPosts[10].id in selectedIds)
     }
-
-    @Test
-    fun selectAllCapsAtMaximumLimitOfTen() {
-        val maxSelectionSize = 10
-        val allPosts = (1L..20L).map { createPost(it) }
-
-        val selectAllIds = allPosts.take(maxSelectionSize).map { it.id }.toSet()
-        assertEquals(10, selectAllIds.size)
-        assertEquals((1L..10L).toSet(), selectAllIds)
-    }
 }

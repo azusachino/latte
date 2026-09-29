@@ -4,7 +4,7 @@
 
 ### Added
 
-- Multi-select batch download at the Explore screen across all platforms (Yande, Konachan, Pixiv): long-press any card to enter multi-select mode and select up to 10 artworks with quick select/deselect-all and download action, downloading the first page (`p0`) for multi-page Pixiv works.
+- Multi-select batch download at the Explore screen across all platforms (Yande, Konachan, Pixiv): long-press any card to enter multi-select mode and select up to 10 artworks with a bottom-right floating download action, downloading the first page (`p0`) for multi-page Pixiv works.
 
 ### Fixed
 

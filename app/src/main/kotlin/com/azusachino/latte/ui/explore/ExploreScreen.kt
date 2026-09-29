@@ -4,6 +4,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -68,6 +70,7 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -281,6 +284,57 @@ fun ExploreScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
+        floatingActionButton = {
+            AnimatedVisibility(
+                visible = isSelectionMode,
+                enter = fadeIn() + scaleIn(),
+                exit = fadeOut() + scaleOut(),
+            ) {
+                ExtendedFloatingActionButton(
+                    onClick = {
+                        val currentPosts = uiState.posts
+                        val postsToDownload = currentPosts
+                            .filter { it.id in selectedPostIds }
+                            .map { it.forPage(0) }
+                        if (downloadManager != null && postsToDownload.isNotEmpty()) {
+                            coroutineScope.launch {
+                                val result = downloadManager.enqueueBatchDownload(postsToDownload)
+                                when {
+                                    result.started > 0 -> {
+                                        val suffix = if (result.alreadySaved > 0) " (${result.alreadySaved} already saved)" else ""
+                                        ToastManager.showSuccess("Queued ${result.started} of ${result.total} downloads$suffix")
+                                    }
+                                    result.alreadySaved == result.total -> {
+                                        ToastManager.showWarning("All ${result.total} images already saved")
+                                    }
+                                    result.alreadyRunning > 0 -> {
+                                        ToastManager.showWarning("Downloads already in progress")
+                                    }
+                                    else -> {
+                                        ToastManager.showWarning("Failed to queue downloads")
+                                    }
+                                }
+                                selectedPostIds = emptySet()
+                            }
+                        }
+                    },
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.Download,
+                            contentDescription = null,
+                        )
+                    },
+                    text = {
+                        Text(
+                            text = "Download (${selectedPostIds.size})",
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    },
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+        },
         topBar = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 if (isSelectionMode) {
@@ -303,66 +357,6 @@ fun ExploreScreen(
                             containerColor = MaterialTheme.colorScheme.surface,
                             titleContentColor = MaterialTheme.colorScheme.onSurface,
                         ),
-                        actions = {
-                            val currentPosts = uiState.posts
-                            val selectableCount = minOf(MAX_SELECTION_SIZE, currentPosts.size)
-                            val isMaxSelected = selectedPostIds.size >= selectableCount && selectableCount > 0
-                            TextButton(
-                                onClick = {
-                                    selectedPostIds = if (isMaxSelected) {
-                                        emptySet()
-                                    } else {
-                                        currentPosts.take(MAX_SELECTION_SIZE).map { it.id }.toSet()
-                                    }
-                                },
-                            ) {
-                                Text(
-                                    text = if (isMaxSelected) {
-                                        "Deselect all"
-                                    } else if (currentPosts.size > MAX_SELECTION_SIZE) {
-                                        "Select $MAX_SELECTION_SIZE"
-                                    } else {
-                                        "Select all"
-                                    },
-                                    fontWeight = FontWeight.SemiBold,
-                                )
-                            }
-
-                            IconButton(
-                                onClick = {
-                                    val postsToDownload = currentPosts
-                                        .filter { it.id in selectedPostIds }
-                                        .map { it.forPage(0) }
-                                    if (downloadManager != null && postsToDownload.isNotEmpty()) {
-                                        coroutineScope.launch {
-                                            val result = downloadManager.enqueueBatchDownload(postsToDownload)
-                                            when {
-                                                result.started > 0 -> {
-                                                    val suffix = if (result.alreadySaved > 0) " (${result.alreadySaved} already saved)" else ""
-                                                    ToastManager.showSuccess("Queued ${result.started} of ${result.total} downloads$suffix")
-                                                }
-                                                result.alreadySaved == result.total -> {
-                                                    ToastManager.showWarning("All ${result.total} images already saved")
-                                                }
-                                                result.alreadyRunning > 0 -> {
-                                                    ToastManager.showWarning("Downloads already in progress")
-                                                }
-                                                else -> {
-                                                    ToastManager.showWarning("Failed to queue downloads")
-                                                }
-                                            }
-                                            selectedPostIds = emptySet()
-                                        }
-                                    }
-                                },
-                                enabled = selectedPostIds.isNotEmpty(),
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Download,
-                                    contentDescription = "Download selected",
-                                )
-                            }
-                        },
                     )
                 } else {
                     TopAppBar(
