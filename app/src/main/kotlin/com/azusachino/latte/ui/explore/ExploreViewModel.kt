@@ -243,6 +243,16 @@ internal fun pixivKindForTab(tabIndex: Int): PluginFeedKind? = when (tabIndex) {
     else -> null
 }
 
+internal fun pixivFeed(state: ExploreUiState, kind: PluginFeedKind): FeedState =
+    when (kind) {
+        PluginFeedKind.POPULAR -> state.pixivPopularFeed
+        PluginFeedKind.FOLLOWED -> state.pixivFollowedFeed
+        PluginFeedKind.FAVORITES -> state.pixivFavoritesFeed
+        PluginFeedKind.SEARCH -> state.pixivSearchFeed
+        PluginFeedKind.AUTHOR_WORKS -> state.pixivUserWorksFeed
+        PluginFeedKind.NEWEST, PluginFeedKind.POOLS -> FeedState()
+    }
+
 internal fun filterPosts(posts: List<Post>, safeMode: Boolean): List<Post> =
     if (safeMode) posts.filter { it.rating == PostRating.SAFE } else posts
 
@@ -461,20 +471,19 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         _uiState.update { it.copy(selectedTab = tabIndex) }
         if (state.activeSearchTags.isNotBlank()) return
 
+        if (state.supportsUserFeeds) {
+            pixivKindForTab(tabIndex)?.let(::ensurePixivFeedLoaded)
+            return
+        }
+
         val tab = activePlugin()?.feedTabs?.getOrNull(tabIndex) ?: return
         when (tab.kind) {
             PluginFeedKind.FAVORITES -> {
                 val plugin = activePlugin() ?: return
                 if (!plugin.isLoggedIn) return
-                if (PlatformCapability.USER_FEED in plugin.capabilities) {
-                    loadPixivInitial(PluginFeedKind.FAVORITES)
-                } else {
-                    loadFavoritesInitial(plugin.getDisplayUsername().orEmpty())
-                }
+                loadFavoritesInitial(plugin.getDisplayUsername().orEmpty())
             }
-            else -> if (state.supportsUserFeeds) {
-                pixivKindForTab(tabIndex)?.let(::ensurePixivFeedLoaded)
-            }
+            else -> {}
         }
     }
 
@@ -1065,15 +1074,6 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    private fun pixivFeed(state: ExploreUiState, kind: PluginFeedKind): FeedState =
-        when (kind) {
-            PluginFeedKind.POPULAR -> state.pixivPopularFeed
-            PluginFeedKind.FOLLOWED -> state.pixivFollowedFeed
-            PluginFeedKind.FAVORITES -> state.pixivFavoritesFeed
-            PluginFeedKind.SEARCH -> state.pixivSearchFeed
-            PluginFeedKind.AUTHOR_WORKS -> state.pixivUserWorksFeed
-            PluginFeedKind.NEWEST, PluginFeedKind.POOLS -> FeedState()
-        }
 
     private fun selectedPixivKind(): PluginFeedKind = when (_uiState.value.selectedTab) {
         0 -> PluginFeedKind.FOLLOWED

@@ -326,4 +326,34 @@ class ExplorePlatformStateTest {
         val feed = cleared.pixivFollowedFeed
         assertTrue(feed.posts.isEmpty() && feed.error == null && !feed.isLoading)
     }
+
+    @Test
+    fun pixivFeedRetrievesCorrectFeedPerKind() {
+        val post = Post(
+            id = 1,
+            platform = PlatformId.PIXIV,
+            rating = PostRating.SAFE,
+            tags = emptyList(),
+            score = 0,
+            author = "Artist",
+            source = null,
+            createdAt = null,
+            width = 1,
+            height = 1,
+            previewUrl = "p",
+            sampleUrl = "s",
+            jpegUrl = null,
+            originalUrl = "o",
+            variants = emptyList(),
+        )
+        val state = ExploreUiState(
+            platform = PlatformId.PIXIV,
+            pixivFollowedFeed = FeedState(posts = listOf(post.copy(id = 1))),
+            pixivPopularFeed = FeedState(posts = listOf(post.copy(id = 2))),
+            pixivFavoritesFeed = FeedState(posts = listOf(post.copy(id = 3))),
+        )
+        assertEquals(1L, pixivFeed(state, PluginFeedKind.FOLLOWED).posts.single().id)
+        assertEquals(2L, pixivFeed(state, PluginFeedKind.POPULAR).posts.single().id)
+        assertEquals(3L, pixivFeed(state, PluginFeedKind.FAVORITES).posts.single().id)
+    }
 }

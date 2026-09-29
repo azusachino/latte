@@ -785,6 +785,7 @@ DropdownMenuItem(
                 HorizontalPager(
                     state = pagerState,
                     userScrollEnabled = !isSelectionMode,
+                    beyondViewportPageCount = 1,
                     modifier = Modifier.fillMaxSize(),
                 ) { page ->
                     when (page) {
@@ -984,19 +985,11 @@ private fun FeedGrid(
     }
 
     PullToRefreshBox(
-        isRefreshing = feed.isRefreshing,
+        isRefreshing = feed.isRefreshing || ((feed.isLoading || feed.isLoadingMore) && feed.posts.isEmpty()),
         onRefresh = onRefresh,
         modifier = modifier.fillMaxSize(),
     ) {
         when {
-            (feed.isLoading || feed.isLoadingMore) && feed.posts.isEmpty() -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
             feed.error != null && feed.posts.isEmpty() -> {
                 Box(
                     modifier = Modifier
@@ -1024,22 +1017,26 @@ private fun FeedGrid(
                 }
             }
             feed.posts.isEmpty() -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "No illustrations available",
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        IconButton(onClick = onRetry) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Retry")
+                if (!feed.isLoading && !feed.isLoadingMore) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "No illustrations available",
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            IconButton(onClick = onRetry) {
+                                Icon(Icons.Default.Refresh, contentDescription = "Retry")
+                            }
                         }
                     }
+                } else {
+                    Box(modifier = Modifier.fillMaxSize())
                 }
             }
             else -> {
@@ -1147,21 +1144,11 @@ private fun PersonalFeedContent(
 ) {
     if (plugin == null) return
 
-    val isLoggedIn: Boolean? by plugin.isLoggedInFlow.collectAsState(initial = null)
+    val isLoggedIn by plugin.isLoggedInFlow.collectAsState(initial = plugin.isLoggedIn)
     val username = plugin.getDisplayUsername()
     val needsUsername = PlatformCapability.USER_FEED !in plugin.capabilities
 
-    if (isLoggedIn == null) {
-        Box(
-            modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
-        ) {
-            CircularProgressIndicator()
-        }
-        return
-    }
-
-    if (isLoggedIn == false || (needsUsername && username.isNullOrBlank())) {
+    if (!isLoggedIn || (needsUsername && username.isNullOrBlank())) {
         Box(
             modifier = modifier.fillMaxSize().padding(24.dp),
             contentAlignment = Alignment.Center,
@@ -1188,9 +1175,9 @@ private fun PersonalFeedContent(
     }
 
     LaunchedEffect(isLoggedIn, username, feed.posts.isEmpty(), feed.hasMore, feed.isLoading, feed.error, feed.authRequired) {
-        val shouldRetryStaleAuth = feed.authRequired && isLoggedIn == true
+        val shouldRetryStaleAuth = feed.authRequired && isLoggedIn
         if (
-            isLoggedIn == true &&
+            isLoggedIn &&
             (!needsUsername || !username.isNullOrBlank()) &&
             feed.posts.isEmpty() &&
             feed.hasMore &&
@@ -1250,45 +1237,44 @@ private fun PoolsTabContent(
     }
 
     Column(modifier = modifier.fillMaxSize()) {
-        when {
-            feed.isLoading && feed.pools.isEmpty() -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            }
-            feed.error != null && feed.pools.isEmpty() -> {
-                Box(
-                    modifier = Modifier.fillMaxSize().padding(24.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = feed.error,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        IconButton(onClick = { onQueryChange(feed.query) }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Retry")
+        PullToRefreshBox(
+            isRefreshing = feed.isRefreshing || (feed.isLoading && feed.pools.isEmpty()),
+            onRefresh = onRefresh,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            when {
+                feed.error != null && feed.pools.isEmpty() -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize().padding(24.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = feed.error,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            IconButton(onClick = { onQueryChange(feed.query) }) {
+                                Icon(Icons.Default.Refresh, contentDescription = "Retry")
+                            }
                         }
                     }
                 }
-            }
-            feed.pools.isEmpty() -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "No pools found",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                feed.pools.isEmpty() -> {
+                    if (!feed.isLoading) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(
+                                text = "No pools found",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    } else {
+                        Box(modifier = Modifier.fillMaxSize())
+                    }
                 }
-            }
-            else -> {
-                PullToRefreshBox(
-                    isRefreshing = feed.isRefreshing,
-                    onRefresh = onRefresh,
-                    modifier = Modifier.fillMaxSize(),
-                ) {
+                else -> {
                     LazyColumn(
                         state = listState,
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
