@@ -75,6 +75,7 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -985,11 +986,12 @@ private fun FeedGrid(
     }
 
     PullToRefreshBox(
-        isRefreshing = feed.isRefreshing || ((feed.isLoading || feed.isLoadingMore) && feed.posts.isEmpty()),
+        isRefreshing = feed.isRefreshing,
         onRefresh = onRefresh,
         modifier = modifier.fillMaxSize(),
     ) {
-        when {
+        Box(modifier = Modifier.fillMaxSize()) {
+            when {
             feed.error != null && feed.posts.isEmpty() -> {
                 Box(
                     modifier = Modifier
@@ -1121,6 +1123,18 @@ private fun FeedGrid(
                 }
             }
         }
+
+            if ((feed.isLoading || (feed.isLoadingMore && feed.posts.isEmpty())) && !feed.isRefreshing) {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .align(Alignment.TopCenter),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = Color.Transparent,
+                )
+            }
+        }
     }
 }
 
@@ -1238,68 +1252,81 @@ private fun PoolsTabContent(
 
     Column(modifier = modifier.fillMaxSize()) {
         PullToRefreshBox(
-            isRefreshing = feed.isRefreshing || (feed.isLoading && feed.pools.isEmpty()),
+            isRefreshing = feed.isRefreshing,
             onRefresh = onRefresh,
             modifier = Modifier.fillMaxSize(),
         ) {
-            when {
-                feed.error != null && feed.pools.isEmpty() -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize().padding(24.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = feed.error,
-                                color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodyLarge,
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            IconButton(onClick = { onQueryChange(feed.query) }) {
-                                Icon(Icons.Default.Refresh, contentDescription = "Retry")
-                            }
-                        }
-                    }
-                }
-                feed.pools.isEmpty() -> {
-                    if (!feed.isLoading) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(
-                                text = "No pools found",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    } else {
-                        Box(modifier = Modifier.fillMaxSize())
-                    }
-                }
-                else -> {
-                    LazyColumn(
-                        state = listState,
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        items(items = feed.pools, key = { it.id }) { pool ->
-                            PoolListItem(
-                                pool = pool,
-                                coverUrl = covers[pool.id],
-                                onClick = { onPoolClick(pool) },
-                                onNeedCover = { onNeedCover(pool.id) },
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                        }
-                        if (feed.isLoadingMore) {
-                            item {
-                                Box(
-                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    CircularProgressIndicator(modifier = Modifier.size(28.dp))
+            Box(modifier = Modifier.fillMaxSize()) {
+                when {
+                    feed.error != null && feed.pools.isEmpty() -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize().padding(24.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = feed.error,
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                IconButton(onClick = { onQueryChange(feed.query) }) {
+                                    Icon(Icons.Default.Refresh, contentDescription = "Retry")
                                 }
                             }
                         }
                     }
+                    feed.pools.isEmpty() -> {
+                        if (!feed.isLoading) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = "No pools found",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        } else {
+                            Box(modifier = Modifier.fillMaxSize())
+                        }
+                    }
+                    else -> {
+                        LazyColumn(
+                            state = listState,
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            items(items = feed.pools, key = { it.id }) { pool ->
+                                PoolListItem(
+                                    pool = pool,
+                                    coverUrl = covers[pool.id],
+                                    onClick = { onPoolClick(pool) },
+                                    onNeedCover = { onNeedCover(pool.id) },
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+                            if (feed.isLoadingMore) {
+                                item {
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (feed.isLoading && !feed.isRefreshing) {
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(3.dp)
+                            .align(Alignment.TopCenter),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = Color.Transparent,
+                    )
                 }
             }
         }
