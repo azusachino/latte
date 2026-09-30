@@ -1,5 +1,9 @@
 package com.azusachino.latte.plugin
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+@Serializable
 enum class PlatformId(
     val externalId: String,
     val displayName: String,
@@ -7,6 +11,7 @@ enum class PlatformId(
     val apiUrl: String,
     val capabilities: Set<PlatformCapability>,
 ) {
+    @SerialName("YANDE")
     YANDE(
         externalId = "yande.re",
         displayName = "Yande",
@@ -14,6 +19,7 @@ enum class PlatformId(
         apiUrl = "https://yande.re",
         capabilities = setOf(PlatformCapability.SCORING, PlatformCapability.FAVORITES),
     ),
+    @SerialName("KONACHAN")
     KONACHAN(
         externalId = "konachan.net",
         displayName = "Konachan",
@@ -21,6 +27,7 @@ enum class PlatformId(
         apiUrl = "https://konachan.net",
         capabilities = setOf(PlatformCapability.SCORING, PlatformCapability.FAVORITES),
     ),
+    @SerialName("PIXIV")
     PIXIV(
         externalId = "pixiv",
         displayName = "Pixiv",

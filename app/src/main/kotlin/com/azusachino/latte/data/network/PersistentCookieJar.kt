@@ -156,16 +156,15 @@ class PersistentCookieJar(context: Context) : SessionCookieStore {
             return try {
                 create()
             } catch (firstFailure: Exception) {
-                // Keystore hardware desync recovery: wipe file & corrupted MasterKey entry, then retry
+                // Keystore hardware desync recovery without wiping user data file
                 try {
-                    context.deleteSharedPreferences(PREFS_FILE_NAME)
                     runCatching {
                         val keyStore = java.security.KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
                         keyStore.deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
                     }
                     create()
                 } catch (secondFailure: Exception) {
-                    // Safe degradation on unrecoverable hardware Keystore corruption
+                    // Safe degradation on unrecoverable hardware Keystore corruption without deleting original data
                     context.getSharedPreferences("${PREFS_FILE_NAME}_fallback", Context.MODE_PRIVATE)
                 }
             }

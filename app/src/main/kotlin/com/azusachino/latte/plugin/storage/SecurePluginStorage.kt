@@ -70,14 +70,13 @@ class SecurePluginStorage(context: Context) : PluginStorage {
                 create()
             } catch (e: Exception) {
                 try {
-                    context.deleteSharedPreferences(PREFS_FILE_NAME)
                     runCatching {
                         val keyStore = java.security.KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
                         keyStore.deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
                     }
                     create()
                 } catch (e2: Exception) {
-                    // Safe degradation on unrecoverable hardware Keystore corruption
+                    // Safe degradation on unrecoverable hardware Keystore corruption without deleting original data
                     context.getSharedPreferences("${PREFS_FILE_NAME}_fallback", Context.MODE_PRIVATE)
                 }
             }
