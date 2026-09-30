@@ -9,6 +9,11 @@ import coil3.memory.MemoryCache
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
 import com.azusachino.latte.data.network.OkHttpProvider
+import com.azusachino.latte.data.settings.LattePreferences
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 import java.io.File
 
 import okio.Path.Companion.toOkioPath
@@ -18,6 +23,14 @@ class LatteApplication : Application(), SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
         OkHttpProvider.init(this)
+        val prefs = LattePreferences(this)
+        CoroutineScope(Dispatchers.Main).launch {
+            combine(prefs.proxyHost, prefs.proxyPort) { host, port ->
+                host to port
+            }.collect { (host, port) ->
+                OkHttpProvider.setProxy(host, port)
+            }
+        }
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader {

@@ -4,13 +4,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import com.azusachino.latte.ui.common.LatteIcons
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +38,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.azusachino.latte.MoebooruLoginActivity
 import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.plugin.AuthFlow
 import android.content.Intent
@@ -42,7 +46,10 @@ import android.net.Uri
 import com.azusachino.latte.PixivLoginActivity
 import com.azusachino.latte.data.network.PixivOAuthCallbackBus
 import com.azusachino.latte.data.network.PixivOAuthClient
+import com.azusachino.latte.plugin.moebooru.MoebooruAuthCallbackBus
+import com.azusachino.latte.plugin.moebooru.MoebooruPlugin
 import com.azusachino.latte.plugin.pixiv.PixivPlugin
+import com.azusachino.latte.ui.common.ToastManager
 import kotlinx.coroutines.launch
 
 @Composable
@@ -66,6 +73,18 @@ fun PluginLoginDialog(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val tokenImport = AuthFlow.TOKEN_IMPORT in plugin.supportedAuthFlows
     val pixivPlugin = plugin as? PixivPlugin
+    val moebooruPlugin = plugin as? MoebooruPlugin
+
+    LaunchedEffect(moebooruPlugin) {
+        if (moebooruPlugin == null) return@LaunchedEffect
+        MoebooruAuthCallbackBus.events.collect { auth ->
+            if (auth.externalId == moebooruPlugin.platform.externalId) {
+                moebooruPlugin.loginWithSession(auth.username, auth.passHash, auth.userId)
+                ToastManager.showSuccess("Signed in as ${auth.username}")
+                onLoginSuccess()
+            }
+        }
+    }
 
     LaunchedEffect(pixivPlugin) {
         if (pixivPlugin == null) return@LaunchedEffect
@@ -160,6 +179,31 @@ fun PluginLoginDialog(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 } else {
+                    TextButton(
+                        onClick = {
+                            val intent = Intent(context, MoebooruLoginActivity::class.java).apply {
+                                putExtra(MoebooruLoginActivity.EXTRA_SITE_NAME, plugin.name)
+                                putExtra(MoebooruLoginActivity.EXTRA_LOGIN_URL, "${plugin.platform.webUrl}/user/login")
+                                putExtra(MoebooruLoginActivity.EXTRA_EXTERNAL_ID, plugin.platform.externalId)
+                            }
+                            context.startActivity(intent)
+                        },
+                        enabled = !isLoading,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Icon(
+                            imageVector = LatteIcons.OpenInBrowser,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Sign in with Web (Autofill & Biometrics)")
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
+
                     OutlinedTextField(
                         value = username,
                         onValueChange = {
@@ -193,7 +237,7 @@ fun PluginLoginDialog(
                         trailingIcon = {
                             IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                 Icon(
-                                    imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    imageVector = if (passwordVisible) LatteIcons.Visibility else LatteIcons.VisibilityOff,
                                     contentDescription = if (passwordVisible) "Hide password" else "Show password",
                                 )
                             }

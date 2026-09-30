@@ -18,15 +18,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.SystemUpdate
-import androidx.compose.material.icons.filled.ViewColumn
+import com.azusachino.latte.ui.common.LatteIcons
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -85,6 +80,10 @@ fun SettingsScreen(
 
     var cacheSizeBytes by remember { mutableLongStateOf(preferences.getCacheSizeBytes()) }
     var showAboutDialog by remember { mutableStateOf(false) }
+    var showProxyDialog by remember { mutableStateOf(false) }
+
+    val proxyHost by preferences.proxyHost.collectAsState()
+    val proxyPort by preferences.proxyPort.collectAsState()
 
     val coroutineScope = rememberCoroutineScope()
     val updateService = remember { UpdateService() }
@@ -123,7 +122,7 @@ fun SettingsScreen(
             SettingsSectionHeader("Accounts")
 
             SettingsRow(
-                icon = Icons.Default.AccountCircle,
+                icon = LatteIcons.AccountCircle,
                 title = "Platforms & accounts",
                 subtitle = "Connect, switch, and manage yande.re or Pixiv sessions",
                 onClick = onOpenAccountManager,
@@ -135,7 +134,7 @@ fun SettingsScreen(
             SettingsSectionHeader("Content")
 
             SettingsSwitchRow(
-                icon = Icons.Default.Security,
+                icon = LatteIcons.Security,
                 title = "Safe Mode",
                 subtitle = "Show safe contents only",
                 checked = safeMode,
@@ -203,11 +202,23 @@ fun SettingsScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
+            // Network Section
+            SettingsSectionHeader("Network")
+
+            SettingsRow(
+                icon = LatteIcons.Security,
+                title = "HTTP Proxy",
+                subtitle = if (!proxyHost.isNullOrBlank() && proxyPort != null) "$proxyHost:$proxyPort" else "Disabled (Direct / DoH Fallback)",
+                onClick = { showProxyDialog = true },
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+
             // About Section (GitHub, Check update, About)
             SettingsSectionHeader("About")
 
             SettingsRow(
-                icon = Icons.Default.Code,
+                icon = LatteIcons.Code,
                 title = "GitHub",
                 subtitle = "https://github.com/azusachino/latte",
                 onClick = {
@@ -220,7 +231,7 @@ fun SettingsScreen(
             )
 
             SettingsRow(
-                icon = Icons.Default.SystemUpdate,
+                icon = LatteIcons.SystemUpdate,
                 title = "Check for Updates",
                 subtitle = if (isCheckingUpdate) "Checking for updates..." else "Version ${BuildConfig.VERSION_NAME}",
                 onClick = {
@@ -276,6 +287,77 @@ fun SettingsScreen(
             confirmButton = {
                 TextButton(onClick = { showAboutDialog = false }) {
                     Text("OK")
+                }
+            },
+        )
+    }
+
+    if (showProxyDialog) {
+        var tempHost by remember { mutableStateOf(proxyHost.orEmpty()) }
+        var tempPort by remember { mutableStateOf(proxyPort?.toString().orEmpty()) }
+
+        AlertDialog(
+            onDismissRequest = { showProxyDialog = false },
+            title = { Text("HTTP Proxy") },
+            text = {
+                Column {
+                    Text(
+                        "Configure an optional HTTP proxy for restricted networks (e.g. Clash/V2Ray on localhost).",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = tempHost,
+                        onValueChange = { tempHost = it },
+                        label = { Text("Host (e.g. 127.0.0.1)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = tempPort,
+                        onValueChange = { tempPort = it },
+                        label = { Text("Port (e.g. 7890)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val portInt = tempPort.trim().toIntOrNull()
+                        if (tempHost.isNotBlank() && portInt != null && portInt in 1..65535) {
+                            preferences.setHttpProxy(tempHost.trim(), portInt)
+                            ToastManager.showSuccess("Proxy set to ${tempHost.trim()}:$portInt")
+                        } else if (tempHost.isBlank() && tempPort.isBlank()) {
+                            preferences.setHttpProxy(null, null)
+                            ToastManager.showInfo("Proxy disabled")
+                        } else {
+                            ToastManager.showWarning("Invalid proxy host or port")
+                        }
+                        showProxyDialog = false
+                    },
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                Row {
+                    if (!proxyHost.isNullOrBlank()) {
+                        TextButton(
+                            onClick = {
+                                preferences.setHttpProxy(null, null)
+                                ToastManager.showInfo("Proxy disabled")
+                                showProxyDialog = false
+                            },
+                        ) {
+                            Text("Disable")
+                        }
+                    }
+                    TextButton(onClick = { showProxyDialog = false }) {
+                        Text("Cancel")
+                    }
                 }
             },
         )
