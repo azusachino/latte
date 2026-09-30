@@ -1,6 +1,7 @@
 package com.azusachino.latte.data.model
 
 import com.azusachino.latte.plugin.PlatformId
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
@@ -10,6 +11,6 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class FavoriteTag(
-    val tag: String,
-    val platform: PlatformId,
+    @SerialName("tag") val tag: String,
+    @SerialName("platform") val platform: PlatformId,
 )

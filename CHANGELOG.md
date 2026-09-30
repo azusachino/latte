@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.1 - 2026-09-30
+
+### Fixed
+
+- Preserved user favorite tags and preferences across updates under R8 minification by explicitly keeping models (`FavoriteTag`, `PlatformId`, enums) and adding `@SerialName` annotations (#15).
+- Fixed image cache invalidation across updates by correcting Coil 3 ProGuard package rules to `coil3.**` (#15).
+- Prevented accidental credential/session data loss in `SecurePluginStorage` and `PersistentCookieJar` by eliminating destructive auto-wipes and retaining Google Tink reflection classes (`com.google.crypto.tink.**`).
+- Fixed Moebooru web login hanging by detecting real Rails session cookies (`user_id` and `session_*` rather than non-existent `pass_hash`) and fetching canonical username via `/user.json` (#15).
+- Switched Pixiv login to Android Custom Tabs (`androidx.browser:browser:1.8.0`) so that existing sessions in the user's default browser (e.g. Firefox) are reused without re-entering credentials (#15).
+- Added manual session cookie / `pass_hash` import in `PluginLoginDialog` for power users.
+
 ## 0.2.0 - 2026-09-30
 
 ### Added

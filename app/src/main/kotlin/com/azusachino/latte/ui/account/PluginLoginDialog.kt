@@ -1,5 +1,6 @@
 package com.azusachino.latte.ui.account
 
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -44,13 +45,19 @@ import com.azusachino.latte.plugin.AuthFlow
 import android.content.Intent
 import android.net.Uri
 import com.azusachino.latte.PixivLoginActivity
+import com.azusachino.latte.data.network.OkHttpProvider
 import com.azusachino.latte.data.network.PixivOAuthCallbackBus
 import com.azusachino.latte.data.network.PixivOAuthClient
 import com.azusachino.latte.plugin.moebooru.MoebooruAuthCallbackBus
 import com.azusachino.latte.plugin.moebooru.MoebooruPlugin
 import com.azusachino.latte.plugin.pixiv.PixivPlugin
 import com.azusachino.latte.ui.common.ToastManager
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.Cookie
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.Request
 
 @Composable
 fun PluginLoginDialog(
@@ -66,6 +73,8 @@ fun PluginLoginDialog(
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    var isCookieImportMode by remember { mutableStateOf(false) }
+    var cookieInput by remember { mutableStateOf("") }
     var accessToken by remember { mutableStateOf("") }
     var refreshToken by remember { mutableStateOf("") }
     var userId by remember { mutableStateOf("") }
@@ -134,12 +143,12 @@ fun PluginLoginDialog(
                             val request = pixivPlugin.beginBrowserLogin()
                             if (request.isSuccess) {
                                 runCatching {
-                                    context.startActivity(
-                                        Intent(context, PixivLoginActivity::class.java)
-                                            .putExtra(PixivLoginActivity.EXTRA_LOGIN_URL, request.getOrThrow().url),
-                                    )
+                                    val customTabsIntent = CustomTabsIntent.Builder()
+                                        .setShowTitle(true)
+                                        .build()
+                                    customTabsIntent.launchUrl(context, Uri.parse(request.getOrThrow().url))
                                 }.onFailure {
-                                    errorMessage = it.message ?: "Could not open Pixiv sign-in"
+                                    errorMessage = it.message ?: "Could not open browser sign-in"
                                 }
                             } else {
                                 errorMessage = request.exceptionOrNull()?.message ?: "Pixiv browser login is unavailable"
@@ -147,7 +156,7 @@ fun PluginLoginDialog(
                         },
                         enabled = !isLoading,
                     ) {
-                        Text("Sign in with Pixiv browser")
+                        Text("Sign in with Pixiv (Default Browser / Firefox)")
                     }
                     OutlinedTextField(
                         value = accessToken,
@@ -204,46 +213,76 @@ fun PluginLoginDialog(
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    OutlinedTextField(
-                        value = username,
-                        onValueChange = {
-                            username = it
-                            errorMessage = null
-                        },
-                        label = { Text("Username") },
-                        singleLine = true,
-                        enabled = !isLoading,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                        keyboardActions = KeyboardActions(onNext = { passwordFocusRequester.requestFocus() }),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    if (isCookieImportMode) {
+                        OutlinedTextField(
+                            value = cookieInput,
+                            onValueChange = {
+                                cookieInput = it
+                                errorMessage = null
+                            },
+                            label = { Text("Session cookies / pass_hash") },
+                            placeholder = { Text("e.g. user_id=...; session_yande-re=...") },
+                            maxLines = 4,
+                            enabled = !isLoading,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        TextButton(
+                            onClick = { isCookieImportMode = false },
+                            modifier = Modifier.align(Alignment.End),
+                        ) {
+                            Text("Use password instead", style = MaterialTheme.typography.bodySmall)
+                        }
+                    } else {
+                        OutlinedTextField(
+                            value = username,
+                            onValueChange = {
+                                username = it
+                                errorMessage = null
+                            },
+                            label = { Text("Username") },
+                            singleLine = true,
+                            enabled = !isLoading,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                            keyboardActions = KeyboardActions(onNext = { passwordFocusRequester.requestFocus() }),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                    OutlinedTextField(
-                        value = password,
-                        onValueChange = {
-                            password = it
-                            errorMessage = null
-                        },
-                        label = { Text("Password") },
-                        singleLine = true,
-                        enabled = !isLoading,
-                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = {
-                            focusManager.clearFocus()
-                        }),
-                        trailingIcon = {
-                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                                Icon(
-                                    imageVector = if (passwordVisible) LatteIcons.Visibility else LatteIcons.VisibilityOff,
-                                    contentDescription = if (passwordVisible) "Hide password" else "Show password",
-                                )
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth().focusRequester(passwordFocusRequester),
-                    )
+                        OutlinedTextField(
+                            value = password,
+                            onValueChange = {
+                                password = it
+                                errorMessage = null
+                            },
+                            label = { Text("Password") },
+                            singleLine = true,
+                            enabled = !isLoading,
+                            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = {
+                                focusManager.clearFocus()
+                            }),
+                            trailingIcon = {
+                                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                    Icon(
+                                        imageVector = if (passwordVisible) LatteIcons.Visibility else LatteIcons.VisibilityOff,
+                                        contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().focusRequester(passwordFocusRequester),
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+                        TextButton(
+                            onClick = { isCookieImportMode = true },
+                            modifier = Modifier.align(Alignment.End),
+                        ) {
+                            Text("Import session cookies directly", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
                 }
 
                 if (errorMessage != null) {
@@ -264,6 +303,52 @@ fun PluginLoginDialog(
         confirmButton = {
             TextButton(
                 onClick = {
+                    if (isCookieImportMode) {
+                        if (cookieInput.isBlank() || isLoading) return@TextButton
+                        isLoading = true
+                        errorMessage = null
+                        scope.launch {
+                            val host = Uri.parse(plugin.platform.webUrl).host ?: plugin.platform.externalId
+                            val pairs = cookieInput.split(";").map { it.trim() }
+                            val userId = pairs.find { it.startsWith("user_id=") }?.substringAfter("user_id=")
+                            val cookieJar = OkHttpProvider.cookieJar
+                            val httpUrl = plugin.platform.webUrl.toHttpUrlOrNull()
+
+                            if (httpUrl != null && cookieJar != null) {
+                                val okCookies = pairs.mapNotNull { pair ->
+                                    val name = pair.substringBefore("=").trim()
+                                    val value = pair.substringAfter("=", "").trim()
+                                    if (name.isNotEmpty()) {
+                                        Cookie.Builder()
+                                            .domain(host)
+                                            .path("/")
+                                            .name(name)
+                                            .value(value)
+                                            .build()
+                                    } else null
+                                }
+                                cookieJar.saveFromResponse(httpUrl, okCookies)
+                            }
+
+                            val resolvedUsername = withContext(Dispatchers.IO) {
+                                if (userId != null) {
+                                    fetchMoebooruUsername(host, userId)
+                                } else null
+                            } ?: pairs.find { it.startsWith("login=") }?.substringAfter("login=") ?: "User_$userId"
+
+                            val moebooru = plugin as? MoebooruPlugin
+                            if (moebooru != null) {
+                                val passHash = pairs.find { it.startsWith("pass_hash=") }?.substringAfter("pass_hash=").orEmpty()
+                                moebooru.loginWithSession(resolvedUsername, passHash, userId)
+                                ToastManager.showSuccess("Signed in as $resolvedUsername")
+                                onLoginSuccess()
+                            } else {
+                                errorMessage = "Could not apply session to plugin"
+                            }
+                            isLoading = false
+                        }
+                        return@TextButton
+                    }
                     if ((if (tokenImport) accessToken else username).isNotBlank() &&
                         (tokenImport || password.isNotBlank()) && !isLoading
                     ) {
@@ -304,4 +389,20 @@ fun PluginLoginDialog(
             }
         },
     )
+}
+
+private fun fetchMoebooruUsername(host: String, userId: String): String? {
+    return try {
+        val req = Request.Builder().url("https://$host/user.json?id=$userId").build()
+        OkHttpProvider.client.newCall(req).execute().use { resp ->
+            if (resp.isSuccessful) {
+                val body = resp.body?.string().orEmpty()
+                Regex(""""name"\s*:\s*"([^"]+)"""").find(body)?.groupValues?.get(1)
+            } else {
+                null
+            }
+        }
+    } catch (_: Exception) {
+        null
+    }
 }

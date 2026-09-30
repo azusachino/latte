@@ -13,13 +13,13 @@
 
 ## Overview
 
-Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenticated, multi-platform personal art workstation (`0.0.2`, `0.0.3`, `0.1.0`, `0.1.1`, `0.1.2`, and `0.1.3`). This roadmap establishes the sequence of milestones, architectural requirements, UX standards, and cache policies.
+Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenticated, multi-platform personal art workstation (`0.0.2`, `0.0.3`, `0.1.0`, `0.1.1`, `0.1.2`, `0.1.3`, and `0.2.0`). This roadmap establishes the sequence of milestones, architectural requirements, UX standards, and cache policies.
 
 ```text
-0.0.1 ──> 0.0.2 ──> 0.0.3 ──> 0.1.0 ──> 0.1.1 ──> 0.1.2 ──> 0.1.3 (Delivered) ──> 0.2.0 (Active)
-• Browse  • Auth    • Pixiv   • Fav tags • Proxy    • Batch   • Signing & Updates    • APK Diet (<12MB)
-• Feed    • Scores  • OAuth2  • Following• Referer  • Insets  • In-App Updates       • DoH & Security
-• Save    • Cache   • Feeds   • Konachan • Clearance• Reset   • MinSdk & ForceUpdate • Web SSO Auth
+0.0.1 ──> 0.0.2 ──> 0.0.3 ──> 0.1.0 ──> 0.1.1 ──> 0.1.2 ──> 0.1.3 ──> 0.2.0 (Diet & Security) ──> 0.2.1 (Delivered)
+• Browse  • Auth    • Pixiv   • Fav tags • Proxy    • Batch   • Signing   • APK Diet (<12MB)    • Data Persistence
+• Feed    • Scores  • OAuth2  • Following• Referer  • Insets  • Updater   • DoH & Security      • Coil 3 Cache Fix
+• Save    • Cache   • Feeds   • Konachan • Clearance• Reset   • MinSdk    • Web SSO Auth        • Custom Tabs (Pixiv)
 ```
 
 ---
@@ -249,6 +249,24 @@ a defect.
 - Intercept authenticated session cookies (`user_id`, `pass_hash`, `_moebooru_session`) upon successful web login and inject them into `PersistentCookieJar`.
 - Provide an optional "Import Session Cookie / Pass-Hash" fallback for power users.
 - Gracefully handle Cloudflare verification.
+
+---
+
+## Milestone 0.2.1: Data Persistence Hardening & Browser Custom Tabs
+
+> **Status**: Released as `v0.2.1` on 2026-09-30. R8 ProGuard serialization hardening for `FavoriteTag` and `PlatformId`, Coil 3 package keep rule alignment (`coil3.**`) to preserve disk image caches, Google Tink reflection retention and non-destructive Keystore fallback, Moebooru web login real session cookie detection (`user_id` and `session_*`), and Android Custom Tabs (`androidx.browser:browser`) adoption for Pixiv browser SSO (#15).
+
+### 1. DataStore & Image Cache Persistence
+
+- Preserved user favorite tags and preferences across updates under R8 minification by explicitly keeping models (`FavoriteTag`, `PlatformId`, enums) and adding `@SerialName` annotations.
+- Fixed image cache invalidation across updates by correcting Coil 3 ProGuard package rules to `coil3.**`.
+- Prevented accidental credential/session data loss in `SecurePluginStorage` and `PersistentCookieJar` by eliminating destructive auto-wipes and retaining Google Tink reflection classes (`com.google.crypto.tink.**`).
+
+### 2. Browser SSO & Custom Tabs
+
+- Fixed Moebooru web login hanging by detecting real Rails session cookies (`user_id` and `session_*` rather than non-existent `pass_hash`) and fetching canonical username via `/user.json`.
+- Switched Pixiv login to Android Custom Tabs (`androidx.browser:browser:1.8.0`) so that existing sessions in the user's default browser (e.g. Firefox) are reused without re-entering credentials.
+- Added manual session cookie / `pass_hash` import in `PluginLoginDialog` for power users.
 
 ---
 
