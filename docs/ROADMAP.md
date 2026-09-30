@@ -13,15 +13,13 @@
 
 ## Overview
 
-Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenticated, multi-platform personal art workstation (`0.0.2`, `0.0.3`, `0.1.0`, `0.1.1`, and `0.1.2`). This roadmap establishes the sequence of milestones, architectural requirements, UX standards, and cache policies.
+Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenticated, multi-platform personal art workstation (`0.0.2`, `0.0.3`, `0.1.0`, `0.1.1`, `0.1.2`, and `0.1.3`). This roadmap establishes the sequence of milestones, architectural requirements, UX standards, and cache policies.
 
 ```text
-0.0.1 (Delivered) ──> 0.0.2 (Auth & Scoring) ──> 0.0.3 (Pixiv Multi-Platform) ──> 0.1.0 (Favorites & Following) ──> 0.1.1 (Multi-Image Fixes) ──> 0.1.2 (Multi-Select & Feed Resilience)
-  • Yande browse        • Yande login & hash      • Pixiv OAuth2 PKCE             • Favorite tags & chips           • Proxy index alignment           • Explore multi-select batch download
-  • Masonry feed        • 0–3 scoring & Fav       • Referer header injection      • Pixiv Following-first           • Toast clearance offset          • Floating action button with insets
-  • Detail pager        • Search swipe-back       • 1:N multi-page illusts        • Konachan.net SFW platform       • Referer on save worker          • Multi-page Pixiv p0-only default
-  • WorkManager save    • Already-saved dialog    • Subscribed updates feed       • Plugin feed abstraction layer                                     • Unblock Pixiv background feeds (#9)
-                        • Unified cache manager   • Search and author works
+0.0.1 ──> 0.0.2 ──> 0.0.3 ──> 0.1.0 ──> 0.1.1 ──> 0.1.2 ──> 0.1.3 (Delivered) ──> 0.2.0 (Active)
+• Browse  • Auth    • Pixiv   • Fav tags • Proxy    • Batch   • Signing & Updates    • APK Diet (<12MB)
+• Feed    • Scores  • OAuth2  • Following• Referer  • Insets  • In-App Updates       • DoH & Security
+• Save    • Cache   • Feeds   • Konachan • Clearance• Reset   • MinSdk & ForceUpdate • Web SSO Auth
 ```
 
 ---
@@ -206,6 +204,51 @@ a defect.
 
 - Clear stale authentication-required errors across all Pixiv feeds upon login so background feeds (such as Following) reload cleanly.
 - Reset user-specific Pixiv feeds upon logout to avoid displaying stale session state.
+
+---
+
+## Milestone 0.1.3: Release APK Signing & In-App Update Engine
+
+> **Status**: Released as `v0.1.3` on 2026-09-30. Dedicated release keystore signing pipeline, GitHub Releases in-app self-updater with download progress dialog, `FileProvider` package installer integration, minimum Android version (`minSdk`) compatibility protection, and mandatory update support (#11, #12).
+
+### 1. Release Keystore & CI/CD Pipeline
+
+- Configured `signingConfigs.release` in Gradle powered by environment variables with graceful fallback for local development.
+- GitHub Actions release workflow decodes `LATTE_KEYSTORE_BASE64`, signs APK with dedicated release key (`CN=haru`), and generates SHA-256 checksums (`checksums.txt`).
+
+### 2. In-App Self-Update Engine & Compatibility
+
+- `UpdateService` querying GitHub Releases API with semantic version comparison.
+- Streamed APK download with progress tracking and `FileProvider` installer integration.
+- `minSdk` compatibility gate prevents downloading incompatible APKs on older Android OS levels.
+- `minSupportedVersion` / mandatory update support prevents running broken clients on deprecated versions.
+
+---
+
+## Milestone 0.2.0: APK Diet, Security Hardening & Web-Based Seamless Auth
+
+> **Status**: In planning / active roadmap milestone.
+
+### 1. APK Size Optimization (DEX Diet & Tree-Shaking)
+
+- **Target**: Reduce APK size from **47MB to <12MB** (>70% reduction).
+- Enable R8 minification (`isMinifyEnabled = true`) and resource shrinking (`isShrinkResources = true`).
+- Author production `proguard-rules.pro` (keep rules for `kotlinx.serialization`, Coil, and OkHttp).
+- Prune `material-icons-extended` dependency by migrating frequently used icons to local vector drawables.
+
+### 2. Comprehensive Security Hardening
+
+- Replace hardcoded fallback IP (`198.251.89.183`) in `customDns` with dynamic DNS-over-HTTPS (DoH) via `okhttp-dnsoverhttps` (Cloudflare / Google DoH) to prevent stale IP failures and bypass ISP DNS hijacking.
+- Add `android:networkSecurityConfig` enforcing strict HTTPS and blocking cleartext traffic.
+- Harden `EncryptedSharedPreferences` against Android Keystore hardware desynchronization and corruption crashes on OEM ROMs.
+- Validate incoming deep-link OAuth intents in `MainActivity` against spoofed origins.
+
+### 3. Web-Based Seamless Auth (Moebooru / Yande.re & Konachan)
+
+- Replace manual password typing with an in-app WebView login flow supporting Android system Autofill (Google Password Manager, 1Password, Bitwarden) and biometrics.
+- Intercept authenticated session cookies (`user_id`, `pass_hash`, `_moebooru_session`) upon successful web login and inject them into `PersistentCookieJar`.
+- Provide an optional "Import Session Cookie / Pass-Hash" fallback for power users.
+- Gracefully handle Cloudflare verification.
 
 ---
 
