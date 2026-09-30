@@ -30,6 +30,7 @@ data class PluginFeedTab(
     val title: String,
     val kind: PluginFeedKind,
     val requiresAuthentication: Boolean = false,
+    val supportsPeriodSelection: Boolean = false,
 )
 
 data class PluginFeedRequest(

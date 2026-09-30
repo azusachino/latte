@@ -41,7 +41,7 @@ open class MoebooruPlugin(
             suggestions = MoebooruApi(baseUrl, platform).getTagSuggestions(query),
         )
     override val feedTabs: List<PluginFeedTab> = listOf(
-        PluginFeedTab("Popular", PluginFeedKind.POPULAR),
+        PluginFeedTab("Popular", PluginFeedKind.POPULAR, supportsPeriodSelection = true),
         PluginFeedTab("Newest", PluginFeedKind.NEWEST),
         PluginFeedTab("Favorites", PluginFeedKind.FAVORITES, requiresAuthentication = true),
         PluginFeedTab("Pools", PluginFeedKind.POOLS),
