@@ -45,8 +45,16 @@ class PixivApiTest {
 
     @Test
     fun authAndRateLimitRemainTypedFailures() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(401))
+        // Pixiv signals OAuth token expiry with HTTP 400 and an OAuth error body.
+        server.enqueue(
+            MockResponse().setResponseCode(400).setBody("Error occurred at the OAuth process"),
+        )
         assertTrue(api().load(PixivFeedRequest(PixivFeedKind.FOLLOWED_UPDATES)) is PixivFeedResult.AuthRequired)
+
+        // 401 without an OAuth body is a transport failure, NOT a session invalidator:
+        // wiping the session on it used to destroy a fresh, valid login.
+        server.enqueue(MockResponse().setResponseCode(401))
+        assertTrue(api().load(PixivFeedRequest(PixivFeedKind.FOLLOWED_UPDATES)) is PixivFeedResult.TransportFailure)
 
         server.enqueue(
             MockResponse()
@@ -171,7 +179,9 @@ class PixivApiTest {
         assertEquals("/v1/user/follow/delete", delete.path)
         assertEquals("user_id=42", delete.body.readUtf8())
 
-        server.enqueue(MockResponse().setResponseCode(401))
+        server.enqueue(
+            MockResponse().setResponseCode(400).setBody("Error occurred at the OAuth process"),
+        )
         assertEquals(PixivBookmarkResult.AuthRequired, api().followAuthor(42, follow = true))
     }
 
@@ -187,7 +197,9 @@ class PixivApiTest {
         server.enqueue(MockResponse().setResponseCode(200).setBody("""{"user":{}}"""))
         assertEquals(PixivUserDetailResult.Success(isFollowed = false), api().userDetail(42))
 
-        server.enqueue(MockResponse().setResponseCode(401))
+        server.enqueue(
+            MockResponse().setResponseCode(400).setBody("Error occurred at the OAuth process"),
+        )
         assertEquals(PixivUserDetailResult.AuthRequired, api().userDetail(42))
     }
 

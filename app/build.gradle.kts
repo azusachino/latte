@@ -8,7 +8,7 @@ plugins {
 fun String.asBuildConfigString(): String =
     "\"${replace("\\", "\\\\").replace("\"", "\\\"")}\""
 
-val latteVersion = "0.2.2"
+val latteVersion = "0.2.3"
 
 val pixivOAuthClientId = System.getenv("LATTE_PIXIV_CLIENT_ID").orEmpty()
 val pixivOAuthClientSecret = System.getenv("LATTE_PIXIV_CLIENT_SECRET").orEmpty()
@@ -21,7 +21,7 @@ android {
         applicationId = "com.azusachino.latte"
         minSdk = 29
         targetSdk = 35
-        versionCode = 10
+        versionCode = 11
         versionName = latteVersion
 
         buildConfigField("String", "PIXIV_OAUTH_CLIENT_ID", pixivOAuthClientId.asBuildConfigString())

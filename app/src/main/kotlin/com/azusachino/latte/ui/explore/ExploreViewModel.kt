@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.Job
@@ -54,6 +55,9 @@ data class FeedState(
     val page: Int = 1,
     val hasMore: Boolean = true,
     val nextCursor: String? = null,
+    val autoLoadStreak: Int = 0,
+    /** Informational (non-error) message, rendered in normal body styling. */
+    val notice: String? = null,
 )
 
 data class PoolListState(
@@ -269,13 +273,16 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     private val feedSources = mutableMapOf<PlatformId, PluginFeedSource>()
     private val poolSources = mutableMapOf<PlatformId, com.azusachino.latte.plugin.PluginPoolSource>()
     private var pixivFollowProvider: SitePlugin? = null
-    private var pixivLoadJob: Job? = null
+    // One job per feed kind: a single shared slot let the pager's adjacent-tab
+    // auto-retries cancel each other mid-flight, leaving isLoading stuck on true.
+    private val pixivLoadJobs = mutableMapOf<PluginFeedKind, Job>()
     private var moebooruJob = SupervisorJob(viewModelScope.coroutineContext[Job])
     private val gridPositions = mutableMapOf<ExploreGridKey, GridPosition>()
     private val yandeSearchCache = mutableMapOf<Pair<PlatformId, String>, FeedState>()
     private val yandeSuggestionCache = mutableMapOf<Pair<PlatformId, String>, List<String>>()
     private val pixivSearchCache = mutableMapOf<String, FeedState>()
     private val pixivUserWorksCache = mutableMapOf<Long, FeedState>()
+    private val sessionResetObserved = mutableMapOf<PlatformId, SitePlugin>()
     val preferences = LattePreferences(application)
 
     private val _uiState = MutableStateFlow(ExploreUiState())
@@ -323,7 +330,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
 
     private fun onContentFiltersChanged() {
         cancelMoebooruLoads()
-        pixivLoadJob?.cancel()
+        cancelAllPixivJobs()
         yandeSearchCache.clear()
         pixivSearchCache.clear()
         pixivUserWorksCache.clear()
@@ -412,11 +419,53 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             loadNewestInitial()
         }
         if (PlatformCapability.USER_FEED in plugin.capabilities) {
-            if (pixivFollowProvider === plugin) return
-            pixivFollowProvider = plugin
+            observeSessionReset(plugin)
             if (_uiState.value.supportsUserFeeds && _uiState.value.pixivFollowedFeed.posts.isEmpty()) {
                 loadPixivInitial(PluginFeedKind.FOLLOWED)
             }
+        }
+    }
+
+    /**
+     * When any plugin transitions to signed-out, drop everything its session
+     * produced: in-flight loads, per-platform caches, and rendered feed state.
+     * Transport-agnostic by contract -- no plugin family is special-cased here.
+     */
+    private fun observeSessionReset(plugin: SitePlugin) {
+        if (sessionResetObserved.put(plugin.platform, plugin) != null) return
+        viewModelScope.launch {
+            plugin.isLoggedInFlow.drop(1).filter { !it }.collect {
+                onPluginSignedOut(plugin.platform)
+            }
+        }
+    }
+
+    private fun onPluginSignedOut(platform: PlatformId) {
+        cancelAllPixivJobs()
+        cancelMoebooruLoads()
+        pixivSearchCache.clear()
+        pixivUserWorksCache.clear()
+        yandeSearchCache.clear()
+        _uiState.update { state ->
+            if (platform == PlatformId.PIXIV) {
+                state.copy(
+                    pixivFollowedFeed = FeedState(),
+                    pixivFavoritesFeed = FeedState(),
+                    pixivSearchFeed = FeedState(),
+                    pixivUserWorksFeed = FeedState(),
+                )
+            } else {
+                state.copy(
+                    popularFeed = FeedState(),
+                    newestFeed = FeedState(),
+                    favoritesFeed = FeedState(),
+                    searchFeed = FeedState(),
+                    poolsFeed = PoolListState(query = state.poolsFeed.query),
+                )
+            }
+        }
+        if (_uiState.value.platform == platform) {
+            loadPopularInitial()
         }
     }
 
@@ -450,7 +499,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     fun selectPlatform(platform: PlatformId) {
         val previous = _uiState.value.platform
         if (previous == platform) return
-        pixivLoadJob?.cancel()
+        cancelAllPixivJobs()
         cancelMoebooruLoads()
         pixivSearchCache.clear()
         pixivUserWorksCache.clear()
@@ -785,7 +834,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         }
         val cached = pixivSearchCache[trimmed]
         if (cached != null && cached.posts.isNotEmpty()) {
-            pixivLoadJob?.cancel()
+            cancelAllPixivJobs()
             _uiState.update {
                 it.copy(
                     pixivSearchTags = trimmed,
@@ -814,7 +863,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         if (userId <= 0 || authorName.isBlank()) return
         val cached = pixivUserWorksCache[userId]
         if (cached != null && cached.posts.isNotEmpty()) {
-            pixivLoadJob?.cancel()
+            cancelAllPixivJobs()
             _uiState.update {
                 it.copy(
                     pixivSearchTags = "",
@@ -936,9 +985,9 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         val client = activeFeedSource() ?: return updatePixivError(kind, "Active platform feed is not configured")
         val activeQuery = query ?: _uiState.value.pixivSearchTags.takeIf { kind == PluginFeedKind.SEARCH }
         val activeUserId = _uiState.value.pixivAuthorId.takeIf { kind == PluginFeedKind.AUTHOR_WORKS }
-        pixivLoadJob?.cancel()
-        updatePixivFeed(kind) { it.copy(isLoading = true, isRefreshing = false, error = null, authRequired = false, page = 1, nextCursor = null) }
-        pixivLoadJob = viewModelScope.launch {
+        cancelPixivJob(kind)
+        updatePixivFeed(kind) { it.copy(isLoading = true, isRefreshing = false, error = null, notice = null, authRequired = false, page = 1, nextCursor = null, autoLoadStreak = 0) }
+        pixivLoadJobs[kind] = viewModelScope.launch {
             applyIfActive(
                 request = {
                     client.load(
@@ -957,9 +1006,9 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         if (feed.isLoading || feed.isLoadingMore) return
         val activeQuery = query ?: state.pixivSearchTags.takeIf { kind == PluginFeedKind.SEARCH }
         val activeUserId = state.pixivAuthorId.takeIf { kind == PluginFeedKind.AUTHOR_WORKS }
-        pixivLoadJob?.cancel()
+        cancelPixivJob(kind)
         updatePixivFeed(kind) { it.copy(isLoadingMore = true) }
-        pixivLoadJob = viewModelScope.launch {
+        pixivLoadJobs[kind] = viewModelScope.launch {
             applyIfActive(
                 request = {
                     activeFeedSource()?.load(
@@ -974,9 +1023,9 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     fun refreshPixiv(kind: PluginFeedKind = selectedPixivKind(), query: String? = null) {
         val activeQuery = query ?: _uiState.value.pixivSearchTags.takeIf { kind == PluginFeedKind.SEARCH }
         val activeUserId = _uiState.value.pixivAuthorId.takeIf { kind == PluginFeedKind.AUTHOR_WORKS }
-        pixivLoadJob?.cancel()
-        updatePixivFeed(kind) { it.copy(isRefreshing = true, error = null, authRequired = false, nextCursor = null) }
-        pixivLoadJob = viewModelScope.launch {
+        cancelPixivJob(kind)
+        updatePixivFeed(kind) { it.copy(isRefreshing = true, error = null, notice = null, authRequired = false, nextCursor = null, autoLoadStreak = 0) }
+        pixivLoadJobs[kind] = viewModelScope.launch {
             applyIfActive(
                 request = {
                     activeFeedSource()?.load(
@@ -993,7 +1042,13 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             is PluginFeedResult.Success -> {
                 val visibleItems = filterPosts(result.page.items, preferences.safeMode.value)
                 val hasMore = result.page.nextCursor != null
-                val shouldContinue = visibleItems.isEmpty() && hasMore
+                val previousStreak = pixivFeed(_uiState.value, kind).autoLoadStreak
+                val streak = if (isAppend) previousStreak + 1 else 0
+                // Safe Mode can filter an entire page (e.g. an R-18-heavy Following feed).
+                // Auto-fetch the next page a bounded number of times, then stop instead of
+                // spinning forever.
+                val maxAutoLoads = 3
+                val shouldContinue = visibleItems.isEmpty() && hasMore && streak < maxAutoLoads
                 updatePixivFeed(kind) {
                     it.copy(
                         posts = if (isAppend) it.posts + visibleItems else visibleItems,
@@ -1005,10 +1060,18 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                         page = if (isAppend) it.page + 1 else 1,
                         hasMore = hasMore,
                         nextCursor = result.page.nextCursor,
+                        autoLoadStreak = streak,
                     )
                 }
                 if (shouldContinue) {
                     loadMorePixiv(kind)
+                } else if (visibleItems.isEmpty() && hasMore) {
+                    updatePixivFeed(kind) {
+                        it.copy(
+                            hasMore = false,
+                            notice = "No results after $streak pages; Safe Mode may be hiding content",
+                        )
+                    }
                 }
             }
             PluginFeedResult.Empty -> updatePixivFeed(kind) {
@@ -1048,6 +1111,15 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                 authRequired = authRequired,
             )
         }
+    }
+
+    private fun cancelPixivJob(kind: PluginFeedKind) {
+        pixivLoadJobs.remove(kind)?.cancel()
+    }
+
+    private fun cancelAllPixivJobs() {
+        pixivLoadJobs.values.forEach { it.cancel() }
+        pixivLoadJobs.clear()
     }
 
     private fun updatePixivFeed(kind: PluginFeedKind, transform: (FeedState) -> FeedState) {
@@ -1100,7 +1172,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun clearSearch() {
-        pixivLoadJob?.cancel()
+        cancelAllPixivJobs()
         _uiState.update {
             if (it.supportsUserFeeds) {
                 it.copy(
