@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.3 - 2026-10-01
+
+### Fixed
+
+- Pixiv browser sign-in now auto-dismisses the Custom Tab: `PixivCallbackActivity` clears back to `MainActivity` (`FLAG_ACTIVITY_CLEAR_TOP | SINGLE_TOP`), since the browser tab lives inside Latte's own task and previously stayed open (#17).
+- Stopped misclassifying Pixiv HTTP 401/403 as auth expiry: OAuth rejection is now only HTTP 400 with an OAuth error body (matches pixiv-shaft's `TokenInterceptor`), so a valid session is never wiped by WAF/rate-limit blocks (#15 follow-up).
+- Pixiv feed loading loops: per-feed-kind load jobs replace the single shared job that let adjacent pager tabs cancel each other mid-flight, leaving spinners stuck (#19 context).
+- Safe Mode auto-pagination is bounded (max 3 chained pages) with a neutral informational notice instead of an endless spinner.
+- Signed-out Pixiv tabs (Following/Popular/Favorites) now render the identical neutral "Sign in" placeholder instead of red error text (#19 context).
+- Generic plugin session-reset: signing out of any platform clears that platform's feeds and caches without Pixiv-specific branching.
+- In-app updater prunes previous update APKs from cache, and the Settings row now reports total cache (images + HTTP + updates) accurately.
+
 ## 0.2.2 - 2026-09-30
 
 ### Fixed

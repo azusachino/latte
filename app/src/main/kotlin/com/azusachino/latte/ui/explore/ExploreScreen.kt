@@ -840,9 +840,9 @@ DropdownMenuItem(
                                     gridState = pixivPopularGridState,
                                     columnCount = columnCount,
                                     onPostClick = onPostClick,
-                                    onLoadMore = { viewModel.loadMorePixiv() },
-                                    onRetry = { viewModel.loadPixivInitial() },
-                                    onRefresh = { viewModel.refreshPixiv() },
+                                    onLoadMore = { viewModel.loadMorePixiv(PluginFeedKind.POPULAR) },
+                                    onRetry = { viewModel.loadPixivInitial(PluginFeedKind.POPULAR) },
+                                    onRefresh = { viewModel.refreshPixiv(PluginFeedKind.POPULAR) },
                                     onRequireLogin = if (pixivPlugin != null) {
                                         { onRequireLogin(pixivPlugin) }
                                     } else {
@@ -973,6 +973,7 @@ private fun FeedGrid(
             feed.hasMore &&
             feed.nextCursor != null &&
             feed.error == null &&
+            feed.notice == null &&
             !feed.isLoading &&
             !feed.isLoadingMore
         ) {
@@ -987,6 +988,56 @@ private fun FeedGrid(
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             when {
+            feed.authRequired && feed.posts.isEmpty() -> {
+                // Signed-out state, NOT a failure: render with the same neutral
+                // styling as PersonalFeedContent so every tab looks identical.
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Default.FavoriteBorder,
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = feed.error ?: "Sign in to continue",
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        if (onRequireLogin != null) {
+                            Button(onClick = onRequireLogin) {
+                                Text("Sign in")
+                            }
+                        } else {
+                            IconButton(onClick = onRetry) {
+                                Icon(Icons.Default.Refresh, contentDescription = "Retry")
+                            }
+                        }
+                    }
+                }
+            }
+            feed.notice != null && feed.posts.isEmpty() -> {
+                // Informational (non-error) state, e.g. Safe Mode filtered everything.
+                // Neutral styling on purpose: it is not a failure.
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = feed.notice!!,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                }
+            }
             feed.error != null && feed.posts.isEmpty() -> {
                 Box(
                     modifier = Modifier

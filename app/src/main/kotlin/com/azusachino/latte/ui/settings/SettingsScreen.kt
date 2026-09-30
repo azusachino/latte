@@ -191,8 +191,8 @@ fun SettingsScreen(
 
             SettingsRow(
                 icon = Icons.Default.Delete,
-                title = "Clear Image Cache",
-                subtitle = "${formatFileSize(cacheSizeBytes)} cached",
+                title = "Clear Cache",
+                subtitle = "${formatFileSize(cacheSizeBytes)} total (images, HTTP, updates)",
                 onClick = {
                     preferences.clearCache()
                     cacheSizeBytes = preferences.getCacheSizeBytes()

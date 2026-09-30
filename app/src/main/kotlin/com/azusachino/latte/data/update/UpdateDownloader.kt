@@ -17,6 +17,9 @@ class UpdateDownloader(
 ) {
     fun download(updateInfo: UpdateInfo): Flow<DownloadProgress> = flow {
         val updatesDir = File(context.cacheDir, "updates").apply { mkdirs() }
+        // Keep only the newest installer: previous update APKs are dead weight once
+        // PackageInstaller has copied them, so prune them before downloading a new one.
+        updatesDir.listFiles()?.forEach { it.delete() }
         val targetFile = File(updatesDir, updateInfo.fileName)
         val tempFile = File(updatesDir, "${updateInfo.fileName}.tmp")
 

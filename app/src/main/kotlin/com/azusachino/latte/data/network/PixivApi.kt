@@ -295,9 +295,13 @@ class PixivApi(
             httpClient.newCall(requestFactory()).execute().use { response ->
                 val body = response.body?.string().orEmpty()
                 when {
-                    response.code == 401 || response.code == 403 ||
-                        (response.code == 400 && body.contains("oauth", ignoreCase = true)) ||
-                        body.contains("invalid_token", ignoreCase = true) -> ReadResult.AuthRequired
+                    // Pixiv signals OAuth token expiry with HTTP 400 and an OAuth error body
+                    // (see pixiv-shaft's TokenInterceptor). 401/403 also occur for WAF or
+                    // rate-limit blocks on a perfectly valid session -- treating those as
+                    // auth failures used to wipe a fresh login and trap feeds in a
+                    // sign-in-required loop.
+                    body.contains("invalid_token", ignoreCase = true) ||
+                        (response.code == 400 && body.contains("oauth", ignoreCase = true)) -> ReadResult.AuthRequired
                     response.code == 408 || response.code == 429 ->
                         ReadResult.RateLimited(response.header("Retry-After")?.toLongOrNull())
                     !response.isSuccessful -> ReadResult.TransportFailure(

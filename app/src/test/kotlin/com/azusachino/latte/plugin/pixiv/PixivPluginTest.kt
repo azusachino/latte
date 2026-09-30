@@ -132,7 +132,9 @@ class PixivPluginTest {
 
     @Test
     fun failedRefreshInvalidatesTheAccountAndReturnsAuthRequired() = runTest {
-        server.enqueue(MockResponse().setResponseCode(401))
+        server.enqueue(
+            MockResponse().setResponseCode(400).setBody("Error occurred at the OAuth process"),
+        )
         server.enqueue(MockResponse().setResponseCode(400).setBody("{\"error\":{\"message\":\"invalid_grant\"}}"))
 
         val storage = InMemoryStorage()
