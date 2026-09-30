@@ -67,10 +67,12 @@ feed-source contract (`PluginFeedSource` gains optional
 ### 5. Auth-UI capability flags
 
 `SitePlugin` gains:
+
 ```kotlin
 val supportsBrowserLogin: Boolean get() = AuthFlow.BROWSER in supportedAuthFlows
 val supportsCookieImport: Boolean get() = authType == AuthType.CREDENTIALS
 ```
+
 `PluginLoginDialog` drops `plugin as? PixivPlugin` / `as? MoebooruPlugin`
 casts; browser login and cookie import become capability-driven.
 `PlatformId` gains `accent: Color` (replaces `PIXIV_ACCENT` in the Screen).
