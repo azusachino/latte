@@ -32,6 +32,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -45,6 +46,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,7 +58,16 @@ import androidx.compose.ui.unit.sp
 import com.azusachino.latte.BuildConfig
 import com.azusachino.latte.data.settings.LattePreferences
 import com.azusachino.latte.data.settings.ThemeMode
+import com.azusachino.latte.data.update.ApkInstaller
+import com.azusachino.latte.data.update.DownloadProgress
+import com.azusachino.latte.data.update.UpdateCheckResult
+import com.azusachino.latte.data.update.UpdateDownloader
+import com.azusachino.latte.data.update.UpdateInfo
+import com.azusachino.latte.data.update.UpdateService
 import com.azusachino.latte.ui.common.ToastManager
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,6 +84,17 @@ fun SettingsScreen(
 
     var cacheSizeBytes by remember { mutableLongStateOf(preferences.getCacheSizeBytes()) }
     var showAboutDialog by remember { mutableStateOf(false) }
+
+    val coroutineScope = rememberCoroutineScope()
+    val updateService = remember { UpdateService() }
+    val updateDownloader = remember(context) { UpdateDownloader(context) }
+
+    var isCheckingUpdate by remember { mutableStateOf(false) }
+    var updateInfoToPrompt by remember { mutableStateOf<UpdateInfo?>(null) }
+    var downloadJob by remember { mutableStateOf<Job?>(null) }
+    var downloadProgress by remember { mutableStateOf<DownloadProgress?>(null) }
+    var downloadedApkFile by remember { mutableStateOf<File?>(null) }
+    var downloadErrorMessage by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -199,9 +221,27 @@ fun SettingsScreen(
             SettingsRow(
                 icon = Icons.Default.SystemUpdate,
                 title = "Check for Updates",
-                subtitle = "Version ${BuildConfig.VERSION_NAME}",
+                subtitle = if (isCheckingUpdate) "Checking for updates..." else "Version ${BuildConfig.VERSION_NAME}",
                 onClick = {
-                    ToastManager.showInfo("You're using the latest version (${BuildConfig.VERSION_NAME})")
+                    if (isCheckingUpdate) return@SettingsRow
+                    isCheckingUpdate = true
+                    coroutineScope.launch {
+                        when (val result = updateService.checkForUpdate()) {
+                            is UpdateCheckResult.Available -> {
+                                updateInfoToPrompt = result.updateInfo
+                                downloadProgress = null
+                                downloadedApkFile = null
+                                downloadErrorMessage = null
+                            }
+                            is UpdateCheckResult.UpToDate -> {
+                                ToastManager.showInfo("You're using the latest version (${BuildConfig.VERSION_NAME})")
+                            }
+                            is UpdateCheckResult.Error -> {
+                                ToastManager.showError(result.message)
+                            }
+                        }
+                        isCheckingUpdate = false
+                    }
                 },
             )
 
@@ -235,6 +275,174 @@ fun SettingsScreen(
             confirmButton = {
                 TextButton(onClick = { showAboutDialog = false }) {
                     Text("OK")
+                }
+            },
+        )
+    }
+
+    val updateInfo = updateInfoToPrompt
+    if (updateInfo != null) {
+        AlertDialog(
+            onDismissRequest = {
+                if (downloadProgress !is DownloadProgress.Downloading) {
+                    updateInfoToPrompt = null
+                }
+            },
+            title = { Text("Update Available") },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    Text(
+                        text = "Version ${updateInfo.versionName} is available (current: ${BuildConfig.VERSION_NAME})",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    if (updateInfo.fileSize > 0) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Download size: ${formatFileSize(updateInfo.fileSize)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    if (updateInfo.releaseNotes.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Release Notes",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = updateInfo.releaseNotes,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+
+                    when (val prog = downloadProgress) {
+                        is DownloadProgress.Downloading -> {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            val fraction = prog.fraction
+                            if (fraction != null) {
+                                LinearProgressIndicator(
+                                    progress = { fraction },
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "${formatFileSize(prog.bytesDownloaded)} / ${formatFileSize(prog.totalBytes)} (${(fraction * 100).toInt()}%)",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            } else {
+                                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "${formatFileSize(prog.bytesDownloaded)} downloaded",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                        is DownloadProgress.Failed -> {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = downloadErrorMessage ?: "Download failed: ${prog.error.message}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                        is DownloadProgress.Completed -> {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "Download complete. Ready to install.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                        null -> Unit
+                    }
+                }
+            },
+            confirmButton = {
+                when (downloadProgress) {
+                    is DownloadProgress.Completed -> {
+                        TextButton(
+                            onClick = {
+                                val file = downloadedApkFile
+                                if (file != null && file.exists()) {
+                                    if (!ApkInstaller.canRequestPackageInstalls(context)) {
+                                        ToastManager.showWarning("Please allow installation of unknown apps for Latte")
+                                        ApkInstaller.openInstallPermissionSettings(context)
+                                    } else {
+                                        val installResult = ApkInstaller.installApk(context, file)
+                                        if (installResult.isFailure) {
+                                            ToastManager.showError("Failed to launch installer: ${installResult.exceptionOrNull()?.message}")
+                                        }
+                                    }
+                                } else {
+                                    ToastManager.showError("Installer file not found")
+                                }
+                            },
+                        ) {
+                            Text("Install")
+                        }
+                    }
+                    is DownloadProgress.Downloading -> {
+                        TextButton(
+                            onClick = {
+                                downloadJob?.cancel()
+                                downloadJob = null
+                                downloadProgress = null
+                            },
+                        ) {
+                            Text("Cancel")
+                        }
+                    }
+                    else -> {
+                        TextButton(
+                            onClick = {
+                                downloadProgress = DownloadProgress.Downloading(0L, updateInfo.fileSize)
+                                downloadJob = coroutineScope.launch {
+                                    updateDownloader.download(updateInfo).collect { event ->
+                                        downloadProgress = event
+                                        when (event) {
+                                            is DownloadProgress.Completed -> {
+                                                downloadedApkFile = event.file
+                                                if (ApkInstaller.canRequestPackageInstalls(context)) {
+                                                    val installResult = ApkInstaller.installApk(context, event.file)
+                                                    if (installResult.isFailure) {
+                                                        ToastManager.showError("Failed to launch installer: ${installResult.exceptionOrNull()?.message}")
+                                                    }
+                                                } else {
+                                                    ToastManager.showWarning("Please allow installation of unknown apps for Latte")
+                                                    ApkInstaller.openInstallPermissionSettings(context)
+                                                }
+                                            }
+                                            is DownloadProgress.Failed -> {
+                                                downloadErrorMessage = event.error.message ?: "Download failed"
+                                            }
+                                            is DownloadProgress.Downloading -> Unit
+                                        }
+                                    }
+                                }
+                            },
+                        ) {
+                            Text(if (downloadProgress is DownloadProgress.Failed) "Retry" else "Download & Install")
+                        }
+                    }
+                }
+            },
+            dismissButton = {
+                if (downloadProgress !is DownloadProgress.Downloading) {
+                    TextButton(
+                        onClick = { updateInfoToPrompt = null },
+                    ) {
+                        Text("Later")
+                    }
                 }
             },
         )
