@@ -57,9 +57,30 @@ open class MoebooruPlugin(
 
     private var cachedCsrfToken: String? = null
 
+    fun loginWithSession(username: String, passHash: String, userId: String? = null) {
+        storage.save(id, KEY_USERNAME, username)
+        storage.save(id, KEY_PASS_HASH, passHash)
+        if (userId != null) {
+            storage.save(id, "user_id", userId)
+        }
+        cachedUsername = username
+        _isLoggedIn.value = true
+    }
+
     override suspend fun login(credentials: Map<String, String>): Result<Unit> = withContext(Dispatchers.IO) {
         val username = credentials["username"]?.trim()
             ?: return@withContext Result.failure(IllegalArgumentException("Username required"))
+
+        val passHashImport = credentials["pass_hash"]?.trim()
+        if (!passHashImport.isNullOrBlank()) {
+            storage.save(id, KEY_USERNAME, username)
+            storage.save(id, KEY_PASS_HASH, passHashImport)
+            credentials["user_id"]?.trim()?.let { storage.save(id, "user_id", it) }
+            cachedUsername = username
+            _isLoggedIn.value = true
+            return@withContext Result.success(Unit)
+        }
+
         val password = credentials["password"]
             ?: return@withContext Result.failure(IllegalArgumentException("Password required"))
 

@@ -1,6 +1,6 @@
 GRADLE := mise exec -- gradle
 
-.PHONY: check validate test lint md-check md-format assemble install dev clean experiment-konachan
+.PHONY: check validate test lint md-check md-format assemble assemble-release install dev clean experiment-konachan
 
 test:
 	$(GRADLE) testDebugUnitTest
@@ -19,10 +19,13 @@ check: md-check test
 experiment-konachan:
 	./scripts/experiments/konachan-com-probe.sh
 
-validate: check assemble
+validate: check assemble assemble-release
 
 assemble:
 	$(GRADLE) assembleDebug
+
+assemble-release:
+	$(GRADLE) assembleRelease
 
 install:
 	$(GRADLE) installDebug

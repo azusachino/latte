@@ -33,16 +33,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.StarBorder
+import com.azusachino.latte.ui.common.LatteIcons
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -220,7 +216,7 @@ fun DetailScreen(
                             context.startActivity(intent)
                         }) {
                             Icon(
-                                imageVector = Icons.Default.OpenInBrowser,
+                                imageVector = LatteIcons.OpenInBrowser,
                                 contentDescription = "Open in browser",
                                 tint = Color.White,
                             )
@@ -290,7 +286,7 @@ fun DetailScreen(
                                 enabled = pixivPageIndex > 0,
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.ChevronLeft,
+                                    imageVector = LatteIcons.ChevronLeft,
                                     contentDescription = "Previous illustration page",
                                     tint = if (pixivPageIndex > 0) Color.White else Color.White.copy(alpha = 0.35f),
                                 )
@@ -309,7 +305,7 @@ fun DetailScreen(
                                 enabled = pixivPageIndex < currentPost.pageCount - 1,
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.ChevronRight,
+                                    imageVector = LatteIcons.ChevronRight,
                                     contentDescription = "Next illustration page",
                                     tint = if (pixivPageIndex < currentPost.pageCount - 1) Color.White else Color.White.copy(alpha = 0.35f),
                                 )
@@ -441,7 +437,7 @@ fun DetailScreen(
                             ),
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Download,
+                                imageVector = LatteIcons.Download,
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp),
                             )
@@ -1018,7 +1014,7 @@ private fun PersonalRatingSection(
                         modifier = Modifier.size(40.dp),
                     ) {
                         Icon(
-                            imageVector = if (starIndex <= score) Icons.Default.Star else Icons.Default.StarBorder,
+                            imageVector = if (starIndex <= score) Icons.Default.Star else LatteIcons.StarBorder,
                             contentDescription = "Rate $starIndex star",
                             tint = if (starIndex <= score) Color(0xFFFFB300) else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(26.dp),

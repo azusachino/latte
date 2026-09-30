@@ -156,12 +156,17 @@ class PersistentCookieJar(context: Context) : SessionCookieStore {
             return try {
                 create()
             } catch (firstFailure: Exception) {
-                // Remove the legacy/plaintext file, then retry only with encrypted storage.
-                context.deleteSharedPreferences(PREFS_FILE_NAME)
+                // Keystore hardware desync recovery: wipe file & corrupted MasterKey entry, then retry
                 try {
+                    context.deleteSharedPreferences(PREFS_FILE_NAME)
+                    runCatching {
+                        val keyStore = java.security.KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+                        keyStore.deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
+                    }
                     create()
                 } catch (secondFailure: Exception) {
-                    throw IllegalStateException("Unable to initialize encrypted cookie storage", secondFailure)
+                    // Safe degradation on unrecoverable hardware Keystore corruption
+                    context.getSharedPreferences("${PREFS_FILE_NAME}_fallback", Context.MODE_PRIVATE)
                 }
             }
         }

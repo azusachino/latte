@@ -47,21 +47,16 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.ViewAgenda
-import androidx.compose.material.icons.filled.ViewColumn
+import androidx.compose.material.icons.filled.Star
+import com.azusachino.latte.ui.common.LatteIcons
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -325,7 +320,7 @@ fun ExploreScreen(
                     },
                     icon = {
                         Icon(
-                            imageVector = Icons.Default.Download,
+                            imageVector = LatteIcons.Download,
                             contentDescription = null,
                         )
                     },
@@ -528,9 +523,9 @@ DropdownMenuItem(
                         // Moebooru-parity column toggle button: cycles 1 -> 2 -> 3 -> 1
                         IconButton(onClick = { viewModel.cycleColumns() }) {
                             val columnIcon = when (columnCount) {
-                                1 -> Icons.Default.ViewAgenda
-                                2 -> Icons.Default.GridView
-                                else -> Icons.Default.ViewColumn
+                                1 -> LatteIcons.ViewAgenda
+                                2 -> LatteIcons.GridView
+                                else -> LatteIcons.ViewColumn
                             }
                             Icon(
                                 imageVector = columnIcon,
@@ -1599,7 +1594,7 @@ private fun PopularControls(
                 modifier = Modifier.size(36.dp),
             ) {
                 Icon(
-                    imageVector = Icons.Default.ChevronLeft,
+                    imageVector = LatteIcons.ChevronLeft,
                     contentDescription = "Previous period",
                 )
             }
@@ -1638,7 +1633,7 @@ private fun PopularControls(
                 modifier = Modifier.size(36.dp),
             ) {
                 Icon(
-                    imageVector = Icons.Default.ChevronRight,
+                    imageVector = LatteIcons.ChevronRight,
                     contentDescription = "Next period",
                     tint = if (canShiftForward) {
                         MaterialTheme.colorScheme.onSurface

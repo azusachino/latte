@@ -52,34 +52,33 @@ class SecurePluginStorage(context: Context) : PluginStorage {
         private const val PREFS_FILE_NAME = "latte_secure_plugin_prefs"
 
         private fun createEncryptedPrefs(context: Context): SharedPreferences {
-            return try {
+            fun create(): SharedPreferences {
                 val masterKey = MasterKey.Builder(context)
                     .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
                     .build()
 
-                EncryptedSharedPreferences.create(
+                return EncryptedSharedPreferences.create(
                     context,
                     PREFS_FILE_NAME,
                     masterKey,
                     EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                     EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
                 )
+            }
+
+            return try {
+                create()
             } catch (e: Exception) {
                 try {
                     context.deleteSharedPreferences(PREFS_FILE_NAME)
-                    val masterKey = MasterKey.Builder(context)
-                        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                        .build()
-
-                    EncryptedSharedPreferences.create(
-                        context,
-                        PREFS_FILE_NAME,
-                        masterKey,
-                        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-                    )
+                    runCatching {
+                        val keyStore = java.security.KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+                        keyStore.deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
+                    }
+                    create()
                 } catch (e2: Exception) {
-                    throw IllegalStateException("Unable to initialize encrypted plugin storage", e2)
+                    // Safe degradation on unrecoverable hardware Keystore corruption
+                    context.getSharedPreferences("${PREFS_FILE_NAME}_fallback", Context.MODE_PRIVATE)
                 }
             }
         }

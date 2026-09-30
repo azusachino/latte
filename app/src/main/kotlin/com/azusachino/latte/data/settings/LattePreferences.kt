@@ -87,6 +87,12 @@ class LattePreferences(private val context: Context) {
     private val _recentSearches = MutableStateFlow<List<String>>(emptyList())
     val recentSearches: StateFlow<List<String>> = _recentSearches.asStateFlow()
 
+    private val _proxyHost = MutableStateFlow<String?>(null)
+    val proxyHost: StateFlow<String?> = _proxyHost.asStateFlow()
+
+    private val _proxyPort = MutableStateFlow<Int?>(null)
+    val proxyPort: StateFlow<Int?> = _proxyPort.asStateFlow()
+
     init {
         scope.launch {
             migrateLegacyPrefsOnce()
@@ -110,6 +116,8 @@ class LattePreferences(private val context: Context) {
                 _recentSearches.value = runCatching { values[KEY_RECENT_SEARCHES] }.getOrNull()
                     ?.let(LattePreferenceCodecs::decodeRecentSearches)
                     ?: emptyList()
+                _proxyHost.value = values[KEY_HTTP_PROXY_HOST]
+                _proxyPort.value = values[KEY_HTTP_PROXY_PORT]
             }
         }
     }
@@ -192,11 +200,27 @@ class LattePreferences(private val context: Context) {
         context.cacheDir?.mkdirs()
     }
 
+    fun setHttpProxy(host: String?, port: Int?) {
+        scope.launch {
+            dataStore.edit { values ->
+                if (host.isNullOrBlank() || port == null || port <= 0) {
+                    values.remove(KEY_HTTP_PROXY_HOST)
+                    values.remove(KEY_HTTP_PROXY_PORT)
+                } else {
+                    values[KEY_HTTP_PROXY_HOST] = host.trim()
+                    values[KEY_HTTP_PROXY_PORT] = port
+                }
+            }
+        }
+    }
+
     companion object {
         private val KEY_COLUMN_COUNT = intPreferencesKey("column_count")
         private val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
         private val KEY_SAFE_MODE = booleanPreferencesKey("safe_mode")
         private val KEY_FAVORITE_TAGS = stringPreferencesKey("favorite_tags")
         private val KEY_RECENT_SEARCHES = stringPreferencesKey("recent_searches")
+        private val KEY_HTTP_PROXY_HOST = stringPreferencesKey("http_proxy_host")
+        private val KEY_HTTP_PROXY_PORT = intPreferencesKey("http_proxy_port")
     }
 }
