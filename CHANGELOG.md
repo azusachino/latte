@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.2.0 - 2026-09-30
+
+### Added
+
+- In-app WebView SSO login flow for Moebooru platforms (Yande.re and Konachan.net) with Android system Autofill & biometric authentication support, automatically capturing session cookies (`user_id` and `pass_hash`) into `PersistentCookieJar` (#13, #14).
+- Direct session `pass_hash` import support in login dialog for power users.
+- Dynamic DNS-over-HTTPS (DoH) resolver querying Cloudflare (`1.1.1.1`) and Google (`8.8.8.8`) upon system DNS failure, eliminating hardcoded DNS fallback IPs.
+- Explicit `network_security_config.xml` enforcing HTTPS and disallowing cleartext HTTP traffic across all plugins.
+- Optional HTTP proxy configuration in Settings to support local VPN/proxy clients (e.g. Clash/V2Ray).
+- Local zero-dependency `LatteIcons` registry replacing `material-icons-extended`.
+- R8 minification, resource shrinking, and ProGuard optimization in release builds.
+
+### Fixed
+
+- Reduced release APK size by 87.6% (from 47MB down to 5.8MB) and eliminated 40MB+ of unused bytecode.
+- Hardened Android Keystore and `EncryptedSharedPreferences` initialization against hardware desync exceptions and launch crash loops on OEM ROMs.
+
 ## 0.1.3 - 2026-09-30
 
 ### Added
