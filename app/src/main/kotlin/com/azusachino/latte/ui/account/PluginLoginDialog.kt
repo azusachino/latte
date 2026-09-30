@@ -39,12 +39,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import com.azusachino.latte.MoebooruLoginActivity
 import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.plugin.AuthFlow
 import android.content.Intent
 import android.net.Uri
-import com.azusachino.latte.PixivLoginActivity
 import com.azusachino.latte.data.network.OkHttpProvider
 import com.azusachino.latte.data.network.PixivOAuthCallbackBus
 import com.azusachino.latte.data.network.PixivOAuthClient
@@ -188,32 +186,12 @@ fun PluginLoginDialog(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 } else {
-                    TextButton(
-                        onClick = {
-                            val intent = Intent(context, MoebooruLoginActivity::class.java).apply {
-                                putExtra(MoebooruLoginActivity.EXTRA_SITE_NAME, plugin.name)
-                                putExtra(MoebooruLoginActivity.EXTRA_LOGIN_URL, "${plugin.platform.webUrl}/user/login")
-                                putExtra(MoebooruLoginActivity.EXTRA_EXTERNAL_ID, plugin.platform.externalId)
-                            }
-                            context.startActivity(intent)
-                        },
-                        enabled = !isLoading,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Icon(
-                            imageVector = LatteIcons.OpenInBrowser,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Sign in with Web (Autofill & Biometrics)")
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                    Spacer(modifier = Modifier.height(4.dp))
-
                     if (isCookieImportMode) {
+                        Text(
+                            text = "Paste cookies from your browser (e.g. user_id=...; session_${plugin.platform.externalId.replace('.', '-')}=...)",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
                         OutlinedTextField(
                             value = cookieInput,
                             onValueChange = {
@@ -221,7 +199,7 @@ fun PluginLoginDialog(
                                 errorMessage = null
                             },
                             label = { Text("Session cookies / pass_hash") },
-                            placeholder = { Text("e.g. user_id=...; session_yande-re=...") },
+                            placeholder = { Text("user_id=12345; session_...") },
                             maxLines = 4,
                             enabled = !isLoading,
                             modifier = Modifier.fillMaxWidth(),
