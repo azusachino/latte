@@ -8,7 +8,7 @@ plugins {
 fun String.asBuildConfigString(): String =
     "\"${replace("\\", "\\\\").replace("\"", "\\\"")}\""
 
-val latteVersion = "0.1.2"
+val latteVersion = "0.1.3"
 
 val pixivOAuthClientId = System.getenv("LATTE_PIXIV_CLIENT_ID").orEmpty()
 val pixivOAuthClientSecret = System.getenv("LATTE_PIXIV_CLIENT_SECRET").orEmpty()
@@ -21,7 +21,7 @@ android {
         applicationId = "com.azusachino.latte"
         minSdk = 29
         targetSdk = 35
-        versionCode = 6
+        versionCode = 7
         versionName = latteVersion
 
         buildConfigField("String", "PIXIV_OAUTH_CLIENT_ID", pixivOAuthClientId.asBuildConfigString())
@@ -30,10 +30,34 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            val storeFilePath = System.getenv("LATTE_KEYSTORE_PATH")
+                ?: project.findProperty("LATTE_KEYSTORE_PATH") as? String
+            val storeFileObj = storeFilePath?.let { file(it) }
+
+            if (storeFileObj != null && storeFileObj.exists()) {
+                storeFile = storeFileObj
+                storePassword = System.getenv("LATTE_KEYSTORE_PASSWORD")
+                    ?: project.findProperty("LATTE_KEYSTORE_PASSWORD") as? String
+                keyAlias = System.getenv("LATTE_KEY_ALIAS")
+                    ?: project.findProperty("LATTE_KEY_ALIAS") as? String
+                keyPassword = System.getenv("LATTE_KEY_PASSWORD")
+                    ?: project.findProperty("LATTE_KEY_PASSWORD") as? String
+            } else {
+                val debugConfig = getByName("debug")
+                storeFile = debugConfig.storeFile
+                storePassword = debugConfig.storePassword
+                keyAlias = debugConfig.keyAlias
+                keyPassword = debugConfig.keyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

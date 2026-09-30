@@ -75,6 +75,7 @@ object ToastManager {
     fun showWarning(message: String) = show(message, ToastType.WARNING)
     fun showSuccess(message: String) = show(message, ToastType.SUCCESS)
     fun showInfo(message: String) = show(message, ToastType.INFO)
+    fun showError(message: String) = show(message, ToastType.ERROR)
 }
 
 @Composable

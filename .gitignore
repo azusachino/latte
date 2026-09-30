@@ -8,6 +8,8 @@ captures/
 *.apk
 *.aab
 *.hprof
+*.jks
+*.keystore
 
 # Kotlin & Linter
 .kotlin/

@@ -39,18 +39,36 @@ jobs:
       - name: Run Android lint
         run: make lint
 
+      - name: Decode Release Keystore
+        if: ${{ env.LATTE_KEYSTORE_BASE64 != '' }}
+        run: |
+          mkdir -p keystore
+          echo "$LATTE_KEYSTORE_BASE64" | base64 -d > keystore/release.jks
+        env:
+          LATTE_KEYSTORE_BASE64: ${{ secrets.LATTE_KEYSTORE_BASE64 }}
+
       - name: Build Android Release APK
         run: mise exec -- gradle assembleRelease
+        env:
+          LATTE_KEYSTORE_PATH: ${{ github.workspace }}/keystore/release.jks
+          LATTE_KEYSTORE_PASSWORD: ${{ secrets.LATTE_KEYSTORE_PASSWORD }}
+          LATTE_KEY_ALIAS: ${{ secrets.LATTE_KEY_ALIAS }}
+          LATTE_KEY_PASSWORD: ${{ secrets.LATTE_KEY_PASSWORD }}
 
-      - name: Prepare release artifact
+      - name: Prepare release artifact & checksums
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/release/app-release.apk dist/latte-${{ github.ref_name }}.apk
+          APK_NAME="latte-${{ github.ref_name }}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "dist/$APK_NAME"
+          cd dist
+          sha256sum "$APK_NAME" > checksums.txt
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/latte-${{ github.ref_name }}.apk
+          files: |
+            dist/latte-${{ github.ref_name }}.apk
+            dist/checksums.txt
           generate_release_notes: true
           draft: false
           prerelease: false
