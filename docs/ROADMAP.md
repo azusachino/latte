@@ -227,7 +227,7 @@ a defect.
 
 ## Milestone 0.2.0: APK Diet, Security Hardening & Web-Based Seamless Auth
 
-> **Status**: In planning / active roadmap milestone.
+> **Status**: Released as `v0.2.0` on 2026-09-30. R8 minification, resource shrinking, and `material-icons-extended` pruning dropped release APK size from 47MB to 5.8MB (-87.6%). Dynamic DoH resolver (Cloudflare/Google) replaced hardcoded DNS IPs. NetworkSecurityConfig enforces HTTPS. Keystore hardware desync recovery prevents launch crash loops. In-app WebView SSO with system Autofill and automatic cookie capture enables seamless Moebooru login (#13, #14).
 
 ### 1. APK Size Optimization (DEX Diet & Tree-Shaking)
 
