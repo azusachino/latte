@@ -21,6 +21,12 @@ data class GitHubAssetDto(
     @SerialName("content_type") val contentType: String? = null,
 )
 
+@Serializable
+data class ReleaseMetadata(
+    @SerialName("min_sdk") val minSdk: Int = 29,
+    @SerialName("min_supported_version") val minSupportedVersion: String? = null,
+)
+
 data class UpdateInfo(
     val versionName: String,
     val tagName: String,
@@ -30,6 +36,10 @@ data class UpdateInfo(
     val fileName: String,
     val fileSize: Long,
     val publishedAt: String,
+    val minSdk: Int = 29,
+    val minSupportedVersion: String? = null,
+    val isMandatory: Boolean = false,
+    val isDeviceSupported: Boolean = true,
 )
 
 sealed interface UpdateCheckResult {

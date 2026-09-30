@@ -2,6 +2,7 @@ package com.azusachino.latte.ui.settings
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -282,170 +283,207 @@ fun SettingsScreen(
 
     val updateInfo = updateInfoToPrompt
     if (updateInfo != null) {
-        AlertDialog(
-            onDismissRequest = {
-                if (downloadProgress !is DownloadProgress.Downloading) {
-                    updateInfoToPrompt = null
-                }
-            },
-            title = { Text("Update Available") },
-            text = {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState()),
-                ) {
-                    Text(
-                        text = "Version ${updateInfo.versionName} is available (current: ${BuildConfig.VERSION_NAME})",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    if (updateInfo.fileSize > 0) {
-                        Spacer(modifier = Modifier.height(2.dp))
+        if (!updateInfo.isDeviceSupported) {
+            AlertDialog(
+                onDismissRequest = { updateInfoToPrompt = null },
+                title = { Text("Unsupported Android Version") },
+                text = {
+                    Column {
                         Text(
-                            text = "Download size: ${formatFileSize(updateInfo.fileSize)}",
+                            text = "Latte v${updateInfo.versionName} requires Android API ${updateInfo.minSdk} or newer.",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Your device is running Android API ${Build.VERSION.SDK_INT}. This update cannot be installed on this device.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.error,
                         )
                     }
-                    if (updateInfo.releaseNotes.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = "Release Notes",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = updateInfo.releaseNotes,
-                            style = MaterialTheme.typography.bodySmall,
-                        )
+                },
+                confirmButton = {
+                    TextButton(onClick = { updateInfoToPrompt = null }) {
+                        Text("Dismiss")
                     }
-
-                    when (val prog = downloadProgress) {
-                        is DownloadProgress.Downloading -> {
-                            Spacer(modifier = Modifier.height(16.dp))
-                            val fraction = prog.fraction
-                            if (fraction != null) {
-                                LinearProgressIndicator(
-                                    progress = { fraction },
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = "${formatFileSize(prog.bytesDownloaded)} / ${formatFileSize(prog.totalBytes)} (${(fraction * 100).toInt()}%)",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            } else {
-                                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = "${formatFileSize(prog.bytesDownloaded)} downloaded",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                        is DownloadProgress.Failed -> {
-                            Spacer(modifier = Modifier.height(12.dp))
+                },
+            )
+        } else {
+            AlertDialog(
+                onDismissRequest = {
+                    if (!updateInfo.isMandatory && downloadProgress !is DownloadProgress.Downloading) {
+                        updateInfoToPrompt = null
+                    }
+                },
+                title = {
+                    Text(if (updateInfo.isMandatory) "Required Update Available" else "Update Available")
+                },
+                text = {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState()),
+                    ) {
+                        Text(
+                            text = "Version ${updateInfo.versionName} is available (current: ${BuildConfig.VERSION_NAME})",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        if (updateInfo.isMandatory) {
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = downloadErrorMessage ?: "Download failed: ${prog.error.message}",
+                                text = "This update is required to continue using Latte.",
                                 style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.error,
                             )
                         }
-                        is DownloadProgress.Completed -> {
-                            Spacer(modifier = Modifier.height(12.dp))
+                        if (updateInfo.fileSize > 0) {
+                            Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "Download complete. Ready to install.",
+                                text = "Download size: ${formatFileSize(updateInfo.fileSize)}",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        null -> Unit
-                    }
-                }
-            },
-            confirmButton = {
-                when (downloadProgress) {
-                    is DownloadProgress.Completed -> {
-                        TextButton(
-                            onClick = {
-                                val file = downloadedApkFile
-                                if (file != null && file.exists()) {
-                                    if (!ApkInstaller.canRequestPackageInstalls(context)) {
-                                        ToastManager.showWarning("Please allow installation of unknown apps for Latte")
-                                        ApkInstaller.openInstallPermissionSettings(context)
-                                    } else {
-                                        val installResult = ApkInstaller.installApk(context, file)
-                                        if (installResult.isFailure) {
-                                            ToastManager.showError("Failed to launch installer: ${installResult.exceptionOrNull()?.message}")
-                                        }
-                                    }
+                        if (updateInfo.releaseNotes.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "Release Notes",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = updateInfo.releaseNotes,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+
+                        when (val prog = downloadProgress) {
+                            is DownloadProgress.Downloading -> {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                val fraction = prog.fraction
+                                if (fraction != null) {
+                                    LinearProgressIndicator(
+                                        progress = { fraction },
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "${formatFileSize(prog.bytesDownloaded)} / ${formatFileSize(prog.totalBytes)} (${(fraction * 100).toInt()}%)",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
                                 } else {
-                                    ToastManager.showError("Installer file not found")
+                                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "${formatFileSize(prog.bytesDownloaded)} downloaded",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
                                 }
-                            },
-                        ) {
-                            Text("Install")
+                            }
+                            is DownloadProgress.Failed -> {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = downloadErrorMessage ?: "Download failed: ${prog.error.message}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                            is DownloadProgress.Completed -> {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = "Download complete. Ready to install.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                            null -> Unit
                         }
                     }
-                    is DownloadProgress.Downloading -> {
-                        TextButton(
-                            onClick = {
-                                downloadJob?.cancel()
-                                downloadJob = null
-                                downloadProgress = null
-                            },
-                        ) {
-                            Text("Cancel")
+                },
+                confirmButton = {
+                    when (downloadProgress) {
+                        is DownloadProgress.Completed -> {
+                            TextButton(
+                                onClick = {
+                                    val file = downloadedApkFile
+                                    if (file != null && file.exists()) {
+                                        if (!ApkInstaller.canRequestPackageInstalls(context)) {
+                                            ToastManager.showWarning("Please allow installation of unknown apps for Latte")
+                                            ApkInstaller.openInstallPermissionSettings(context)
+                                        } else {
+                                            val installResult = ApkInstaller.installApk(context, file)
+                                            if (installResult.isFailure) {
+                                                ToastManager.showError("Failed to launch installer: ${installResult.exceptionOrNull()?.message}")
+                                            }
+                                        }
+                                    } else {
+                                        ToastManager.showError("Installer file not found")
+                                    }
+                                },
+                            ) {
+                                Text("Install")
+                            }
                         }
-                    }
-                    else -> {
-                        TextButton(
-                            onClick = {
-                                downloadProgress = DownloadProgress.Downloading(0L, updateInfo.fileSize)
-                                downloadJob = coroutineScope.launch {
-                                    updateDownloader.download(updateInfo).collect { event ->
-                                        downloadProgress = event
-                                        when (event) {
-                                            is DownloadProgress.Completed -> {
-                                                downloadedApkFile = event.file
-                                                if (ApkInstaller.canRequestPackageInstalls(context)) {
-                                                    val installResult = ApkInstaller.installApk(context, event.file)
-                                                    if (installResult.isFailure) {
-                                                        ToastManager.showError("Failed to launch installer: ${installResult.exceptionOrNull()?.message}")
+                        is DownloadProgress.Downloading -> {
+                            TextButton(
+                                onClick = {
+                                    downloadJob?.cancel()
+                                    downloadJob = null
+                                    downloadProgress = null
+                                },
+                            ) {
+                                Text("Cancel")
+                            }
+                        }
+                        else -> {
+                            TextButton(
+                                onClick = {
+                                    downloadProgress = DownloadProgress.Downloading(0L, updateInfo.fileSize)
+                                    downloadJob = coroutineScope.launch {
+                                        updateDownloader.download(updateInfo).collect { event ->
+                                            downloadProgress = event
+                                            when (event) {
+                                                is DownloadProgress.Completed -> {
+                                                    downloadedApkFile = event.file
+                                                    if (ApkInstaller.canRequestPackageInstalls(context)) {
+                                                        val installResult = ApkInstaller.installApk(context, event.file)
+                                                        if (installResult.isFailure) {
+                                                            ToastManager.showError("Failed to launch installer: ${installResult.exceptionOrNull()?.message}")
+                                                        }
+                                                    } else {
+                                                        ToastManager.showWarning("Please allow installation of unknown apps for Latte")
+                                                        ApkInstaller.openInstallPermissionSettings(context)
                                                     }
-                                                } else {
-                                                    ToastManager.showWarning("Please allow installation of unknown apps for Latte")
-                                                    ApkInstaller.openInstallPermissionSettings(context)
                                                 }
+                                                is DownloadProgress.Failed -> {
+                                                    downloadErrorMessage = event.error.message ?: "Download failed"
+                                                }
+                                                is DownloadProgress.Downloading -> Unit
                                             }
-                                            is DownloadProgress.Failed -> {
-                                                downloadErrorMessage = event.error.message ?: "Download failed"
-                                            }
-                                            is DownloadProgress.Downloading -> Unit
                                         }
                                     }
-                                }
-                            },
-                        ) {
-                            Text(if (downloadProgress is DownloadProgress.Failed) "Retry" else "Download & Install")
+                                },
+                            ) {
+                                Text(if (downloadProgress is DownloadProgress.Failed) "Retry" else "Download & Install")
+                            }
                         }
                     }
-                }
-            },
-            dismissButton = {
-                if (downloadProgress !is DownloadProgress.Downloading) {
-                    TextButton(
-                        onClick = { updateInfoToPrompt = null },
-                    ) {
-                        Text("Later")
+                },
+                dismissButton = {
+                    if (!updateInfo.isMandatory && downloadProgress !is DownloadProgress.Downloading) {
+                        TextButton(
+                            onClick = { updateInfoToPrompt = null },
+                        ) {
+                            Text("Later")
+                        }
                     }
-                }
-            },
-        )
+                },
+            )
+        }
     }
 }
 
