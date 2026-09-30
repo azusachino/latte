@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.3 - 2026-09-30
+
+### Added
+
+- Release APK signing automation via GitHub Actions with dedicated release keystore and SHA-256 checksums (#11).
+- In-app update checker querying GitHub Releases API with changelog dialog and streamed APK downloader (#11).
+- Android package installer integration via `FileProvider` with unknown sources permission handling.
+- Minimum Android version (`minSdk`) compatibility protection and minimum supported version check for mandatory updates.
+
 ## 0.1.2 - 2026-09-29
 
 ### Added
