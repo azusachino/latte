@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.2 - 2026-09-30
+
+### Fixed
+
+- Resolved Pixiv browser OAuth backstack issue: introduced a dedicated transparent `PixivCallbackActivity` trampoline that forwards the redirect code and finishes immediately, preventing duplicate `MainActivity` instances and returning the user directly to `AccountManagerScreen` (#17).
+- Streamlined Moebooru (Yande.re and Konachan.net) authentication: restored the reliable native credential login (`POST /user/authenticate`) and retained direct session cookie / `pass_hash` import, removing the structurally incompatible WebView flow (#17).
+- Configured `MainActivity` with `android:launchMode="singleTask"` to guarantee single-instance navigation integrity.
+
 ## 0.2.1 - 2026-09-30
 
 ### Fixed

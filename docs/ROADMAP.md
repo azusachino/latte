@@ -16,10 +16,10 @@
 Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenticated, multi-platform personal art workstation (`0.0.2`, `0.0.3`, `0.1.0`, `0.1.1`, `0.1.2`, `0.1.3`, and `0.2.0`). This roadmap establishes the sequence of milestones, architectural requirements, UX standards, and cache policies.
 
 ```text
-0.0.1 ──> 0.0.2 ──> 0.0.3 ──> 0.1.0 ──> 0.1.1 ──> 0.1.2 ──> 0.1.3 ──> 0.2.0 (Diet & Security) ──> 0.2.1 (Delivered)
-• Browse  • Auth    • Pixiv   • Fav tags • Proxy    • Batch   • Signing   • APK Diet (<12MB)    • Data Persistence
-• Feed    • Scores  • OAuth2  • Following• Referer  • Insets  • Updater   • DoH & Security      • Coil 3 Cache Fix
-• Save    • Cache   • Feeds   • Konachan • Clearance• Reset   • MinSdk    • Web SSO Auth        • Custom Tabs (Pixiv)
+0.0.1 ──> 0.0.2 ──> 0.0.3 ──> 0.1.0 ──> 0.1.1 ──> 0.1.2 ──> 0.1.3 ──> 0.2.0 (Diet) ──> 0.2.1 (Data) ──> 0.2.2 (Auth Trampoline)
+• Browse  • Auth    • Pixiv   • Fav tags • Proxy    • Batch   • Signing • APK Diet (<12MB) • Data Persistence • Pixiv Trampoline
+• Feed    • Scores  • OAuth2  • Following• Referer  • Insets  • Updater • DoH & Security   • Coil 3 Cache Fix  • Moebooru Streamlining
+• Save    • Cache   • Feeds   • Konachan • Clearance• Reset   • MinSdk  • Web SSO Auth     • Custom Tabs (Pixiv)• SingleTask Navigation
 ```
 
 ---
@@ -267,6 +267,23 @@ a defect.
 - Fixed Moebooru web login hanging by detecting real Rails session cookies (`user_id` and `session_*` rather than non-existent `pass_hash`) and fetching canonical username via `/user.json`.
 - Switched Pixiv login to Android Custom Tabs (`androidx.browser:browser:1.8.0`) so that existing sessions in the user's default browser (e.g. Firefox) are reused without re-entering credentials.
 - Added manual session cookie / `pass_hash` import in `PluginLoginDialog` for power users.
+
+---
+
+## Milestone 0.2.2: Pixiv OAuth Trampoline & Moebooru Auth Streamlining
+
+> **Status**: Released as `v0.2.2` on 2026-09-30. Pixiv OAuth trampoline activity (`PixivCallbackActivity`) preventing duplicate `MainActivity` backstack clobbering, and Moebooru native auth stabilization with direct cookie import (#17).
+
+### 1. Pixiv OAuth Trampoline (`PixivCallbackActivity`)
+
+- Created dedicated transparent trampoline activity receiving `pixiv://account/login`.
+- Emits authorization code to `PixivOAuthCallbackBus` and finishes immediately, ensuring Android dismisses the Custom Tab and smoothly returns to the existing `AccountManagerScreen` without spawning duplicate main activities.
+- Configured `MainActivity` with `android:launchMode="singleTask"`.
+
+### 2. Moebooru Auth Streamlining
+
+- Restored native in-app credentials authentication (`POST /user/authenticate`) as the canonical reliable Moebooru login flow.
+- Retained direct session cookie / `pass_hash` import for power users.
 
 ---
 
