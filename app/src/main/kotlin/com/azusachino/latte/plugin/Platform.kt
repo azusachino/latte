@@ -10,6 +10,7 @@ enum class PlatformId(
     val webUrl: String,
     val apiUrl: String,
     val capabilities: Set<PlatformCapability>,
+    val accentColor: Long = 0xFF0080FFL,
 ) {
     @SerialName("YANDE")
     YANDE(
@@ -18,6 +19,7 @@ enum class PlatformId(
         webUrl = "https://yande.re",
         apiUrl = "https://yande.re",
         capabilities = setOf(PlatformCapability.SCORING, PlatformCapability.FAVORITES),
+        accentColor = 0xFF3F6F8FL,
     ),
     @SerialName("KONACHAN")
     KONACHAN(
@@ -26,6 +28,7 @@ enum class PlatformId(
         webUrl = "https://konachan.net",
         apiUrl = "https://konachan.net",
         capabilities = setOf(PlatformCapability.SCORING, PlatformCapability.FAVORITES),
+        accentColor = 0xFF8D6E2FL,
     ),
     @SerialName("PIXIV")
     PIXIV(
@@ -34,6 +37,7 @@ enum class PlatformId(
         webUrl = "https://www.pixiv.net",
         apiUrl = "https://app-api.pixiv.net",
         capabilities = setOf(PlatformCapability.FAVORITES, PlatformCapability.USER_FEED, PlatformCapability.FOLLOW_AUTHORS),
+        accentColor = 0xFF0096FAL,
     ),
     ;
 

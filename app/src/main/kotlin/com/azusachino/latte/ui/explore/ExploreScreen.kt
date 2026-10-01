@@ -132,10 +132,6 @@ import java.time.format.DateTimeFormatter
 
 private const val MAX_SELECTION_SIZE = 10
 
-private val YANDE_ACCENT = Color(0xFF3F6F8F)
-private val KONACHAN_ACCENT = Color(0xFF8D6E2F)
-private val PIXIV_ACCENT = Color(0xFF0096FA)
-
 internal fun shouldHandleSearchBack(isRootScreen: Boolean, isSearch: Boolean): Boolean =
     isRootScreen && isSearch
 
@@ -203,11 +199,7 @@ fun ExploreScreen(
     var isSearchExpanded by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf(uiState.activeSearchTags) }
     var platformMenuOpen by remember { mutableStateOf(false) }
-    val platformAccent = when (uiState.platform) {
-        PlatformId.YANDE -> YANDE_ACCENT
-        PlatformId.KONACHAN -> KONACHAN_ACCENT
-        PlatformId.PIXIV -> PIXIV_ACCENT
-    }
+    val platformAccent = Color(uiState.platform.accentColor)
     val pixivIsLoggedIn = pixivPlugin?.let { plugin ->
         val isLoggedIn by plugin.isLoggedInFlow.collectAsState(initial = plugin.isLoggedIn)
         isLoggedIn
@@ -392,14 +384,14 @@ fun ExploreScreen(
                                     leadingIcon = {
                                         PlatformLogo(
                                             label = "y",
-                                            color = YANDE_ACCENT,
+                                            color = Color(PlatformId.YANDE.accentColor),
                                             contentDescription = "Yande platform",
                                         )
                                     },
                                     text = {
                                         Text(
                                             text = "Yande",
-                                            color = if (uiState.platform == PlatformId.YANDE) YANDE_ACCENT
+                                            color = if (uiState.platform == PlatformId.YANDE) Color(PlatformId.YANDE.accentColor)
                                             else MaterialTheme.colorScheme.onSurface,
                                             fontWeight = if (uiState.platform == PlatformId.YANDE) {
                                                 FontWeight.SemiBold
@@ -413,7 +405,7 @@ fun ExploreScreen(
                                             Icon(
                                                 imageVector = Icons.Default.Check,
                                                 contentDescription = "Selected",
-                                                tint = YANDE_ACCENT,
+                                                tint = Color(PlatformId.YANDE.accentColor),
                                             )
                                         }
                                     },
@@ -422,18 +414,18 @@ fun ExploreScreen(
                                         viewModel.selectPlatform(PlatformId.YANDE)
                                     },
                                 )
-                                                                DropdownMenuItem(
+                                DropdownMenuItem(
                                     leadingIcon = {
                                         PlatformLogo(
                                             label = "k",
-                                            color = KONACHAN_ACCENT,
+                                            color = Color(PlatformId.KONACHAN.accentColor),
                                             contentDescription = "Konachan platform",
                                         )
                                     },
                                     text = {
                                         Text(
                                             text = "Konachan",
-                                            color = if (uiState.platform == PlatformId.KONACHAN) KONACHAN_ACCENT
+                                            color = if (uiState.platform == PlatformId.KONACHAN) Color(PlatformId.KONACHAN.accentColor)
                                             else MaterialTheme.colorScheme.onSurface,
                                             fontWeight = if (uiState.platform == PlatformId.KONACHAN) {
                                                 FontWeight.SemiBold
@@ -447,7 +439,7 @@ fun ExploreScreen(
                                             Icon(
                                                 imageVector = Icons.Default.Check,
                                                 contentDescription = "Selected",
-                                                tint = KONACHAN_ACCENT,
+                                                tint = Color(PlatformId.KONACHAN.accentColor),
                                             )
                                         }
                                     },
@@ -460,14 +452,14 @@ DropdownMenuItem(
                                     leadingIcon = {
                                         PlatformLogo(
                                             label = "p",
-                                            color = PIXIV_ACCENT,
+                                            color = Color(PlatformId.PIXIV.accentColor),
                                             contentDescription = "Pixiv platform",
                                         )
                                     },
                                     text = {
                                         Text(
                                             text = "Pixiv",
-                                            color = if (uiState.supportsUserFeeds) PIXIV_ACCENT
+                                            color = if (uiState.supportsUserFeeds) Color(PlatformId.PIXIV.accentColor)
                                             else MaterialTheme.colorScheme.onSurface,
                                             fontWeight = if (uiState.supportsUserFeeds) {
                                                 FontWeight.SemiBold
@@ -481,7 +473,7 @@ DropdownMenuItem(
                                             Icon(
                                                 imageVector = Icons.Default.Check,
                                                 contentDescription = "Selected",
-                                                tint = PIXIV_ACCENT,
+                                                tint = Color(PlatformId.PIXIV.accentColor),
                                             )
                                         }
                                     },

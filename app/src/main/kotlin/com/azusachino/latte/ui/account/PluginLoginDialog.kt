@@ -47,8 +47,6 @@ import com.azusachino.latte.data.network.OkHttpProvider
 import com.azusachino.latte.data.network.PixivOAuthCallbackBus
 import com.azusachino.latte.data.network.PixivOAuthClient
 import com.azusachino.latte.plugin.moebooru.MoebooruAuthCallbackBus
-import com.azusachino.latte.plugin.moebooru.MoebooruPlugin
-import com.azusachino.latte.plugin.pixiv.PixivPlugin
 import com.azusachino.latte.ui.common.ToastManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -79,22 +77,19 @@ fun PluginLoginDialog(
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val tokenImport = AuthFlow.TOKEN_IMPORT in plugin.supportedAuthFlows
-    val pixivPlugin = plugin as? PixivPlugin
-    val moebooruPlugin = plugin as? MoebooruPlugin
 
-    LaunchedEffect(moebooruPlugin) {
-        if (moebooruPlugin == null) return@LaunchedEffect
+    LaunchedEffect(plugin) {
         MoebooruAuthCallbackBus.events.collect { auth ->
-            if (auth.externalId == moebooruPlugin.platform.externalId) {
-                moebooruPlugin.loginWithSession(auth.username, auth.passHash, auth.userId)
+            if (auth.externalId == plugin.platform.externalId) {
+                plugin.loginWithSession(auth.username, auth.passHash, auth.userId)
                 ToastManager.showSuccess("Signed in as ${auth.username}")
                 onLoginSuccess()
             }
         }
     }
 
-    LaunchedEffect(pixivPlugin) {
-        if (pixivPlugin == null) return@LaunchedEffect
+    LaunchedEffect(plugin) {
+        if (!plugin.supportsBrowserLogin) return@LaunchedEffect
         PixivOAuthCallbackBus.callbacks.collect { callbackUri ->
             val uri = Uri.parse(callbackUri)
             if (!PixivOAuthClient.isCallbackUri(uri)) return@collect
@@ -104,19 +99,19 @@ fun PluginLoginDialog(
                 val description = uri.getQueryParameter("error_description")
                 errorMessage = listOfNotNull(error, description)
                     .joinToString(": ")
-                    .let { "Pixiv browser sign-in failed: $it" }
+                    .let { "${plugin.name} browser sign-in failed: $it" }
                 return@collect
             }
             if (code.isNullOrBlank()) return@collect
 
             isLoading = true
             errorMessage = null
-            val result = pixivPlugin.completeBrowserLogin(code)
+            val result = plugin.completeBrowserLogin(code)
             isLoading = false
             if (result.isSuccess) {
                 onLoginSuccess()
             } else {
-                errorMessage = result.exceptionOrNull()?.message ?: "Pixiv browser sign-in failed"
+                errorMessage = result.exceptionOrNull()?.message ?: "${plugin.name} browser sign-in failed"
             }
         }
     }
@@ -134,27 +129,23 @@ fun PluginLoginDialog(
                     Spacer(modifier = Modifier.height(12.dp))
                     TextButton(
                         onClick = {
-                            if (pixivPlugin == null) {
-                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.pixiv.net/login.php")))
-                                return@TextButton
-                            }
-                            val request = pixivPlugin.beginBrowserLogin()
+                            val request = plugin.beginBrowserLogin()
                             if (request.isSuccess) {
                                 runCatching {
                                     val customTabsIntent = CustomTabsIntent.Builder()
                                         .setShowTitle(true)
                                         .build()
-                                    customTabsIntent.launchUrl(context, Uri.parse(request.getOrThrow().url))
+                                    customTabsIntent.launchUrl(context, Uri.parse(request.getOrThrow()))
                                 }.onFailure {
                                     errorMessage = it.message ?: "Could not open browser sign-in"
                                 }
                             } else {
-                                errorMessage = request.exceptionOrNull()?.message ?: "Pixiv browser login is unavailable"
+                                errorMessage = request.exceptionOrNull()?.message ?: "${plugin.name} browser login is unavailable"
                             }
                         },
                         enabled = !isLoading,
                     ) {
-                        Text("Sign in with Pixiv (Default Browser / Firefox)")
+                        Text("Sign in with ${plugin.name} (Default Browser / Firefox)")
                     }
                     OutlinedTextField(
                         value = accessToken,
@@ -314,15 +305,10 @@ fun PluginLoginDialog(
                                 } else null
                             } ?: pairs.find { it.startsWith("login=") }?.substringAfter("login=") ?: "User_$userId"
 
-                            val moebooru = plugin as? MoebooruPlugin
-                            if (moebooru != null) {
-                                val passHash = pairs.find { it.startsWith("pass_hash=") }?.substringAfter("pass_hash=").orEmpty()
-                                moebooru.loginWithSession(resolvedUsername, passHash, userId)
-                                ToastManager.showSuccess("Signed in as $resolvedUsername")
-                                onLoginSuccess()
-                            } else {
-                                errorMessage = "Could not apply session to plugin"
-                            }
+                            val passHash = pairs.find { it.startsWith("pass_hash=") }?.substringAfter("pass_hash=").orEmpty()
+                            plugin.loginWithSession(resolvedUsername, passHash, userId)
+                            ToastManager.showSuccess("Signed in as $resolvedUsername")
+                            onLoginSuccess()
                             isLoading = false
                         }
                         return@TextButton

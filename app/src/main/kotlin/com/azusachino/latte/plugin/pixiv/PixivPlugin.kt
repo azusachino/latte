@@ -56,16 +56,16 @@ class PixivPlugin(
 
     override fun getDisplayUsername(): String? = session?.username
 
-    fun beginBrowserLogin(): Result<PixivAuthorizationRequest> {
+    override fun beginBrowserLogin(): Result<String> {
         val request = oauthClient?.authorizationRequest()
         if (request == null) {
             return Result.failure(IllegalStateException("Pixiv browser login is not configured"))
         }
         storage.save(id, KEY_PENDING_CODE_VERIFIER, request.codeVerifier)
-        return Result.success(request)
+        return Result.success(request.url)
     }
 
-    suspend fun completeBrowserLogin(code: String): Result<Unit> = browserLoginMutex.withLock {
+    override suspend fun completeBrowserLogin(code: String): Result<Unit> = browserLoginMutex.withLock {
         val verifier = storage.get(id, KEY_PENDING_CODE_VERIFIER)
             ?: return@withLock Result.failure(IllegalStateException("Pixiv browser login has expired"))
         storage.remove(id, KEY_PENDING_CODE_VERIFIER)
