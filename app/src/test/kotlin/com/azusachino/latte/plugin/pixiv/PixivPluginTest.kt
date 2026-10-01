@@ -182,9 +182,9 @@ class PixivPluginTest {
             ),
         )
 
-        val authorization = plugin.beginBrowserLogin().getOrThrow()
-        assertTrue(authorization.url.contains("code_challenge="))
-        assertTrue(authorization.url.contains("client=pixiv-android"))
+        val authorizationUrl = plugin.beginBrowserLogin().getOrThrow()
+        assertTrue(authorizationUrl.contains("code_challenge="))
+        assertTrue(authorizationUrl.contains("client=pixiv-android"))
 
         assertTrue(plugin.completeBrowserLogin("fixture-code").isSuccess)
         assertTrue(plugin.isLoggedIn)

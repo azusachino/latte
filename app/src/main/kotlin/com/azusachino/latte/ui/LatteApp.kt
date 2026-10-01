@@ -243,13 +243,18 @@ fun LatteApp(
                             )
                         }
                         is Screen.Detail -> {
+                            val activePosts = exploreUiState.posts
+                            val postsToDisplay = if (activePosts.isNotEmpty()) activePosts else screen.posts
                             DetailScreen(
-                                posts = screen.posts,
+                                posts = postsToDisplay,
                                 initialIndex = screen.initialIndex,
                                 initialPageIndex = screen.initialPageIndex,
                                 downloadManager = downloadManager,
                                 pluginManager = sitePluginManager,
                                 favoriteTags = exploreUiState.favoriteTags,
+                                onLoadMore = {
+                                    exploreViewModel.loadMoreActiveFeed()
+                                },
                                 onToggleFavoriteTag = { tag, platform ->
                                     exploreViewModel.toggleFavoriteTag(tag, platform)
                                 },

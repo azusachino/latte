@@ -33,6 +33,11 @@ interface SitePlugin {
     val capabilities: Set<PlatformCapability>
         get() = platform.capabilities
 
+    val supportsBrowserLogin: Boolean
+        get() = AuthFlow.BROWSER in supportedAuthFlows
+    val supportsCookieImport: Boolean
+        get() = authType == AuthType.CREDENTIALS
+
     /** Feed access for plugins that serve paged personal feeds; null otherwise. */
     val feedSource: PluginFeedSource? get() = null
     val poolSource: PluginPoolSource? get() = null
@@ -50,6 +55,14 @@ interface SitePlugin {
 
     suspend fun login(credentials: Map<String, String>): Result<Unit>
     fun logout()
+
+    fun beginBrowserLogin(): Result<String> =
+        Result.failure(UnsupportedOperationException("Browser login not supported by $name"))
+
+    suspend fun completeBrowserLogin(code: String): Result<Unit> =
+        Result.failure(UnsupportedOperationException("Browser login not supported by $name"))
+
+    fun loginWithSession(username: String, passHash: String, userId: String? = null) {}
 
     suspend fun setScore(postId: Long, score: Int): Result<Unit> =
         Result.failure(UnsupportedOperationException("Scoring not supported by $name"))

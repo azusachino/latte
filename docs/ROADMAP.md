@@ -16,10 +16,10 @@
 Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenticated, multi-platform personal art workstation (`0.0.2`, `0.0.3`, `0.1.0`, `0.1.1`, `0.1.2`, `0.1.3`, and `0.2.0`). This roadmap establishes the sequence of milestones, architectural requirements, UX standards, and cache policies.
 
 ```text
-0.0.1 ──> 0.0.2 ──> 0.0.3 ──> 0.1.0 ──> 0.1.1 ──> 0.1.2 ──> 0.1.3 ──> 0.2.0 (Diet) ──> 0.2.1 (Data) ──> 0.2.2 (Auth Trampoline)
-• Browse  • Auth    • Pixiv   • Fav tags • Proxy    • Batch   • Signing • APK Diet (<12MB) • Data Persistence • Pixiv Trampoline
-• Feed    • Scores  • OAuth2  • Following• Referer  • Insets  • Updater • DoH & Security   • Coil 3 Cache Fix  • Moebooru Streamlining
-• Save    • Cache   • Feeds   • Konachan • Clearance• Reset   • MinSdk  • Web SSO Auth     • Custom Tabs (Pixiv)• SingleTask Navigation
+0.0.1 ──> 0.0.2 ──> 0.0.3 ──> 0.1.0 ──> 0.1.1 ──> 0.1.2 ──> 0.1.3 ──> 0.2.0 ──> 0.2.1 ──> 0.2.2 ──> 0.2.4 (Delivered)
+• Browse  • Auth    • Pixiv   • Fav tags • Proxy    • Batch   • Signing • Diet    • Data     • Trampoline • Generic Layers (#19)
+• Feed    • Scores  • OAuth2  • Following• Referer  • Insets  • Updater • DoH     • Cache    • Moebooru   • Tab-Driven Pager
+• Save    • Cache   • Feeds   • Konachan • Clearance• Reset   • MinSdk  • Web SSO • Tabs     • SingleTask • Infinite Swipe
 ```
 
 ---
@@ -284,6 +284,27 @@ a defect.
 
 - Restored native in-app credentials authentication (`POST /user/authenticate`) as the canonical reliable Moebooru login flow.
 - Retained direct session cookie / `pass_hash` import for power users.
+
+---
+
+## Milestone 0.2.4: Plugin Contract Refactor & Generic Shared Layers
+
+> **Status**: Released as `v0.2.4` on 2026-10-01. Generic per-platform feed-state store (`feeds: Map<PlatformId, Map<PluginFeedKind, FeedState>>`), dynamic tab-driven pager, capability-driven auth without platform casts, platform brand color tokens, and infinite prefetching in DetailScreen (#19).
+
+### 1. Decoupled Shared Layers
+
+- Replaced 9 parallel feed fields on `ExploreUiState` with generic `feeds: Map<PlatformId, Map<PluginFeedKind, FeedState>>`.
+- Replaced single shared load job with per-(Platform, FeedKind) job map (`feedJobs`), preventing cross-tab cancellation races.
+- Bound `SitePlugin.feedTabs` directly to `HorizontalPager`, eliminating hardcoded page index branching.
+
+### 2. Capability Contracts & Brand Tokens
+
+- Added `supportsBrowserLogin` and `supportsCookieImport` to `SitePlugin` to drive auth UI without casting (`as? PixivPlugin`, `as? MoebooruPlugin`).
+- Added `PlatformId.accentColor` replacing hardcoded `PIXIV_ACCENT`.
+
+### 3. Infinite Detail Swiping
+
+- Added prefetch listener to `DetailScreen` triggering `loadMoreActiveFeed()` when swiping within 5 posts of the current end, dynamically expanding the active stream.
 
 ---
 

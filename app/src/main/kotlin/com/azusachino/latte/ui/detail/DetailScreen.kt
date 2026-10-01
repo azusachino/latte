@@ -104,6 +104,7 @@ fun DetailScreen(
     initialPageIndex: Int = 0,
     downloadManager: DownloadManager,
     onBack: () -> Unit,
+    onLoadMore: () -> Unit = {},
     onTagClick: (tag: String, postIndex: Int, pageIndex: Int) -> Unit = { _, _, _ -> },
     onAuthorClick: (post: Post, postIndex: Int, pageIndex: Int) -> Unit = { _, _, _ -> },
     pluginManager: SitePluginManager,
@@ -117,6 +118,12 @@ fun DetailScreen(
         initialPage = initialIndex.coerceIn(0, (detailPosts.size - 1).coerceAtLeast(0)),
         pageCount = { detailPosts.size },
     )
+
+    LaunchedEffect(pagerState.currentPage, detailPosts.size) {
+        if (detailPosts.isNotEmpty() && pagerState.currentPage >= detailPosts.size - 5) {
+            onLoadMore()
+        }
+    }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 

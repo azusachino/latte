@@ -132,10 +132,6 @@ import java.time.format.DateTimeFormatter
 
 private const val MAX_SELECTION_SIZE = 10
 
-private val YANDE_ACCENT = Color(0xFF3F6F8F)
-private val KONACHAN_ACCENT = Color(0xFF8D6E2F)
-private val PIXIV_ACCENT = Color(0xFF0096FA)
-
 internal fun shouldHandleSearchBack(isRootScreen: Boolean, isSearch: Boolean): Boolean =
     isRootScreen && isSearch
 
@@ -203,11 +199,7 @@ fun ExploreScreen(
     var isSearchExpanded by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf(uiState.activeSearchTags) }
     var platformMenuOpen by remember { mutableStateOf(false) }
-    val platformAccent = when (uiState.platform) {
-        PlatformId.YANDE -> YANDE_ACCENT
-        PlatformId.KONACHAN -> KONACHAN_ACCENT
-        PlatformId.PIXIV -> PIXIV_ACCENT
-    }
+    val platformAccent = Color(uiState.platform.accentColor)
     val pixivIsLoggedIn = pixivPlugin?.let { plugin ->
         val isLoggedIn by plugin.isLoggedInFlow.collectAsState(initial = plugin.isLoggedIn)
         isLoggedIn
@@ -392,14 +384,14 @@ fun ExploreScreen(
                                     leadingIcon = {
                                         PlatformLogo(
                                             label = "y",
-                                            color = YANDE_ACCENT,
+                                            color = Color(PlatformId.YANDE.accentColor),
                                             contentDescription = "Yande platform",
                                         )
                                     },
                                     text = {
                                         Text(
                                             text = "Yande",
-                                            color = if (uiState.platform == PlatformId.YANDE) YANDE_ACCENT
+                                            color = if (uiState.platform == PlatformId.YANDE) Color(PlatformId.YANDE.accentColor)
                                             else MaterialTheme.colorScheme.onSurface,
                                             fontWeight = if (uiState.platform == PlatformId.YANDE) {
                                                 FontWeight.SemiBold
@@ -413,7 +405,7 @@ fun ExploreScreen(
                                             Icon(
                                                 imageVector = Icons.Default.Check,
                                                 contentDescription = "Selected",
-                                                tint = YANDE_ACCENT,
+                                                tint = Color(PlatformId.YANDE.accentColor),
                                             )
                                         }
                                     },
@@ -422,18 +414,18 @@ fun ExploreScreen(
                                         viewModel.selectPlatform(PlatformId.YANDE)
                                     },
                                 )
-                                                                DropdownMenuItem(
+                                DropdownMenuItem(
                                     leadingIcon = {
                                         PlatformLogo(
                                             label = "k",
-                                            color = KONACHAN_ACCENT,
+                                            color = Color(PlatformId.KONACHAN.accentColor),
                                             contentDescription = "Konachan platform",
                                         )
                                     },
                                     text = {
                                         Text(
                                             text = "Konachan",
-                                            color = if (uiState.platform == PlatformId.KONACHAN) KONACHAN_ACCENT
+                                            color = if (uiState.platform == PlatformId.KONACHAN) Color(PlatformId.KONACHAN.accentColor)
                                             else MaterialTheme.colorScheme.onSurface,
                                             fontWeight = if (uiState.platform == PlatformId.KONACHAN) {
                                                 FontWeight.SemiBold
@@ -447,7 +439,7 @@ fun ExploreScreen(
                                             Icon(
                                                 imageVector = Icons.Default.Check,
                                                 contentDescription = "Selected",
-                                                tint = KONACHAN_ACCENT,
+                                                tint = Color(PlatformId.KONACHAN.accentColor),
                                             )
                                         }
                                     },
@@ -460,14 +452,14 @@ DropdownMenuItem(
                                     leadingIcon = {
                                         PlatformLogo(
                                             label = "p",
-                                            color = PIXIV_ACCENT,
+                                            color = Color(PlatformId.PIXIV.accentColor),
                                             contentDescription = "Pixiv platform",
                                         )
                                     },
                                     text = {
                                         Text(
                                             text = "Pixiv",
-                                            color = if (uiState.supportsUserFeeds) PIXIV_ACCENT
+                                            color = if (uiState.supportsUserFeeds) Color(PlatformId.PIXIV.accentColor)
                                             else MaterialTheme.colorScheme.onSurface,
                                             fontWeight = if (uiState.supportsUserFeeds) {
                                                 FontWeight.SemiBold
@@ -481,7 +473,7 @@ DropdownMenuItem(
                                             Icon(
                                                 imageVector = Icons.Default.Check,
                                                 contentDescription = "Selected",
-                                                tint = PIXIV_ACCENT,
+                                                tint = Color(PlatformId.PIXIV.accentColor),
                                             )
                                         }
                                     },
@@ -784,26 +776,31 @@ DropdownMenuItem(
                     beyondViewportPageCount = 1,
                     modifier = Modifier.fillMaxSize(),
                 ) { page ->
-                    when (page) {
-                        0 -> {
-                            if (uiState.supportsUserFeeds) {
-                                PersonalFeedContent(
-                                    viewModel = viewModel,
-                                    plugin = pixivPlugin,
-                                    feed = uiState.pixivFollowedFeed,
-                                    label = "Sign in to see followed updates",
-                                    gridKey = ExploreGridKey(PlatformId.PIXIV, "followed"),
-                                    gridState = pixivFollowedGridState,
-                                    columnCount = columnCount,
-                                    onPostClick = onPostClick,
-                                    onRequireLogin = onRequireLogin,
-                                    onLoadMore = { viewModel.loadMorePixiv(PluginFeedKind.FOLLOWED) },
-                                    onRetry = { viewModel.loadPixivInitial(PluginFeedKind.FOLLOWED) },
-                                    onRefresh = { viewModel.refreshPixiv(PluginFeedKind.FOLLOWED) },
-                                    selectedPostIds = selectedPostIds,
-                                    onToggleSelect = onToggleSelect,
-                                )
-                            } else {
+                    val tab = feedTabs.getOrNull(page) ?: return@HorizontalPager
+                    val feed = uiState.feed(uiState.platform, tab.kind)
+                    val gridKey = ExploreGridKey(uiState.platform, tab.kind.name.lowercase())
+                    val gridState = when (tab.kind) {
+                        PluginFeedKind.FOLLOWED -> pixivFollowedGridState
+                        PluginFeedKind.POPULAR -> if (uiState.supportsUserFeeds) pixivPopularGridState else popularGridState
+                        PluginFeedKind.NEWEST -> newestGridState
+                        PluginFeedKind.FAVORITES -> if (uiState.supportsUserFeeds) pixivFavoritesGridState else favoritesGridState
+                        else -> popularGridState
+                    }
+
+                    when (tab.kind) {
+                        PluginFeedKind.POOLS -> {
+                            PoolsTabContent(
+                                feed = uiState.poolsFeed,
+                                covers = uiState.poolCovers,
+                                onQueryChange = { query -> viewModel.loadPoolsInitial(query) },
+                                onLoadMore = { viewModel.loadMorePools() },
+                                onRefresh = { viewModel.refreshPools() },
+                                onPoolClick = { pool -> viewModel.openPool(pool) },
+                                onNeedCover = { poolId -> viewModel.loadPoolCover(poolId) },
+                            )
+                        }
+                        PluginFeedKind.POPULAR -> {
+                            if (tab.supportsPeriodSelection) {
                                 Column(modifier = Modifier.fillMaxSize()) {
                                     if (!isSelectionMode) {
                                         PopularControls(
@@ -815,48 +812,90 @@ DropdownMenuItem(
                                         )
                                     }
                                     FeedGrid(
-                                        feed = uiState.popularFeed,
+                                        feed = feed,
                                         viewModel = viewModel,
-                                        gridKey = ExploreGridKey(uiState.platform, "popular"),
-                                        gridState = popularGridState,
+                                        gridKey = gridKey,
+                                        gridState = gridState,
                                         columnCount = columnCount,
                                         onPostClick = onPostClick,
-                                        onLoadMore = { viewModel.loadMorePopular() },
-                                        onRetry = { viewModel.loadPopularInitial() },
-                                        onRefresh = { viewModel.refreshPopular() },
+                                        onLoadMore = {
+                                            if (uiState.supportsUserFeeds) viewModel.loadMorePixiv(PluginFeedKind.POPULAR)
+                                            else viewModel.loadMorePopular()
+                                        },
+                                        onRetry = {
+                                            if (uiState.supportsUserFeeds) viewModel.loadPixivInitial(PluginFeedKind.POPULAR)
+                                            else viewModel.loadPopularInitial()
+                                        },
+                                        onRefresh = {
+                                            if (uiState.supportsUserFeeds) viewModel.refreshPixiv(PluginFeedKind.POPULAR)
+                                            else viewModel.refreshPopular()
+                                        },
+                                        onRequireLogin = activePlugin?.let { p -> { onRequireLogin(p) } },
                                         selectedPostIds = selectedPostIds,
                                         onToggleSelect = onToggleSelect,
                                         modifier = Modifier.weight(1f),
                                     )
                                 }
-                            }
-                        }
-                        1 -> {
-                            if (uiState.supportsUserFeeds) {
+                            } else {
                                 FeedGrid(
-                                    feed = uiState.pixivPopularFeed,
+                                    feed = feed,
                                     viewModel = viewModel,
-                                    gridKey = ExploreGridKey(PlatformId.PIXIV, "popular"),
-                                    gridState = pixivPopularGridState,
+                                    gridKey = gridKey,
+                                    gridState = gridState,
                                     columnCount = columnCount,
                                     onPostClick = onPostClick,
-                                    onLoadMore = { viewModel.loadMorePixiv(PluginFeedKind.POPULAR) },
-                                    onRetry = { viewModel.loadPixivInitial(PluginFeedKind.POPULAR) },
-                                    onRefresh = { viewModel.refreshPixiv(PluginFeedKind.POPULAR) },
-                                    onRequireLogin = if (pixivPlugin != null) {
-                                        { onRequireLogin(pixivPlugin) }
-                                    } else {
-                                        null
+                                    onLoadMore = {
+                                        if (uiState.supportsUserFeeds) viewModel.loadMorePixiv(PluginFeedKind.POPULAR)
+                                        else viewModel.loadMorePopular()
+                                    },
+                                    onRetry = {
+                                        if (uiState.supportsUserFeeds) viewModel.loadPixivInitial(PluginFeedKind.POPULAR)
+                                        else viewModel.loadPopularInitial()
+                                    },
+                                    onRefresh = {
+                                        if (uiState.supportsUserFeeds) viewModel.refreshPixiv(PluginFeedKind.POPULAR)
+                                        else viewModel.refreshPopular()
+                                    },
+                                    onRequireLogin = activePlugin?.let { p -> { onRequireLogin(p) } },
+                                    selectedPostIds = selectedPostIds,
+                                    onToggleSelect = onToggleSelect,
+                                )
+                            }
+                        }
+                        else -> {
+                            if (tab.requiresAuthentication) {
+                                PersonalFeedContent(
+                                    viewModel = viewModel,
+                                    plugin = activePlugin,
+                                    feed = feed,
+                                    label = if (tab.kind == PluginFeedKind.FOLLOWED) "Sign in to see followed updates"
+                                           else (activePlugin?.favoritesPrompt ?: "Sign in to see favorites"),
+                                    gridKey = gridKey,
+                                    gridState = gridState,
+                                    columnCount = columnCount,
+                                    onPostClick = onPostClick,
+                                    onRequireLogin = onRequireLogin,
+                                    onLoadMore = {
+                                        if (uiState.supportsUserFeeds) viewModel.loadMorePixiv(tab.kind)
+                                        else if (tab.kind == PluginFeedKind.FAVORITES) activePlugin?.getDisplayUsername()?.let(viewModel::loadMoreFavorites)
+                                    },
+                                    onRetry = {
+                                        if (uiState.supportsUserFeeds) viewModel.loadPixivInitial(tab.kind)
+                                        else if (tab.kind == PluginFeedKind.FAVORITES) activePlugin?.getDisplayUsername()?.let(viewModel::loadFavoritesInitial)
+                                    },
+                                    onRefresh = {
+                                        if (uiState.supportsUserFeeds) viewModel.refreshPixiv(tab.kind)
+                                        else if (tab.kind == PluginFeedKind.FAVORITES) activePlugin?.getDisplayUsername()?.let(viewModel::refreshFavorites)
                                     },
                                     selectedPostIds = selectedPostIds,
                                     onToggleSelect = onToggleSelect,
                                 )
                             } else {
                                 FeedGrid(
-                                    feed = uiState.newestFeed,
+                                    feed = feed,
                                     viewModel = viewModel,
-                                    gridKey = ExploreGridKey(uiState.platform, "newest"),
-                                    gridState = newestGridState,
+                                    gridKey = gridKey,
+                                    gridState = gridState,
                                     columnCount = columnCount,
                                     onPostClick = onPostClick,
                                     onLoadMore = { viewModel.loadMoreNewest() },
@@ -866,44 +905,6 @@ DropdownMenuItem(
                                     onToggleSelect = onToggleSelect,
                                 )
                             }
-                        }
-                        2 -> {
-                            PersonalFeedContent(
-                                viewModel = viewModel,
-                                plugin = activePlugin,
-                                feed = if (uiState.supportsUserFeeds) uiState.pixivFavoritesFeed else uiState.favoritesFeed,
-                                label = activePlugin?.favoritesPrompt ?: "Sign in to see favorites",
-                                gridKey = ExploreGridKey(uiState.platform, "favorites"),
-                                gridState = if (uiState.supportsUserFeeds) pixivFavoritesGridState else favoritesGridState,
-                                columnCount = columnCount,
-                                onPostClick = onPostClick,
-                                onRequireLogin = onRequireLogin,
-                                onLoadMore = {
-                                    if (uiState.supportsUserFeeds) viewModel.loadMorePixiv(PluginFeedKind.FAVORITES)
-                                    else activePlugin?.getDisplayUsername()?.let(viewModel::loadMoreFavorites)
-                                },
-                                onRetry = {
-                                    if (uiState.supportsUserFeeds) viewModel.loadPixivInitial(PluginFeedKind.FAVORITES)
-                                    else activePlugin?.getDisplayUsername()?.let(viewModel::loadFavoritesInitial)
-                                },
-                                onRefresh = {
-                                    if (uiState.supportsUserFeeds) viewModel.refreshPixiv(PluginFeedKind.FAVORITES)
-                                    else activePlugin?.getDisplayUsername()?.let(viewModel::refreshFavorites)
-                                },
-                                selectedPostIds = selectedPostIds,
-                                onToggleSelect = onToggleSelect,
-                            )
-                        }
-                        else -> {
-                            PoolsTabContent(
-                                feed = uiState.poolsFeed,
-                                covers = uiState.poolCovers,
-                                onQueryChange = { query -> viewModel.loadPoolsInitial(query) },
-                                onLoadMore = { viewModel.loadMorePools() },
-                                onRefresh = { viewModel.refreshPools() },
-                                onPoolClick = { pool -> viewModel.openPool(pool) },
-                                onNeedCover = { poolId -> viewModel.loadPoolCover(poolId) },
-                            )
                         }
                     }
                 }

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.4 - 2026-10-01
+
+### Refactored
+
+- Decoupled shared Explore layers (`ExploreViewModel`, `ExploreScreen`, `ExploreUiState`) from transport-family hardcoding: feeds, jobs, caches, and states are now keyed generically by `PlatformId` and `PluginFeedKind` (#19).
+- Dynamic tab-driven `HorizontalPager`: frontpage tabs, authentication barriers, and period controls are constructed purely from `plugin.feedTabs` metadata instead of hardcoded page index branching (#19).
+- Capability-driven authentication: `SitePlugin` exposes `supportsBrowserLogin` and `supportsCookieImport`, eliminating platform casts (`as? PixivPlugin`, `as? MoebooruPlugin`) from `PluginLoginDialog` (#19).
+- Platform brand tokens: migrated `PIXIV_ACCENT` to `PlatformId.accentColor` so branding is owned by platform declarations (#19).
+
+### Fixed
+
+- Infinite gallery swiping: added prefetch listener to `DetailScreen` and bound it to reactive stream in `LatteApp`, resolving the stall after the first 20 images.
+
 ## 0.2.3 - 2026-10-01
 
 ### Fixed
