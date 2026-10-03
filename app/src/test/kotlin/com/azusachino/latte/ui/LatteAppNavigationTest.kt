@@ -13,21 +13,33 @@ import org.junit.Test
 
 class LatteAppNavigationTest {
     @Test
-    fun returningFromTagSearchKeepsTheDetailFeedInsteadOfTagResults() {
-        val originalPosts = listOf(samplePost(1), samplePost(2))
-        val unrelatedTagResults = listOf(samplePost(90), samplePost(91))
+    fun tagSearchBackAndForwardKeepsTheOriginalDetailFeedAndPage() {
+        val originalPosts = listOf(samplePost(1), samplePost(2), samplePost(3))
+        val firstTagResults = listOf(samplePost(90), samplePost(91))
+        val nextTagResults = listOf(samplePost(80), samplePost(81))
         val detail = Screen.Detail(posts = originalPosts, initialIndex = 1)
         var navigation = ScreenStack().push(detail)
             .replaceTop(detail.copy(initialIndex = 1))
-            .push(Screen.TagSearch(query = "tag"))
+            .push(Screen.TagSearch(query = "first-tag"))
 
-        assertEquals(Screen.TagSearch(query = "tag"), navigation.current)
+        assertEquals(Screen.TagSearch(query = "first-tag"), navigation.current)
         navigation = navigation.pop()
         val restored = navigation.current as Screen.Detail
-        val restoredPosts = detailPostsFor(restored, unrelatedTagResults)
+        val restoredPosts = detailPostsFor(restored, firstTagResults)
 
         assertEquals(originalPosts, restoredPosts)
         assertEquals(2L, restoredPosts[restored.initialIndex].id)
+
+        // Move forward in the restored detail feed, open another tag, then return again.
+        navigation = navigation
+            .replaceTop(restored.copy(initialIndex = 2))
+            .push(Screen.TagSearch(query = "next-tag"))
+            .pop()
+        val nextDetail = navigation.current as Screen.Detail
+        val nextPosts = detailPostsFor(nextDetail, nextTagResults)
+
+        assertEquals(originalPosts, nextPosts)
+        assertEquals(3L, nextPosts[nextDetail.initialIndex].id)
     }
 
     @Test
