@@ -60,6 +60,11 @@ sealed interface Screen {
     data object AccountManager : Screen
 }
 
+internal fun detailPostsFor(screen: Screen.Detail, activePosts: List<Post>): List<Post> {
+    val currentWork = screen.posts.getOrNull(screen.initialIndex)?.workIdentity ?: return screen.posts
+    return activePosts.takeIf { it.getOrNull(screen.initialIndex)?.workIdentity == currentWork } ?: screen.posts
+}
+
 internal data class ScreenStack(
     val screens: List<Screen> = listOf(Screen.Explore),
 ) {
@@ -75,6 +80,13 @@ internal data class ScreenStack(
         copy(screens = screens.dropLast(1))
     } else {
         this
+    }
+
+    fun popAndRestoreDetailFeed(clearSearch: () -> Unit): ScreenStack {
+        if (current is Screen.TagSearch && screens.getOrNull(screens.lastIndex - 1) is Screen.Detail) {
+            clearSearch()
+        }
+        return pop()
     }
 
     fun replaceTop(screen: Screen): ScreenStack = if (screens.isNotEmpty()) {
@@ -153,7 +165,7 @@ fun LatteApp(
     val saveableStateHolder = rememberSaveableStateHolder()
 
     fun popNavigation() {
-        navigation = navigation.pop()
+        navigation = navigation.popAndRestoreDetailFeed(exploreViewModel::clearSearch)
     }
 
     LaunchedEffect(navigation.current) {
@@ -243,8 +255,7 @@ fun LatteApp(
                             )
                         }
                         is Screen.Detail -> {
-                            val activePosts = exploreUiState.posts
-                            val postsToDisplay = if (activePosts.isNotEmpty()) activePosts else screen.posts
+                            val postsToDisplay = detailPostsFor(screen, exploreUiState.posts)
                             DetailScreen(
                                 posts = postsToDisplay,
                                 initialIndex = screen.initialIndex,

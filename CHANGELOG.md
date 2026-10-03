@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.6 - Unreleased
+
+### Fixed
+
+- Prevent unrelated tag results from replacing the saved Detail feed when navigating Back, and clear transient tag search on return to Detail (#24). Navigation restoration and pagination remain under review in PR #25.
+
 ## 0.2.5 - 2026-10-02
 
 ### Fixed
