@@ -13,6 +13,32 @@ import org.junit.Test
 
 class LatteAppNavigationTest {
     @Test
+    fun returningFromTagSearchToDetailClearsTheTagSearchState() {
+        var cleared = false
+        val detail = Screen.Detail(posts = listOf(samplePost(1)), initialIndex = 0)
+        val tagSearch = Screen.TagSearch(query = "tag")
+
+        val restored = ScreenStack()
+            .push(detail)
+            .push(tagSearch)
+            .popAndRestoreDetailFeed { cleared = true }
+
+        assertTrue(cleared)
+        assertEquals(detail, restored.current)
+    }
+
+    @Test
+    fun returningFromTagSearchToItsExploreParentPreservesSearchState() {
+        var cleared = false
+
+        ScreenStack()
+            .push(Screen.TagSearch(query = "tag"))
+            .popAndRestoreDetailFeed { cleared = true }
+
+        assertFalse(cleared)
+    }
+
+    @Test
     fun tagSearchBackAndForwardKeepsTheOriginalDetailFeedAndPage() {
         val originalPosts = listOf(samplePost(1), samplePost(2), samplePost(3))
         val firstTagResults = listOf(samplePost(90), samplePost(91))

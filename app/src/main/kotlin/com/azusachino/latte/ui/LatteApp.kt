@@ -82,6 +82,13 @@ internal data class ScreenStack(
         this
     }
 
+    fun popAndRestoreDetailFeed(clearSearch: () -> Unit): ScreenStack {
+        if (current is Screen.TagSearch && screens.getOrNull(screens.lastIndex - 1) is Screen.Detail) {
+            clearSearch()
+        }
+        return pop()
+    }
+
     fun replaceTop(screen: Screen): ScreenStack = if (screens.isNotEmpty()) {
         copy(screens = screens.dropLast(1) + screen)
     } else {
@@ -158,7 +165,7 @@ fun LatteApp(
     val saveableStateHolder = rememberSaveableStateHolder()
 
     fun popNavigation() {
-        navigation = navigation.pop()
+        navigation = navigation.popAndRestoreDetailFeed(exploreViewModel::clearSearch)
     }
 
     LaunchedEffect(navigation.current) {
