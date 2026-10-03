@@ -60,6 +60,11 @@ sealed interface Screen {
     data object AccountManager : Screen
 }
 
+internal fun detailPostsFor(screen: Screen.Detail, activePosts: List<Post>): List<Post> {
+    val currentWork = screen.posts.getOrNull(screen.initialIndex)?.workIdentity ?: return screen.posts
+    return activePosts.takeIf { it.getOrNull(screen.initialIndex)?.workIdentity == currentWork } ?: screen.posts
+}
+
 internal data class ScreenStack(
     val screens: List<Screen> = listOf(Screen.Explore),
 ) {
@@ -243,8 +248,7 @@ fun LatteApp(
                             )
                         }
                         is Screen.Detail -> {
-                            val activePosts = exploreUiState.posts
-                            val postsToDisplay = if (activePosts.isNotEmpty()) activePosts else screen.posts
+                            val postsToDisplay = detailPostsFor(screen, exploreUiState.posts)
                             DetailScreen(
                                 posts = postsToDisplay,
                                 initialIndex = screen.initialIndex,

@@ -1,5 +1,9 @@
 package com.azusachino.latte.ui
 
+import com.azusachino.latte.data.model.MediaVariant
+import com.azusachino.latte.data.model.Post
+import com.azusachino.latte.data.model.PostRating
+import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.ui.explore.dispatchExploreBack
 import com.azusachino.latte.ui.explore.shouldHandleSearchBack
 import org.junit.Assert.assertEquals
@@ -8,6 +12,51 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LatteAppNavigationTest {
+    @Test
+    fun returningFromTagSearchKeepsTheDetailFeedInsteadOfTagResults() {
+        val originalPosts = listOf(samplePost(1), samplePost(2))
+        val unrelatedTagResults = listOf(samplePost(90), samplePost(91))
+        val detail = Screen.Detail(posts = originalPosts, initialIndex = 1)
+        var navigation = ScreenStack().push(detail)
+            .replaceTop(detail.copy(initialIndex = 1))
+            .push(Screen.TagSearch(query = "tag"))
+
+        assertEquals(Screen.TagSearch(query = "tag"), navigation.current)
+        navigation = navigation.pop()
+        val restored = navigation.current as Screen.Detail
+        val restoredPosts = detailPostsFor(restored, unrelatedTagResults)
+
+        assertEquals(originalPosts, restoredPosts)
+        assertEquals(2L, restoredPosts[restored.initialIndex].id)
+    }
+
+    @Test
+    fun detailFeedStillAcceptsMorePostsWhenItsCurrentWorkMatches() {
+        val originalPosts = listOf(samplePost(1), samplePost(2))
+        val extendedFeed = originalPosts + samplePost(3)
+        val detail = Screen.Detail(posts = originalPosts, initialIndex = 1)
+
+        assertEquals(extendedFeed, detailPostsFor(detail, extendedFeed))
+    }
+
+    private fun samplePost(id: Long) = Post(
+        id = id,
+        platform = PlatformId.YANDE,
+        rating = PostRating.SAFE,
+        tags = emptyList(),
+        score = 0,
+        author = null,
+        source = null,
+        createdAt = null,
+        width = 1,
+        height = 1,
+        previewUrl = "preview-$id",
+        sampleUrl = "sample-$id",
+        jpegUrl = null,
+        originalUrl = "original-$id",
+        variants = listOf(MediaVariant("preview", "preview-$id", 1, 1)),
+    )
+
     @Test
     fun authorWorksArrowPopsNavigationInsteadOfClearingSearch() {
         var popped = false
