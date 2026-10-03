@@ -305,6 +305,9 @@ internal fun pixivKindForTab(tabIndex: Int): PluginFeedKind? = when (tabIndex) {
     else -> null
 }
 
+internal fun followProviderFor(plugins: Map<PlatformId, SitePlugin>): SitePlugin? =
+    plugins[PlatformId.PIXIV]?.takeIf { PlatformCapability.FOLLOW_AUTHORS in it.capabilities }
+
 internal fun pixivFeed(state: ExploreUiState, kind: PluginFeedKind): FeedState =
     when (kind) {
         PluginFeedKind.POPULAR -> state.pixivPopularFeed
@@ -330,7 +333,6 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     private val plugins = mutableMapOf<PlatformId, SitePlugin>()
     private val feedSources = mutableMapOf<PlatformId, PluginFeedSource>()
     private val poolSources = mutableMapOf<PlatformId, com.azusachino.latte.plugin.PluginPoolSource>()
-    private var pixivFollowProvider: SitePlugin? = null
     // Per-(Platform, FeedKind) jobs: a platform switch or an adjacent-tab load
     // never cancels a different tab's in-flight request.
     private val feedJobs = mutableMapOf<Pair<PlatformId, PluginFeedKind>, Job>()
@@ -990,7 +992,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     private val pixivAuthorFollowStates = mutableMapOf<Long, Boolean>()
 
     fun loadPixivFollowState(userId: Long) {
-        val plugin = pixivFollowProvider ?: return
+        val plugin = followProviderFor(plugins) ?: return
         viewModelScope.launch {
             when (val followed = plugin.isAuthorFollowed(userId)) {
                 null -> if (_uiState.value.pixivAuthorId == userId) {
@@ -1009,7 +1011,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
 
     fun togglePixivFollow() {
         val state = _uiState.value
-        val plugin = pixivFollowProvider ?: return
+        val plugin = followProviderFor(plugins) ?: return
         val userId = state.pixivAuthorId ?: return
         val currentlyFollowed = state.pixivAuthorFollowed ?: return
         if (state.isTogglingPixivFollow) return
@@ -1062,7 +1064,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun loadPixivSearchSupport(query: String) {
-        val plugin = pixivFollowProvider ?: return
+        val plugin = followProviderFor(plugins) ?: return
         viewModelScope.launch {
             val support = plugin.searchSupport(query) ?: return@launch
             if (query.isNotBlank()) {

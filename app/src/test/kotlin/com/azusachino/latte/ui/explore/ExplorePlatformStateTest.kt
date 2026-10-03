@@ -4,6 +4,10 @@ import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.model.PostRating
 import com.azusachino.latte.plugin.PluginFeedKind
 import com.azusachino.latte.plugin.PlatformId
+import com.azusachino.latte.plugin.pixiv.PixivPlugin
+import com.azusachino.latte.plugin.storage.PluginStorage
+import com.azusachino.latte.plugin.yande.YandePlugin
+import okhttp3.OkHttpClient
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
@@ -16,6 +20,16 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ExplorePlatformStateTest {
+    @Test
+    fun followProviderComesFromThePixivPluginRegistryEntryOnly() {
+        val storage = InMemoryStorage()
+        val pixiv = PixivPlugin(storage, OkHttpClient())
+        val yande = YandePlugin(storage, OkHttpClient())
+
+        assertEquals(pixiv, followProviderFor(mapOf(PlatformId.PIXIV to pixiv)))
+        assertEquals(null, followProviderFor(mapOf(PlatformId.YANDE to yande)))
+    }
+
     @Test
     fun platformSwitchDropsThePreviousSitesFeedAndSearchState() {
         val previous = ExploreUiState(
@@ -355,5 +369,23 @@ class ExplorePlatformStateTest {
         assertEquals(1L, pixivFeed(state, PluginFeedKind.FOLLOWED).posts.single().id)
         assertEquals(2L, pixivFeed(state, PluginFeedKind.POPULAR).posts.single().id)
         assertEquals(3L, pixivFeed(state, PluginFeedKind.FAVORITES).posts.single().id)
+    }
+
+    private class InMemoryStorage : PluginStorage {
+        private val values = mutableMapOf<Pair<String, String>, String>()
+
+        override fun save(pluginId: String, key: String, value: String) {
+            values[pluginId to key] = value
+        }
+
+        override fun get(pluginId: String, key: String): String? = values[pluginId to key]
+
+        override fun remove(pluginId: String, key: String) {
+            values.remove(pluginId to key)
+        }
+
+        override fun clearPlugin(pluginId: String) {
+            values.keys.removeAll { it.first == pluginId }
+        }
     }
 }
