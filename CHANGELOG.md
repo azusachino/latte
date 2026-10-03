@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.5 - 2026-10-02
+
+### Fixed
+
+- Restored Pixiv author Follow/Following controls by resolving the follow provider from the registered Pixiv plugin.
+
 ## 0.2.4 - 2026-10-01
 
 ### Refactored
