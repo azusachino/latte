@@ -14,8 +14,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - '.github/workflows/ci.yml'
+              - 'Makefile'
+              - '.mise.toml'
+              - 'build.gradle*'
+              - 'settings.gradle*'
+              - 'gradle/**'
+              - 'app/**'
+              - 'scripts/**'
+
   check:
     name: make check and Android build
+    needs: [changes]
+    if: github.event_name != 'pull_request' || needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -42,3 +68,40 @@ jobs:
 
       - name: Build Android debug APK
         run: make assemble
+
+  docs:
+    name: Markdown formatting (rumdl)
+    needs: [changes]
+    if: github.event_name == 'pull_request' && needs.changes.outputs.code != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Set up mise toolchain
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
+        with:
+          version: 2026.5.12
+      - name: Check Markdown formatting
+        run: make md-check
+
+  gate:
+    name: make check
+    if: ${{ always() }}
+    needs: [changes, check, docs]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require gate
+        env:
+          CHECK_RESULT: ${{ needs.check.result }}
+          DOCS_RESULT: ${{ needs.docs.result }}
+        run: |
+          for res in "$CHECK_RESULT" "$DOCS_RESULT"; do
+            if [[ "$res" != "success" && "$res" != "skipped" ]]; then
+              echo "Gate failed with state: $res"
+              exit 1
+            fi
+          done
+          if [[ "$CHECK_RESULT" != "success" && "$DOCS_RESULT" != "success" ]]; then
+            echo "No gate executed"
+            exit 1
+          fi
