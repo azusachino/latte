@@ -103,6 +103,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -943,6 +944,8 @@ fun ExploreScreen(
                     },
                     selectedPostIds = selectedPostIds,
                     onToggleSelect = onToggleSelect,
+                    emptyTitle = "No results",
+                    emptyHint = "Try a different tag.",
                 )
             } else {
                 HorizontalPager(
@@ -977,46 +980,48 @@ fun ExploreScreen(
                         }
                         PluginFeedKind.POPULAR -> {
                             if (tab.supportsPeriodSelection) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(top = topBarPadding),
-                                ) {
-                                    if (!isSelectionMode) {
-                                        PopularControls(
-                                            period = uiState.popularPeriod,
-                                            date = uiState.popularDate,
-                                            onPeriodSelect = { viewModel.selectPopularPeriod(it) },
-                                            onShiftDate = { viewModel.shiftPopularDate(it) },
-                                            onPickDate = { viewModel.setPopularDate(it) },
-                                        )
-                                    }
-                                    FeedGrid(
-                                        feed = feed,
-                                        viewModel = viewModel,
-                                        gridKey = gridKey,
-                                        gridState = gridState,
-                                        columnCount = columnCount,
-                                        topPadding = 0.dp,
-                                        onPostClick = onPostClick,
-                                        onLoadMore = {
-                                            if (uiState.supportsUserFeeds) viewModel.loadMorePixiv(PluginFeedKind.POPULAR)
-                                            else viewModel.loadMorePopular()
-                                        },
-                                        onRetry = {
-                                            if (uiState.supportsUserFeeds) viewModel.loadPixivInitial(PluginFeedKind.POPULAR)
-                                            else viewModel.loadPopularInitial()
-                                        },
-                                        onRefresh = {
-                                            if (uiState.supportsUserFeeds) viewModel.refreshPixiv(PluginFeedKind.POPULAR)
-                                            else viewModel.refreshPopular()
-                                        },
-                                        onRequireLogin = activePlugin?.let { p -> { onRequireLogin(p) } },
-                                        selectedPostIds = selectedPostIds,
-                                        onToggleSelect = onToggleSelect,
-                                        modifier = Modifier.weight(1f),
+                                val popularHeader: @Composable () -> Unit = {
+                                    PopularControls(
+                                        period = uiState.popularPeriod,
+                                        date = uiState.popularDate,
+                                        onPeriodSelect = { viewModel.selectPopularPeriod(it) },
+                                        onShiftDate = { viewModel.shiftPopularDate(it) },
+                                        onPickDate = { viewModel.setPopularDate(it) },
                                     )
                                 }
+                                val periodName = when (uiState.popularPeriod) {
+                                    PluginFeedPeriod.DAY -> "day"
+                                    PluginFeedPeriod.WEEK -> "week"
+                                    PluginFeedPeriod.MONTH -> "month"
+                                    PluginFeedPeriod.YEAR -> "year"
+                                }
+                                FeedGrid(
+                                    feed = feed,
+                                    viewModel = viewModel,
+                                    gridKey = gridKey,
+                                    gridState = gridState,
+                                    columnCount = columnCount,
+                                    topPadding = topBarPadding,
+                                    header = if (isSelectionMode) null else popularHeader,
+                                    emptyTitle = "No posts for this $periodName",
+                                    emptyHint = "Try another day or period.",
+                                    onPostClick = onPostClick,
+                                    onLoadMore = {
+                                        if (uiState.supportsUserFeeds) viewModel.loadMorePixiv(PluginFeedKind.POPULAR)
+                                        else viewModel.loadMorePopular()
+                                    },
+                                    onRetry = {
+                                        if (uiState.supportsUserFeeds) viewModel.loadPixivInitial(PluginFeedKind.POPULAR)
+                                        else viewModel.loadPopularInitial()
+                                    },
+                                    onRefresh = {
+                                        if (uiState.supportsUserFeeds) viewModel.refreshPixiv(PluginFeedKind.POPULAR)
+                                        else viewModel.refreshPopular()
+                                    },
+                                    onRequireLogin = activePlugin?.let { p -> { onRequireLogin(p) } },
+                                    selectedPostIds = selectedPostIds,
+                                    onToggleSelect = onToggleSelect,
+                                )
                             } else {
                                 FeedGrid(
                                     feed = feed,
@@ -1052,6 +1057,12 @@ fun ExploreScreen(
                                     feed = feed,
                                     label = if (tab.kind == PluginFeedKind.FOLLOWED) "Sign in to see followed updates"
                                            else (activePlugin?.favoritesPrompt ?: "Sign in to see favorites"),
+                                    emptyTitle = if (tab.kind == PluginFeedKind.FOLLOWED) "No updates yet" else "No favorites yet",
+                                    emptyHint = if (tab.kind == PluginFeedKind.FOLLOWED) {
+                                        "Posts from artists you follow will show up here."
+                                    } else {
+                                        "Posts you favorite will show up here."
+                                    },
                                     gridKey = gridKey,
                                     gridState = gridState,
                                     columnCount = columnCount,
@@ -1137,8 +1148,15 @@ private fun FeedGrid(
     selectedPostIds: Set<Long> = emptySet(),
     onToggleSelect: ((Long) -> Unit)? = null,
     topPadding: androidx.compose.ui.unit.Dp = 0.dp,
+    header: (@Composable () -> Unit)? = null,
+    emptyTitle: String = "No posts yet",
+    emptyHint: String = "Pull to refresh or try again later.",
     modifier: Modifier = Modifier,
 ) {
+    // The header is grid item 0 while shown, so post indices are offset by one.
+    val headerCount = if (header != null) 1 else 0
+    val latestHeaderCount by rememberUpdatedState(headerCount)
+
     val shouldLoadMore by remember {
         derivedStateOf {
             val totalItems = gridState.layoutInfo.totalItemsCount
@@ -1167,6 +1185,15 @@ private fun FeedGrid(
         }
     }
 
+    fun currentGridPosition(): GridPosition {
+        val postIndex = gridState.firstVisibleItemIndex - latestHeaderCount
+        return GridPosition(
+            index = postIndex.coerceAtLeast(0),
+            scrollOffset = gridState.firstVisibleItemScrollOffset,
+            anchorPostId = feed.posts.getOrNull(postIndex)?.id,
+        )
+    }
+
     val pullToRefreshState = rememberPullToRefreshState()
     PullToRefreshBox(
         isRefreshing = feed.isRefreshing,
@@ -1182,88 +1209,103 @@ private fun FeedGrid(
         },
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            when {
-            feed.authRequired && feed.posts.isEmpty() -> {
-                // Signed-out state, NOT a failure: render with the same neutral
-                // styling as PersonalFeedContent so every tab looks identical.
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(top = topPadding, start = 24.dp, end = 24.dp, bottom = 24.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Default.FavoriteBorder,
-                            contentDescription = null,
-                            modifier = Modifier.size(48.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = feed.error?.title ?: "Sign in to continue",
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        if (onRequireLogin != null) {
-                            Button(onClick = onRequireLogin, modifier = Modifier.pressScale()) {
-                                Text("Sign in")
+            if (feed.posts.isEmpty()) {
+                // The header and state copy sit below the bar, so Popular period
+                // controls stay usable on an empty, offline or signed-out day.
+                Column(modifier = Modifier.fillMaxSize().padding(top = topPadding)) {
+                    header?.invoke()
+                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                        when {
+                            feed.authRequired -> {
+                                // Signed-out state, NOT a failure: render with the same neutral
+                                // styling as PersonalFeedContent so every tab looks identical.
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(
+                                            imageVector = Icons.Default.FavoriteBorder,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(48.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Text(
+                                            text = feed.error?.title ?: "Sign in to continue",
+                                            style = MaterialTheme.typography.bodyLarge,
+                                        )
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        if (onRequireLogin != null) {
+                                            Button(onClick = onRequireLogin, modifier = Modifier.pressScale()) {
+                                                Text("Sign in")
+                                            }
+                                        } else {
+                                            IconButton(onClick = onRetry, modifier = Modifier.pressScale()) {
+                                                Icon(Icons.Default.Refresh, contentDescription = "Retry")
+                                            }
+                                        }
+                                    }
+                                }
                             }
-                        } else {
-                            IconButton(onClick = onRetry, modifier = Modifier.pressScale()) {
-                                Icon(Icons.Default.Refresh, contentDescription = "Retry")
+                            feed.notice != null -> {
+                                // Informational (non-error) state, e.g. Safe Mode filtered everything.
+                                // Neutral styling on purpose: it is not a failure.
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        text = feed.notice!!,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                    )
+                                }
                             }
+                            feed.error != null -> {
+                                FeedErrorState(
+                                    error = feed.error,
+                                    onRetry = onRetry,
+                                    topPadding = 0.dp,
+                                )
+                            }
+                            !feed.isLoading && !feed.isLoadingMore -> {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(
+                                            text = emptyTitle,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            textAlign = TextAlign.Center,
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = emptyHint,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            textAlign = TextAlign.Center,
+                                        )
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        FilledTonalButton(onClick = onRetry, modifier = Modifier.pressScale()) {
+                                            Text("Refresh")
+                                        }
+                                    }
+                                }
+                            }
+                            else -> Box(modifier = Modifier.fillMaxSize())
                         }
                     }
                 }
-            }
-            feed.notice != null && feed.posts.isEmpty() -> {
-                // Informational (non-error) state, e.g. Safe Mode filtered everything.
-                // Neutral styling on purpose: it is not a failure.
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(top = topPadding, start = 24.dp, end = 24.dp, bottom = 24.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = feed.notice!!,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                }
-            }
-            feed.error != null && feed.posts.isEmpty() -> {
-                FeedErrorState(
-                    error = feed.error,
-                    onRetry = onRetry,
-                    topPadding = topPadding,
-                )
-            }
-            feed.posts.isEmpty() -> {
-                if (!feed.isLoading && !feed.isLoadingMore) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(top = topPadding, start = 24.dp, end = 24.dp, bottom = 24.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "No illustrations available",
-                                style = MaterialTheme.typography.bodyLarge,
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            IconButton(onClick = onRetry, modifier = Modifier.pressScale()) {
-                                Icon(Icons.Default.Refresh, contentDescription = "Retry")
-                            }
-                        }
-                    }
-                } else {
-                    Box(modifier = Modifier.fillMaxSize())
-                }
-            }
-            else -> {
+            } else {
                 LaunchedEffect(gridKey) {
                     val position = viewModel.gridPosition(gridKey)
                     val restoredIndex = position.anchorPostId
@@ -1274,18 +1316,10 @@ private fun FeedGrid(
                     // layout has measured the current children.
                     withFrameNanos { }
                     gridState.scrollToItem(
-                        restoredIndex.coerceIn(0, feed.posts.lastIndex),
+                        restoredIndex.coerceIn(0, feed.posts.lastIndex) + headerCount,
                         position.scrollOffset,
                     )
-                    snapshotFlow {
-                        GridPosition(
-                            index = gridState.firstVisibleItemIndex,
-                            scrollOffset = gridState.firstVisibleItemScrollOffset,
-                            anchorPostId = feed.posts
-                                .getOrNull(gridState.firstVisibleItemIndex)
-                                ?.id,
-                        )
-                    }
+                    snapshotFlow { currentGridPosition() }
                         .distinctUntilChanged()
                         .collect { viewModel.saveGridPosition(gridKey, it) }
                 }
@@ -1302,6 +1336,12 @@ private fun FeedGrid(
                     verticalItemSpacing = 4.dp,
                     modifier = Modifier.fillMaxSize(),
                 ) {
+                    if (header != null) {
+                        item(span = StaggeredGridItemSpan.FullLine) {
+                            header()
+                        }
+                    }
+
                     itemsIndexed(
                         items = feed.posts,
                         key = { _, post -> post.id },
@@ -1316,16 +1356,7 @@ private fun FeedGrid(
                                 if (isSelectionMode) {
                                     onToggleSelect?.invoke(post.id)
                                 } else {
-                                    viewModel.saveGridPosition(
-                                        gridKey,
-                                        GridPosition(
-                                            index = gridState.firstVisibleItemIndex,
-                                            scrollOffset = gridState.firstVisibleItemScrollOffset,
-                                            anchorPostId = feed.posts
-                                                .getOrNull(gridState.firstVisibleItemIndex)
-                                                ?.id,
-                                        ),
-                                    )
+                                    viewModel.saveGridPosition(gridKey, currentGridPosition())
                                     onPostClick(index)
                                 }
                             },
@@ -1349,7 +1380,6 @@ private fun FeedGrid(
                     }
                 }
             }
-        }
 
             if ((feed.isLoading || (feed.isLoadingMore && feed.posts.isEmpty())) && !feed.isRefreshing) {
                 LinearProgressIndicator(
@@ -1372,6 +1402,8 @@ private fun PersonalFeedContent(
     plugin: SitePlugin?,
     feed: FeedState,
     label: String,
+    emptyTitle: String,
+    emptyHint: String,
     gridKey: ExploreGridKey,
     gridState: LazyStaggeredGridState,
     columnCount: Int,
@@ -1443,6 +1475,8 @@ private fun PersonalFeedContent(
         onLoadMore = onLoadMore,
         onRetry = onRetry,
         onRefresh = onRefresh,
+        emptyTitle = emptyTitle,
+        emptyHint = emptyHint,
         onRequireLogin = { onRequireLogin(plugin) },
         selectedPostIds = selectedPostIds,
         onToggleSelect = onToggleSelect,
@@ -1554,11 +1588,21 @@ private fun PoolsTabContent(
                                 modifier = Modifier.fillMaxSize().padding(top = topPadding, start = 24.dp, end = 24.dp, bottom = 24.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Text(
-                                    text = "No pools found",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "No pools found",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        textAlign = TextAlign.Center,
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Try a different search.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textAlign = TextAlign.Center,
+                                    )
+                                }
                             }
                         } else {
                             Box(modifier = Modifier.fillMaxSize())

@@ -23,7 +23,7 @@
 - Pixiv downloads no longer fail with HTTP 500: they try the original `i.pximg.net` image first, then fall back to `i.pixiv.re` and `pixiv.cat`, and use the app's HTTP client so the proxy setting and DoH apply (#28).
 - Detail viewer controls stay readable in light theme, zoom resets per page, and system bar icons follow the in-app theme (#28).
 - Feed errors show a readable message and a Try again button instead of the raw error.
-- Selected tabs, chips and card selection badges are clearly visible in light theme; an empty day no longer shows as an error.
+- Selected tabs, chips and card selection badges are clearly visible in light theme; an empty day no longer shows as an error. The Popular feed scrolls under the glass top bar with its period controls, and each tab's empty state has its own message and Refresh button.
 
 ## 0.2.6 - 2026-10-03
 
