@@ -19,7 +19,7 @@ android {
 
     defaultConfig {
         applicationId = "com.azusachino.latte"
-        minSdk = 29
+        minSdk = 33
         targetSdk = 35
         versionCode = 15
         versionName = latteVersion

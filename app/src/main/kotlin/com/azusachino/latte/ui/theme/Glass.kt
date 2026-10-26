@@ -115,8 +115,9 @@ fun Modifier.glassSurface(
 
 /**
  * Backdrop blur for chrome that floats over scrolling content. [hazeState] must be attached to that
- * content with `Modifier.hazeSource`. On API 32+ Haze blurs the captured content behind the surface
- * and tints it; on older releases Haze draws the solid elevated glass colour as a scrim instead.
+ * content with `Modifier.hazeSource`. Haze blurs the captured content behind the surface and tints
+ * it; only where blur is unavailable (for example hardware acceleration is off) does Haze draw the
+ * solid elevated glass colour as a scrim instead.
  * The specular rim and corner clip match [glassSurface].
  *
  * [backgroundColor] is the colour painted behind the [hazeState] source content; it is passed to

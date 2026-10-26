@@ -47,7 +47,7 @@ The implementation lands in 4 coherent, incrementally testable slices. Each slic
 
 1. Top Header Refactoring:
    - Make `Scaffold` container background transparent/bleed-friendly.
-   - Top bar container (search field and tabs inside it included) styled with `Modifier.glassBackdrop`: the feed body is the Haze source, so the grid blurs behind the bar on API 31+ and shows a translucent tint on API 29-30. Inner pills and the search field keep `Modifier.glassSurface` and are not blurred again.
+   - Top bar container (search field and tabs inside it included) styled with `Modifier.glassBackdrop`: the feed body is the Haze source, so the grid blurs behind the bar and shows a translucent tint only where blur is unavailable. Inner pills and the search field keep `Modifier.glassSurface` and are not blurred again.
 2. Apple-Style Segmented Tab Bar:
    - Implement `GlassSegmentedTabs` replacing `TabRow`.
    - Smooth animated pill indicator sliding behind active tab (`Popular`, `Newest`, `Favorites`, `Pools`).

@@ -3,7 +3,6 @@ package com.azusachino.latte.ui.detail
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -864,7 +863,7 @@ fun DetailScreen(
 /**
  * Blurred, darkened copy of the post's preview, filling the page behind the fitted image. It sits
  * outside [ZoomableBox] so zoom and pan never move it, and it has no pointer handlers so taps and
- * pinches fall through to the image. Blur needs API 31+; older releases get a stronger scrim instead.
+ * pinches fall through to the image.
  */
 @Composable
 private fun AmbientBackdrop(
@@ -873,7 +872,6 @@ private fun AmbientBackdrop(
 ) {
     if (previewUrl.isBlank()) return
     val context = LocalContext.current
-    val canBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     Box(modifier = modifier.fillMaxSize().clipToBounds()) {
         AsyncImage(
             model = ImageRequest.Builder(context)
@@ -884,12 +882,12 @@ private fun AmbientBackdrop(
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .fillMaxSize()
-                .then(if (canBlur) Modifier.blur(48.dp) else Modifier),
+                .blur(48.dp),
         )
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = if (canBlur) 0.6f else 0.8f)),
+                .background(Color.Black.copy(alpha = 0.6f)),
         )
     }
 }

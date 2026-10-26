@@ -12,7 +12,6 @@ import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
-import android.os.Build
 import android.provider.MediaStore
 import androidx.work.CoroutineWorker
 import androidx.work.Data
@@ -269,7 +268,6 @@ class DownloadWorker(
     )
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         applicationContext.getSystemService(NotificationManager::class.java)
             .createNotificationChannel(
                 NotificationChannel(
