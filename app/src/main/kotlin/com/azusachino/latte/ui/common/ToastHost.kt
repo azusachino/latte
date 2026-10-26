@@ -1,24 +1,19 @@
 package com.azusachino.latte.ui.common
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -39,16 +34,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateSetOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -71,6 +71,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
+
+/** Most toasts visible at once; the oldest is pushed out when a newer one arrives. */
+internal const val MAX_VISIBLE_TOASTS = 3
 
 enum class ToastType {
     INFO, SUCCESS, WARNING, ERROR
@@ -95,29 +98,32 @@ data class ToastMessage(
 }
 
 /**
- * Single-bulletin queue: one visible toast at a time, the rest wait in order.
- * Plain state with no timers or Compose; [ToastManager] owns the timers.
+ * Visible notification stack, newest first, capped at [MAX_VISIBLE_TOASTS].
+ * Plain state with no timers or Compose; [ToastManager] owns the per-toast timers.
  */
 internal class ToastQueue {
-    private val _current = MutableStateFlow<ToastMessage?>(null)
-    val current: StateFlow<ToastMessage?> = _current.asStateFlow()
+    private val _visible = MutableStateFlow<List<ToastMessage>>(emptyList())
+    val visible: StateFlow<List<ToastMessage>> = _visible.asStateFlow()
 
-    private val pending = ArrayDeque<ToastMessage>()
     private var lastId = 0L
 
     /**
-     * Shows or queues a message. Returns the visible toast whose timer should (re)start,
-     * or null when the message was queued or dropped as a duplicate of a queued one.
+     * Shows a message at the front of the stack. A duplicate of a visible toast is not added again:
+     * the existing toast moves to the front and is returned so its timer restarts.
+     * The oldest toast is dropped when the stack is full.
      */
     fun enqueue(
         message: String,
         type: ToastType,
         actionLabel: String? = null,
         onAction: (() -> Unit)? = null,
-    ): ToastMessage? {
-        val visible = _current.value
-        if (visible != null && visible.message == message && visible.type == type) return visible
-        if (pending.any { it.message == message && it.type == type }) return null
+    ): ToastMessage {
+        val current = _visible.value
+        val duplicate = current.firstOrNull { it.message == message && it.type == type }
+        if (duplicate != null) {
+            _visible.value = listOf(duplicate) + current.filterNot { it.id == duplicate.id }
+            return duplicate
+        }
 
         val toast = ToastMessage(
             id = ++lastId,
@@ -126,24 +132,22 @@ internal class ToastQueue {
             actionLabel = actionLabel,
             onAction = onAction,
         )
-        if (visible != null) {
-            pending.addLast(toast)
-            return null
-        }
-        _current.value = toast
+        _visible.value = (listOf(toast) + current).take(MAX_VISIBLE_TOASTS)
         return toast
     }
 
-    /** Dismisses [id] if it is the visible toast. Returns true when the visible toast changed. */
+    /** Removes [id] from the stack. Returns false when it is not visible, so a stale timer or tap is a no-op. */
     fun dismiss(id: Long): Boolean {
-        if (_current.value?.id != id) return false
-        _current.value = pending.removeFirstOrNull()
+        val current = _visible.value
+        val remaining = current.filterNot { it.id == id }
+        if (remaining.size == current.size) return false
+        _visible.value = remaining
         return true
     }
 
-    /** Runs the visible toast's action, then dismisses it. Returns true when the visible toast changed. */
+    /** Runs the action of [id] if it is visible, then removes only that toast. */
     fun invokeAction(id: Long): Boolean {
-        val toast = _current.value?.takeIf { it.id == id } ?: return false
+        val toast = _visible.value.firstOrNull { it.id == id } ?: return false
         toast.onAction?.invoke()
         return dismiss(id)
     }
@@ -151,10 +155,12 @@ internal class ToastQueue {
 
 object ToastManager {
     private val queue = ToastQueue()
-    val current: StateFlow<ToastMessage?> = queue.current
+    val visible: StateFlow<List<ToastMessage>> = queue.visible
 
     private val scope = CoroutineScope(Dispatchers.Main)
-    private var timer: Job? = null
+
+    // One timer per visible toast, keyed by toast id.
+    private val timers = mutableMapOf<Long, Job>()
 
     private val _topInset = MutableStateFlow(0.dp)
 
@@ -180,15 +186,18 @@ object ToastManager {
         actionLabel: String? = null,
         onAction: (() -> Unit)? = null,
     ) {
-        queue.enqueue(message, type, actionLabel, onAction)?.let(::restartTimer)
+        startTimer(queue.enqueue(message, type, actionLabel, onAction))
+        pruneTimers()
     }
 
     fun dismiss(id: Long) {
-        if (queue.dismiss(id)) restartTimer(queue.current.value)
+        queue.dismiss(id)
+        pruneTimers()
     }
 
     fun invokeAction(id: Long) {
-        if (queue.invokeAction(id)) restartTimer(queue.current.value)
+        queue.invokeAction(id)
+        pruneTimers()
     }
 
     fun showWarning(message: String) = show(message, ToastType.WARNING)
@@ -196,14 +205,19 @@ object ToastManager {
     fun showInfo(message: String) = show(message, ToastType.INFO)
     fun showError(message: String) = show(message, ToastType.ERROR)
 
-    private fun restartTimer(toast: ToastMessage?) {
-        timer?.cancel()
-        timer = toast?.let {
-            scope.launch {
-                delay(it.durationMs)
-                dismiss(it.id)
-            }
+    private fun startTimer(toast: ToastMessage) {
+        timers.remove(toast.id)?.cancel()
+        timers[toast.id] = scope.launch {
+            delay(toast.durationMs)
+            timers.remove(toast.id)
+            dismiss(toast.id)
         }
+    }
+
+    /** Cancels the timers of toasts that left the stack, whether dismissed, actioned or pushed out. */
+    private fun pruneTimers() {
+        val live = queue.visible.value.map { it.id }
+        timers.keys.filterNot { it in live }.forEach { timers.remove(it)?.cancel() }
     }
 }
 
@@ -211,45 +225,143 @@ object ToastManager {
 // Dynamic Island look: a near-black blurred pill, white text in both themes.
 private val IslandTint = Color(0xCC101215)
 
+// Stack geometry: pills form a vertical list, newest at the top, with this gap between them.
+private val StackGapDp = 6.dp
+
+// Each step back in the stack scales the pill down and fades it a little more.
+private const val StackScaleStepPerDepth = 0.04f
+private const val StackAlphaStepPerDepth = 0.1f
+
+// How far a pill travels when it enters from above or leaves upward.
+private val StackSlideDp = 40.dp
+
 @Composable
 fun ToastHost(
     hazeState: HazeState,
     modifier: Modifier = Modifier,
 ) {
-    val current by ToastManager.current.collectAsState()
-    // Keeps the last toast composed so its exit animation still has content to draw.
-    var lastToast by remember { mutableStateOf<ToastMessage?>(null) }
-    current?.let { lastToast = it }
+    val visible by ToastManager.visible.collectAsState()
+    // Dismissed toasts stay in the stack, flagged as leaving, until their exit animation ends.
+    val stack = remember { mutableStateListOf<ToastMessage>() }
+    val leavingIds = remember { mutableStateSetOf<Long>() }
+    // Measured height of each pill in px, so each pill can sit below the ones in front of it.
+    val heights = remember { mutableStateMapOf<Long, Int>() }
+    LaunchedEffect(visible) {
+        val liveIds = visible.map { it.id }.toSet()
+        val previous = stack.toList()
+        leavingIds.addAll(previous.filter { it.id !in liveIds }.map { it.id })
+        // A leaving pill keeps its slot until it has faded, so the pills behind it do not jump.
+        val merged = visible.toMutableList()
+        previous.forEachIndexed { index, toast ->
+            if (toast.id !in liveIds) merged.add(index.coerceAtMost(merged.size), toast)
+        }
+        stack.clear()
+        stack.addAll(merged)
+    }
+
     val targetTopInset by ToastManager.topInset.collectAsState()
     val topInset by animateDpAsState(targetValue = targetTopInset, label = "toastTopInset")
+
+    val density = LocalDensity.current
+    val gapPx = with(density) { StackGapDp.toPx() }
+    // Top edge of each pill: the height of the pills in front, each as scaled when drawn, plus the gap.
+    val tops = mutableListOf<Float>()
+    var nextTop = 0f
+    stack.forEachIndexed { index, toast ->
+        tops += nextTop
+        nextTop += (heights[toast.id] ?: 0) * stackScale(index.toFloat()) + gapPx
+    }
 
     Box(
         modifier = modifier
             .fillMaxWidth()
+            // The stack is taller than the pill, so the host must cover it or the lower pills are not hit.
+            .fillMaxHeight()
             .statusBarsPadding()
             .padding(top = 8.dp + topInset, start = 16.dp, end = 16.dp),
         contentAlignment = Alignment.TopCenter,
     ) {
-        AnimatedVisibility(
-            visible = current != null,
-            enter = slideInVertically(
-                animationSpec = spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMediumLow),
-                initialOffsetY = { -it * 2 },
-            ) + fadeIn() + scaleIn(
-                animationSpec = spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMediumLow),
-                initialScale = 0.9f,
-            ),
-            exit = fadeOut() + slideOutVertically(targetOffsetY = { -it * 2 }),
-        ) {
-            lastToast?.let { toast ->
-                ToastBulletin(
+        stack.forEachIndexed { index, toast ->
+            key(toast.id) {
+                ToastStackItem(
                     toast = toast,
+                    depth = index,
+                    top = tops[index],
+                    leaving = toast.id in leavingIds,
                     hazeState = hazeState,
-                    onDismiss = { ToastManager.dismiss(toast.id) },
-                    onAction = { ToastManager.invokeAction(toast.id) },
+                    onMeasured = { heights[toast.id] = it },
+                    onExited = {
+                        stack.removeAll { it.id == toast.id }
+                        leavingIds.remove(toast.id)
+                        heights.remove(toast.id)
+                    },
                 )
             }
         }
+    }
+}
+
+/** Scale of the pill at [depth]: the newest is full size, each step back is a little smaller. */
+private fun stackScale(depth: Float): Float = (1f - StackScaleStepPerDepth * depth).coerceAtLeast(0.5f)
+
+/**
+ * One pill in the vertical stack. [depth] 0 is the newest pill, at the top; larger depths sit lower,
+ * smaller and fainter. Entering slides it down from above, leaving fades it out upward and then
+ * calls [onExited] so the host can drop it.
+ */
+@Composable
+private fun BoxScope.ToastStackItem(
+    toast: ToastMessage,
+    depth: Int,
+    top: Float,
+    leaving: Boolean,
+    hazeState: HazeState,
+    onMeasured: (Int) -> Unit,
+    onExited: () -> Unit,
+) {
+    // 0 while hidden, 1 when fully shown.
+    val presence = remember { Animatable(0f) }
+    LaunchedEffect(leaving) {
+        if (leaving) {
+            presence.animateTo(0f, tween(durationMillis = 180))
+            onExited()
+        } else {
+            presence.animateTo(1f, spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMediumLow))
+        }
+    }
+    // Animated so the rest of the stack glides up or down as pills are added and removed.
+    val animatedDepth by animateFloatAsState(
+        targetValue = depth.toFloat(),
+        animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow),
+        label = "toastStackDepth",
+    )
+    val animatedTop by animateFloatAsState(
+        targetValue = top,
+        animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow),
+        label = "toastStackTop",
+    )
+    val density = LocalDensity.current
+    val slidePx = with(density) { StackSlideDp.toPx() }
+
+    Box(
+        modifier = Modifier
+            .align(Alignment.TopCenter)
+            .onSizeChanged { onMeasured(it.height) }
+            .graphicsLayer {
+                transformOrigin = TransformOrigin(pivotFractionX = 0.5f, pivotFractionY = 0f)
+                val scale = stackScale(animatedDepth)
+                scaleX = scale
+                scaleY = scale
+                alpha = presence.value * (1f - StackAlphaStepPerDepth * animatedDepth).coerceIn(0f, 1f)
+                translationY = animatedTop + (presence.value - 1f) * slidePx
+            },
+    ) {
+        ToastBulletin(
+            toast = toast,
+            hazeState = hazeState,
+            onDismiss = { ToastManager.dismiss(toast.id) },
+            onAction = { ToastManager.invokeAction(toast.id) },
+        )
     }
 }
 
@@ -305,14 +417,7 @@ private fun ToastBulletin(
             .semantics { liveRegion = LiveRegionMode.Polite }
             .padding(horizontal = 14.dp, vertical = 10.dp),
     ) {
-        // Cross-fades the content when a queued toast replaces this one.
-        AnimatedContent(
-            targetState = toast,
-            contentKey = { it.id },
-            label = "toastContent",
-        ) { visible ->
-            ToastContent(toast = visible, onAction = onAction)
-        }
+        ToastContent(toast = toast, onAction = onAction)
     }
 }
 

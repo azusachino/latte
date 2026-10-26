@@ -352,7 +352,7 @@ fun LatteApp(
                 )
             }
 
-            // Single bulletin toast over all screens
+            // Notification stack over all screens
             ToastHost(hazeState = toastHazeState, modifier = Modifier.align(Alignment.TopCenter))
         }
     }

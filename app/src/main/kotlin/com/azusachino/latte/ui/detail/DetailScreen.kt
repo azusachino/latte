@@ -700,6 +700,7 @@ fun DetailScreen(
                 onDismissRequest = { showInspectSheet = false },
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                 containerColor = Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.onSurface,
                 dragHandle = null,
             ) {
                 // The sheet is its own window and sets its own bar appearance; keep the status bar icons light.
@@ -1078,7 +1079,6 @@ private fun MetadataTable(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
 
             if (PlatformCapability.USER_FEED in post.platform.capabilities) {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
                 MetadataTableRow(label = "Pages", value = "${post.pageIndex + 1} / ${post.pageCount}")
                 post.bookmarkCount?.let { count ->
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))

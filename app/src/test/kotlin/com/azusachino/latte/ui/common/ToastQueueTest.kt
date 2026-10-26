@@ -2,73 +2,57 @@ package com.azusachino.latte.ui.common
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ToastQueueTest {
 
-    @Test
-    fun showsOneToastAtATimeInOrder() {
-        val queue = ToastQueue()
-        val first = queue.enqueue("first", ToastType.INFO)
-        assertEquals("first", queue.current.value?.message)
-        assertEquals(first, queue.current.value)
-
-        assertNull(queue.enqueue("second", ToastType.INFO))
-        assertNull(queue.enqueue("third", ToastType.SUCCESS))
-        assertEquals("first", queue.current.value?.message)
-
-        assertTrue(queue.dismiss(first!!.id))
-        assertEquals("second", queue.current.value?.message)
-
-        assertTrue(queue.dismiss(queue.current.value!!.id))
-        assertEquals("third", queue.current.value?.message)
-
-        assertTrue(queue.dismiss(queue.current.value!!.id))
-        assertNull(queue.current.value)
-    }
+    private fun ToastQueue.messages(): List<String> = visible.value.map { it.message }
 
     @Test
-    fun dismissingNonVisibleOrStaleIdIsIgnored() {
+    fun newestToastIsFirstAndAllShownAtOnce() {
         val queue = ToastQueue()
-        val first = queue.enqueue("first", ToastType.INFO)!!
+        queue.enqueue("first", ToastType.INFO)
         queue.enqueue("second", ToastType.INFO)
+        queue.enqueue("third", ToastType.SUCCESS)
 
-        assertFalse(queue.dismiss(999L))
-        assertEquals("first", queue.current.value?.message)
-
-        assertTrue(queue.dismiss(first.id))
-        assertFalse("stale timer for an already dismissed toast must not dismiss the next one", queue.dismiss(first.id))
-        assertEquals("second", queue.current.value?.message)
+        assertEquals(listOf("third", "second", "first"), queue.messages())
     }
 
     @Test
-    fun duplicateOfVisibleToastRestartsItsTimerInsteadOfQueueing() {
+    fun fourthToastDropsOldestAndCapsAtThree() {
         val queue = ToastQueue()
-        val visible = queue.enqueue("saved", ToastType.SUCCESS)!!
+        queue.enqueue("a", ToastType.INFO)
+        queue.enqueue("b", ToastType.INFO)
+        queue.enqueue("c", ToastType.INFO)
+        queue.enqueue("d", ToastType.INFO)
 
-        val restarted = queue.enqueue("saved", ToastType.SUCCESS)
-
-        assertEquals(visible, restarted)
-        assertEquals(visible, queue.current.value)
-        // Nothing is queued behind it, so dismissing leaves the queue empty.
-        assertTrue(queue.dismiss(visible.id))
-        assertNull(queue.current.value)
+        assertEquals(listOf("d", "c", "b"), queue.messages())
     }
 
     @Test
-    fun duplicateOfQueuedToastIsSuppressed() {
+    fun duplicateOfVisibleToastMovesItToFrontWithoutCopying() {
         val queue = ToastQueue()
-        queue.enqueue("visible", ToastType.INFO)
-        assertNull(queue.enqueue("queued", ToastType.WARNING))
-        assertNull(queue.enqueue("queued", ToastType.WARNING))
+        val a = queue.enqueue("a", ToastType.INFO)
+        queue.enqueue("b", ToastType.INFO)
+        queue.enqueue("c", ToastType.INFO)
 
-        queue.dismiss(queue.current.value!!.id)
-        assertEquals("queued", queue.current.value?.message)
+        val restarted = queue.enqueue("a", ToastType.INFO)
 
-        queue.dismiss(queue.current.value!!.id)
-        assertNull("the duplicate must not appear a second time", queue.current.value)
+        assertEquals(a, restarted)
+        assertEquals(listOf("a", "c", "b"), queue.messages())
+    }
+
+    @Test
+    fun duplicateAtFrontKeepsStackUnchanged() {
+        val queue = ToastQueue()
+        queue.enqueue("a", ToastType.INFO)
+        val b = queue.enqueue("b", ToastType.INFO)
+
+        queue.enqueue("b", ToastType.INFO)
+
+        assertEquals(listOf("b", "a"), queue.messages())
+        assertEquals(b, queue.visible.value.first())
     }
 
     @Test
@@ -77,20 +61,54 @@ class ToastQueueTest {
         queue.enqueue("Failed", ToastType.INFO)
         queue.enqueue("Failed", ToastType.ERROR)
 
-        queue.dismiss(queue.current.value!!.id)
-        assertEquals(ToastType.ERROR, queue.current.value?.type)
+        assertEquals(2, queue.visible.value.size)
+        assertEquals(ToastType.ERROR, queue.visible.value.first().type)
+    }
+
+    @Test
+    fun dismissRemovesOnlyThatToast() {
+        val queue = ToastQueue()
+        queue.enqueue("a", ToastType.INFO)
+        val b = queue.enqueue("b", ToastType.INFO)
+        queue.enqueue("c", ToastType.INFO)
+
+        assertTrue(queue.dismiss(b.id))
+
+        assertEquals(listOf("c", "a"), queue.messages())
+    }
+
+    @Test
+    fun staleTimerIdCannotDismissAnotherToast() {
+        val queue = ToastQueue()
+        val first = queue.enqueue("first", ToastType.INFO)
+        assertTrue(queue.dismiss(first.id))
+
+        // A newer toast gets a fresh id, so the old timer's id no longer matches anything.
+        val second = queue.enqueue("second", ToastType.INFO)
+
+        assertFalse("stale timer for an already dismissed toast must not dismiss the next one", queue.dismiss(first.id))
+        assertEquals(listOf(second.id), queue.visible.value.map { it.id })
+    }
+
+    @Test
+    fun dismissingUnknownIdIsIgnored() {
+        val queue = ToastQueue()
+        queue.enqueue("a", ToastType.INFO)
+
+        assertFalse(queue.dismiss(999L))
+        assertEquals(listOf("a"), queue.messages())
     }
 
     @Test
     fun sameMessageCanBeShownAgainAfterItWasDismissed() {
         val queue = ToastQueue()
-        val first = queue.enqueue("again", ToastType.INFO)!!
+        val first = queue.enqueue("again", ToastType.INFO)
         queue.dismiss(first.id)
 
         val second = queue.enqueue("again", ToastType.INFO)
 
-        assertTrue(second!!.id != first.id)
-        assertEquals("again", queue.current.value?.message)
+        assertTrue(second.id != first.id)
+        assertEquals(listOf("again"), queue.messages())
     }
 
     @Test
@@ -119,23 +137,23 @@ class ToastQueueTest {
     }
 
     @Test
-    fun invokingActionRunsCallbackAndDismissesToast() {
+    fun invokingActionRunsCallbackAndRemovesOnlyThatToast() {
         val queue = ToastQueue()
         var invocations = 0
-        val undo = queue.enqueue("Removed", ToastType.INFO, actionLabel = "Undo") { invocations++ }!!
+        val undo = queue.enqueue("Removed", ToastType.INFO, actionLabel = "Undo") { invocations++ }
         queue.enqueue("Next", ToastType.INFO)
 
         assertTrue(queue.invokeAction(undo.id))
 
         assertEquals(1, invocations)
-        assertEquals("Next", queue.current.value?.message)
+        assertEquals(listOf("Next"), queue.messages())
     }
 
     @Test
     fun invokingActionOnStaleToastDoesNothing() {
         val queue = ToastQueue()
         var invocations = 0
-        val stale = queue.enqueue("Removed", ToastType.INFO, actionLabel = "Undo") { invocations++ }!!
+        val stale = queue.enqueue("Removed", ToastType.INFO, actionLabel = "Undo") { invocations++ }
         queue.dismiss(stale.id)
 
         assertFalse(queue.invokeAction(stale.id))
@@ -146,11 +164,11 @@ class ToastQueueTest {
     fun tappingBodyDismissesWithoutRunningAction() {
         val queue = ToastQueue()
         var invocations = 0
-        val toast = queue.enqueue("Removed", ToastType.INFO, actionLabel = "Undo") { invocations++ }!!
+        val toast = queue.enqueue("Removed", ToastType.INFO, actionLabel = "Undo") { invocations++ }
 
         assertTrue(queue.dismiss(toast.id))
 
         assertEquals(0, invocations)
-        assertNull(queue.current.value)
+        assertTrue(queue.visible.value.isEmpty())
     }
 }
