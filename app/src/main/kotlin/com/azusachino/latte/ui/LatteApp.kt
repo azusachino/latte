@@ -49,6 +49,8 @@ import com.azusachino.latte.ui.explore.ExploreViewModel
 import com.azusachino.latte.ui.settings.SettingsScreen
 import com.azusachino.latte.ui.theme.LattePalette
 import com.azusachino.latte.ui.theme.LatteTheme
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 
 sealed interface Screen {
     data object Explore : Screen
@@ -195,6 +197,8 @@ fun LatteApp(
     }
 
     LatteTheme(themeMode = themeMode, palette = palette) {
+        // Root content the toast pill blurs; screens keep their own sources inside it.
+        val toastHazeState = rememberHazeState()
         Box(modifier = modifier.fillMaxSize()) {
             BackHandler(enabled = navigation.size > 1) {
                 popNavigation()
@@ -212,7 +216,9 @@ fun LatteApp(
                             .togetherWith(slideOutHorizontally(screenSlideSpec) { width -> width } + fadeOut())
                     }
                 },
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeSource(toastHazeState),
             ) { targetNav ->
                 val screen = targetNav.current
                 saveableStateHolder.SaveableStateProvider(screen.stateKey) {
@@ -347,7 +353,7 @@ fun LatteApp(
             }
 
             // Single bulletin toast over all screens
-            ToastHost(modifier = Modifier.align(Alignment.BottomCenter))
+            ToastHost(hazeState = toastHazeState, modifier = Modifier.align(Alignment.TopCenter))
         }
     }
 }

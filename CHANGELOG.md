@@ -16,7 +16,7 @@
 - Toolchain and UI library upgrade: Kotlin `2.1.10` to `2.4.21` (Kotlin Android, Compose and serialization plugins), Android Gradle Plugin `8.8.2` to `9.4.1`, Gradle `9.3.1` to `9.7.0`, `compileSdk` `35` to `37` (`targetSdk` stays `35`), and Compose BOM `2025.02.00` to `2026.09.00` (Compose UI `1.12.1`, Material 3 `1.4.0`). `material-icons-core` is now declared directly because Material 3 no longer brings it in.
 - Bumped `androidx.datastore:datastore-preferences` to `1.1.2`.
 - Pixiv multi-page works can be paged with left/right edge taps and a page thumbnail strip, and the next page is prefetched (#28).
-- In-app notifications show one bulletin at a time with optional actions, swipe or tap to dismiss, and screen-reader announcements; favorite and rating results no longer raise a toast (#28).
+- In-app notifications appear as a blurred top pill below the status bar, one at a time with optional actions, swipe up or tap to dismiss, and screen-reader announcements; favorite and rating results no longer raise a toast (#28).
 
 ### Fixed
 

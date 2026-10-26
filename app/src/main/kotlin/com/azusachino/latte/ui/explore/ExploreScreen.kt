@@ -128,6 +128,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
+import com.azusachino.latte.data.download.DownloadIdentity
 import com.azusachino.latte.data.download.DownloadManager
 import com.azusachino.latte.data.model.PoolSummary
 import com.azusachino.latte.data.model.Post
@@ -399,17 +400,16 @@ fun ExploreScreen(
                                 val result = downloadManager.enqueueBatchDownload(postsToDownload)
                                 when {
                                     result.started > 0 -> {
-                                        val suffix = if (result.alreadySaved > 0) " (${result.alreadySaved} already saved)" else ""
-                                        ToastManager.showSuccess("Queued ${result.started} of ${result.total} downloads$suffix")
+                                        ToastManager.showSuccess("Saving ${DownloadIdentity.postCountLabel(result.started)}")
                                     }
                                     result.alreadySaved == result.total -> {
-                                        ToastManager.showWarning("All ${result.total} images already saved")
+                                        ToastManager.showWarning("Already saved")
                                     }
                                     result.alreadyRunning > 0 -> {
-                                        ToastManager.showWarning("Downloads already in progress")
+                                        ToastManager.showWarning("Already downloading")
                                     }
                                     else -> {
-                                        ToastManager.showWarning("Failed to queue downloads")
+                                        ToastManager.showWarning("Couldn't save posts")
                                     }
                                 }
                                 selectedPostIds = emptySet()

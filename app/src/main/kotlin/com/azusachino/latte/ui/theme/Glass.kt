@@ -122,6 +122,7 @@ fun Modifier.glassSurface(
  * [backgroundColor] is the colour painted behind the [hazeState] source content; it is passed to
  * Haze explicitly so the blur never runs without one.
  * [dark] overrides the luminance-based theme detection when non-null.
+ * [tint] replaces the default backdrop tint when non-null.
  */
 @Composable
 fun Modifier.glassBackdrop(
@@ -129,12 +130,13 @@ fun Modifier.glassBackdrop(
     backgroundColor: Color,
     shape: Shape = RoundedCornerShape(GlassDefaults.PillCornerRadius),
     dark: Boolean? = null,
+    tint: Color? = null,
 ): Modifier {
     val isDark = dark ?: (MaterialTheme.colorScheme.surface.luminance() < 0.5f)
     val rimBrush = if (isDark) GlassDefaults.DarkRimGradient else GlassDefaults.LightRimGradient
     val style = HazeBlurStyle {
         backgroundColor(backgroundColor)
-        colorEffects(listOf(HazeColorEffect.tint(if (isDark) GlassDefaults.DarkBackdropTint else GlassDefaults.LightBackdropTint)))
+        colorEffects(listOf(HazeColorEffect.tint(tint ?: if (isDark) GlassDefaults.DarkBackdropTint else GlassDefaults.LightBackdropTint)))
         fallbackColorEffect(HazeColorEffect.tint(if (isDark) GlassDefaults.DarkSurfaceElevated else GlassDefaults.LightSurfaceElevated))
     }
 

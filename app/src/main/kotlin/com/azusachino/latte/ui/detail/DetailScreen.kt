@@ -92,6 +92,7 @@ import coil3.compose.SubcomposeAsyncImage
 import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.azusachino.latte.data.download.DownloadIdentity
 import com.azusachino.latte.data.download.DownloadManager
 import com.azusachino.latte.data.download.DownloadResult
 import com.azusachino.latte.data.model.Post
@@ -159,6 +160,12 @@ fun DetailScreen(
 
     val hazeState = rememberHazeState()
     var showControls by remember { mutableStateOf(true) }
+    // Pushes the toast pill below the top controls row (10dp + 44dp + 8dp) while it is shown.
+    val toastInsetOwner = remember { Any() }
+    DisposableEffect(showControls) {
+        ToastManager.setTopInset(toastInsetOwner, if (showControls) 62.dp else 0.dp)
+        onDispose { ToastManager.clearTopInset(toastInsetOwner) }
+    }
     var showInspectSheet by remember { mutableStateOf(false) }
     var localScores by remember { mutableStateOf(mapOf<Long, Int>()) }
     var localBookmarks by remember { mutableStateOf(mapOf<String, Boolean>()) }
@@ -633,17 +640,18 @@ fun DetailScreen(
                                     scope.launch {
                                         when (val result = downloadManager.enqueueDownload(displayPost)) {
                                             is DownloadResult.AlreadySaved -> {
-                                                ToastManager.showWarning("Already saved: ${result.displayName}")
+                                                ToastManager.showWarning("Already saved")
                                             }
                                             is DownloadResult.AlreadyRunning -> {
-                                                ToastManager.showWarning("Download already running")
+                                                ToastManager.showWarning("Already downloading")
                                             }
                                             is DownloadResult.Started -> {
                                                 inlineActionError = null
-                                                ToastManager.showSuccess("Download started: ${result.displayName}")
+                                                ToastManager.showSuccess("Saving ${DownloadIdentity.toastLabel(displayPost)}")
                                             }
                                             is DownloadResult.Failed -> {
-                                                inlineActionError = "Failed to save image: ${result.message}"
+                                                android.util.Log.w("LatteDetail", "save failed for ${displayPost.id}: ${result.message}")
+                                                ToastManager.showError("Couldn't save ${DownloadIdentity.toastLabel(displayPost)}")
                                             }
                                         }
                                     }

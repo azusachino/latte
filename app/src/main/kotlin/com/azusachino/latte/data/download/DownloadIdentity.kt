@@ -16,6 +16,15 @@ object DownloadIdentity {
         }
     }
 
+    /** Short toast label that names the post, not the file: "#1271440" or "#75034219 p2". */
+    fun toastLabel(post: Post): String {
+        val pageSuffix = if (post.pageCount > 1) " p${post.pageIndex + 1}" else ""
+        return "#${post.id}$pageSuffix"
+    }
+
+    /** "1 post" or "3 posts" for batch toasts. */
+    fun postCountLabel(count: Int): String = if (count == 1) "1 post" else "$count posts"
+
     fun fileExtension(post: Post): String =
         post.originalUrl.substringBefore('?')
             .substringAfterLast('.', "jpg")
