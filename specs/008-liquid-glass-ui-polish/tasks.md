@@ -24,10 +24,10 @@ description: "Tasks for Apple Liquid Glass & Telegram Media Ergonomics"
 
 ## Phase 3: Discovery Feed & Segmented Pill Controls (`ExploreScreen.kt`)
 
-- [ ] T008 Implement `GlassSegmentedTabs` with spring physics pill indicator replacing standard M3 underline `TabRow`.
-- [ ] T009 Refactor `ExploreScreen` top header with translucent frosted glass styling allowing grid to scroll underneath.
-- [ ] T010 Refactor feed period filter chips (Day/Week/Month/Year) and date controls into frosted glass capsules.
-- [ ] T011 Modernize `PostGridItem` media cards with 14dp squircle corners, 1px specular hairline rim, `Modifier.pressScale()`, and circular glass selection badges.
+- [x] T008 Implement `GlassSegmentedTabs` with spring physics pill indicator replacing standard M3 underline `TabRow`.
+- [x] T009 Refactor `ExploreScreen` top header with translucent frosted glass styling allowing grid to scroll underneath.
+- [x] T010 Refactor feed period filter chips (Day/Week/Month/Year) and date controls into frosted glass capsules.
+- [x] T011 Modernize `PostGridItem` media cards with 14dp squircle corners, 1px specular hairline rim, `Modifier.pressScale()`, and circular glass selection badges.
 
 ## Phase 4: Settings & Account Center Polish
 

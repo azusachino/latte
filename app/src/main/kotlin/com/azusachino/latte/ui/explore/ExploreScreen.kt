@@ -1,6 +1,10 @@
 package com.azusachino.latte.ui.explore
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -12,14 +16,17 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -67,17 +74,15 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -99,6 +104,8 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -122,6 +129,9 @@ import com.azusachino.latte.plugin.PlatformCapability
 import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.ui.common.ToastManager
+import com.azusachino.latte.ui.theme.GlassDefaults
+import com.azusachino.latte.ui.theme.glassSurface
+import com.azusachino.latte.ui.theme.pressScale
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -143,6 +153,83 @@ internal fun platformLogoLabel(platform: PlatformId): String = when (platform) {
 
 internal fun dispatchExploreBack(onNestedBack: (() -> Unit)?, onClearSearch: () -> Unit) {
     if (onNestedBack != null) onNestedBack() else onClearSearch()
+}
+
+/**
+ * Apple/Telegram-style segmented control with an animated sliding glass pill indicator.
+ */
+@Composable
+fun GlassSegmentedTabs(
+    tabs: List<String>,
+    selectedIndex: Int,
+    onTabSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .glassSurface(shape = RoundedCornerShape(GlassDefaults.PillCornerRadius))
+            .padding(4.dp),
+    ) {
+        val tabCount = tabs.size.coerceAtLeast(1)
+        val tabWidth = maxWidth / tabCount
+        val indicatorOffset by animateDpAsState(
+            targetValue = tabWidth * selectedIndex.coerceIn(0, tabCount - 1),
+            animationSpec = spring(
+                dampingRatio = 0.8f,
+                stiffness = Spring.StiffnessMediumLow,
+            ),
+            label = "glass_tab_indicator_offset",
+        )
+
+        // Sliding glass pill indicator behind active tab
+        Box(
+            modifier = Modifier
+                .offset(x = indicatorOffset)
+                .width(tabWidth)
+                .height(36.dp)
+                .glassSurface(
+                    shape = RoundedCornerShape(GlassDefaults.PillCornerRadius),
+                    isElevated = true,
+                ),
+        )
+
+        // Segmented tabs row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(36.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            tabs.forEachIndexed { index, title ->
+                val isSelected = index == selectedIndex
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(GlassDefaults.PillCornerRadius))
+                        .pressScale()
+                        .clickable { onTabSelected(index) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        ),
+                        color = if (isSelected) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -328,7 +415,14 @@ fun ExploreScreen(
             }
         },
         topBar = {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .glassSurface(
+                        shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
+                        isElevated = true,
+                    ),
+            ) {
                 if (isSelectionMode) {
                     TopAppBar(
                         title = {
@@ -338,7 +432,10 @@ fun ExploreScreen(
                             )
                         },
                         navigationIcon = {
-                            IconButton(onClick = { selectedPostIds = emptySet() }) {
+                            IconButton(
+                                onClick = { selectedPostIds = emptySet() },
+                                modifier = Modifier.pressScale(),
+                            ) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
                                     contentDescription = "Close selection",
@@ -346,7 +443,7 @@ fun ExploreScreen(
                             }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.surface,
+                            containerColor = Color.Transparent,
                             titleContentColor = MaterialTheme.colorScheme.onSurface,
                         ),
                     )
@@ -356,7 +453,11 @@ fun ExploreScreen(
                         Box {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.clickable { platformMenuOpen = true },
+                                modifier = Modifier
+                                    .pressScale()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { platformMenuOpen = true }
+                                    .padding(horizontal = 4.dp, vertical = 2.dp),
                             ) {
                                 Text(
                                     text = title
@@ -379,6 +480,15 @@ fun ExploreScreen(
                             DropdownMenu(
                                 expanded = platformMenuOpen,
                                 onDismissRequest = { platformMenuOpen = false },
+                                modifier = Modifier.glassSurface(
+                                    shape = RoundedCornerShape(16.dp),
+                                    isElevated = true,
+                                ),
+                                shape = RoundedCornerShape(16.dp),
+                                containerColor = Color.Transparent,
+                                tonalElevation = 0.dp,
+                                shadowElevation = 0.dp,
+                                border = null,
                             ) {
                                 DropdownMenuItem(
                                     leadingIcon = {
@@ -413,6 +523,7 @@ fun ExploreScreen(
                                         platformMenuOpen = false
                                         viewModel.selectPlatform(PlatformId.YANDE)
                                     },
+                                    modifier = Modifier.pressScale(),
                                 )
                                 DropdownMenuItem(
                                     leadingIcon = {
@@ -447,8 +558,9 @@ fun ExploreScreen(
                                         platformMenuOpen = false
                                         viewModel.selectPlatform(PlatformId.KONACHAN)
                                     },
+                                    modifier = Modifier.pressScale(),
                                 )
-DropdownMenuItem(
+                                DropdownMenuItem(
                                     leadingIcon = {
                                         PlatformLogo(
                                             label = "p",
@@ -481,6 +593,7 @@ DropdownMenuItem(
                                         platformMenuOpen = false
                                         viewModel.selectPlatform(PlatformId.PIXIV)
                                     },
+                                    modifier = Modifier.pressScale(),
                                 )
                             }
                         }
@@ -491,6 +604,7 @@ DropdownMenuItem(
                                 onClick = {
                                     dispatchExploreBack(onBack, viewModel::clearSearch)
                                 },
+                                modifier = Modifier.pressScale(),
                             ) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -500,12 +614,15 @@ DropdownMenuItem(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
+                        containerColor = Color.Transparent,
                         titleContentColor = MaterialTheme.colorScheme.onSurface,
                     ),
                     actions = {
                         // Search toggle
-                        IconButton(onClick = { isSearchExpanded = !isSearchExpanded }) {
+                        IconButton(
+                            onClick = { isSearchExpanded = !isSearchExpanded },
+                            modifier = Modifier.pressScale(),
+                        ) {
                             Icon(
                                 imageVector = if (isSearchExpanded) Icons.Default.Close else Icons.Default.Search,
                                 contentDescription = "Search",
@@ -513,7 +630,10 @@ DropdownMenuItem(
                         }
 
                         // Moebooru-parity column toggle button: cycles 1 -> 2 -> 3 -> 1
-                        IconButton(onClick = { viewModel.cycleColumns() }) {
+                        IconButton(
+                            onClick = { viewModel.cycleColumns() },
+                            modifier = Modifier.pressScale(),
+                        ) {
                             val columnIcon = when (columnCount) {
                                 1 -> LatteIcons.ViewAgenda
                                 2 -> LatteIcons.GridView
@@ -526,7 +646,10 @@ DropdownMenuItem(
                         }
 
                         // Favorite tags: saved tags and their update feeds
-                        IconButton(onClick = onOpenFavoriteTags) {
+                        IconButton(
+                            onClick = onOpenFavoriteTags,
+                            modifier = Modifier.pressScale(),
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.Star,
                                 contentDescription = "Favorite tags",
@@ -539,7 +662,10 @@ DropdownMenuItem(
                         }
 
                         // Settings button
-                        IconButton(onClick = onOpenSettings) {
+                        IconButton(
+                            onClick = onOpenSettings,
+                            modifier = Modifier.pressScale(),
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.Settings,
                                 contentDescription = "Settings",
@@ -558,58 +684,77 @@ DropdownMenuItem(
                     enter = expandVertically() + fadeIn(),
                     exit = shrinkVertically() + fadeOut(),
                 ) {
-                    Box(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                            .padding(horizontal = 16.dp, vertical = 6.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            placeholder = {
-                                Text(if (isPoolsSearch) "Search pools, e.g. genshin_impact" else "Search tags, e.g. genshin_impact")
-                            },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            keyboardActions = KeyboardActions(
-                                onSearch = {
-                                    keyboardController?.hide()
-                                    if (isPoolsSearch) {
-                                        viewModel.loadPoolsInitial(searchQuery)
-                                    } else {
-                                        viewModel.search(searchQuery)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .glassSurface(shape = RoundedCornerShape(16.dp)),
+                        ) {
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                placeholder = {
+                                    Text(if (isPoolsSearch) "Search pools, e.g. genshin_impact" else "Search tags, e.g. genshin_impact")
+                                },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                keyboardActions = KeyboardActions(
+                                    onSearch = {
+                                        keyboardController?.hide()
+                                        if (isPoolsSearch) {
+                                            viewModel.loadPoolsInitial(searchQuery)
+                                        } else {
+                                            viewModel.search(searchQuery)
+                                        }
+                                    },
+                                ),
+                                trailingIcon = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        if (searchQuery.isNotBlank()) {
+                                            val isFavorite = uiState.favoriteTags.any {
+                                                it.tag == searchQuery.trim() && it.platform == uiState.platform
+                                            }
+                                            IconButton(
+                                                onClick = { viewModel.toggleFavoriteTag(searchQuery) },
+                                                modifier = Modifier.pressScale(),
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Star,
+                                                    contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
+                                                    tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                            }
+                                            IconButton(
+                                                onClick = {
+                                                    searchQuery = ""
+                                                    if (isPoolsSearch) {
+                                                        viewModel.loadPoolsInitial("")
+                                                    } else {
+                                                        viewModel.clearSearch()
+                                                    }
+                                                },
+                                                modifier = Modifier.pressScale(),
+                                            ) {
+                                                Icon(Icons.Default.Close, contentDescription = "Clear")
+                                            }
+                                        }
                                     }
                                 },
-                            ),
-                            trailingIcon = {
-                                if (searchQuery.isNotBlank()) {
-                                    val isFavorite = uiState.favoriteTags.any {
-                                        it.tag == searchQuery.trim() && it.platform == uiState.platform
-                                    }
-                                    IconButton(onClick = { viewModel.toggleFavoriteTag(searchQuery) }) {
-                                        Icon(
-                                            imageVector = Icons.Default.Star,
-                                            contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
-                                            tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                }
-                                if (searchQuery.isNotBlank()) {
-                                    IconButton(onClick = {
-                                        searchQuery = ""
-                                        if (isPoolsSearch) {
-                                            viewModel.loadPoolsInitial("")
-                                        } else {
-                                            viewModel.clearSearch()
-                                        }
-                                    }) {
-                                        Icon(Icons.Default.Close, contentDescription = "Clear")
-                                    }
-                                }
-                            },
-                            shape = RoundedCornerShape(12.dp),
-                        )
+                                shape = RoundedCornerShape(16.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent,
+                                    focusedBorderColor = Color.Transparent,
+                                    unfocusedBorderColor = Color.Transparent,
+                                ),
+                            )
+                        }
                         if (uiState.supportsUserFeeds && isSearchExpanded) {
                             val supportTags = if (searchQuery.isBlank()) {
                                 uiState.favoriteTags
@@ -622,7 +767,6 @@ DropdownMenuItem(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(top = 64.dp)
                                         .horizontalScroll(rememberScrollState()),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
@@ -654,7 +798,6 @@ DropdownMenuItem(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(top = 64.dp)
                                         .horizontalScroll(rememberScrollState()),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
@@ -677,28 +820,16 @@ DropdownMenuItem(
                     }
                 }
 
-                // Front page tabs: Popular / Newest / Favorites / Pools (hidden during search)
+                // Front page tabs: Apple/Telegram-style segmented pill control (hidden during search)
                 if (!uiState.isSearch && !isSelectionMode) {
                     val tabTitles = feedTabs.map { it.title }
-                    TabRow(
-                        selectedTabIndex = pagerState.currentPage,
-                        containerColor = MaterialTheme.colorScheme.surface,
-                    ) {
-                        tabTitles.forEachIndexed { index, title ->
-                            Tab(
-                                selected = pagerState.currentPage == index,
-                                onClick = {
-                                    coroutineScope.launch { pagerState.scrollToPage(index) }
-                                },
-                                text = {
-                                    Text(
-                                        text = title,
-                                        fontWeight = if (pagerState.currentPage == index) FontWeight.Bold else FontWeight.Normal,
-                                    )
-                                },
-                            )
-                        }
-                    }
+                    GlassSegmentedTabs(
+                        tabs = tabTitles,
+                        selectedIndex = pagerState.currentPage,
+                        onTabSelected = { index ->
+                            coroutineScope.launch { pagerState.scrollToPage(index) }
+                        },
+                    )
                 }
                 // Author works header: shows whose works these are and the
                 // follow toggle for the author (Pixiv only).
@@ -723,7 +854,9 @@ DropdownMenuItem(
                                 onClick = { viewModel.togglePixivFollow() },
                                 enabled = !uiState.isTogglingPixivFollow,
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                                modifier = Modifier.padding(start = 8.dp),
+                                modifier = Modifier
+                                    .padding(start = 8.dp)
+                                    .pressScale(),
                             ) {
                                 Text(if (followed) "Following" else "Follow")
                             }
@@ -733,10 +866,13 @@ DropdownMenuItem(
             }
         },
     ) { innerPadding ->
+        val topBarPadding = innerPadding.calculateTopPadding()
+        val bottomPadding = innerPadding.calculateBottomPadding()
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
+                .padding(bottom = bottomPadding),
         ) {
             if (uiState.isSearch) {
                 FeedGrid(
@@ -757,6 +893,7 @@ DropdownMenuItem(
                         else -> pixivSearchGridState
                     },
                     columnCount = columnCount,
+                    topPadding = topBarPadding,
                     onPostClick = onPostClick,
                     onLoadMore = { viewModel.loadMoreSearch() },
                     onRetry = { viewModel.retrySearch() },
@@ -792,6 +929,7 @@ DropdownMenuItem(
                             PoolsTabContent(
                                 feed = uiState.poolsFeed,
                                 covers = uiState.poolCovers,
+                                topPadding = topBarPadding,
                                 onQueryChange = { query -> viewModel.loadPoolsInitial(query) },
                                 onLoadMore = { viewModel.loadMorePools() },
                                 onRefresh = { viewModel.refreshPools() },
@@ -801,7 +939,11 @@ DropdownMenuItem(
                         }
                         PluginFeedKind.POPULAR -> {
                             if (tab.supportsPeriodSelection) {
-                                Column(modifier = Modifier.fillMaxSize()) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(top = topBarPadding),
+                                ) {
                                     if (!isSelectionMode) {
                                         PopularControls(
                                             period = uiState.popularPeriod,
@@ -817,6 +959,7 @@ DropdownMenuItem(
                                         gridKey = gridKey,
                                         gridState = gridState,
                                         columnCount = columnCount,
+                                        topPadding = 0.dp,
                                         onPostClick = onPostClick,
                                         onLoadMore = {
                                             if (uiState.supportsUserFeeds) viewModel.loadMorePixiv(PluginFeedKind.POPULAR)
@@ -843,6 +986,7 @@ DropdownMenuItem(
                                     gridKey = gridKey,
                                     gridState = gridState,
                                     columnCount = columnCount,
+                                    topPadding = topBarPadding,
                                     onPostClick = onPostClick,
                                     onLoadMore = {
                                         if (uiState.supportsUserFeeds) viewModel.loadMorePixiv(PluginFeedKind.POPULAR)
@@ -873,6 +1017,7 @@ DropdownMenuItem(
                                     gridKey = gridKey,
                                     gridState = gridState,
                                     columnCount = columnCount,
+                                    topPadding = topBarPadding,
                                     onPostClick = onPostClick,
                                     onRequireLogin = onRequireLogin,
                                     onLoadMore = {
@@ -897,6 +1042,7 @@ DropdownMenuItem(
                                     gridKey = gridKey,
                                     gridState = gridState,
                                     columnCount = columnCount,
+                                    topPadding = topBarPadding,
                                     onPostClick = onPostClick,
                                     onLoadMore = { viewModel.loadMoreNewest() },
                                     onRetry = { viewModel.loadNewestInitial() },
@@ -952,6 +1098,7 @@ private fun FeedGrid(
     onRequireLogin: (() -> Unit)? = null,
     selectedPostIds: Set<Long> = emptySet(),
     onToggleSelect: ((Long) -> Unit)? = null,
+    topPadding: androidx.compose.ui.unit.Dp = 0.dp,
     modifier: Modifier = Modifier,
 ) {
     val shouldLoadMore by remember {
@@ -995,7 +1142,7 @@ private fun FeedGrid(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(24.dp),
+                        .padding(top = topPadding, start = 24.dp, end = 24.dp, bottom = 24.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -1012,11 +1159,11 @@ private fun FeedGrid(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         if (onRequireLogin != null) {
-                            Button(onClick = onRequireLogin) {
+                            Button(onClick = onRequireLogin, modifier = Modifier.pressScale()) {
                                 Text("Sign in")
                             }
                         } else {
-                            IconButton(onClick = onRetry) {
+                            IconButton(onClick = onRetry, modifier = Modifier.pressScale()) {
                                 Icon(Icons.Default.Refresh, contentDescription = "Retry")
                             }
                         }
@@ -1029,7 +1176,7 @@ private fun FeedGrid(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(24.dp),
+                        .padding(top = topPadding, start = 24.dp, end = 24.dp, bottom = 24.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
@@ -1043,7 +1190,7 @@ private fun FeedGrid(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(24.dp),
+                        .padding(top = topPadding, start = 24.dp, end = 24.dp, bottom = 24.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -1054,11 +1201,11 @@ private fun FeedGrid(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         if (feed.authRequired && onRequireLogin != null) {
-                            Button(onClick = onRequireLogin) {
+                            Button(onClick = onRequireLogin, modifier = Modifier.pressScale()) {
                                 Text("Sign in")
                             }
                         } else {
-                            IconButton(onClick = onRetry) {
+                            IconButton(onClick = onRetry, modifier = Modifier.pressScale()) {
                                 Icon(Icons.Default.Refresh, contentDescription = "Retry")
                             }
                         }
@@ -1070,7 +1217,7 @@ private fun FeedGrid(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(24.dp),
+                            .padding(top = topPadding, start = 24.dp, end = 24.dp, bottom = 24.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -1079,7 +1226,7 @@ private fun FeedGrid(
                                 style = MaterialTheme.typography.bodyLarge,
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            IconButton(onClick = onRetry) {
+                            IconButton(onClick = onRetry, modifier = Modifier.pressScale()) {
                                 Icon(Icons.Default.Refresh, contentDescription = "Retry")
                             }
                         }
@@ -1117,7 +1264,12 @@ private fun FeedGrid(
                 LazyVerticalStaggeredGrid(
                     columns = StaggeredGridCells.Fixed(columnCount),
                     state = gridState,
-                    contentPadding = PaddingValues(4.dp),
+                    contentPadding = PaddingValues(
+                        start = 4.dp,
+                        end = 4.dp,
+                        top = topPadding + 4.dp,
+                        bottom = 4.dp,
+                    ),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalItemSpacing = 4.dp,
                     modifier = Modifier.fillMaxSize(),
@@ -1176,6 +1328,7 @@ private fun FeedGrid(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(3.dp)
+                        .padding(top = topPadding)
                         .align(Alignment.TopCenter),
                     color = MaterialTheme.colorScheme.primary,
                     trackColor = Color.Transparent,
@@ -1201,6 +1354,7 @@ private fun PersonalFeedContent(
     onRefresh: () -> Unit,
     selectedPostIds: Set<Long> = emptySet(),
     onToggleSelect: ((Long) -> Unit)? = null,
+    topPadding: androidx.compose.ui.unit.Dp = 0.dp,
     modifier: Modifier = Modifier,
 ) {
     if (plugin == null) return
@@ -1211,7 +1365,7 @@ private fun PersonalFeedContent(
 
     if (!isLoggedIn || (needsUsername && username.isNullOrBlank())) {
         Box(
-            modifier = modifier.fillMaxSize().padding(24.dp),
+            modifier = modifier.fillMaxSize().padding(top = topPadding, start = 24.dp, end = 24.dp, bottom = 24.dp),
             contentAlignment = Alignment.Center,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -1227,7 +1381,7 @@ private fun PersonalFeedContent(
                     style = MaterialTheme.typography.bodyLarge,
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = { onRequireLogin(plugin) }) {
+                Button(onClick = { onRequireLogin(plugin) }, modifier = Modifier.pressScale()) {
                     Text("Sign in")
                 }
             }
@@ -1256,6 +1410,7 @@ private fun PersonalFeedContent(
         gridKey = gridKey,
         gridState = gridState,
         columnCount = columnCount,
+        topPadding = topPadding,
         onPostClick = onPostClick,
         onLoadMore = onLoadMore,
         onRetry = onRetry,
@@ -1277,6 +1432,7 @@ private fun PoolsTabContent(
     onRefresh: () -> Unit,
     onPoolClick: (PoolSummary) -> Unit,
     onNeedCover: (Long) -> Unit,
+    topPadding: androidx.compose.ui.unit.Dp = 0.dp,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -1307,7 +1463,7 @@ private fun PoolsTabContent(
                 when {
                     feed.error != null && feed.pools.isEmpty() -> {
                         Box(
-                            modifier = Modifier.fillMaxSize().padding(24.dp),
+                            modifier = Modifier.fillMaxSize().padding(top = topPadding, start = 24.dp, end = 24.dp, bottom = 24.dp),
                             contentAlignment = Alignment.Center,
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -1317,7 +1473,7 @@ private fun PoolsTabContent(
                                     style = MaterialTheme.typography.bodyLarge,
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
-                                IconButton(onClick = { onQueryChange(feed.query) }) {
+                                IconButton(onClick = { onQueryChange(feed.query) }, modifier = Modifier.pressScale()) {
                                     Icon(Icons.Default.Refresh, contentDescription = "Retry")
                                 }
                             }
@@ -1325,7 +1481,10 @@ private fun PoolsTabContent(
                     }
                     feed.pools.isEmpty() -> {
                         if (!feed.isLoading) {
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Box(
+                                modifier = Modifier.fillMaxSize().padding(top = topPadding, start = 24.dp, end = 24.dp, bottom = 24.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
                                 Text(
                                     text = "No pools found",
                                     style = MaterialTheme.typography.bodyLarge,
@@ -1339,7 +1498,7 @@ private fun PoolsTabContent(
                     else -> {
                         LazyColumn(
                             state = listState,
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = topPadding + 8.dp, bottom = 8.dp),
                             modifier = Modifier.fillMaxSize(),
                         ) {
                             items(items = feed.pools, key = { it.id }) { pool ->
@@ -1370,6 +1529,7 @@ private fun PoolsTabContent(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(3.dp)
+                            .padding(top = topPadding)
                             .align(Alignment.TopCenter),
                         color = MaterialTheme.colorScheme.primary,
                         trackColor = Color.Transparent,
@@ -1392,18 +1552,19 @@ private fun PoolListItem(
         if (coverUrl == null) onNeedCover()
     }
 
-    Card(
+    val poolShape = RoundedCornerShape(GlassDefaults.CardCornerRadius)
+
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            .pressScale()
+            .glassSurface(shape = poolShape)
+            .clip(poolShape)
+            .clickable(onClick = onClick)
+            .padding(12.dp),
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
@@ -1478,16 +1639,26 @@ private fun PostGridItem(
         .fillMaxWidth()
         .aspectRatio(post.aspectRatio.coerceIn(0.4f, 2.5f))
 
+    val cardShape = RoundedCornerShape(GlassDefaults.CardCornerRadius)
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val rimBrush = if (isDark) GlassDefaults.DarkRimGradient else GlassDefaults.LightRimGradient
+    val borderStroke = if (isSelected) {
+        BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+    } else {
+        BorderStroke(GlassDefaults.RimStrokeWidth, rimBrush)
+    }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .pressScale(GlassDefaults.PressScale)
+            .clip(cardShape)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick,
             ),
-        shape = RoundedCornerShape(8.dp),
-        border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+        shape = cardShape,
+        border = borderStroke,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
         ),
@@ -1559,23 +1730,43 @@ private fun PostGridItem(
             }
 
             if (isSelectionMode) {
+                val badgeScale by animateFloatAsState(
+                    targetValue = if (isSelected) 1.05f else 1.0f,
+                    animationSpec = spring(
+                        dampingRatio = 0.7f,
+                        stiffness = Spring.StiffnessMediumLow,
+                    ),
+                    label = "selection_badge_scale",
+                )
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(6.dp)
-                        .size(24.dp)
-                        .background(
-                            color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Black.copy(alpha = 0.45f),
-                            shape = CircleShape,
-                        )
-                        .border(
-                            width = 1.5.dp,
-                            color = if (isSelected) MaterialTheme.colorScheme.primary else Color.White,
-                            shape = CircleShape,
+                        .padding(8.dp)
+                        .size(26.dp)
+                        .graphicsLayer {
+                            scaleX = badgeScale
+                            scaleY = badgeScale
+                        }
+                        .then(
+                            if (isSelected) {
+                                Modifier
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary)
+                                    .border(1.5.dp, Color.White.copy(alpha = 0.9f), CircleShape)
+                            } else {
+                                Modifier.glassSurface(
+                                    shape = CircleShape,
+                                    isElevated = true,
+                                )
+                            }
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (isSelected) {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = isSelected,
+                        enter = fadeIn() + scaleIn(spring(dampingRatio = 0.7f)),
+                        exit = fadeOut() + scaleOut(spring(dampingRatio = 0.7f)),
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Check,
                             contentDescription = "Selected",
@@ -1606,11 +1797,10 @@ private fun PopularControls(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // Period filter chips: Day, Week, Month, Year
+        // Period filter chips: Day, Week, Month, Year as frosted glass capsules
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1618,20 +1808,47 @@ private fun PopularControls(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             PluginFeedPeriod.entries.forEach { p ->
-                FilterChip(
-                    selected = period == p,
-                    onClick = { onPeriodSelect(p) },
-                    label = {
-                        Text(
-                            when (p) {
-                                PluginFeedPeriod.DAY -> "Day"
-                                PluginFeedPeriod.WEEK -> "Week"
-                                PluginFeedPeriod.MONTH -> "Month"
-                                PluginFeedPeriod.YEAR -> "Year"
+                val isSelected = period == p
+                val label = when (p) {
+                    PluginFeedPeriod.DAY -> "Day"
+                    PluginFeedPeriod.WEEK -> "Week"
+                    PluginFeedPeriod.MONTH -> "Month"
+                    PluginFeedPeriod.YEAR -> "Year"
+                }
+                Box(
+                    modifier = Modifier
+                        .pressScale()
+                        .glassSurface(
+                            shape = RoundedCornerShape(GlassDefaults.PillCornerRadius),
+                            isElevated = isSelected,
+                        )
+                        .then(
+                            if (isSelected) {
+                                Modifier.border(
+                                    width = 1.dp,
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                                    shape = RoundedCornerShape(GlassDefaults.PillCornerRadius),
+                                )
+                            } else {
+                                Modifier
                             }
                         )
-                    },
-                )
+                        .clip(RoundedCornerShape(GlassDefaults.PillCornerRadius))
+                        .clickable { onPeriodSelect(p) }
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (isSelected) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    )
+                }
             }
         }
 
@@ -1641,25 +1858,37 @@ private fun PopularControls(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            IconButton(
-                onClick = { onShiftDate(-1) },
-                modifier = Modifier.size(36.dp),
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .pressScale()
+                    .glassSurface(shape = CircleShape)
+                    .clip(CircleShape)
+                    .clickable { onShiftDate(-1) },
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = LatteIcons.ChevronLeft,
                     contentDescription = "Previous period",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(18.dp),
                 )
             }
 
-            Surface(
+            Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .clickable { showDatePicker = true },
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                tonalElevation = 1.dp,
+                    .pressScale()
+                    .glassSurface(
+                        shape = RoundedCornerShape(GlassDefaults.PillCornerRadius),
+                        isElevated = true,
+                    )
+                    .clip(RoundedCornerShape(GlassDefaults.PillCornerRadius))
+                    .clickable { showDatePicker = true }
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                contentAlignment = Alignment.Center,
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    modifier = Modifier.padding(horizontal = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
                 ) {
@@ -1669,20 +1898,24 @@ private fun PopularControls(
                         modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.primary,
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = formatPopularWindow(period, date),
                         style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }
 
-            IconButton(
-                onClick = { onShiftDate(1) },
-                enabled = canShiftForward,
-                modifier = Modifier.size(36.dp),
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .pressScale(enabled = canShiftForward)
+                    .glassSurface(shape = CircleShape)
+                    .clip(CircleShape)
+                    .clickable(enabled = canShiftForward) { onShiftDate(1) },
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = LatteIcons.ChevronRight,
@@ -1692,6 +1925,7 @@ private fun PopularControls(
                     } else {
                         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                     },
+                    modifier = Modifier.size(18.dp),
                 )
             }
         }
@@ -1778,20 +2012,32 @@ private fun SearchTagChip(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = if (isFavorite) {
-            MaterialTheme.colorScheme.secondaryContainer
-        } else {
-            MaterialTheme.colorScheme.surfaceVariant
-        },
+    Box(
         modifier = Modifier
             .padding(vertical = 4.dp)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+            .pressScale()
+            .glassSurface(
+                shape = RoundedCornerShape(GlassDefaults.PillCornerRadius),
+                isElevated = isFavorite,
+            )
+            .then(
+                if (isFavorite) {
+                    Modifier.border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                        shape = RoundedCornerShape(GlassDefaults.PillCornerRadius),
+                    )
+                } else {
+                    Modifier
+                }
+            )
+            .clip(RoundedCornerShape(GlassDefaults.PillCornerRadius))
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
             if (isFavorite) {
                 Icon(
@@ -1802,7 +2048,12 @@ private fun SearchTagChip(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
             }
-            Text(tag, style = MaterialTheme.typography.labelLarge)
+            Text(
+                text = tag,
+                style = MaterialTheme.typography.labelLarge,
+                color = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                fontWeight = if (isFavorite) FontWeight.SemiBold else FontWeight.Normal,
+            )
         }
     }
 }
