@@ -308,6 +308,34 @@ a defect.
 
 ---
 
+## Milestone 0.3.0: Liquid Glass UI, Pixiv Paging & Download Reliability
+
+> **Status**: Released as `v0.3.0` on 2026-10-27 (#27, #28). Haze backdrop blur on the Explore top bar and Detail controls, a top island notification stack, Pixiv multi-page paging, readable feed errors, de-duplicated paging, Pixiv downloads that fall back from `pixiv.cat` to the original image, and a toolchain upgrade to the latest stable Kotlin and Compose. Minimum Android version is now 13 (API 33).
+
+### 1. Liquid Glass
+
+- Haze 2.0.1 blurs the feed behind the Explore top bar and the artwork behind the Detail controls; Popular scrolls under the bar like Newest.
+- Detail draws a blurred, darkened copy of the artwork behind the viewer, with matching glass pills on the top and bottom rows.
+- Selected tabs, chips and card selection badges use filled primary-container colors so they read in light theme.
+
+### 2. Detail & Pixiv
+
+- Edge taps and a thumbnail strip page multi-page works; the next page is prefetched and zoom resets per page.
+- Pixiv single-page works download the original from `meta_single_page`; downloads try `i.pximg.net`, then `i.pixiv.re`, then `pixiv.cat`, through the shared OkHttp client.
+- Later feed pages are appended without duplicates (`appendDistinct`), fixing repeated posts while swiping Pixiv in Detail.
+
+### 3. Feedback & Errors
+
+- Notifications show as a blurred top pill stack (latest three, newest first) with actions and short post-id messages.
+- Feed failures map to a readable title, hint and Try again button; empty feeds show per-tab copy instead of an error.
+
+### 4. Platform & Toolchain
+
+- Kotlin 2.4.21, Compose BOM 2026.09.00, AGP 9.4.1, Gradle 9.7.0, compileSdk 37; minSdk raised to 33.
+- Regression tests guard download order, Pixiv originals, feed errors, de-duplicated paging, Detail paging decisions and the notification stack.
+
+---
+
 ## Quality & Governance Gates
 
 1. Every milestone must maintain the project gates: `make check`, `make lint`, and `make validate`; deterministic tests and lint must stay green.
