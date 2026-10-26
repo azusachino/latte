@@ -24,10 +24,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -79,6 +82,7 @@ import com.azusachino.latte.ui.theme.glassSurface
 import com.azusachino.latte.ui.theme.pressScale
 import coil3.compose.AsyncImage
 import coil3.compose.SubcomposeAsyncImage
+import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.azusachino.latte.data.download.DownloadManager
@@ -141,9 +145,22 @@ fun DetailScreen(
     }
     val displayPost = currentPost?.forPage(pixivPageIndex)
     val currentPlugin = currentPost?.let { pluginManager.get(it.platform) }
+    val isMultiPagePost = currentPost != null &&
+        PlatformCapability.USER_FEED in currentPost.platform.capabilities &&
+        currentPost.pageCount > 1
 
     LaunchedEffect(currentPost?.siteId, currentPost?.id) {
         inlineActionError = null
+    }
+
+    LaunchedEffect(pixivPageIndex, currentPost?.siteId, currentPost?.id) {
+        if (currentPost != null && isMultiPagePost && pixivPageIndex + 1 < currentPost.pageCount) {
+            context.imageLoader.enqueue(
+                ImageRequest.Builder(context)
+                    .data(currentPost.forPage(pixivPageIndex + 1).sampleUrl)
+                    .build(),
+            )
+        }
     }
 
     // The site never tells the app "you already scored this post" up front --
@@ -178,7 +195,18 @@ fun DetailScreen(
             }
             DetailImageView(
                 targetPost = post,
-                onTap = { showControls = !showControls },
+                onTap = { xFraction, zoomed ->
+                    // Edge taps page through multi-page works; everything else toggles controls.
+                    val edgeLeft = xFraction < 0.25f
+                    val edgeRight = xFraction > 0.75f
+                    val canPage = isMultiPagePost && !zoomed && (edgeLeft || edgeRight)
+                    val target = if (edgeLeft) pixivPageIndex - 1 else pixivPageIndex + 1
+                    if (canPage && target in 0 until (currentPost?.pageCount ?: 0)) {
+                        pixivPageIndex = target
+                    } else {
+                        showControls = !showControls
+                    }
+                },
             )
         }
 
@@ -201,7 +229,7 @@ fun DetailScreen(
                 Box(
                     modifier = Modifier
                         .size(44.dp)
-                        .glassSurface(shape = CircleShape)
+                        .glassSurface(shape = CircleShape, dark = true)
                         .pressScale(),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -235,7 +263,7 @@ fun DetailScreen(
                     if (centerTitle.isNotBlank()) {
                         Box(
                             modifier = Modifier
-                                .glassSurface(shape = RoundedCornerShape(GlassDefaults.PillCornerRadius))
+                                .glassSurface(shape = RoundedCornerShape(GlassDefaults.PillCornerRadius), dark = true)
                                 .padding(horizontal = 14.dp, vertical = 8.dp),
                             contentAlignment = Alignment.Center,
                         ) {
@@ -261,7 +289,7 @@ fun DetailScreen(
                         Box(
                             modifier = Modifier
                                 .size(44.dp)
-                                .glassSurface(shape = CircleShape)
+                                .glassSurface(shape = CircleShape, dark = true)
                                 .pressScale(),
                             contentAlignment = Alignment.Center,
                         ) {
@@ -291,7 +319,7 @@ fun DetailScreen(
                         Box(
                             modifier = Modifier
                                 .size(44.dp)
-                                .glassSurface(shape = CircleShape)
+                                .glassSurface(shape = CircleShape, dark = true)
                                 .pressScale(),
                             contentAlignment = Alignment.Center,
                         ) {
@@ -342,7 +370,7 @@ fun DetailScreen(
                     Box(
                         modifier = Modifier
                             .padding(bottom = 10.dp)
-                            .glassSurface(shape = RoundedCornerShape(12.dp))
+                            .glassSurface(shape = RoundedCornerShape(12.dp), dark = true)
                             .padding(horizontal = 14.dp, vertical = 6.dp),
                     ) {
                         Text(
@@ -357,7 +385,7 @@ fun DetailScreen(
                     Box(
                         modifier = Modifier
                             .padding(bottom = 12.dp)
-                            .glassSurface(shape = RoundedCornerShape(GlassDefaults.PillCornerRadius))
+                            .glassSurface(shape = RoundedCornerShape(GlassDefaults.PillCornerRadius), dark = true)
                             .padding(horizontal = 6.dp, vertical = 2.dp),
                     ) {
                         Row(
@@ -411,10 +439,43 @@ fun DetailScreen(
                     }
                 }
 
+                if (currentPost != null && isMultiPagePost) {
+                    val thumbnailState = rememberLazyListState()
+                    LaunchedEffect(pixivPageIndex) {
+                        thumbnailState.animateScrollToItem(pixivPageIndex)
+                    }
+                    LazyRow(
+                        state = thumbnailState,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(horizontal = 4.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp),
+                    ) {
+                        items(count = currentPost.pageCount) { index ->
+                            val selected = index == pixivPageIndex
+                            AsyncImage(
+                                model = currentPost.forPage(index).previewUrl,
+                                contentDescription = "Page ${index + 1}",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .border(
+                                        width = 2.dp,
+                                        color = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                        shape = RoundedCornerShape(8.dp),
+                                    )
+                                    .clickable { pixivPageIndex = index },
+                            )
+                        }
+                    }
+                }
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .glassSurface(shape = RoundedCornerShape(28.dp))
+                        .glassSurface(shape = RoundedCornerShape(28.dp), dark = true)
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
@@ -743,12 +804,13 @@ fun DetailScreen(
 @Composable
 private fun DetailImageView(
     targetPost: Post,
-    onTap: () -> Unit,
+    onTap: (xFraction: Float, zoomed: Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     ZoomableBox(
         modifier = modifier.fillMaxSize(),
+        resetKey = Triple(targetPost.siteId, targetPost.id, targetPost.pageIndex),
         onTap = onTap,
     ) {
         val imageSources = remember(targetPost.siteId, targetPost.id, targetPost.pageIndex) {
