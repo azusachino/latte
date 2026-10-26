@@ -989,12 +989,6 @@ fun ExploreScreen(
                                         onPickDate = { viewModel.setPopularDate(it) },
                                     )
                                 }
-                                val periodName = when (uiState.popularPeriod) {
-                                    PluginFeedPeriod.DAY -> "day"
-                                    PluginFeedPeriod.WEEK -> "week"
-                                    PluginFeedPeriod.MONTH -> "month"
-                                    PluginFeedPeriod.YEAR -> "year"
-                                }
                                 FeedGrid(
                                     feed = feed,
                                     viewModel = viewModel,
@@ -1003,7 +997,7 @@ fun ExploreScreen(
                                     columnCount = columnCount,
                                     topPadding = topBarPadding,
                                     header = if (isSelectionMode) null else popularHeader,
-                                    emptyTitle = "No posts for this $periodName",
+                                    emptyTitle = popularEmptyTitle(uiState.popularPeriod),
                                     emptyHint = "Try another day or period.",
                                     onPostClick = onPostClick,
                                     onLoadMore = {
@@ -2075,6 +2069,16 @@ private fun PopularControls(
             )
         }
     }
+}
+
+internal fun popularEmptyTitle(period: PluginFeedPeriod): String {
+    val periodName = when (period) {
+        PluginFeedPeriod.DAY -> "day"
+        PluginFeedPeriod.WEEK -> "week"
+        PluginFeedPeriod.MONTH -> "month"
+        PluginFeedPeriod.YEAR -> "year"
+    }
+    return "No posts for this $periodName"
 }
 
 private fun formatPopularWindow(period: PluginFeedPeriod, anchor: LocalDate): String {

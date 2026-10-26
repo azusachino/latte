@@ -137,7 +137,7 @@ fun DetailScreen(
     )
 
     LaunchedEffect(pagerState.currentPage, detailPosts.size) {
-        if (detailPosts.isNotEmpty() && pagerState.currentPage >= detailPosts.size - 5) {
+        if (shouldLoadMoreDetail(pagerState.currentPage, detailPosts.size)) {
             onLoadMore()
         }
     }
@@ -233,15 +233,10 @@ fun DetailScreen(
                 DetailImageView(
                     targetPost = post,
                     onTap = { xFraction, zoomed ->
-                        // Edge taps page through multi-page works; everything else toggles controls.
-                        val edgeLeft = xFraction < 0.25f
-                        val edgeRight = xFraction > 0.75f
-                        val canPage = isMultiPagePost && !zoomed && (edgeLeft || edgeRight)
-                        val target = if (edgeLeft) pixivPageIndex - 1 else pixivPageIndex + 1
-                        if (canPage && target in 0 until (currentPost?.pageCount ?: 0)) {
-                            pixivPageIndex = target
-                        } else {
-                            showControls = !showControls
+                        when (detailTapAction(xFraction, zoomed, isMultiPagePost, pixivPageIndex, currentPost?.pageCount ?: 0)) {
+                            DetailTapAction.PreviousPage -> pixivPageIndex -= 1
+                            DetailTapAction.NextPage -> pixivPageIndex += 1
+                            DetailTapAction.ToggleControls -> showControls = !showControls
                         }
                     },
                 )
@@ -1246,6 +1241,40 @@ private fun TagChip(
                 )
             }
         }
+    }
+}
+
+/** The Detail list asks for more posts once the viewer is within this many posts of the end. */
+private const val DETAIL_LOAD_MORE_THRESHOLD = 5
+
+internal fun shouldLoadMoreDetail(currentPage: Int, size: Int): Boolean =
+    size > 0 && currentPage >= size - DETAIL_LOAD_MORE_THRESHOLD
+
+internal sealed interface DetailTapAction {
+    data object PreviousPage : DetailTapAction
+    data object NextPage : DetailTapAction
+    data object ToggleControls : DetailTapAction
+}
+
+/**
+ * Edge taps (outer 25% on each side) page through a multi-page work when not zoomed.
+ * Middle taps, zoomed taps, single-page works and edges past the first or last page toggle controls.
+ */
+internal fun detailTapAction(
+    xFraction: Float,
+    zoomed: Boolean,
+    isMultiPage: Boolean,
+    pageIndex: Int,
+    pageCount: Int,
+): DetailTapAction {
+    val edgeLeft = xFraction < 0.25f
+    val edgeRight = xFraction > 0.75f
+    if (!isMultiPage || zoomed || !(edgeLeft || edgeRight)) return DetailTapAction.ToggleControls
+    val target = if (edgeLeft) pageIndex - 1 else pageIndex + 1
+    return when {
+        target !in 0 until pageCount -> DetailTapAction.ToggleControls
+        edgeLeft -> DetailTapAction.PreviousPage
+        else -> DetailTapAction.NextPage
     }
 }
 

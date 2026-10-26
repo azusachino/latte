@@ -26,6 +26,7 @@
 - Detail viewer controls stay readable in light theme, zoom resets per page, and system bar icons follow the in-app theme (#28).
 - Feed errors show a readable message and a Try again button instead of the raw error.
 - Selected tabs, chips and card selection badges are clearly visible in light theme; an empty day no longer shows as an error. The Popular feed scrolls under the glass top bar with its period controls, and each tab's empty state has its own message and Refresh button.
+- Feeds no longer show duplicated posts when later pages overlap (seen in Pixiv Detail scrolling).
 
 ## 0.2.6 - 2026-10-03
 

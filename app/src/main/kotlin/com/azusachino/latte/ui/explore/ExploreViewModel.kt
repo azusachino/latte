@@ -737,7 +737,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                 _uiState.update {
                     it.copy(
                         popularFeed = it.popularFeed.copy(
-                            posts = it.popularFeed.posts + newPosts,
+                            posts = it.popularFeed.posts.appendDistinct(newPosts),
                             page = nextPage,
                             hasMore = newPosts.isNotEmpty(),
                             isLoadingMore = false,
@@ -763,7 +763,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                 _uiState.update {
                     it.copy(
                         newestFeed = it.newestFeed.copy(
-                            posts = it.newestFeed.posts + newPosts,
+                            posts = it.newestFeed.posts.appendDistinct(newPosts),
                             page = nextPage,
                             hasMore = newPosts.isNotEmpty(),
                             isLoadingMore = false,
@@ -798,7 +798,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                 val newPosts = loadPosts(PluginFeedKind.SEARCH, page = nextPage, query = searchKey)
                 _uiState.update {
                     val updatedFeed = it.searchFeed.copy(
-                        posts = it.searchFeed.posts + newPosts,
+                        posts = it.searchFeed.posts.appendDistinct(newPosts),
                         page = nextPage,
                         hasMore = newPosts.isNotEmpty(),
                         isLoadingMore = false,
@@ -1133,16 +1133,18 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             is PluginFeedResult.Success -> {
                 val visibleItems = filterPosts(result.page.items, preferences.safeMode.value)
                 val hasMore = result.page.nextCursor != null
-                val previousStreak = pixivFeed(_uiState.value, kind).autoLoadStreak
-                val streak = if (isAppend) previousStreak + 1 else 0
-                // Safe Mode can filter an entire page (e.g. an R-18-heavy Following feed).
-                // Auto-fetch the next page a bounded number of times, then stop instead of
-                // spinning forever.
-                val maxAutoLoads = 3
-                val shouldContinue = visibleItems.isEmpty() && hasMore && streak < maxAutoLoads
+                val currentFeed = pixivFeed(_uiState.value, kind)
+                val base = if (isAppend) currentFeed.posts else emptyList()
+                val merged = base.appendDistinct(visibleItems)
+                val addedCount = merged.size - base.size
+                val streak = nextEmptyAppendStreak(isAppend, currentFeed.autoLoadStreak, addedCount)
+                // Safe Mode can filter an entire page (e.g. an R-18-heavy Following feed), and
+                // overlapping cursor pages can repeat one. Auto-fetch the next page a bounded number
+                // of times, then stop instead of spinning forever.
+                val shouldContinue = shouldAutoLoadNextPage(addedCount, hasMore, streak)
                 updatePixivFeed(kind) {
                     it.copy(
-                        posts = if (isAppend) it.posts + visibleItems else visibleItems,
+                        posts = merged,
                         isLoading = false,
                         isLoadingMore = false,
                         isRefreshing = false,
@@ -1156,7 +1158,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                 }
                 if (shouldContinue) {
                     loadMorePixiv(kind)
-                } else if (visibleItems.isEmpty() && hasMore) {
+                } else if (addedCount == 0 && hasMore) {
                     updatePixivFeed(kind) {
                         it.copy(
                             hasMore = false,
@@ -1348,7 +1350,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                 _uiState.update {
                     it.copy(
                         favoritesFeed = it.favoritesFeed.copy(
-                            posts = it.favoritesFeed.posts + newPosts,
+                            posts = it.favoritesFeed.posts.appendDistinct(newPosts),
                             page = nextPage,
                             hasMore = newPosts.isNotEmpty(),
                             isLoadingMore = false,
