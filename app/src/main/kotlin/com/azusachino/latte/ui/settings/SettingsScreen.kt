@@ -230,18 +230,9 @@ fun SettingsScreen(
                 }
             }
 
-            // Downloads & Storage Section
-            SettingsSectionHeader("Downloads & Storage")
+            // Storage & Network Section
+            SettingsSectionHeader("Storage & Network")
             SettingsGroupCard {
-                SettingsRow(
-                    icon = LatteIcons.Download,
-                    title = "Download directory",
-                    subtitle = "Pictures/Latte (Standard gallery album)",
-                    onClick = {},
-                )
-
-                SettingsDivider()
-
                 SettingsRow(
                     icon = Icons.Default.Delete,
                     title = "Clear Cache",
