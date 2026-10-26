@@ -13,6 +13,13 @@
 ### Changed
 
 - Bumped `androidx.datastore:datastore-preferences` to `1.1.2`.
+- Pixiv multi-page works can be paged with left/right edge taps and a page thumbnail strip, and the next page is prefetched (#28).
+- In-app notifications show one bulletin at a time with optional actions, swipe or tap to dismiss, and screen-reader announcements; favorite and rating results no longer raise a toast (#28).
+
+### Fixed
+
+- Pixiv downloads no longer fail with HTTP 500: they try the original `i.pximg.net` image first, then fall back to `i.pixiv.re` and `pixiv.cat`, and use the app's HTTP client so the proxy setting and DoH apply (#28).
+- Detail viewer controls stay readable in light theme, zoom resets per page, and system bar icons follow the in-app theme (#28).
 
 ## 0.2.6 - 2026-10-03
 

@@ -62,7 +62,7 @@ class DownloadManager(private val context: Context) {
 
     suspend fun enqueueDownload(post: Post, preferredVariant: MediaVariant? = null): DownloadResult =
         withContext(Dispatchers.IO) {
-            val variant = preferredVariant ?: post.bestVariant
+            val candidates = DownloadFallback.candidateUrls(post, preferredVariant)
             val displayName = DownloadIdentity.displayName(post)
             val ext = DownloadIdentity.fileExtension(post)
             val mimeType = if (ext == "png") "image/png" else "image/jpeg"
@@ -83,7 +83,7 @@ class DownloadManager(private val context: Context) {
             }
 
             // 3. Enqueue download
-            val headers = if (post.platform == PlatformId.PIXIV && (variant.url.contains("pximg.net") || post.originalUrl.contains("pximg.net"))) {
+            val headers = if (post.platform == PlatformId.PIXIV && (candidates.any { it.contains("pximg.net") } || post.originalUrl.contains("pximg.net"))) {
                 mapOf("Referer" to "https://app-api.pixiv.net/")
             } else {
                 emptyMap()
@@ -91,10 +91,11 @@ class DownloadManager(private val context: Context) {
             val request = OneTimeWorkRequestBuilder<DownloadWorker>()
                 .setInputData(
                     DownloadWorker.inputData(
-                        sourceUrl = variant.url,
+                        sourceUrl = candidates.first(),
                         displayName = displayName,
                         mimeType = mimeType,
                         headers = headers,
+                        fallbackUrls = candidates.drop(1),
                     )
                 )
                 .setBackoffCriteria(
