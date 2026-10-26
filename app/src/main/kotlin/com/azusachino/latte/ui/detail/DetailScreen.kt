@@ -1,5 +1,6 @@
 package com.azusachino.latte.ui.detail
 
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
@@ -58,6 +59,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -73,10 +75,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import com.azusachino.latte.ui.theme.GlassDefaults
 import com.azusachino.latte.ui.theme.glassSurface
 import com.azusachino.latte.ui.theme.pressScale
@@ -133,6 +137,20 @@ fun DetailScreen(
     }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    // The viewer is always black, so bar icons stay light whatever the app theme is.
+    val view = LocalView.current
+    DisposableEffect(view) {
+        val controller = WindowCompat.getInsetsController((view.context as Activity).window, view)
+        val wasLightStatusBars = controller.isAppearanceLightStatusBars
+        val wasLightNavigationBars = controller.isAppearanceLightNavigationBars
+        controller.isAppearanceLightStatusBars = false
+        controller.isAppearanceLightNavigationBars = false
+        onDispose {
+            controller.isAppearanceLightStatusBars = wasLightStatusBars
+            controller.isAppearanceLightNavigationBars = wasLightNavigationBars
+        }
+    }
 
     var showControls by remember { mutableStateOf(true) }
     var showInspectSheet by remember { mutableStateOf(false) }
@@ -658,11 +676,13 @@ fun DetailScreen(
                 containerColor = Color.Transparent,
                 dragHandle = null,
             ) {
+                val sheetShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface, sheetShape)
                         .glassSurface(
-                            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                            shape = sheetShape,
                             isElevated = true,
                         ),
                 ) {
