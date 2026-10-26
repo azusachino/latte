@@ -1,8 +1,13 @@
 package com.azusachino.latte.ui.explore
 
+import com.azusachino.latte.data.model.Post
+import com.azusachino.latte.data.model.PostRating
+import com.azusachino.latte.plugin.PlatformId
+import com.azusachino.latte.plugin.PluginFeedPage
 import com.azusachino.latte.plugin.PluginFeedResult
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
 import java.net.ConnectException
@@ -107,6 +112,51 @@ class FeedErrorMessageTest {
         assertEquals("Sign in required", mapped.title)
         assertNoRawText(mapped)
     }
+
+    @Test
+    fun emptyFeedIsSuccessWithNoPostsAndNoFilterCall() {
+        var filterCalls = 0
+        val posts = PluginFeedResult.Empty.feedPostsOrThrow { filterCalls++; it }
+
+        assertEquals(emptyList<Post>(), posts)
+        assertEquals(0, filterCalls)
+    }
+
+    @Test
+    fun successAppliesFilterToItems() {
+        val item = post(1L)
+        val success = PluginFeedResult.Success(PluginFeedPage(listOf(item)))
+
+        assertEquals(listOf(item), success.feedPostsOrThrow { it })
+        assertEquals(emptyList<Post>(), success.feedPostsOrThrow { emptyList() })
+    }
+
+    @Test
+    fun failedResultsThrowFeedLoadFailure() {
+        val failure = PluginFeedResult.RateLimited(5)
+        val thrown = runCatching { failure.feedPostsOrThrow { it } }.exceptionOrNull()
+
+        assertTrue(thrown is FeedLoadFailure)
+        assertEquals(failure, (thrown as FeedLoadFailure).result)
+    }
+
+    private fun post(id: Long) = Post(
+        id = id,
+        platform = PlatformId.YANDE,
+        rating = PostRating.SAFE,
+        tags = emptyList(),
+        score = 0,
+        author = null,
+        source = null,
+        createdAt = null,
+        width = 1,
+        height = 1,
+        previewUrl = "https://yande.re/$id.jpg",
+        sampleUrl = "https://yande.re/$id.jpg",
+        jpegUrl = null,
+        originalUrl = "https://yande.re/$id.jpg",
+        variants = emptyList(),
+    )
 
     private fun assertNoRawText(error: FeedError) {
         val text = listOfNotNull(error.title, error.hint).joinToString(" ")

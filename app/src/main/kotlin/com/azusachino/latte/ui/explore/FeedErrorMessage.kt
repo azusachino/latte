@@ -1,5 +1,6 @@
 package com.azusachino.latte.ui.explore
 
+import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.plugin.PluginFeedResult
 import java.net.ConnectException
 import java.net.SocketTimeoutException
@@ -11,6 +12,13 @@ data class FeedError(val title: String, val hint: String? = null)
 
 /** Carries a non-success [PluginFeedResult] through a throw so every loader maps it the same way. */
 internal class FeedLoadFailure(val result: PluginFeedResult) : Exception(result.toString())
+
+/** Success yields [filter] applied to its items; [PluginFeedResult.Empty] is an empty feed, not a failure. */
+internal fun PluginFeedResult.feedPostsOrThrow(filter: (List<Post>) -> List<Post>): List<Post> = when (this) {
+    is PluginFeedResult.Success -> filter(page.items)
+    PluginFeedResult.Empty -> emptyList()
+    else -> throw FeedLoadFailure(this)
+}
 
 internal val GenericFeedError = FeedError("Couldn't load posts", "Try again.")
 

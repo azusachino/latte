@@ -474,11 +474,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             date = date,
             safeMode = preferences.safeMode.value,
         )) ?: PluginFeedResult.TransportFailure("Active platform feed is not configured")
-        return when (result) {
-            is PluginFeedResult.Success -> applyLocalFilters(result.page.items)
-            PluginFeedResult.Empty -> emptyList()
-            else -> throw FeedLoadFailure(result)
-        }
+        return result.feedPostsOrThrow(::applyLocalFilters)
     }
 
     /** Logs the raw cause; only the mapped message reaches the UI. */
@@ -658,10 +654,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                     refresh = true,
                     safeMode = preferences.safeMode.value,
                 )) ?: PluginFeedResult.TransportFailure("Active platform feed is not configured")
-                val posts = when (result) {
-                    is PluginFeedResult.Success -> applyLocalFilters(result.page.items)
-                    else -> throw FeedLoadFailure(result)
-                }
+                val posts = result.feedPostsOrThrow(::applyLocalFilters)
                 _uiState.update {
                     val feed = it.popularFeed.copy(posts = posts, isLoading = false, hasMore = posts.isNotEmpty())
                     it.copy(popularFeed = feed)
@@ -692,10 +685,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                         safeMode = preferences.safeMode.value,
                     ),
                 ) ?: PluginFeedResult.TransportFailure("Active platform feed is not configured")
-                val posts = when (result) {
-                    is PluginFeedResult.Success -> applyLocalFilters(result.page.items)
-                    else -> throw FeedLoadFailure(result)
-                }
+                val posts = result.feedPostsOrThrow(::applyLocalFilters)
                 _uiState.update {
                     val feed = it.newestFeed.copy(posts = posts, isLoading = false, hasMore = posts.isNotEmpty())
                     it.copy(newestFeed = feed)

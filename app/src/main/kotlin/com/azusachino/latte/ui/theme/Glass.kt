@@ -105,6 +105,22 @@ fun Modifier.glassSurface(
 }
 
 /**
+ * Pill chip state: a selected chip is a solid `primaryContainer` fill with a 1dp primary outline,
+ * so it reads in both themes; an unselected chip stays a plain glass surface.
+ */
+@Composable
+fun Modifier.glassPillSelection(
+    selected: Boolean,
+    shape: Shape = RoundedCornerShape(GlassDefaults.PillCornerRadius),
+): Modifier {
+    if (!selected) return glassSurface(shape = shape)
+    return this
+        .clip(shape)
+        .background(MaterialTheme.colorScheme.primaryContainer, shape)
+        .border(1.dp, MaterialTheme.colorScheme.primary, shape)
+}
+
+/**
  * Micro-interaction modifier that applies tactile spring scale-on-press feedback.
  */
 @Composable

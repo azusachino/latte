@@ -3,7 +3,6 @@ package com.azusachino.latte.ui.settings
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -68,6 +67,7 @@ import com.azusachino.latte.data.update.UpdateService
 import com.azusachino.latte.ui.common.LatteIcons
 import com.azusachino.latte.ui.common.ToastManager
 import com.azusachino.latte.ui.theme.GlassDefaults
+import com.azusachino.latte.ui.theme.glassPillSelection
 import com.azusachino.latte.ui.theme.glassSurface
 import com.azusachino.latte.ui.theme.pressScale
 import kotlinx.coroutines.Job
@@ -708,21 +708,7 @@ private fun GlassPillChip(
     Box(
         modifier = modifier
             .pressScale()
-            .glassSurface(
-                shape = RoundedCornerShape(GlassDefaults.PillCornerRadius),
-                isElevated = selected,
-            )
-            .then(
-                if (selected) {
-                    Modifier.border(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                        shape = RoundedCornerShape(GlassDefaults.PillCornerRadius),
-                    )
-                } else {
-                    Modifier
-                }
-            )
+            .glassPillSelection(selected = selected)
             .clip(RoundedCornerShape(GlassDefaults.PillCornerRadius))
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -732,7 +718,7 @@ private fun GlassPillChip(
             text = label,
             style = MaterialTheme.typography.labelLarge,
             color = if (selected) {
-                MaterialTheme.colorScheme.primary
+                MaterialTheme.colorScheme.onPrimaryContainer
             } else {
                 MaterialTheme.colorScheme.onSurfaceVariant
             },

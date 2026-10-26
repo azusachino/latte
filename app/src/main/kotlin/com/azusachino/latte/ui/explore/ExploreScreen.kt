@@ -139,6 +139,7 @@ import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.ui.common.ToastManager
 import com.azusachino.latte.ui.common.ToastType
 import com.azusachino.latte.ui.theme.GlassDefaults
+import com.azusachino.latte.ui.theme.glassPillSelection
 import com.azusachino.latte.ui.theme.glassSurface
 import com.azusachino.latte.ui.theme.pressScale
 import kotlinx.coroutines.launch
@@ -198,10 +199,8 @@ fun GlassSegmentedTabs(
                 .offset(x = indicatorOffset)
                 .width(tabWidth)
                 .height(36.dp)
-                .glassSurface(
-                    shape = RoundedCornerShape(GlassDefaults.PillCornerRadius),
-                    isElevated = true,
-                ),
+                .clip(RoundedCornerShape(GlassDefaults.PillCornerRadius))
+                .background(MaterialTheme.colorScheme.primaryContainer),
         )
 
         // Segmented tabs row
@@ -233,7 +232,7 @@ fun GlassSegmentedTabs(
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                         ),
                         color = if (isSelected) {
-                            MaterialTheme.colorScheme.primary
+                            MaterialTheme.colorScheme.onPrimaryContainer
                         } else {
                             MaterialTheme.colorScheme.onSurfaceVariant
                         },
@@ -1810,18 +1809,14 @@ private fun PostGridItem(
                             scaleX = badgeScale
                             scaleY = badgeScale
                         }
-                        .then(
-                            if (isSelected) {
-                                Modifier
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary)
-                                    .border(1.5.dp, Color.White.copy(alpha = 0.9f), CircleShape)
-                            } else {
-                                Modifier.glassSurface(
-                                    shape = CircleShape,
-                                    isElevated = true,
-                                )
-                            }
+                        .clip(CircleShape)
+                        .background(
+                            if (isSelected) MaterialTheme.colorScheme.primary else Color.Black.copy(alpha = 0.35f),
+                        )
+                        .border(
+                            1.5.dp,
+                            if (isSelected) Color.White.copy(alpha = 0.9f) else Color.White,
+                            CircleShape,
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -1881,21 +1876,7 @@ private fun PopularControls(
                 Box(
                     modifier = Modifier
                         .pressScale()
-                        .glassSurface(
-                            shape = RoundedCornerShape(GlassDefaults.PillCornerRadius),
-                            isElevated = isSelected,
-                        )
-                        .then(
-                            if (isSelected) {
-                                Modifier.border(
-                                    width = 1.dp,
-                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                                    shape = RoundedCornerShape(GlassDefaults.PillCornerRadius),
-                                )
-                            } else {
-                                Modifier
-                            }
-                        )
+                        .glassPillSelection(selected = isSelected)
                         .clip(RoundedCornerShape(GlassDefaults.PillCornerRadius))
                         .clickable { onPeriodSelect(p) }
                         .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -1905,7 +1886,7 @@ private fun PopularControls(
                         text = label,
                         style = MaterialTheme.typography.labelLarge,
                         color = if (isSelected) {
-                            MaterialTheme.colorScheme.primary
+                            MaterialTheme.colorScheme.onPrimaryContainer
                         } else {
                             MaterialTheme.colorScheme.onSurfaceVariant
                         },
@@ -2094,21 +2075,7 @@ private fun SearchTagChip(
         modifier = Modifier
             .padding(vertical = 4.dp)
             .pressScale()
-            .glassSurface(
-                shape = RoundedCornerShape(GlassDefaults.PillCornerRadius),
-                isElevated = isFavorite,
-            )
-            .then(
-                if (isFavorite) {
-                    Modifier.border(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                        shape = RoundedCornerShape(GlassDefaults.PillCornerRadius),
-                    )
-                } else {
-                    Modifier
-                }
-            )
+            .glassPillSelection(selected = isFavorite)
             .clip(RoundedCornerShape(GlassDefaults.PillCornerRadius))
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(horizontal = 14.dp, vertical = 8.dp),
@@ -2121,7 +2088,7 @@ private fun SearchTagChip(
                 Icon(
                     imageVector = Icons.Default.Star,
                     contentDescription = "Favorited",
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier.size(16.dp),
                 )
                 Spacer(modifier = Modifier.width(4.dp))
@@ -2129,7 +2096,7 @@ private fun SearchTagChip(
             Text(
                 text = tag,
                 style = MaterialTheme.typography.labelLarge,
-                color = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                color = if (isFavorite) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
                 fontWeight = if (isFavorite) FontWeight.SemiBold else FontWeight.Normal,
             )
         }
