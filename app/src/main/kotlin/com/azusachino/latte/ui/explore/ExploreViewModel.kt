@@ -50,7 +50,7 @@ data class FeedState(
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
     val isRefreshing: Boolean = false,
-    val error: String? = null,
+    val error: FeedError? = null,
     val authRequired: Boolean = false,
     val page: Int = 1,
     val hasMore: Boolean = true,
@@ -65,7 +65,7 @@ data class PoolListState(
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
     val isRefreshing: Boolean = false,
-    val error: String? = null,
+    val error: FeedError? = null,
     val page: Int = 1,
     val hasMore: Boolean = true,
     val query: String = "",
@@ -243,7 +243,7 @@ data class ExploreUiState(
             else -> false
         }
 
-    val error: String?
+    val error: FeedError?
         get() = when {
             isSearch -> when {
                 !supportsUserFeeds -> searchFeed.error
@@ -476,12 +476,15 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         )) ?: PluginFeedResult.TransportFailure("Active platform feed is not configured")
         return when (result) {
             is PluginFeedResult.Success -> applyLocalFilters(result.page.items)
-            is PluginFeedResult.AuthRequired -> error("Authentication required")
-            is PluginFeedResult.TransportFailure -> error(result.message)
-            is PluginFeedResult.RateLimited -> error("Rate limited")
-            is PluginFeedResult.UpstreamDrift -> error(result.operation)
             PluginFeedResult.Empty -> emptyList()
+            else -> throw FeedLoadFailure(result)
         }
+    }
+
+    /** Logs the raw cause; only the mapped message reaches the UI. */
+    private fun feedError(cause: Throwable): FeedError {
+        android.util.Log.w("LatteExplore", "feed load failed: ${cause.message}", cause)
+        return cause.toFeedError(_uiState.value.platform.displayName)
     }
 
     fun configurePlugin(plugin: SitePlugin) {
@@ -657,7 +660,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                 )) ?: PluginFeedResult.TransportFailure("Active platform feed is not configured")
                 val posts = when (result) {
                     is PluginFeedResult.Success -> applyLocalFilters(result.page.items)
-                    else -> error(result.toString())
+                    else -> throw FeedLoadFailure(result)
                 }
                 _uiState.update {
                     val feed = it.popularFeed.copy(posts = posts, isLoading = false, hasMore = posts.isNotEmpty())
@@ -669,7 +672,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                     it.copy(
                         popularFeed = it.popularFeed.copy(
                             isLoading = false,
-                            error = e.message ?: "Failed to load popular posts",
+                            error = feedError(e),
                         )
                     )
                 }
@@ -691,7 +694,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                 ) ?: PluginFeedResult.TransportFailure("Active platform feed is not configured")
                 val posts = when (result) {
                     is PluginFeedResult.Success -> applyLocalFilters(result.page.items)
-                    else -> error(result.toString())
+                    else -> throw FeedLoadFailure(result)
                 }
                 _uiState.update {
                     val feed = it.newestFeed.copy(posts = posts, isLoading = false, hasMore = posts.isNotEmpty())
@@ -703,7 +706,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                     it.copy(
                         newestFeed = it.newestFeed.copy(
                             isLoading = false,
-                            error = e.message ?: "Failed to load newest posts",
+                            error = feedError(e),
                         )
                     )
                 }
@@ -841,7 +844,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 _uiState.update {
-                    it.copy(popularFeed = it.popularFeed.copy(isRefreshing = false, error = e.message ?: "Failed to refresh"))
+                    it.copy(popularFeed = it.popularFeed.copy(isRefreshing = false, error = feedError(e)))
                 }
             }
         }
@@ -865,7 +868,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 _uiState.update {
-                    it.copy(newestFeed = it.newestFeed.copy(isRefreshing = false, error = e.message ?: "Failed to refresh"))
+                    it.copy(newestFeed = it.newestFeed.copy(isRefreshing = false, error = feedError(e)))
                 }
             }
         }
@@ -917,7 +920,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 _uiState.update {
-                    it.copy(searchFeed = it.searchFeed.copy(isLoading = false, error = e.message ?: "Failed to load search results"))
+                    it.copy(searchFeed = it.searchFeed.copy(isLoading = false, error = feedError(e)))
                 }
             }
         }
@@ -1079,7 +1082,8 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun loadPixivInitial(kind: PluginFeedKind = selectedPixivKind(), query: String? = null) {
-        val client = activeFeedSource() ?: return updatePixivError(kind, "Active platform feed is not configured")
+        val client = activeFeedSource()
+            ?: return updatePixivError(kind, feedError(IllegalStateException("Active platform feed is not configured")))
         val activeQuery = query ?: _uiState.value.pixivSearchTags.takeIf { kind == PluginFeedKind.SEARCH }
         val activeUserId = _uiState.value.pixivAuthorId.takeIf { kind == PluginFeedKind.AUTHOR_WORKS }
         cancelPixivJob(kind)
@@ -1183,28 +1187,24 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                     nextCursor = null,
                 )
             }
-            PluginFeedResult.AuthRequired -> updatePixivError(kind, "Sign in to Pixiv to continue", authRequired = true)
-            is PluginFeedResult.RateLimited -> updatePixivError(
+            PluginFeedResult.AuthRequired -> updatePixivError(
                 kind,
-                result.retryAfterSeconds?.let { "Pixiv is rate limiting requests; retry in ${it}s" }
-                    ?: "Pixiv is rate limiting requests",
+                FeedError("Sign in to Pixiv to continue"),
+                authRequired = true,
             )
-            is PluginFeedResult.UpstreamDrift -> updatePixivError(kind, "Pixiv changed its ${result.operation} response")
-            is PluginFeedResult.TransportFailure -> updatePixivError(kind, result.message)
+            is PluginFeedResult.RateLimited,
+            is PluginFeedResult.UpstreamDrift,
+            is PluginFeedResult.TransportFailure -> updatePixivError(kind, feedError(FeedLoadFailure(result)))
         }
     }
 
-    private fun updatePixivError(kind: PluginFeedKind, message: String, authRequired: Boolean = false) {
-        android.util.Log.w(
-            "LatteExplore",
-            "pixiv feed $kind failed: $message (authRequired=$authRequired)",
-        )
+    private fun updatePixivError(kind: PluginFeedKind, error: FeedError, authRequired: Boolean = false) {
         updatePixivFeed(kind) {
             it.copy(
                 isLoading = false,
                 isLoadingMore = false,
                 isRefreshing = false,
-                error = message,
+                error = error,
                 authRequired = authRequired,
             )
         }
@@ -1294,7 +1294,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 _uiState.update {
-                    it.copy(searchFeed = it.searchFeed.copy(isRefreshing = false, error = e.message ?: "Failed to refresh"))
+                    it.copy(searchFeed = it.searchFeed.copy(isRefreshing = false, error = feedError(e)))
                 }
             }
         }
@@ -1338,7 +1338,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                     it.copy(
                         favoritesFeed = it.favoritesFeed.copy(
                             isLoading = false,
-                            error = e.message ?: "Failed to load favorites",
+                            error = feedError(e),
                         )
                     )
                 }
@@ -1390,7 +1390,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 _uiState.update {
-                    it.copy(favoritesFeed = it.favoritesFeed.copy(isRefreshing = false, error = e.message ?: "Failed to refresh"))
+                    it.copy(favoritesFeed = it.favoritesFeed.copy(isRefreshing = false, error = feedError(e)))
                 }
             }
         }
@@ -1416,7 +1416,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                     it.copy(
                         poolsFeed = it.poolsFeed.copy(
                             isLoading = false,
-                            error = e.message ?: "Failed to load pools",
+                            error = feedError(e),
                         )
                     )
                 }
@@ -1469,7 +1469,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 _uiState.update {
-                    it.copy(poolsFeed = it.poolsFeed.copy(isRefreshing = false, error = e.message ?: "Failed to refresh"))
+                    it.copy(poolsFeed = it.poolsFeed.copy(isRefreshing = false, error = feedError(e)))
                 }
             }
         }

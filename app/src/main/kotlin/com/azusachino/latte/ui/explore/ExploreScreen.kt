@@ -65,8 +65,10 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Warning
 import com.azusachino.latte.ui.common.LatteIcons
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -119,6 +121,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -1192,7 +1195,7 @@ private fun FeedGrid(
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = feed.error ?: "Sign in to continue",
+                            text = feed.error?.title ?: "Sign in to continue",
                             style = MaterialTheme.typography.bodyLarge,
                         )
                         Spacer(modifier = Modifier.height(16.dp))
@@ -1225,30 +1228,11 @@ private fun FeedGrid(
                 }
             }
             feed.error != null && feed.posts.isEmpty() -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(top = topPadding, start = 24.dp, end = 24.dp, bottom = 24.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = feed.error,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        if (feed.authRequired && onRequireLogin != null) {
-                            Button(onClick = onRequireLogin, modifier = Modifier.pressScale()) {
-                                Text("Sign in")
-                            }
-                        } else {
-                            IconButton(onClick = onRetry, modifier = Modifier.pressScale()) {
-                                Icon(Icons.Default.Refresh, contentDescription = "Retry")
-                            }
-                        }
-                    }
-                }
+                FeedErrorState(
+                    error = feed.error,
+                    onRetry = onRetry,
+                    topPadding = topPadding,
+                )
             }
             feed.posts.isEmpty() -> {
                 if (!feed.isLoading && !feed.isLoadingMore) {
@@ -1460,6 +1444,49 @@ private fun PersonalFeedContent(
     )
 }
 
+@Composable
+private fun FeedErrorState(
+    error: FeedError,
+    onRetry: () -> Unit,
+    topPadding: androidx.compose.ui.unit.Dp,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = topPadding, start = 24.dp, end = 24.dp, bottom = 24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                imageVector = Icons.Default.Warning,
+                contentDescription = null,
+                modifier = Modifier.size(48.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = error.title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+            )
+            error.hint?.let { hint ->
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = hint,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            FilledTonalButton(onClick = onRetry, modifier = Modifier.pressScale()) {
+                Text("Try again")
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PoolsTabContent(
@@ -1509,22 +1536,11 @@ private fun PoolsTabContent(
             Box(modifier = Modifier.fillMaxSize()) {
                 when {
                     feed.error != null && feed.pools.isEmpty() -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize().padding(top = topPadding, start = 24.dp, end = 24.dp, bottom = 24.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = feed.error,
-                                    color = MaterialTheme.colorScheme.error,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                IconButton(onClick = { onQueryChange(feed.query) }, modifier = Modifier.pressScale()) {
-                                    Icon(Icons.Default.Refresh, contentDescription = "Retry")
-                                }
-                            }
-                        }
+                        FeedErrorState(
+                            error = feed.error,
+                            onRetry = { onQueryChange(feed.query) },
+                            topPadding = topPadding,
+                        )
                     }
                     feed.pools.isEmpty() -> {
                         if (!feed.isLoading) {
