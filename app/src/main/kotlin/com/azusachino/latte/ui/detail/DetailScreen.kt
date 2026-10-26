@@ -3,6 +3,7 @@ package com.azusachino.latte.ui.detail
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -46,8 +47,6 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import com.azusachino.latte.ui.common.LatteIcons
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -71,7 +70,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -227,21 +228,25 @@ fun DetailScreen(
                     parentPost.forPage(0)
                 }
             }
-            DetailImageView(
-                targetPost = post,
-                onTap = { xFraction, zoomed ->
-                    // Edge taps page through multi-page works; everything else toggles controls.
-                    val edgeLeft = xFraction < 0.25f
-                    val edgeRight = xFraction > 0.75f
-                    val canPage = isMultiPagePost && !zoomed && (edgeLeft || edgeRight)
-                    val target = if (edgeLeft) pixivPageIndex - 1 else pixivPageIndex + 1
-                    if (canPage && target in 0 until (currentPost?.pageCount ?: 0)) {
-                        pixivPageIndex = target
-                    } else {
-                        showControls = !showControls
-                    }
-                },
-            )
+            Box(modifier = Modifier.fillMaxSize()) {
+                // Behind the zoomable image: gives the glass chrome something to blur.
+                AmbientBackdrop(previewUrl = post.previewUrl)
+                DetailImageView(
+                    targetPost = post,
+                    onTap = { xFraction, zoomed ->
+                        // Edge taps page through multi-page works; everything else toggles controls.
+                        val edgeLeft = xFraction < 0.25f
+                        val edgeRight = xFraction > 0.75f
+                        val canPage = isMultiPagePost && !zoomed && (edgeLeft || edgeRight)
+                        val target = if (edgeLeft) pixivPageIndex - 1 else pixivPageIndex + 1
+                        if (canPage && target in 0 until (currentPost?.pageCount ?: 0)) {
+                            pixivPageIndex = target
+                        } else {
+                            showControls = !showControls
+                        }
+                    },
+                )
+            }
         }
 
         // Top Controls Overlay
@@ -507,19 +512,15 @@ fun DetailScreen(
                 }
 
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = RoundedCornerShape(28.dp), dark = true)
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // Details button: elegant pill with icon & resolution
+                    // Details pill: same glass as the top pills, icon & resolution
                     Box(
                         modifier = Modifier
                             .height(44.dp)
-                            .clip(RoundedCornerShape(22.dp))
-                            .background(Color.White.copy(alpha = 0.12f))
+                            .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = RoundedCornerShape(22.dp), dark = true)
                             .clickable { showInspectSheet = true }
                             .pressScale()
                             .padding(horizontal = 14.dp),
@@ -565,14 +566,17 @@ fun DetailScreen(
                             Box(
                                 modifier = Modifier
                                     .size(44.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        if (isFavorited) Color(0xFFE53935).copy(alpha = 0.25f)
-                                        else Color.White.copy(alpha = 0.12f),
-                                    )
+                                    .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = CircleShape, dark = true)
                                     .pressScale(),
                                 contentAlignment = Alignment.Center,
                             ) {
+                                if (isFavorited) {
+                                    Box(
+                                        modifier = Modifier
+                                            .matchParentSize()
+                                            .background(Color(0xFFE53935).copy(alpha = 0.25f), CircleShape),
+                                    )
+                                }
                                 IconButton(
                                     onClick = {
                                         if (!isPluginLoggedIn) {
@@ -634,50 +638,57 @@ fun DetailScreen(
                         }
 
                         // Download button: matching 44dp pill
-                        Button(
-                            onClick = {
-                                if (displayPost != null) {
-                                    scope.launch {
-                                        when (val result = downloadManager.enqueueDownload(displayPost)) {
-                                            is DownloadResult.AlreadySaved -> {
-                                                ToastManager.showWarning("Already saved")
-                                            }
-                                            is DownloadResult.AlreadyRunning -> {
-                                                ToastManager.showWarning("Already downloading")
-                                            }
-                                            is DownloadResult.Started -> {
-                                                inlineActionError = null
-                                                ToastManager.showSuccess("Saving ${DownloadIdentity.toastLabel(displayPost)}")
-                                            }
-                                            is DownloadResult.Failed -> {
-                                                android.util.Log.w("LatteDetail", "save failed for ${displayPost.id}: ${result.message}")
-                                                ToastManager.showError("Couldn't save ${DownloadIdentity.toastLabel(displayPost)}")
+                        Box(
+                            modifier = Modifier
+                                .height(44.dp)
+                                .glassBackdrop(
+                                    hazeState,
+                                    backgroundColor = Color.Black,
+                                    shape = RoundedCornerShape(22.dp),
+                                    dark = true,
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),
+                                )
+                                .clickable {
+                                    if (displayPost != null) {
+                                        scope.launch {
+                                            when (val result = downloadManager.enqueueDownload(displayPost)) {
+                                                is DownloadResult.AlreadySaved -> {
+                                                    ToastManager.showWarning("Already saved ${DownloadIdentity.toastLabel(displayPost)}")
+                                                }
+                                                is DownloadResult.AlreadyRunning -> {
+                                                    ToastManager.showWarning("Already downloading ${DownloadIdentity.toastLabel(displayPost)}")
+                                                }
+                                                is DownloadResult.Started -> {
+                                                    inlineActionError = null
+                                                    ToastManager.showSuccess("Saving ${DownloadIdentity.toastLabel(displayPost)}")
+                                                }
+                                                is DownloadResult.Failed -> {
+                                                    android.util.Log.w("LatteDetail", "save failed for ${displayPost.id}: ${result.message}")
+                                                    ToastManager.showError("Couldn't save ${DownloadIdentity.toastLabel(displayPost)}")
+                                                }
                                             }
                                         }
                                     }
                                 }
-                            },
-                            shape = RoundedCornerShape(22.dp),
-                            modifier = Modifier
-                                .height(44.dp)
-                                .pressScale(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            ),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+                                .pressScale()
+                                .padding(horizontal = 16.dp),
+                            contentAlignment = Alignment.Center,
                         ) {
-                            Icon(
-                                imageVector = LatteIcons.Download,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "Save",
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 14.sp,
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = LatteIcons.Download,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Save",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 14.sp,
+                                )
+                            }
                         }
                     }
                 }
@@ -847,6 +858,39 @@ fun DetailScreen(
                 }
             }
         }
+    }
+}
+
+/**
+ * Blurred, darkened copy of the post's preview, filling the page behind the fitted image. It sits
+ * outside [ZoomableBox] so zoom and pan never move it, and it has no pointer handlers so taps and
+ * pinches fall through to the image. Blur needs API 31+; older releases get a stronger scrim instead.
+ */
+@Composable
+private fun AmbientBackdrop(
+    previewUrl: String,
+    modifier: Modifier = Modifier,
+) {
+    if (previewUrl.isBlank()) return
+    val context = LocalContext.current
+    val canBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    Box(modifier = modifier.fillMaxSize().clipToBounds()) {
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data(previewUrl)
+                .crossfade(true)
+                .build(),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .fillMaxSize()
+                .then(if (canBlur) Modifier.blur(48.dp) else Modifier),
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = if (canBlur) 0.6f else 0.8f)),
+        )
     }
 }
 
