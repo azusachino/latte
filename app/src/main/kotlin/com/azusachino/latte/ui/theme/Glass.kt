@@ -1,6 +1,5 @@
 package com.azusachino.latte.ui.theme
 
-import android.os.Build
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -20,7 +19,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -81,7 +79,6 @@ fun Modifier.glassSurface(
     shape: Shape = RoundedCornerShape(GlassDefaults.PillCornerRadius),
     isElevated: Boolean = false,
     rimStroke: Dp = GlassDefaults.RimStrokeWidth,
-    blurRadius: Dp = GlassDefaults.BlurRadius,
 ): Modifier {
     val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val surfaceColor = when {
@@ -95,13 +92,6 @@ fun Modifier.glassSurface(
     return this
         .clip(shape)
         .background(surfaceColor, shape)
-        .then(
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && blurRadius > 0.dp) {
-                Modifier.blur(blurRadius)
-            } else {
-                Modifier
-            }
-        )
         .then(
             if (rimStroke > 0.dp) {
                 Modifier.border(rimStroke, rimBrush, shape)
