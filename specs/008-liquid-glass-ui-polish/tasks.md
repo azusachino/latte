@@ -12,7 +12,7 @@ description: "Tasks for Apple Liquid Glass & Telegram Media Ergonomics"
 ## Phase 1: Foundation — Glass Tokens & Modifiers
 
 - [x] T001 Create `ui/theme/Glass.kt` with `GlassDefaults` design tokens (translucent dark/light surfaces, specular gradients, corner radii).
-- [x] T002 Implement `Modifier.glassSurface(...)` combining clip, translucent tint, and specular rim border stroke. Backdrop blur dropped: Compose `Modifier.blur` blurs the element's own content, not what is behind it.
+- [x] T002 Implement `Modifier.glassSurface(...)` combining clip, translucent tint, and specular rim border stroke. Backdrop blur is not part of `glassSurface`: Compose `Modifier.blur` blurs the element's own content, not what is behind it. Floating chrome gets blur from `Modifier.glassBackdrop` (Haze, 2026-10-26).
 - [x] T003 Implement `Modifier.pressScale(targetScale = 0.97f)` for tactile micro-interaction feedback.
 
 ## Phase 2: Immersive Media Viewer (`DetailScreen.kt`)

@@ -139,9 +139,12 @@ import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.ui.common.ToastManager
 import com.azusachino.latte.ui.common.ToastType
 import com.azusachino.latte.ui.theme.GlassDefaults
+import com.azusachino.latte.ui.theme.glassBackdrop
 import com.azusachino.latte.ui.theme.glassPillSelection
 import com.azusachino.latte.ui.theme.glassSurface
 import com.azusachino.latte.ui.theme.pressScale
+import dev.chrisbanes.haze.rememberHazeState
+import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -370,6 +373,8 @@ fun ExploreScreen(
         }
     }
 
+    val hazeState = rememberHazeState()
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
@@ -431,9 +436,10 @@ fun ExploreScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .glassSurface(
+                    .glassBackdrop(
+                        hazeState = hazeState,
+                        backgroundColor = MaterialTheme.colorScheme.background,
                         shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
-                        isElevated = true,
                     ),
             ) {
                 if (isSelectionMode) {
@@ -903,6 +909,7 @@ fun ExploreScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .hazeSource(hazeState)
                 .padding(bottom = bottomPadding),
         ) {
             if (uiState.isSearch) {

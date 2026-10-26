@@ -29,6 +29,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.blur.HazeBlurStyle
+import dev.chrisbanes.haze.blur.HazeColorEffect
+import dev.chrisbanes.haze.blur.hazeBlur
 
 /**
  * Design tokens and styling parameters for Apple-style Liquid Glass UI components.
@@ -45,6 +50,10 @@ object GlassDefaults {
     // Translucent light mode surfaces
     val LightSurface: Color = Color(0xD9FFFFFF)
     val LightSurfaceElevated: Color = Color(0xE6FFFFFF)
+
+    // Haze backdrop tints: lower alpha than the surfaces above so the blur shows through
+    val DarkBackdropTint: Color = Color(0x9914171A)
+    val LightBackdropTint: Color = Color(0x99FFFFFF)
 
     // Specular rim gradient brushes
     val DarkRimGradient: Brush = Brush.verticalGradient(
@@ -71,8 +80,8 @@ object GlassDefaults {
 
 /**
  * Applies a liquid glass surface styling: translucent surface tinting, clipping, and a
- * specular gradient rim border. Backdrop blur is not applied: Compose `Modifier.blur` blurs
- * the element's own content, not what is behind it.
+ * specular gradient rim border. No backdrop blur: use [glassBackdrop] for chrome that floats over
+ * scrolling content.
  *
  * [dark] overrides the luminance-based theme detection when non-null.
  */
@@ -102,6 +111,37 @@ fun Modifier.glassSurface(
                 Modifier
             }
         )
+}
+
+/**
+ * Backdrop blur for chrome that floats over scrolling content. [hazeState] must be attached to that
+ * content with `Modifier.hazeSource`. On API 32+ Haze blurs the captured content behind the surface
+ * and tints it; on older releases Haze draws the solid elevated glass colour as a scrim instead.
+ * The specular rim and corner clip match [glassSurface].
+ *
+ * [backgroundColor] is the colour painted behind the [hazeState] source content; it is passed to
+ * Haze explicitly so the blur never runs without one.
+ * [dark] overrides the luminance-based theme detection when non-null.
+ */
+@Composable
+fun Modifier.glassBackdrop(
+    hazeState: HazeState,
+    backgroundColor: Color,
+    shape: Shape = RoundedCornerShape(GlassDefaults.PillCornerRadius),
+    dark: Boolean? = null,
+): Modifier {
+    val isDark = dark ?: (MaterialTheme.colorScheme.surface.luminance() < 0.5f)
+    val rimBrush = if (isDark) GlassDefaults.DarkRimGradient else GlassDefaults.LightRimGradient
+    val style = HazeBlurStyle {
+        backgroundColor(backgroundColor)
+        colorEffects(listOf(HazeColorEffect.tint(if (isDark) GlassDefaults.DarkBackdropTint else GlassDefaults.LightBackdropTint)))
+        fallbackColorEffect(HazeColorEffect.tint(if (isDark) GlassDefaults.DarkSurfaceElevated else GlassDefaults.LightSurfaceElevated))
+    }
+
+    return this
+        .clip(shape)
+        .hazeBlur(input = HazeInput.Sources(hazeState), style = style)
+        .border(GlassDefaults.RimStrokeWidth, rimBrush, shape)
 }
 
 /**

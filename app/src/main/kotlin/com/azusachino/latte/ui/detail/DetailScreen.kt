@@ -84,6 +84,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
 import com.azusachino.latte.ui.theme.GlassDefaults
+import com.azusachino.latte.ui.theme.glassBackdrop
 import com.azusachino.latte.ui.theme.glassSurface
 import com.azusachino.latte.ui.theme.pressScale
 import coil3.compose.AsyncImage
@@ -103,6 +104,8 @@ import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.plugin.SitePluginManager
 import com.azusachino.latte.ui.common.ToastManager
 import com.azusachino.latte.ui.common.ToastType
+import dev.chrisbanes.haze.rememberHazeState
+import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
@@ -154,6 +157,7 @@ fun DetailScreen(
         }
     }
 
+    val hazeState = rememberHazeState()
     var showControls by remember { mutableStateOf(true) }
     var showInspectSheet by remember { mutableStateOf(false) }
     var localScores by remember { mutableStateOf(mapOf<Long, Int>()) }
@@ -204,7 +208,9 @@ fun DetailScreen(
         HorizontalPager(
             state = pagerState,
             beyondViewportPageCount = 1,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .hazeSource(hazeState),
         ) { page ->
             val parentPost = detailPosts[page]
             val post = remember(parentPost, page, pagerState.currentPage, pixivPageIndex) {
@@ -250,7 +256,7 @@ fun DetailScreen(
                 Box(
                     modifier = Modifier
                         .size(44.dp)
-                        .glassSurface(shape = CircleShape, dark = true)
+                        .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = CircleShape, dark = true)
                         .pressScale(),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -284,7 +290,7 @@ fun DetailScreen(
                     if (centerTitle.isNotBlank()) {
                         Box(
                             modifier = Modifier
-                                .glassSurface(shape = RoundedCornerShape(GlassDefaults.PillCornerRadius), dark = true)
+                                .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = RoundedCornerShape(GlassDefaults.PillCornerRadius), dark = true)
                                 .padding(horizontal = 14.dp, vertical = 8.dp),
                             contentAlignment = Alignment.Center,
                         ) {
@@ -310,7 +316,7 @@ fun DetailScreen(
                         Box(
                             modifier = Modifier
                                 .size(44.dp)
-                                .glassSurface(shape = CircleShape, dark = true)
+                                .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = CircleShape, dark = true)
                                 .pressScale(),
                             contentAlignment = Alignment.Center,
                         ) {
@@ -340,7 +346,7 @@ fun DetailScreen(
                         Box(
                             modifier = Modifier
                                 .size(44.dp)
-                                .glassSurface(shape = CircleShape, dark = true)
+                                .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = CircleShape, dark = true)
                                 .pressScale(),
                             contentAlignment = Alignment.Center,
                         ) {
@@ -391,7 +397,7 @@ fun DetailScreen(
                     Box(
                         modifier = Modifier
                             .padding(bottom = 10.dp)
-                            .glassSurface(shape = RoundedCornerShape(12.dp), dark = true)
+                            .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = RoundedCornerShape(12.dp), dark = true)
                             .padding(horizontal = 14.dp, vertical = 6.dp),
                     ) {
                         Text(
@@ -406,7 +412,7 @@ fun DetailScreen(
                     Box(
                         modifier = Modifier
                             .padding(bottom = 12.dp)
-                            .glassSurface(shape = RoundedCornerShape(GlassDefaults.PillCornerRadius), dark = true)
+                            .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = RoundedCornerShape(GlassDefaults.PillCornerRadius), dark = true)
                             .padding(horizontal = 6.dp, vertical = 2.dp),
                     ) {
                         Row(
@@ -496,7 +502,7 @@ fun DetailScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .glassSurface(shape = RoundedCornerShape(28.dp), dark = true)
+                        .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = RoundedCornerShape(28.dp), dark = true)
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,

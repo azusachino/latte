@@ -23,7 +23,7 @@ Latte's functional architecture is mature across yande.re, konachan.net, and Pix
 
 ### Goals
 
-- **Liquid Glass Design System**: Establish reusable glass primitives (`Modifier.glassSurface`, `GlassDefaults`) supporting translucent tinting and specular gradient rim highlights. Backdrop blur was dropped: Compose `Modifier.blur` blurs the element's own content, not what is behind it.
+- **Liquid Glass Design System**: Establish reusable glass primitives (`Modifier.glassSurface`, `GlassDefaults`) supporting translucent tinting and specular gradient rim highlights. Floating chrome over scrolling content adds Haze backdrop blur through `Modifier.glassBackdrop` (API 31+, tint fallback below); `Modifier.blur` itself is not used because it blurs the element's own content.
 - **Telegram-Style Media Viewer**: De-box `DetailScreen` chrome into floating glass pill islands (top navigation pill and bottom action dock).
 - **Apple-Style Discovery Feeds**: Refactor `ExploreScreen` with frosted glass headers, a smooth segmented pill tab bar with spring physics, and modernized 14dp squircle media cards with hairline outlines.
 - **Micro-Interactions**: Implement tactile scale-on-press (`scale(0.97f)`) on cards and buttons, spring animations on tab indicators, and spring bounce on favorite actions.
@@ -33,7 +33,7 @@ Latte's functional architecture is mature across yande.re, konachan.net, and Pix
 
 - Altering core data models (`Post`, `PlatformId`, `SitePlugin`), network models, or storage layers.
 - Changing authentication mechanisms or adding new platform endpoints.
-- Introducing heavy 3rd-party UI libraries (everything built using native Jetpack Compose).
+- Introducing heavy 3rd-party UI libraries (everything built using native Jetpack Compose). Exception, owner decision 2026-10-26: Haze (`dev.chrisbanes.haze:haze`) is adopted for backdrop blur on floating chrome only.
 
 ---
 
@@ -59,7 +59,7 @@ Latte's functional architecture is mature across yande.re, konachan.net, and Pix
 *So that discovery feels fluid and modern like iOS and Telegram media galleries.*
 
 - **Acceptance Criteria**:
-  1. The top header and tab bar in `ExploreScreen` render with frosted glass translucency (translucent tint and specular rim; no backdrop blur).
+  1. The top header and tab bar in `ExploreScreen` render with frosted glass translucency (Haze backdrop blur over the scrolling feed on API 31+; translucent tint fallback on API 29-30, plus the specular rim).
   2. The staggered grid scrolls smoothly underneath the translucent header without harsh cutoff lines.
   3. The feed tabs (`Popular`, `Newest`, `Favorites`, `Pools`) render as an Apple-style segmented control with an animated pill indicator sliding behind the active tab using spring physics.
   4. Feed period chips (`Day`, `Week`, `Month`, `Year`) render as frosted capsule chips.

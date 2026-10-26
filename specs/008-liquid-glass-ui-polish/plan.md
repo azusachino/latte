@@ -15,7 +15,7 @@ The implementation lands in 4 coherent, incrementally testable slices. Each slic
 
 1. Create `vendor/latte/app/src/main/kotlin/com/azusachino/latte/ui/theme/Glass.kt`:
    - `GlassDefaults` object containing semantic colors, gradients, stroke widths, and corner radii.
-   - `Modifier.glassSurface(...)`: Combines clip, translucent background, and specular vertical gradient border. No backdrop blur: Compose `Modifier.blur` blurs the element's own content, not what is behind it.
+   - `Modifier.glassSurface(...)`: Combines clip, translucent background, and specular vertical gradient border. No backdrop blur; for floating chrome over scrolling content use `Modifier.glassBackdrop` (Haze, see Slice 3).
    - `Modifier.pressScale(...)`: Clean pointer-input interaction for `scale(0.97f)` on press with spring return.
 2. Verify with unit/compose preview tests.
 
@@ -47,7 +47,7 @@ The implementation lands in 4 coherent, incrementally testable slices. Each slic
 
 1. Top Header Refactoring:
    - Make `Scaffold` container background transparent/bleed-friendly.
-   - TopAppBar and search bar styled with `Modifier.glassSurface` (translucent tint and rim; no blur).
+   - Top bar container (search field and tabs inside it included) styled with `Modifier.glassBackdrop`: the feed body is the Haze source, so the grid blurs behind the bar on API 31+ and shows a translucent tint on API 29-30. Inner pills and the search field keep `Modifier.glassSurface` and are not blurred again.
 2. Apple-Style Segmented Tab Bar:
    - Implement `GlassSegmentedTabs` replacing `TabRow`.
    - Smooth animated pill indicator sliding behind active tab (`Popular`, `Newest`, `Favorites`, `Pools`).

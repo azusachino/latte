@@ -15,7 +15,7 @@ val pixivOAuthClientSecret = System.getenv("LATTE_PIXIV_CLIENT_SECRET").orEmpty(
 
 android {
     namespace = "com.azusachino.latte"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.azusachino.latte"
@@ -90,7 +90,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.activity:activity-compose:1.10.0")
 
-    val composeBom = platform("androidx.compose:compose-bom:2025.02.00")
+    val composeBom = platform("androidx.compose:compose-bom:2026.09.00")
     implementation(composeBom)
     androidTestImplementation(composeBom)
 
@@ -98,8 +98,13 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material-icons-core")
     implementation("androidx.compose.animation:animation")
     implementation("androidx.compose.foundation:foundation")
+
+    // Haze 2.0.1 needs Compose Multiplatform UI 1.12.1, which the Compose BOM 2026.09.00 maps to, and Kotlin 2.4.
+    implementation("dev.chrisbanes.haze:haze:2.0.1")
+    implementation("dev.chrisbanes.haze:haze-blur:2.0.1")
 
     implementation("io.coil-kt.coil3:coil-compose:3.1.0")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.1.0")

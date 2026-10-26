@@ -24,7 +24,7 @@ This research evaluates integrating **Telegram's media viewer ergonomics** (floa
 | Dimension | Current Latte UI | Telegram (iOS/Android) | Apple Liquid Glass Standard | Target for Latte (v0.3.0) |
 |---|---|---|---|---|
 | **Chrome Geometry** | Full-width rectangular slabs (`TopAppBar`, bottom bar) | Floating pill islands and capsule action docks | Translucent floating capsules with continuous curvature | Floating glass pills & dock; zero full-width solid overlays |
-| **Surface Material** | Opaque `MaterialTheme.colorScheme.surface` | Ultra-thin translucent frosted glass (`UIBlurEffect`) | Multi-layered translucent acrylic with backdrop blur & sheen | `Modifier.glassSurface` (translucent tint + specular gradient rim; no backdrop blur) |
+| **Surface Material** | Opaque `MaterialTheme.colorScheme.surface` | Ultra-thin translucent frosted glass (`UIBlurEffect`) | Multi-layered translucent acrylic with backdrop blur & sheen | `Modifier.glassSurface` (translucent tint + specular gradient rim; no backdrop blur), `Modifier.glassBackdrop` for floating chrome (Haze blur + tint) |
 | **Edge & Depth** | 0 elevation or flat 1dp card shadow; no border highlights | Borderless media with subtle divider lines | Specular rim borders (`0.5dp–1dp` gradient highlight) | Specular gradient stroke reflecting light on glass bevels |
 | **Card Geometry** | 8dp standard rounded rectangles | Seamless edge-to-edge or 12–14dp squircle bubbles | Smooth continuous squircles (14–16dp for cards, 24dp for pills) | 14dp continuous squircles for cards; 24dp capsules for pills |
 | **Media Bleed** | Hard clipping beneath top app bar | Content scrolls seamlessly behind frosted header | Complete edge-to-edge flow behind dynamic navigation chrome | Scrimmed top bar with transparent background over grid |
@@ -37,11 +37,12 @@ This research evaluates integrating **Telegram's media viewer ergonomics** (floa
 
 ### 3.1 Android Version Compatibility
 - **`minSdk = 29` (Android 10), `targetSdk = 35` (Android 15)**.
-- **Android 12+ (API 31+)**:
-  - No backdrop blur is applied. `Modifier.blur` blurs the element's own content, not what is behind it. A true backdrop blur would need `RenderEffect` on the underlying layer or a third-party library such as Haze, which was out of scope.
-- **Android 10–11 (API 29–30)**:
-  - No API-level branch is needed because no blur is applied.
-  - **Translucent Surface**: The glass modifier applies a translucent dark/light tint combined with the specular gradient border on every API level.
+- **Backdrop blur (Haze 2.0.1, owner decision 2026-10-26)**:
+  - `Modifier.blur` blurs the element's own content, not what is behind it, so it is not used. Floating chrome over scrolling content uses `Modifier.glassBackdrop`, which wraps Haze `hazeBlur(HazeInput.Sources(state))`; the scrolling feed or image pager is the `hazeSource`.
+  - **Android 12+ (API 31+)**: Haze blurs the captured content behind the surface and applies a translucent tint (Haze's default blur is enabled from `SDK_INT >= 31`).
+  - **Android 10–11 (API 29–30)**: No blur; Haze draws the fallback scrim.
+  - **Translucent fallback**: On the scrim path the chrome uses the elevated glass surface colour (`DarkSurfaceElevated` / `LightSurfaceElevated`), the same look as before blur was added.
+  - **Translucent Surface**: `Modifier.glassSurface` (non-floating surfaces such as settings cards and chips) keeps the translucent tint and specular rim on every API level, with no blur.
 
 ### 3.2 Performance & Compose Recomposition Guidelines
 1. **Zero Runtime Allocation in Draw Loops**:
@@ -97,7 +98,7 @@ Combines:
 1. `clip(shape)`
 2. `background(if (darkTheme) DarkSurface else LightSurface)`
 3. `border(rimStroke, if (darkTheme) DarkRimGradient else LightRimGradient, shape)`
-(No backdrop blur step: see section 3.1.)
+(`glassSurface` has no backdrop blur; floating chrome uses `glassBackdrop`, see section 3.1.)
 
 ---
 
