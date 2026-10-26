@@ -54,6 +54,7 @@ data class PixivIllustDto(
     @SerialName("total_bookmarks") val totalBookmarks: Int = 0,
     @SerialName("is_bookmarked") val isBookmarked: Boolean = false,
     @SerialName("meta_pages") val metaPages: List<PixivMetaPageDto> = emptyList(),
+    @SerialName("meta_single_page") val metaSinglePage: PixivMetaSinglePageDto = PixivMetaSinglePageDto(),
 )
 
 @Serializable
@@ -67,6 +68,12 @@ data class PixivImageUrls(
 @Serializable
 data class PixivMetaPageDto(
     @SerialName("image_urls") val imageUrls: PixivImageUrls = PixivImageUrls(),
+)
+
+/** Single-page works carry their full-size original here; `image_urls` only has the scaled sizes. */
+@Serializable
+data class PixivMetaSinglePageDto(
+    @SerialName("original_image_url") val originalImageUrl: String? = null,
 )
 
 @Serializable
@@ -84,7 +91,7 @@ data class PixivTagDto(
 fun PixivIllustDto.toPost(): Post {
     val totalPages = maxOf(pageCount, if (metaPages.isNotEmpty()) metaPages.size else 1)
     val pages = if (metaPages.isEmpty()) {
-        listOf(imageUrls)
+        listOf(imageUrls.copy(original = metaSinglePage.originalImageUrl ?: imageUrls.original))
     } else {
         metaPages.map { it.imageUrls }
     }.mapIndexed { index, urls ->

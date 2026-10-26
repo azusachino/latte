@@ -37,8 +37,8 @@ class ExplorePlatformStateTest {
             selectedTab = 2,
             searchTags = "landscape",
             popularFeed = FeedState(isLoading = true),
-            searchFeed = FeedState(error = "old site"),
-            favoritesFeed = FeedState(error = "old account"),
+            searchFeed = FeedState(error = FeedError("old site")),
+            favoritesFeed = FeedState(error = FeedError("old account")),
             poolsFeed = PoolListState(query = "old pool"),
             poolCovers = mapOf(7L to "old cover"),
             pixivFollowedFeed = FeedState(isLoadingMore = true),
@@ -271,11 +271,11 @@ class ExplorePlatformStateTest {
         )
         val state = ExploreUiState(
             platform = PlatformId.PIXIV,
-            pixivFollowedFeed = FeedState(error = "Sign in to Pixiv to continue", authRequired = true),
+            pixivFollowedFeed = FeedState(error = FeedError("Sign in to Pixiv to continue"), authRequired = true),
             pixivPopularFeed = FeedState(posts = listOf(post)),
-            pixivFavoritesFeed = FeedState(error = "Sign in to Pixiv to continue", authRequired = true),
-            pixivSearchFeed = FeedState(error = "Network timeout", authRequired = false),
-            pixivUserWorksFeed = FeedState(error = "Sign in to Pixiv to continue", authRequired = true),
+            pixivFavoritesFeed = FeedState(error = FeedError("Sign in to Pixiv to continue"), authRequired = true),
+            pixivSearchFeed = FeedState(error = FeedError("Network timeout"), authRequired = false),
+            pixivUserWorksFeed = FeedState(error = FeedError("Sign in to Pixiv to continue"), authRequired = true),
         )
 
         val cleared = state.clearStalePixivAuthErrors()
@@ -286,7 +286,7 @@ class ExplorePlatformStateTest {
         assertEquals(FeedState(), cleared.pixivUserWorksFeed)
         // Non-auth error and successful feeds are preserved
         assertEquals(listOf(post), cleared.pixivPopularFeed.posts)
-        assertEquals("Network timeout", cleared.pixivSearchFeed.error)
+        assertEquals(FeedError("Network timeout"), cleared.pixivSearchFeed.error)
         assertEquals(false, cleared.pixivSearchFeed.authRequired)
     }
 
@@ -301,7 +301,7 @@ class ExplorePlatformStateTest {
             selectedTab = 2,
             pixivFollowedFeed = FeedState(
                 posts = emptyList(),
-                error = "Sign in to Pixiv to continue",
+                error = FeedError("Sign in to Pixiv to continue"),
                 authRequired = true,
             ),
             pixivPopularFeed = FeedState(

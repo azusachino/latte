@@ -1,6 +1,34 @@
 # Changelog
 
-## 0.2.6 - Unreleased
+## 0.3.0 - 2026-10-27
+
+### Added
+
+- **Apple Liquid Glass Design System**: Established reusable `GlassDefaults` design tokens and `Modifier.glassSurface` supporting dynamic theme luminance detection, translucent acrylic tinting, and specular gradient rim stroke (#27, #28).
+- **Tactile Micro-Interactions**: Added `Modifier.pressScale` providing tactile `scale(0.97f)` feedback on pointer press using GPU-compositor `graphicsLayer` and spring animation (#27, #28).
+- **Telegram-Style Media Viewer**: De-boxed `DetailScreen` overlay chrome into floating frosted glass navigation pills (back button, center title/ID capsule, browser and share buttons) and matching floating glass bottom controls (`Details` pill, animated favorite heart with spring bounce, and a primary-tinted `Save` pill), over an ambient backdrop of the blurred preview that keeps the sharp image as the focus (#27, #28).
+- **Apple-Style Discovery Navigation**: Inset `GlassSegmentedTabs` with spring physics sliding indicator replacing flat underline tabs, translucent top bar with under-bleed scrolling, frosted period capsules, and 14dp squircle cards with hairline specular rims (#27, #28).
+- **Grouped Glass Settings & Account Center**: iOS-style inset grouped glass cards in `SettingsScreen` and `AccountManagerScreen` with subtle hairline dividers, capsule chip selectors, and emerald glowing connection status badges (#27, #28).
+- **Haze Backdrop Blur**: The Explore top bar and the Detail top pills and bottom dock blur the content scrolling behind them with Haze 2.0.1 (`Modifier.glassBackdrop`); a translucent tinted surface is used only where blur is unavailable.
+
+### Changed
+
+- Minimum Android version raised to 13 (API 33); devices on Android 10–12 can no longer install this release.
+- Toolchain and UI library upgrade: Kotlin `2.1.10` to `2.4.21` (Kotlin Android, Compose and serialization plugins), Android Gradle Plugin `8.8.2` to `9.4.1`, Gradle `9.3.1` to `9.7.0`, `compileSdk` `35` to `37` (`targetSdk` stays `35`), and Compose BOM `2025.02.00` to `2026.09.00` (Compose UI `1.12.1`, Material 3 `1.4.0`). `material-icons-core` is now declared directly because Material 3 no longer brings it in.
+- Bumped `androidx.datastore:datastore-preferences` to `1.1.2`.
+- Pixiv multi-page works can be paged with left/right edge taps and a page thumbnail strip, and the next page is prefetched (#28).
+- In-app notifications appear as a blurred top pill below the status bar; the latest three stack at the top, newest first, with optional actions, swipe up or tap to dismiss, and screen-reader announcements; favorite and rating results no longer raise a toast (#28).
+
+### Fixed
+
+- Pixiv single-page works download the original image instead of the 600px preview.
+- Pixiv downloads no longer fail with HTTP 500: they try the original `i.pximg.net` image first, then fall back to `i.pixiv.re` and `pixiv.cat`, and use the app's HTTP client so the proxy setting and DoH apply (#28).
+- Detail viewer controls stay readable in light theme, zoom resets per page, and system bar icons follow the in-app theme (#28).
+- Feed errors show a readable message and a Try again button instead of the raw error.
+- Selected tabs, chips and card selection badges are clearly visible in light theme; an empty day no longer shows as an error. The Popular feed scrolls under the glass top bar with its period controls, and each tab's empty state has its own message and Refresh button.
+- Feeds no longer show duplicated posts when later pages overlap (seen in Pixiv Detail scrolling).
+
+## 0.2.6 - 2026-10-03
 
 ### Fixed
 

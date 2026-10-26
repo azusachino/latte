@@ -1,5 +1,6 @@
 package com.azusachino.latte.data.model
 
+import com.azusachino.latte.data.download.DownloadFallback
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -37,7 +38,8 @@ class PixivArtworkTest {
                 "meta_pages": [
                   {"image_urls": {"original": "https://i.pximg.net/original/p0.png"}},
                   {"image_urls": {"original": "https://i.pximg.net/original/p1.png"}}
-                ]
+                ],
+                "meta_single_page": {}
               }
             }
             """.trimIndent(),
@@ -86,6 +88,47 @@ class PixivArtworkTest {
         assertEquals("https://pixiv.cat/75034219-2.png", secondPage.bestVariant.url)
         assertEquals("pixiv", artwork.workIdentity.sourceId)
         assertEquals("pixiv:75034219:1", artwork.pages[1].identity)
+    }
+
+    @Test
+    fun singlePageWorkUsesMetaSinglePageOriginalNotTheLargePreview() {
+        val dto = json.decodeFromString<PixivIllustResponse>(
+            """
+            {
+              "illust": {
+                "id": 75034220,
+                "title": "One page",
+                "image_urls": {
+                  "square_medium": "https://i.pximg.net/c/160x160_70/img-master/p0_square1200.jpg",
+                  "medium": "https://i.pximg.net/c/540x540_70/img-master/p0_master1200.jpg",
+                  "large": "https://i.pximg.net/c/600x1200_90/img-master/p0_master1200.jpg"
+                },
+                "user": {"id": 42, "name": "Artist", "account": "artist"},
+                "tags": [],
+                "create_date": "2026-09-21T10:20:30+09:00",
+                "page_count": 1,
+                "width": 8047,
+                "height": 5787,
+                "meta_pages": [],
+                "meta_single_page": {
+                  "original_image_url": "https://i.pximg.net/img-original/img/2026/09/21/10/20/30/75034220_p0.png"
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+
+        val artwork = dto.illust!!.toPost()
+        val original = "https://i.pximg.net/img-original/img/2026/09/21/10/20/30/75034220_p0.png"
+
+        assertEquals(1, artwork.pages.size)
+        assertEquals(original, artwork.pages[0].originalUrl)
+        assertEquals(original, artwork.originalUrl)
+        assertEquals(original, artwork.variants.first { it.id == "original" }.url)
+        assertEquals(original, artwork.pages[0].mediaRef.url)
+        assertEquals(original, artwork.sampleUrl)
+        assertEquals(original, DownloadFallback.candidateUrls(artwork).first())
+        assertEquals("https://i.pximg.net/c/540x540_70/img-master/p0_master1200.jpg", artwork.previewUrl)
     }
 
     @Test

@@ -12,7 +12,6 @@ import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
-import android.os.Build
 import android.provider.MediaStore
 import androidx.work.CoroutineWorker
 import androidx.work.Data
@@ -20,15 +19,15 @@ import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
-import com.azusachino.latte.data.network.PixivCatResponse
-import com.azusachino.latte.data.network.PixivCatResolver
+import com.azusachino.latte.data.download.DownloadFallback
+import com.azusachino.latte.data.network.OkHttpProvider
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.Request
 
 class DownloadWorker(
     appContext: Context,
@@ -57,7 +56,8 @@ class DownloadWorker(
 
         try {
             val receipt = saveImage(
-                sourceUrl = inputData.getString(KEY_SOURCE_URL).orEmpty(),
+                sourceUrls = listOf(inputData.getString(KEY_SOURCE_URL).orEmpty()) +
+                    inputData.getStringArray(KEY_FALLBACK_URLS)?.toList().orEmpty(),
                 displayName = displayName,
                 mimeType = inputData.getString(KEY_MIME_TYPE).orEmpty(),
             )
@@ -84,11 +84,12 @@ class DownloadWorker(
     }
 
     private suspend fun saveImage(
-        sourceUrl: String,
+        sourceUrls: List<String>,
         displayName: String,
         mimeType: String,
     ): DownloadReceipt {
-        require(sourceUrl.isNotBlank()) { "Image URL is empty" }
+        val candidateUrls = sourceUrls.filter(String::isNotBlank).distinct()
+        require(candidateUrls.isNotEmpty()) { "Image URL is empty" }
         require(mimeType.isNotBlank()) { "Image MIME type is empty" }
 
         val resolver = applicationContext.contentResolver
@@ -108,7 +109,7 @@ class DownloadWorker(
             },
         ) ?: error("Latte could not create a MediaStore item")
 
-        downloadToMediaStore(uri, sourceUrl)
+        downloadToMediaStore(uri, candidateUrls)
 
         // Close the race with another worker that published the same identity
         // while this worker was transferring bytes.
@@ -126,11 +127,8 @@ class DownloadWorker(
         return DownloadReceipt(status = "completed", contentUri = uri.toString())
     }
 
-    private suspend fun downloadToMediaStore(uri: Uri, sourceUrl: String) {
+    private suspend fun downloadToMediaStore(uri: Uri, candidateUrls: List<String>) {
         val resolver = applicationContext.contentResolver
-        val url = URL(sourceUrl)
-        require(url.protocol == "https") { "Image source must use HTTPS" }
-        var offset = pendingSize(resolver, uri)
         val headersJson = inputData.getString(KEY_HEADERS)
         val headers = if (!headersJson.isNullOrBlank()) {
             val json = org.json.JSONObject(headersJson)
@@ -138,81 +136,92 @@ class DownloadWorker(
         } else {
             emptyMap()
         }
-
-        while (true) {
-            val connection = (url.openConnection() as HttpURLConnection).apply {
-                connectTimeout = 8_000
-                readTimeout = 20_000
-                setRequestProperty("User-Agent", "Latte/1.0")
-                headers.forEach { (k, v) -> setRequestProperty(k, v) }
-                if (offset > 0) setRequestProperty("Range", "bytes=$offset-")
-            }
+        // A partial file may have been written by another source, so only a single-source work resumes it.
+        var offset = if (candidateUrls.size == 1) pendingSize(resolver, uri) else 0L
+        for ((index, sourceUrl) in candidateUrls.withIndex()) {
             try {
-                val responseCode = connection.responseCode
-                if (responseCode == 416 && offset > 0) {
-                    offset = 0
-                    continue
-                }
-                val append = offset > 0 && responseCode == HttpURLConnection.HTTP_PARTIAL
-                if (responseCode !in 200..299) {
-                    throw IOException("Image server returned HTTP $responseCode")
-                }
-                if (
-                    url.host.equals("pixiv.cat", ignoreCase = true) ||
-                    url.host.equals("i.pixiv.re", ignoreCase = true)
-                ) {
-                    when (
-                        val pixivResponse = PixivCatResolver().classifyResponse(
-                            code = responseCode,
-                            contentType = connection.contentType,
-                            contentDisposition = connection.getHeaderField("Content-Disposition"),
-                        )
-                    ) {
-                        is PixivCatResponse.Image -> Unit
-                        is PixivCatResponse.RetryableFailure -> throw IOException(
-                            "Pixiv.Cat temporarily failed with HTTP $responseCode",
-                        )
-                        is PixivCatResponse.NonImage -> throw IOException(
-                            "Pixiv.Cat returned ${pixivResponse.contentType ?: "a non-image response"}",
-                        )
-                    }
-                }
-                val start = if (append) offset else 0L
-                val totalBytes = connection.contentLengthLong.takeIf { it > 0 }?.let { it + start } ?: -1L
-                val outputMode = if (append) "wa" else "w"
-                connection.inputStream.use { input ->
-                    resolver.openOutputStream(uri, outputMode)?.use { output ->
-                        val buffer = ByteArray(16 * 1024)
-                        var bytesCopied = start
-                        var lastUpdateNanos = 0L
-                        while (true) {
-                            currentCoroutineContext().ensureActive()
-                            val count = input.read(buffer)
-                            if (count < 0) break
-                            output.write(buffer, 0, count)
-                            bytesCopied += count
-                            val now = System.nanoTime()
-                            if (
-                                bytesCopied == totalBytes ||
-                                now - lastUpdateNanos >= 250_000_000L
-                            ) {
-                                showDownloadProgress(bytesCopied, totalBytes)
-                                setProgress(
-                                    workDataOf(
-                                        "bytesCopied" to bytesCopied,
-                                        "totalBytes" to totalBytes,
-                                    ),
-                                )
-                                lastUpdateNanos = now
-                            }
-                        }
-                    } ?: error("Latte could not open the MediaStore item")
+                // The server rejected the resume range; restart this source from byte 0.
+                if (!copyFrom(resolver, uri, sourceUrl, headers, offset)) {
+                    copyFrom(resolver, uri, sourceUrl, headers, offset = 0L)
                 }
                 return
-            } finally {
-                connection.disconnect()
+            } catch (error: IOException) {
+                val status = error as? HttpStatusException
+                val shouldFallback = DownloadFallback.shouldFallback(
+                    statusCode = status?.statusCode,
+                    contentType = status?.contentType,
+                    host = sourceUrl.toHttpUrl().host,
+                    hasNextSource = index < candidateUrls.lastIndex,
+                )
+                if (!shouldFallback) throw error
+                offset = 0L
             }
         }
+    }
+
+    /** Returns false when the server rejects the resume range, so the caller restarts from byte 0. */
+    private suspend fun copyFrom(
+        resolver: android.content.ContentResolver,
+        uri: Uri,
+        sourceUrl: String,
+        headers: Map<String, String>,
+        offset: Long,
+    ): Boolean {
+        val url = sourceUrl.toHttpUrl()
+        require(url.scheme == "https") { "Image source must use HTTPS" }
+        val request = Request.Builder()
+            .url(url)
+            .apply {
+                headers.forEach { (k, v) -> header(k, v) }
+                if (offset > 0) header("Range", "bytes=$offset-")
+            }
+            .build()
+        OkHttpProvider.client.newCall(request).execute().use { response ->
+            if (response.code == 416 && offset > 0) return false
+            val contentType = response.header("Content-Type")
+            if (!response.isSuccessful || !DownloadFallback.acceptsImage(url.host, contentType)) {
+                val message = if (response.isSuccessful) {
+                    "Image server returned ${contentType ?: "a non-image response"}"
+                } else {
+                    "Image server returned HTTP ${response.code}"
+                }
+                throw HttpStatusException(response.code, contentType, message)
+            }
+            val body = response.body ?: throw IOException("Image server returned an empty body")
+            val append = offset > 0 && response.code == 206
+            val start = if (append) offset else 0L
+            val totalBytes = body.contentLength().takeIf { it > 0 }?.let { it + start } ?: -1L
+            val outputMode = if (append) "wa" else "w"
+            body.byteStream().use { input ->
+                resolver.openOutputStream(uri, outputMode)?.use { output ->
+                    val buffer = ByteArray(16 * 1024)
+                    var bytesCopied = start
+                    var lastUpdateNanos = 0L
+                    while (true) {
+                        currentCoroutineContext().ensureActive()
+                        val count = input.read(buffer)
+                        if (count < 0) break
+                        output.write(buffer, 0, count)
+                        bytesCopied += count
+                        val now = System.nanoTime()
+                        if (
+                            bytesCopied == totalBytes ||
+                            now - lastUpdateNanos >= 250_000_000L
+                        ) {
+                            showDownloadProgress(bytesCopied, totalBytes)
+                            setProgress(
+                                workDataOf(
+                                    "bytesCopied" to bytesCopied,
+                                    "totalBytes" to totalBytes,
+                                ),
+                            )
+                            lastUpdateNanos = now
+                        }
+                    }
+                } ?: error("Latte could not open the MediaStore item")
+            }
+        }
+        return true
     }
 
     private fun pendingSize(resolver: android.content.ContentResolver, uri: Uri): Long =
@@ -259,7 +268,6 @@ class DownloadWorker(
     )
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         applicationContext.getSystemService(NotificationManager::class.java)
             .createNotificationChannel(
                 NotificationChannel(
@@ -392,6 +400,7 @@ class DownloadWorker(
         private const val KEY_DISPLAY_NAME = "display_name"
         private const val KEY_MIME_TYPE = "mime_type"
         private const val KEY_HEADERS = "headers"
+        private const val KEY_FALLBACK_URLS = "fallback_urls"
         private const val MAX_RETRY_COUNT = 2
 
         fun uniqueWorkName(displayName: String): String = "latte-download-$displayName"
@@ -401,11 +410,19 @@ class DownloadWorker(
             displayName: String,
             mimeType: String,
             headers: Map<String, String> = emptyMap(),
+            fallbackUrls: List<String> = emptyList(),
         ): Data = workDataOf(
             KEY_SOURCE_URL to sourceUrl,
+            KEY_FALLBACK_URLS to fallbackUrls.toTypedArray(),
             KEY_DISPLAY_NAME to displayName,
             KEY_MIME_TYPE to mimeType,
             KEY_HEADERS to org.json.JSONObject(headers).toString(),
         )
     }
 }
+
+private class HttpStatusException(
+    val statusCode: Int,
+    val contentType: String?,
+    message: String,
+) : IOException(message)

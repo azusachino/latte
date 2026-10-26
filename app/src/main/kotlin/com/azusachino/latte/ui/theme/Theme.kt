@@ -1,6 +1,6 @@
 package com.azusachino.latte.ui.theme
 
-import android.os.Build
+import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -8,7 +8,10 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import com.azusachino.latte.data.settings.ThemeMode
 
 enum class LattePalette {
@@ -68,9 +71,19 @@ fun LatteTheme(
         ThemeMode.DARK -> true
     }
 
+    // Keyed on darkTheme, not run every recomposition, so a screen that overrides the
+    // bar icons (see DetailScreen) is not reset while it is shown.
+    val view = LocalView.current
+    DisposableEffect(view, darkTheme) {
+        val controller = WindowCompat.getInsetsController((view.context as Activity).window, view)
+        controller.isAppearanceLightStatusBars = !darkTheme
+        controller.isAppearanceLightNavigationBars = !darkTheme
+        onDispose {}
+    }
+
     val context = LocalContext.current
     val baseColorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+        dynamicColor -> {
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
         darkTheme -> DarkColorScheme

@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,18 +22,25 @@ import androidx.compose.ui.unit.IntSize
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 
+/**
+ * Pinch-zoomable box. [onTap] receives the tap's horizontal position as a 0..1 fraction of the
+ * box width and whether the content is currently zoomed (scale > 1.05). Scale and offset reset
+ * whenever [resetKey] changes.
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ZoomableBox(
     modifier: Modifier = Modifier,
     minScale: Float = 1f,
     maxScale: Float = 4f,
-    onTap: () -> Unit = {},
+    resetKey: Any? = null,
+    onTap: (xFraction: Float, zoomed: Boolean) -> Unit = { _, _ -> },
     content: @Composable () -> Unit,
 ) {
-    var scale by remember { mutableFloatStateOf(1f) }
-    var offset by remember { mutableStateOf(Offset.Zero) }
+    var scale by remember(resetKey) { mutableFloatStateOf(1f) }
+    var offset by remember(resetKey) { mutableStateOf(Offset.Zero) }
     var boxSize by remember { mutableStateOf(IntSize.Zero) }
+    val currentOnTap by rememberUpdatedState(onTap)
 
     val transformableState = rememberTransformableState { zoomChange, panChange, _ ->
         val newScale = (scale * zoomChange).coerceIn(minScale, maxScale)
@@ -54,9 +62,14 @@ fun ZoomableBox(
         modifier = modifier
             .fillMaxSize()
             .onSizeChanged { boxSize = it }
-            .pointerInput(Unit) {
+            .pointerInput(resetKey) {
                 detectTapGestures(
-                    onTap = { onTap() },
+                    onTap = { tapOffset ->
+                        currentOnTap(
+                            (tapOffset.x / size.width).coerceIn(0f, 1f),
+                            scale > 1.05f,
+                        )
+                    },
                     onDoubleTap = { tapOffset ->
                         if (scale > 1.05f) {
                             scale = 1f
