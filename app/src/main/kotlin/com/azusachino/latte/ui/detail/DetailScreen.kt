@@ -3,11 +3,14 @@ package com.azusachino.latte.ui.detail
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -43,16 +46,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -69,12 +67,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.azusachino.latte.ui.theme.GlassDefaults
+import com.azusachino.latte.ui.theme.glassSurface
+import com.azusachino.latte.ui.theme.pressScale
 import coil3.compose.AsyncImage
 import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
@@ -132,6 +134,7 @@ fun DetailScreen(
     var localScores by remember { mutableStateOf(mapOf<Long, Int>()) }
     var localBookmarks by remember { mutableStateOf(mapOf<String, Boolean>()) }
     var inlineActionError by remember { mutableStateOf<String?>(null) }
+    val heartScale = remember { Animatable(1f) }
     val currentPost = detailPosts.getOrNull(pagerState.currentPage)
     var pixivPageIndex by rememberSaveable(currentPost?.siteId, currentPost?.id) {
         mutableStateOf(if (pagerState.currentPage == initialIndex) initialPageIndex.coerceAtLeast(0) else 0)
@@ -186,66 +189,136 @@ fun DetailScreen(
             exit = fadeOut(),
             modifier = Modifier.align(Alignment.TopCenter),
         ) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = Color.Black.copy(alpha = 0.65f),
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Row(
+                // Left pill: Circular frosted glass back button
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(horizontal = 8.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                        .size(44.dp)
+                        .glassSurface(shape = CircleShape)
+                        .pressScale(),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    IconButton(onClick = onBack) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
                             tint = Color.White,
                         )
                     }
+                }
 
-                    Text(
-                        text = if (currentPost != null) currentPost.title ?: "#${currentPost.id}" else "",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        modifier = Modifier.weight(1f),
-                    )
+                // Center capsule: Floating frosted glass pill
+                val centerTitle = remember(currentPost?.id, currentPost?.title, currentPost?.platform) {
+                    when {
+                        currentPost == null -> ""
+                        !currentPost.title.isNullOrBlank() -> currentPost.title.orEmpty()
+                        else -> "#${currentPost.id} · ${currentPost.platform.displayName}"
+                    }
+                }
 
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 8.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (centerTitle.isNotBlank()) {
+                        Box(
+                            modifier = Modifier
+                                .glassSurface(shape = RoundedCornerShape(GlassDefaults.PillCornerRadius))
+                                .padding(horizontal = 14.dp, vertical = 8.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = centerTitle,
+                                color = Color.White,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 14.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+
+                // Right pill: Circular frosted glass action buttons for Browser and Share
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     if (currentPost != null) {
                         // Open in browser
-                        IconButton(onClick = {
-                            val intent = Intent(
-                                Intent.ACTION_VIEW,
-                                Uri.parse(currentPost.canonicalUrl ?: currentPost.source ?: "https://yande.re/post/show/${currentPost.id}"),
-                            )
-                            context.startActivity(intent)
-                        }) {
-                            Icon(
-                                imageVector = LatteIcons.OpenInBrowser,
-                                contentDescription = "Open in browser",
-                                tint = Color.White,
-                            )
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .glassSurface(shape = CircleShape)
+                                .pressScale(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    val intent = Intent(
+                                        Intent.ACTION_VIEW,
+                                        Uri.parse(
+                                            currentPost.canonicalUrl
+                                                ?: currentPost.source
+                                                ?: "https://yande.re/post/show/${currentPost.id}",
+                                        ),
+                                    )
+                                    context.startActivity(intent)
+                                },
+                                modifier = Modifier.fillMaxSize(),
+                            ) {
+                                Icon(
+                                    imageVector = LatteIcons.OpenInBrowser,
+                                    contentDescription = "Open in browser",
+                                    tint = Color.White,
+                                )
+                            }
                         }
 
                         // Share
-                        IconButton(onClick = {
-                            val intent = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(
-                                    Intent.EXTRA_TEXT,
-                                    currentPost.canonicalUrl ?: currentPost.source ?: "https://yande.re/post/show/${currentPost.id}",
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .glassSurface(shape = CircleShape)
+                                .pressScale(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    val intent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(
+                                            Intent.EXTRA_TEXT,
+                                            currentPost.canonicalUrl
+                                                ?: currentPost.source
+                                                ?: "https://yande.re/post/show/${currentPost.id}",
+                                        )
+                                    }
+                                    context.startActivity(Intent.createChooser(intent, "Share post"))
+                                },
+                                modifier = Modifier.fillMaxSize(),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Share,
+                                    contentDescription = "Share",
+                                    tint = Color.White,
                                 )
                             }
-                            context.startActivity(Intent.createChooser(intent, "Share post"))
-                        }) {
-                            Icon(
-                                imageVector = Icons.Default.Share,
-                                contentDescription = "Share",
-                                tint = Color.White,
-                            )
                         }
+                    } else {
+                        Spacer(modifier = Modifier.size(44.dp))
                     }
                 }
             }
@@ -258,31 +331,38 @@ fun DetailScreen(
             exit = fadeOut(),
             modifier = Modifier.align(Alignment.BottomCenter),
         ) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = Color.Black.copy(alpha = 0.65f),
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .padding(horizontal = 20.dp, vertical = 14.dp),
-                ) {
-                    inlineActionError?.let { message ->
+                inlineActionError?.let { message ->
+                    Box(
+                        modifier = Modifier
+                            .padding(bottom = 10.dp)
+                            .glassSurface(shape = RoundedCornerShape(12.dp))
+                            .padding(horizontal = 14.dp, vertical = 6.dp),
+                    ) {
                         Text(
                             text = message,
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.labelMedium,
-                            modifier = Modifier.padding(bottom = 8.dp),
                         )
                     }
-                    if (currentPost?.platform?.let { PlatformCapability.USER_FEED in it.capabilities } == true && currentPost.pageCount > 1) {
+                }
+
+                if (currentPost?.platform?.let { PlatformCapability.USER_FEED in it.capabilities } == true && currentPost.pageCount > 1) {
+                    Box(
+                        modifier = Modifier
+                            .padding(bottom = 12.dp)
+                            .glassSurface(shape = RoundedCornerShape(GlassDefaults.PillCornerRadius))
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    ) {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 10.dp),
-                            horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
                         ) {
                             IconButton(
                                 onClick = {
@@ -291,17 +371,23 @@ fun DetailScreen(
                                     }
                                 },
                                 enabled = pixivPageIndex > 0,
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .pressScale(enabled = pixivPageIndex > 0),
                             ) {
                                 Icon(
                                     imageVector = LatteIcons.ChevronLeft,
                                     contentDescription = "Previous illustration page",
                                     tint = if (pixivPageIndex > 0) Color.White else Color.White.copy(alpha = 0.35f),
+                                    modifier = Modifier.size(20.dp),
                                 )
                             }
                             Text(
                                 text = "Page ${pixivPageIndex + 1} of ${currentPost.pageCount}",
                                 color = Color.White,
                                 style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(horizontal = 8.dp),
                             )
                             IconButton(
                                 onClick = {
@@ -310,47 +396,61 @@ fun DetailScreen(
                                     }
                                 },
                                 enabled = pixivPageIndex < currentPost.pageCount - 1,
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .pressScale(enabled = pixivPageIndex < currentPost.pageCount - 1),
                             ) {
                                 Icon(
                                     imageVector = LatteIcons.ChevronRight,
                                     contentDescription = "Next illustration page",
                                     tint = if (pixivPageIndex < currentPost.pageCount - 1) Color.White else Color.White.copy(alpha = 0.35f),
+                                    modifier = Modifier.size(20.dp),
                                 )
                             }
                         }
                     }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .glassSurface(shape = RoundedCornerShape(28.dp))
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     // Details button: elegant pill with icon & resolution
-                    FilledTonalButton(
-                        onClick = { showInspectSheet = true },
-                        shape = RoundedCornerShape(24.dp),
-                        modifier = Modifier.height(48.dp),
-                        colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = Color.White.copy(alpha = 0.18f),
-                            contentColor = Color.White,
-                        ),
+                    Box(
+                        modifier = Modifier
+                            .height(44.dp)
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(Color.White.copy(alpha = 0.12f))
+                            .clickable { showInspectSheet = true }
+                            .pressScale()
+                            .padding(horizontal = 14.dp),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (displayPost != null) "${displayPost.width}×${displayPost.height}" else "Details",
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 14.sp,
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = "Details",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (displayPost != null) "${displayPost.width}×${displayPost.height}" else "Details",
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 13.sp,
+                                color = Color.White,
+                            )
+                        }
                     }
 
                     // Right actions: Favorite + Save
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         if (
                             currentPlugin != null &&
@@ -367,53 +467,83 @@ fun DetailScreen(
                                 currentScore == 3
                             }
 
-                            FilledTonalIconButton(
-                                onClick = {
-                                    if (!isPluginLoggedIn) {
-                                        onRequireLogin(currentPlugin)
-                                    } else {
-                                        scope.launch {
-                                            val targetScore = if (isFavorited) 0 else 3
-                                            val targetBookmarked = !isFavorited
-                                            val result = if (hasUserFeedCapability) {
-                                                currentPlugin.setBookmark(post.id, targetBookmarked)
-                                            } else {
-                                                currentPlugin.setScore(post.id, targetScore)
-                                            }
-                                            if (result.isSuccess) {
-                                                inlineActionError = null
-                                                if (hasUserFeedCapability) {
-                                                    localBookmarks = localBookmarks + (post.workIdentity.toString() to targetBookmarked)
-                                                } else {
-                                                    localScores = localScores + (post.id to targetScore)
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (isFavorited) Color(0xFFE53935).copy(alpha = 0.25f)
+                                        else Color.White.copy(alpha = 0.12f),
+                                    )
+                                    .pressScale(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                IconButton(
+                                    onClick = {
+                                        if (!isPluginLoggedIn) {
+                                            onRequireLogin(currentPlugin)
+                                        } else {
+                                            scope.launch {
+                                                launch {
+                                                    heartScale.animateTo(
+                                                        targetValue = 1.35f,
+                                                        animationSpec = spring(
+                                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                            stiffness = Spring.StiffnessMediumLow,
+                                                        ),
+                                                    )
+                                                    heartScale.animateTo(
+                                                        targetValue = 1f,
+                                                        animationSpec = spring(
+                                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                            stiffness = Spring.StiffnessMedium,
+                                                        ),
+                                                    )
                                                 }
-                                                if (targetBookmarked) {
-                                                    ToastManager.showSuccess("Added to favorites")
+
+                                                val targetScore = if (isFavorited) 0 else 3
+                                                val targetBookmarked = !isFavorited
+                                                val result = if (hasUserFeedCapability) {
+                                                    currentPlugin.setBookmark(post.id, targetBookmarked)
                                                 } else {
-                                                    ToastManager.showInfo("Removed from favorites")
+                                                    currentPlugin.setScore(post.id, targetScore)
                                                 }
-                                            } else {
-                                                inlineActionError = "Failed to update favorite: ${result.exceptionOrNull()?.message.orEmpty()}"
+                                                if (result.isSuccess) {
+                                                    inlineActionError = null
+                                                    if (hasUserFeedCapability) {
+                                                        localBookmarks = localBookmarks + (post.workIdentity.toString() to targetBookmarked)
+                                                    } else {
+                                                        localScores = localScores + (post.id to targetScore)
+                                                    }
+                                                    if (targetBookmarked) {
+                                                        ToastManager.showSuccess("Added to favorites")
+                                                    } else {
+                                                        ToastManager.showInfo("Removed from favorites")
+                                                    }
+                                                } else {
+                                                    inlineActionError = "Failed to update favorite: ${result.exceptionOrNull()?.message.orEmpty()}"
+                                                }
                                             }
                                         }
-                                    }
-                                },
-                                shape = CircleShape,
-                                modifier = Modifier.size(48.dp),
-                                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                    containerColor = if (isFavorited) Color(0xFFE53935).copy(alpha = 0.25f) else Color.White.copy(alpha = 0.18f),
-                                    contentColor = if (isFavorited) Color(0xFFE53935) else Color.White,
-                                ),
-                            ) {
-                                Icon(
-                                    imageVector = if (isFavorited) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                    contentDescription = if (isFavorited) "Remove from favorites" else "Add to favorites",
-                                    modifier = Modifier.size(22.dp),
-                                )
+                                    },
+                                    modifier = Modifier.fillMaxSize(),
+                                ) {
+                                    Icon(
+                                        imageVector = if (isFavorited) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                        contentDescription = if (isFavorited) "Remove from favorites" else "Add to favorites",
+                                        tint = if (isFavorited) Color(0xFFE53935) else Color.White,
+                                        modifier = Modifier
+                                            .size(22.dp)
+                                            .graphicsLayer {
+                                                scaleX = heartScale.value
+                                                scaleY = heartScale.value
+                                            },
+                                    )
+                                }
                             }
                         }
 
-                        // Download button: matching 48dp pill
+                        // Download button: matching 44dp pill
                         Button(
                             onClick = {
                                 if (displayPost != null) {
@@ -436,26 +566,28 @@ fun DetailScreen(
                                     }
                                 }
                             },
-                            shape = RoundedCornerShape(24.dp),
-                            modifier = Modifier.height(48.dp),
+                            shape = RoundedCornerShape(22.dp),
+                            modifier = Modifier
+                                .height(44.dp)
+                                .pressScale(),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                             ),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
                         ) {
                             Icon(
                                 imageVector = LatteIcons.Download,
                                 contentDescription = null,
-                                modifier = Modifier.size(20.dp),
+                                modifier = Modifier.size(18.dp),
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = "Save",
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 14.sp,
                             )
                         }
-                    }
                     }
                 }
             }
@@ -466,120 +598,140 @@ fun DetailScreen(
             ModalBottomSheet(
                 onDismissRequest = { showInspectSheet = false },
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                containerColor = Color.Transparent,
+                dragHandle = null,
             ) {
-                Column(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp)
-                        .padding(bottom = 36.dp)
-                        .verticalScroll(rememberScrollState()),
+                        .glassSurface(
+                            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                            isElevated = true,
+                        ),
                 ) {
-                    Text(
-                        text = "Post #${currentPost.id}",
-                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Metadata Table
-                    Text(
-                        text = "Information",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    MetadataTable(
-                        post = displayPost ?: currentPost,
-                        onAuthorClick = { author ->
-                            showInspectSheet = false
-                            onAuthorClick(displayPost ?: currentPost, pagerState.currentPage, pixivPageIndex)
-                        },
-                        onSourceClick = { url ->
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                            context.startActivity(intent)
-                        },
-                    )
-
-                    inlineActionError?.let { message ->
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = message,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-
-                    // Personal Rating (0-3 stars)
-                    if (currentPlugin != null && currentPlugin.capabilities.contains(PlatformCapability.SCORING)) {
-                        val isPluginLoggedIn by currentPlugin.isLoggedInFlow.collectAsState(initial = currentPlugin.isLoggedIn)
-                        val currentScore = localScores[currentPost.id] ?: currentPlugin.getScore(currentPost.id) ?: 0
-
-                        Spacer(modifier = Modifier.height(16.dp))
-                        PersonalRatingSection(
-                            score = currentScore,
-                            isLoggedIn = isPluginLoggedIn,
-                            onRate = { newScore ->
-                                scope.launch {
-                                    val result = currentPlugin.setScore(currentPost.id, newScore)
-                                    if (result.isSuccess) {
-                                        inlineActionError = null
-                                        localScores = localScores + (currentPost.id to newScore)
-                                        when (newScore) {
-                                            0 -> ToastManager.showInfo("Rating removed")
-                                            3 -> ToastManager.showSuccess("Rated 3 stars (Favorited)")
-                                            else -> ToastManager.showSuccess("Rated $newScore star${if (newScore > 1) "s" else ""}")
-                                        }
-                                    } else {
-                                        inlineActionError = "Failed to submit rating: ${result.exceptionOrNull()?.message.orEmpty()}"
-                                    }
-                                }
-                            },
-                            onLoginRequest = {
-                                onRequireLogin(currentPlugin)
-                            },
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    // Tags with Colorful Palette
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp)
+                            .padding(top = 12.dp, bottom = 36.dp)
+                            .verticalScroll(rememberScrollState()),
                     ) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.CenterHorizontally)
+                                .padding(bottom = 16.dp)
+                                .size(width = 36.dp, height = 4.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)),
+                        )
+
                         Text(
-                            text = "Tags",
+                            text = "Post #${currentPost.id}",
+                            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Metadata Table
+                        Text(
+                            text = "Information",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                         )
-                        Text(
-                            text = "${currentPost.tags.size} tags",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        currentPost.tags.forEach { tag ->
-                            val canFavorite = onToggleFavoriteTag != null
-                            TagChip(
-                                tag = tag,
-                                onClick = {
-                                    showInspectSheet = false
-                                    onTagClick(tag, pagerState.currentPage, pixivPageIndex)
+                        MetadataTable(
+                            post = displayPost ?: currentPost,
+                            onAuthorClick = { author ->
+                                showInspectSheet = false
+                                onAuthorClick(displayPost ?: currentPost, pagerState.currentPage, pixivPageIndex)
+                            },
+                            onSourceClick = { url ->
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                context.startActivity(intent)
+                            },
+                        )
+
+                        inlineActionError?.let { message ->
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = message,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+
+                        // Personal Rating (0-3 stars)
+                        if (currentPlugin != null && currentPlugin.capabilities.contains(PlatformCapability.SCORING)) {
+                            val isPluginLoggedIn by currentPlugin.isLoggedInFlow.collectAsState(initial = currentPlugin.isLoggedIn)
+                            val currentScore = localScores[currentPost.id] ?: currentPlugin.getScore(currentPost.id) ?: 0
+
+                            Spacer(modifier = Modifier.height(16.dp))
+                            PersonalRatingSection(
+                                score = currentScore,
+                                isLoggedIn = isPluginLoggedIn,
+                                onRate = { newScore ->
+                                    scope.launch {
+                                        val result = currentPlugin.setScore(currentPost.id, newScore)
+                                        if (result.isSuccess) {
+                                            inlineActionError = null
+                                            localScores = localScores + (currentPost.id to newScore)
+                                            when (newScore) {
+                                                0 -> ToastManager.showInfo("Rating removed")
+                                                3 -> ToastManager.showSuccess("Rated 3 stars (Favorited)")
+                                                else -> ToastManager.showSuccess("Rated $newScore star${if (newScore > 1) "s" else ""}")
+                                            }
+                                        } else {
+                                            inlineActionError = "Failed to submit rating: ${result.exceptionOrNull()?.message.orEmpty()}"
+                                        }
+                                    }
                                 },
-                                isFavorite = canFavorite &&
-                                    favoriteTags.any { it.tag == tag && it.platform == currentPost.platform },
-                                onLongClick = if (canFavorite) {
-                                    { onToggleFavoriteTag?.invoke(tag, currentPost.platform) }
-                                } else {
-                                    null
+                                onLoginRequest = {
+                                    onRequireLogin(currentPlugin)
                                 },
                             )
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // Tags with Colorful Palette
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = "Tags",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            )
+                            Text(
+                                text = "${currentPost.tags.size} tags",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            currentPost.tags.forEach { tag ->
+                                val canFavorite = onToggleFavoriteTag != null
+                                TagChip(
+                                    tag = tag,
+                                    onClick = {
+                                        showInspectSheet = false
+                                        onTagClick(tag, pagerState.currentPage, pixivPageIndex)
+                                    },
+                                    isFavorite = canFavorite &&
+                                        favoriteTags.any { it.tag == tag && it.platform == currentPost.platform },
+                                    onLongClick = if (canFavorite) {
+                                        { onToggleFavoriteTag?.invoke(tag, currentPost.platform) }
+                                    } else {
+                                        null
+                                    },
+                                )
+                            }
                         }
                     }
                 }
@@ -720,11 +872,13 @@ private fun MetadataTable(
     onSourceClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .glassSurface(
+                shape = RoundedCornerShape(GlassDefaults.CardCornerRadius),
+                isElevated = true,
+            ),
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
                     // Author
@@ -733,7 +887,7 @@ private fun MetadataTable(
                     label = "Title",
                     value = post.title,
                 )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
             }
 
             if (!post.author.isNullOrBlank()) {
@@ -744,7 +898,7 @@ private fun MetadataTable(
                     onClick = { onAuthorClick(post.author) },
                     valueColor = MaterialTheme.colorScheme.primary,
                 )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
             }
 
             // Dimensions
@@ -754,7 +908,7 @@ private fun MetadataTable(
                 label = "Dimensions",
                 value = "${post.width} × ${post.height}$ratioSuffix",
             )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
 
             // Rating
             val (ratingLabel, ratingColor) = when (post.rating) {
@@ -768,13 +922,13 @@ private fun MetadataTable(
                 value = ratingLabel,
                 valueColor = ratingColor,
             )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
 
             if (PlatformCapability.USER_FEED in post.platform.capabilities) {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
                 MetadataTableRow(label = "Pages", value = "${post.pageIndex + 1} / ${post.pageCount}")
                 post.bookmarkCount?.let { count ->
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
                     MetadataTableRow(label = "Bookmarks", value = count.toString())
                 }
             } else {
@@ -787,7 +941,7 @@ private fun MetadataTable(
 
             // Created Date
             if (post.createdAt != null && post.createdAt > 0) {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
                 val formattedDate = Instant.ofEpochSecond(post.createdAt)
                     .atZone(ZoneId.systemDefault())
                     .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
@@ -800,7 +954,7 @@ private fun MetadataTable(
             // File Size
             val bestVariant = post.bestVariant
             if (bestVariant.fileSize != null && bestVariant.fileSize > 0) {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
                 val ext = bestVariant.extension?.uppercase() ?: "IMAGE"
                 MetadataTableRow(
                     label = "File",
@@ -810,7 +964,7 @@ private fun MetadataTable(
 
             // Source
             if (!post.source.isNullOrBlank()) {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
                 val host = runCatching { Uri.parse(post.source).host?.removePrefix("www.") }.getOrNull()
                 val displaySource = if (!host.isNullOrBlank()) host else "View Source"
                 MetadataTableRow(
@@ -837,7 +991,7 @@ private fun MetadataTableRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .then(if (isClickable) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(if (isClickable) Modifier.pressScale().clickable(onClick = onClick) else Modifier)
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -889,36 +1043,38 @@ private fun TagChip(
 ) {
     val baseColor = TagPalette[abs(tag.hashCode()) % TagPalette.size]
     val containerColor = if (isFavorite) {
-        baseColor.copy(alpha = 0.32f)
+        baseColor.copy(alpha = 0.28f)
     } else {
-        baseColor.copy(alpha = 0.15f)
+        baseColor.copy(alpha = 0.14f)
     }
-    val borderColor = if (isFavorite) {
-        baseColor.copy(alpha = 0.9f)
+    val rimColor = if (isFavorite) {
+        baseColor.copy(alpha = 0.90f)
     } else {
         baseColor.copy(alpha = 0.45f)
     }
+    val shape = RoundedCornerShape(GlassDefaults.PillCornerRadius)
 
-    Surface(
+    Box(
         modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
+            .pressScale()
+            .clip(shape)
+            .background(containerColor, shape)
+            .border(GlassDefaults.RimStrokeWidth, rimColor, shape)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick,
-            ),
-        shape = RoundedCornerShape(10.dp),
-        color = containerColor,
-        border = BorderStroke(1.dp, borderColor),
+            )
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
                 modifier = Modifier
                     .size(8.dp)
                     .clip(CircleShape)
-                    .background(baseColor)
+                    .background(baseColor),
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
@@ -974,11 +1130,13 @@ private fun PersonalRatingSection(
     onLoginRequest: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .glassSurface(
+                shape = RoundedCornerShape(GlassDefaults.CardCornerRadius),
+                isElevated = true,
+            ),
     ) {
         Row(
             modifier = Modifier
@@ -1018,7 +1176,9 @@ private fun PersonalRatingSection(
                                 onRate(targetScore)
                             }
                         },
-                        modifier = Modifier.size(40.dp),
+                        modifier = Modifier
+                            .size(40.dp)
+                            .pressScale(),
                     ) {
                         Icon(
                             imageVector = if (starIndex <= score) Icons.Default.Star else LatteIcons.StarBorder,

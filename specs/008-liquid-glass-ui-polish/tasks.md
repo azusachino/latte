@@ -17,10 +17,10 @@ description: "Tasks for Apple Liquid Glass & Telegram Media Ergonomics"
 
 ## Phase 2: Immersive Media Viewer (`DetailScreen.kt`)
 
-- [ ] T004 Refactor top controls overlay into floating frosted glass pill islands (circular back button, center title/id capsule, browser/share buttons).
-- [ ] T005 Refactor bottom controls overlay into a floating frosted glass dock (details/resolution pill, animated favorite heart, save button).
-- [ ] T006 Implement floating glass page indicator capsule for Pixiv multi-page works.
-- [ ] T007 Refactor Inspect bottom sheet with frosted glass styling, grouped glass cards, and glowing tag capsules.
+- [x] T004 Refactor top controls overlay into floating frosted glass pill islands (circular back button, center title/id capsule, browser/share buttons).
+- [x] T005 Refactor bottom controls overlay into a floating frosted glass dock (details/resolution pill, animated favorite heart, save button).
+- [x] T006 Implement floating glass page indicator capsule for Pixiv multi-page works.
+- [x] T007 Refactor Inspect bottom sheet with frosted glass styling, grouped glass cards, and glowing tag capsules.
 
 ## Phase 3: Discovery Feed & Segmented Pill Controls (`ExploreScreen.kt`)
 
