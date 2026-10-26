@@ -31,11 +31,11 @@ description: "Tasks for Apple Liquid Glass & Telegram Media Ergonomics"
 
 ## Phase 4: Settings & Account Center Polish
 
-- [ ] T012 Refactor `SettingsScreen` rows into Apple-style inset grouped glass cards.
-- [ ] T013 Polish `AccountManagerScreen` with frosted platform cards and glowing connection status badges.
+- [x] T012 Refactor `SettingsScreen` rows into Apple-style inset grouped glass cards.
+- [x] T013 Polish `AccountManagerScreen` with frosted platform cards and glowing connection status badges.
 
 ## Phase 5: Verification & Acceptance
 
-- [ ] T014 Run `./gradlew testDebugUnitTest` and ensure all tests pass.
-- [ ] T015 Run `mise exec -- rumdl check .` and ensure markdown formatting is clean.
-- [ ] T016 Run `./gradlew assembleDebug` and verify clean APK compilation.
+- [x] T014 Run `./gradlew testDebugUnitTest` and ensure all tests pass.
+- [x] T015 Run `mise exec -- rumdl check .` and ensure markdown formatting is clean.
+- [x] T016 Run `./gradlew assembleDebug` and verify clean APK compilation.
