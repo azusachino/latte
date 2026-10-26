@@ -237,9 +237,7 @@ fun SettingsScreen(
                     icon = LatteIcons.Download,
                     title = "Download directory",
                     subtitle = "Pictures/Latte (Standard gallery album)",
-                    onClick = {
-                        ToastManager.showInfo("Downloads are saved to Pictures/Latte")
-                    },
+                    onClick = {},
                 )
 
                 SettingsDivider()

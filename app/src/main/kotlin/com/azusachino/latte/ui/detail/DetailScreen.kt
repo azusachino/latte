@@ -96,6 +96,7 @@ import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.plugin.SitePluginManager
 import com.azusachino.latte.ui.common.ToastManager
+import com.azusachino.latte.ui.common.ToastType
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
@@ -576,11 +577,6 @@ fun DetailScreen(
                                                     } else {
                                                         localScores = localScores + (post.id to targetScore)
                                                     }
-                                                    if (targetBookmarked) {
-                                                        ToastManager.showSuccess("Added to favorites")
-                                                    } else {
-                                                        ToastManager.showInfo("Removed from favorites")
-                                                    }
                                                 } else {
                                                     inlineActionError = "Failed to update favorite: ${result.exceptionOrNull()?.message.orEmpty()}"
                                                 }
@@ -735,11 +731,6 @@ fun DetailScreen(
                                         if (result.isSuccess) {
                                             inlineActionError = null
                                             localScores = localScores + (currentPost.id to newScore)
-                                            when (newScore) {
-                                                0 -> ToastManager.showInfo("Rating removed")
-                                                3 -> ToastManager.showSuccess("Rated 3 stars (Favorited)")
-                                                else -> ToastManager.showSuccess("Rated $newScore star${if (newScore > 1) "s" else ""}")
-                                            }
                                         } else {
                                             inlineActionError = "Failed to submit rating: ${result.exceptionOrNull()?.message.orEmpty()}"
                                         }
@@ -787,7 +778,21 @@ fun DetailScreen(
                                     isFavorite = canFavorite &&
                                         favoriteTags.any { it.tag == tag && it.platform == currentPost.platform },
                                     onLongClick = if (canFavorite) {
-                                        { onToggleFavoriteTag?.invoke(tag, currentPost.platform) }
+                                        {
+                                            val wasFavorite = favoriteTags.any {
+                                                it.tag == tag && it.platform == currentPost.platform
+                                            }
+                                            onToggleFavoriteTag?.invoke(tag, currentPost.platform)
+                                            if (wasFavorite) {
+                                                ToastManager.show(
+                                                    message = "Removed favorite tag \"$tag\"",
+                                                    type = ToastType.INFO,
+                                                    actionLabel = "Undo",
+                                                ) {
+                                                    onToggleFavoriteTag?.invoke(tag, currentPost.platform)
+                                                }
+                                            }
+                                        }
                                     } else {
                                         null
                                     },

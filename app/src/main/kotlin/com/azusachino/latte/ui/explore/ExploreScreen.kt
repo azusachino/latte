@@ -134,6 +134,7 @@ import com.azusachino.latte.plugin.PlatformCapability
 import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.ui.common.ToastManager
+import com.azusachino.latte.ui.common.ToastType
 import com.azusachino.latte.ui.theme.GlassDefaults
 import com.azusachino.latte.ui.theme.glassSurface
 import com.azusachino.latte.ui.theme.pressScale
@@ -790,7 +791,16 @@ fun ExploreScreen(
                                                 searchQuery = tag
                                                 viewModel.searchPixiv(tag)
                                             },
-                                            onLongClick = { viewModel.toggleFavoriteTag(tag, PlatformId.PIXIV) },
+                                            onLongClick = {
+                                                toggleFavoriteTagWithUndo(
+                                                    tag = tag,
+                                                    platform = PlatformId.PIXIV,
+                                                    wasFavorite = uiState.favoriteTags.any {
+                                                        it.tag == tag && it.platform == PlatformId.PIXIV
+                                                    },
+                                                    toggle = viewModel::toggleFavoriteTag,
+                                                )
+                                            },
                                         )
                                     }
                                 }
@@ -821,7 +831,16 @@ fun ExploreScreen(
                                                 searchQuery = tag
                                                 viewModel.search(tag)
                                             },
-                                            onLongClick = { viewModel.toggleFavoriteTag(tag, uiState.platform) },
+                                            onLongClick = {
+                                                toggleFavoriteTagWithUndo(
+                                                    tag = tag,
+                                                    platform = uiState.platform,
+                                                    wasFavorite = uiState.favoriteTags.any {
+                                                        it.tag == tag && it.platform == uiState.platform
+                                                    },
+                                                    toggle = viewModel::toggleFavoriteTag,
+                                                )
+                                            },
                                         )
                                     }
                                 }
@@ -2028,6 +2047,21 @@ private fun formatPopularWindow(period: PluginFeedPeriod, anchor: LocalDate): St
             val start = anchor.withDayOfYear(1)
             val end = anchor.withDayOfYear(anchor.lengthOfYear())
             "${start.format(dateFormatter)} – ${end.format(dateFormatter)}"
+        }
+    }
+}
+
+/** Long-press favorite-tag toggle; a removal offers Undo because the chip only shows the new state. */
+private fun toggleFavoriteTagWithUndo(
+    tag: String,
+    platform: PlatformId,
+    wasFavorite: Boolean,
+    toggle: (String, PlatformId) -> Unit,
+) {
+    toggle(tag, platform)
+    if (wasFavorite) {
+        ToastManager.show("Removed favorite tag \"$tag\"", ToastType.INFO, actionLabel = "Undo") {
+            toggle(tag, platform)
         }
     }
 }

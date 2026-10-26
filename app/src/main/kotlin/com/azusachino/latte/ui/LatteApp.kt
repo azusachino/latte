@@ -346,7 +346,7 @@ fun LatteApp(
                 )
             }
 
-            // Stacking, full-width toasts over all screens
+            // Single bulletin toast over all screens
             ToastHost(modifier = Modifier.align(Alignment.BottomCenter))
         }
     }
