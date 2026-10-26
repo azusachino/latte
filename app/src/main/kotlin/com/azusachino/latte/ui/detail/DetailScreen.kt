@@ -61,6 +61,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -80,6 +81,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
 import com.azusachino.latte.ui.theme.GlassDefaults
 import com.azusachino.latte.ui.theme.glassSurface
@@ -676,6 +678,14 @@ fun DetailScreen(
                 containerColor = Color.Transparent,
                 dragHandle = null,
             ) {
+                // The sheet is its own window and sets its own bar appearance; keep the status bar icons light.
+                val sheetView = LocalView.current
+                val sheetWindow = (sheetView.parent as? DialogWindowProvider)?.window
+                SideEffect {
+                    sheetWindow?.let {
+                        WindowCompat.getInsetsController(it, sheetView).isAppearanceLightStatusBars = false
+                    }
+                }
                 val sheetShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
                 Box(
                     modifier = Modifier
