@@ -1,6 +1,20 @@
 # Changelog
 
-## 0.2.6 - Unreleased
+## 0.3.0 - 2026-10-26
+
+### Added
+
+- **Apple Liquid Glass Design System**: Established reusable `GlassDefaults` design tokens and `Modifier.glassSurface` supporting dynamic theme luminance detection, translucent acrylic tinting, and specular gradient rim stroke (#27, #28).
+- **Tactile Micro-Interactions**: Added `Modifier.pressScale` providing tactile `scale(0.97f)` feedback on pointer press using GPU-compositor `graphicsLayer` and spring animation (#27, #28).
+- **Telegram-Style Media Viewer**: De-boxed `DetailScreen` overlay chrome into floating frosted glass navigation pills (back button, center title/ID capsule, browser and share buttons) and a floating bottom action dock (`Details` pill, animated favorite heart with spring bounce, and prominent primary `Save` pill button) (#27, #28).
+- **Apple-Style Discovery Navigation**: Inset `GlassSegmentedTabs` with spring physics sliding indicator replacing flat underline tabs, translucent top bar with under-bleed scrolling, frosted period capsules, and 14dp squircle cards with hairline specular rims (#27, #28).
+- **Grouped Glass Settings & Account Center**: iOS-style inset grouped glass cards in `SettingsScreen` and `AccountManagerScreen` with subtle hairline dividers, capsule chip selectors, and emerald glowing connection status badges (#27, #28).
+
+### Changed
+
+- Bumped `androidx.datastore:datastore-preferences` to `1.1.2`.
+
+## 0.2.6 - 2026-10-03
 
 ### Fixed
 
