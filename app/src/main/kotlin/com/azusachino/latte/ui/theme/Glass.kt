@@ -29,12 +29,12 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Design tokens and styling parameters for Apple-style Liquid Glass UI components.
  */
 object GlassDefaults {
-    val BlurRadius: Dp = 24.dp
     val RimStrokeWidth: Dp = 1.dp
     val CardCornerRadius: Dp = 14.dp
     val PillCornerRadius: Dp = 24.dp
@@ -71,16 +71,20 @@ object GlassDefaults {
 }
 
 /**
- * Applies a frosted liquid glass surface styling with backdrop blur on Android 12+ (API 31+),
- * translucent surface tinting, clipping, and a specular gradient rim border.
+ * Applies a liquid glass surface styling: translucent surface tinting, clipping, and a
+ * specular gradient rim border. Backdrop blur is not applied: Compose `Modifier.blur` blurs
+ * the element's own content, not what is behind it.
+ *
+ * [dark] overrides the luminance-based theme detection when non-null.
  */
 @Composable
 fun Modifier.glassSurface(
     shape: Shape = RoundedCornerShape(GlassDefaults.PillCornerRadius),
     isElevated: Boolean = false,
     rimStroke: Dp = GlassDefaults.RimStrokeWidth,
+    dark: Boolean? = null,
 ): Modifier {
-    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val isDark = dark ?: (MaterialTheme.colorScheme.surface.luminance() < 0.5f)
     val surfaceColor = when {
         isDark && isElevated -> GlassDefaults.DarkSurfaceElevated
         isDark -> GlassDefaults.DarkSurface
@@ -126,9 +130,16 @@ fun Modifier.pressScale(
         .pointerInput(enabled, targetScale) {
             awaitEachGesture {
                 awaitFirstDown(requireUnconsumed = false)
-                isPressed = true
                 try {
-                    waitForUpOrCancellation()
+                    // Quick taps and flings lift or cancel within the delay and never scale.
+                    val settled = withTimeoutOrNull(100L) {
+                        waitForUpOrCancellation()
+                        true
+                    }
+                    if (settled == null) {
+                        isPressed = true
+                        waitForUpOrCancellation()
+                    }
                 } finally {
                     isPressed = false
                 }

@@ -14,8 +14,8 @@ The implementation lands in 4 coherent, incrementally testable slices. Each slic
 ## Slice 1: Glass Design Tokens & Reusable Modifiers
 
 1. Create `vendor/latte/app/src/main/kotlin/com/azusachino/latte/ui/theme/Glass.kt`:
-   - `GlassDefaults` object containing semantic colors, gradients, stroke widths, corner radii, and blur radii.
-   - `Modifier.glassSurface(...)`: Combines clip, translucent background, API 31+ blur, and specular vertical gradient border.
+   - `GlassDefaults` object containing semantic colors, gradients, stroke widths, and corner radii.
+   - `Modifier.glassSurface(...)`: Combines clip, translucent background, and specular vertical gradient border. No backdrop blur: Compose `Modifier.blur` blurs the element's own content, not what is behind it.
    - `Modifier.pressScale(...)`: Clean pointer-input interaction for `scale(0.97f)` on press with spring return.
 2. Verify with unit/compose preview tests.
 
@@ -47,7 +47,7 @@ The implementation lands in 4 coherent, incrementally testable slices. Each slic
 
 1. Top Header Refactoring:
    - Make `Scaffold` container background transparent/bleed-friendly.
-   - TopAppBar and search bar styled with `Modifier.glassSurface` and blur.
+   - TopAppBar and search bar styled with `Modifier.glassSurface` (translucent tint and rim; no blur).
 2. Apple-Style Segmented Tab Bar:
    - Implement `GlassSegmentedTabs` replacing `TabRow`.
    - Smooth animated pill indicator sliding behind active tab (`Popular`, `Newest`, `Favorites`, `Pools`).

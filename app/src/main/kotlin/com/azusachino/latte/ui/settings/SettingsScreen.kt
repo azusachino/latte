@@ -168,7 +168,7 @@ fun SettingsScreen(
                 SettingsSwitchRow(
                     icon = LatteIcons.Security,
                     title = "Safe Mode",
-                    subtitle = "Filter mature and explicit content across all platforms",
+                    subtitle = "Show safe content only on yande.re and konachan",
                     checked = safeMode,
                     onCheckedChange = { preferences.setSafeMode(it) },
                 )

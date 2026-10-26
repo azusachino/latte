@@ -11,7 +11,6 @@ class GlassTest {
 
     @Test
     fun glassDefaultsHaveExpectedDimensions() {
-        assertEquals(24.dp, GlassDefaults.BlurRadius)
         assertEquals(1.dp, GlassDefaults.RimStrokeWidth)
         assertEquals(14.dp, GlassDefaults.CardCornerRadius)
         assertEquals(24.dp, GlassDefaults.PillCornerRadius)

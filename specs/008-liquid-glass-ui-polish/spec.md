@@ -23,7 +23,7 @@ Latte's functional architecture is mature across yande.re, konachan.net, and Pix
 
 ### Goals
 
-- **Liquid Glass Design System**: Establish reusable glass primitives (`Modifier.glassSurface`, `GlassDefaults`) supporting backdrop blur (API 31+), translucent tinting, and specular gradient rim highlights.
+- **Liquid Glass Design System**: Establish reusable glass primitives (`Modifier.glassSurface`, `GlassDefaults`) supporting translucent tinting and specular gradient rim highlights. Backdrop blur was dropped: Compose `Modifier.blur` blurs the element's own content, not what is behind it.
 - **Telegram-Style Media Viewer**: De-box `DetailScreen` chrome into floating glass pill islands (top navigation pill and bottom action dock).
 - **Apple-Style Discovery Feeds**: Refactor `ExploreScreen` with frosted glass headers, a smooth segmented pill tab bar with spring physics, and modernized 14dp squircle media cards with hairline outlines.
 - **Micro-Interactions**: Implement tactile scale-on-press (`scale(0.97f)`) on cards and buttons, spring animations on tab indicators, and spring bounce on favorite actions.
@@ -55,11 +55,11 @@ Latte's functional architecture is mature across yande.re, konachan.net, and Pix
 ### User Story 2: Frosted Glass Feed Navigation & Segmented Tabs
 
 *As a user navigating discovery feeds,*  
-*I want the header and feed tabs to blur gracefully as artwork scrolls underneath,*  
+*I want the header and feed tabs to stay frosted and legible as artwork scrolls underneath,*  
 *So that discovery feels fluid and modern like iOS and Telegram media galleries.*
 
 - **Acceptance Criteria**:
-  1. The top header and tab bar in `ExploreScreen` render with frosted glass translucency and backdrop blur.
+  1. The top header and tab bar in `ExploreScreen` render with frosted glass translucency (translucent tint and specular rim; no backdrop blur).
   2. The staggered grid scrolls smoothly underneath the translucent header without harsh cutoff lines.
   3. The feed tabs (`Popular`, `Newest`, `Favorites`, `Pools`) render as an Apple-style segmented control with an animated pill indicator sliding behind the active tab using spring physics.
   4. Feed period chips (`Day`, `Week`, `Month`, `Year`) render as frosted capsule chips.
@@ -82,7 +82,6 @@ Latte's functional architecture is mature across yande.re, konachan.net, and Pix
 
 ### 4.1 Glass Tokens Contract
 
-- `GlassDefaults.BlurRadius`: `24.dp`
 - `GlassDefaults.RimStrokeWidth`: `1.dp`
 - `GlassDefaults.CardCornerRadius`: `14.dp`
 - `GlassDefaults.PillCornerRadius`: `24.dp`

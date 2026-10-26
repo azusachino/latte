@@ -45,6 +45,8 @@ import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridS
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.BorderStroke
@@ -88,6 +90,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -110,6 +114,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -199,7 +204,8 @@ fun GlassSegmentedTabs(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(36.dp),
+                .height(36.dp)
+                .selectableGroup(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             tabs.forEachIndexed { index, title ->
@@ -210,7 +216,11 @@ fun GlassSegmentedTabs(
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(GlassDefaults.PillCornerRadius))
                         .pressScale()
-                        .clickable { onTabSelected(index) },
+                        .selectable(
+                            selected = isSelected,
+                            onClick = { onTabSelected(index) },
+                            role = Role.Tab,
+                        ),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
@@ -1129,10 +1139,19 @@ private fun FeedGrid(
         }
     }
 
+    val pullToRefreshState = rememberPullToRefreshState()
     PullToRefreshBox(
         isRefreshing = feed.isRefreshing,
         onRefresh = onRefresh,
         modifier = modifier.fillMaxSize(),
+        state = pullToRefreshState,
+        indicator = {
+            PullToRefreshDefaults.Indicator(
+                state = pullToRefreshState,
+                isRefreshing = feed.isRefreshing,
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = topPadding),
+            )
+        },
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             when {
@@ -1327,8 +1346,8 @@ private fun FeedGrid(
                 LinearProgressIndicator(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(3.dp)
                         .padding(top = topPadding)
+                        .height(3.dp)
                         .align(Alignment.TopCenter),
                     color = MaterialTheme.colorScheme.primary,
                     trackColor = Color.Transparent,
@@ -1454,10 +1473,19 @@ private fun PoolsTabContent(
     }
 
     Column(modifier = modifier.fillMaxSize()) {
+        val pullToRefreshState = rememberPullToRefreshState()
         PullToRefreshBox(
             isRefreshing = feed.isRefreshing,
             onRefresh = onRefresh,
             modifier = Modifier.fillMaxSize(),
+            state = pullToRefreshState,
+            indicator = {
+                PullToRefreshDefaults.Indicator(
+                    state = pullToRefreshState,
+                    isRefreshing = feed.isRefreshing,
+                    modifier = Modifier.align(Alignment.TopCenter).padding(top = topPadding),
+                )
+            },
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 when {
@@ -1528,8 +1556,8 @@ private fun PoolsTabContent(
                     LinearProgressIndicator(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(3.dp)
                             .padding(top = topPadding)
+                            .height(3.dp)
                             .align(Alignment.TopCenter),
                         color = MaterialTheme.colorScheme.primary,
                         trackColor = Color.Transparent,
