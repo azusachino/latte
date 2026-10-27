@@ -18,7 +18,7 @@ Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenti
 ```text
 0.0.1 ──> 0.0.2 ──> 0.0.3 ──> 0.1.0 ──> 0.1.1 ──> 0.1.2 ──> 0.1.3 ──> 0.2.0 ──> 0.2.1 ──> 0.2.2 ──> 0.2.4
                                                                                                     │
-0.3.1 (In review) <── 0.3.0 <───────────────────────────────────────────────────────────────────────┘
+0.3.1 (Delivered) <── 0.3.0 <───────────────────────────────────────────────────────────────────────┘
 • Page index          • Liquid Glass
 • Feed preserve       • Pixiv Paging
 • Bounded cache       • Fallback DL
@@ -341,7 +341,7 @@ a defect.
 
 ## Milestone 0.3.1: Detail Flow, Transition Polish, Bounded Caches & Queue Reliability
 
-> **Status**: In review as PR #29. Detail page position indicator, search query and feed preservation across navigation levels, predictive back gestures, spring double-tap zoom, directional vertical chrome transitions, bounded in-memory FIFO caches, granular multi-category cache clearing, notification queue cap with group summary, and lifecycle-aware state collection (`collectAsStateWithLifecycle`).
+> **Status**: Released as `v0.3.1` on 2026-10-27 (#29). Detail page position indicator, search query and feed preservation across navigation levels, predictive back gestures, spring double-tap zoom, directional vertical chrome transitions, bounded in-memory FIFO caches, granular multi-category cache clearing, notification queue cap with group summary, and lifecycle-aware state collection (`collectAsStateWithLifecycle`).
 
 ### 1. Detail Flow & Navigation Preservation
 

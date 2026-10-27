@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.3.1 - 2026-10-27
+
+### Added
+
+- Detail shows the feed position (`1 / 40`), plus the sub-page for Pixiv multi-page works (`5 / 25 · p2/8`); a pill shows it briefly while swiping with the controls hidden (#29).
+- Predictive back: the screen scales down with rounded corners as you swipe back, and settles cleanly when the gesture completes or is cancelled (#29).
+- Settings has a Clear cache dialog with per-category sizes and checkboxes for images, network, update downloads and search history (#29).
+
+### Changed
+
+- Returning to Explore keeps the search query, results and scroll position, and going back from a tag search or author's works restores the Detail feed you came from (#29).
+- Double-tap zoom springs into place, the Detail controls slide in from their edges, and the pager stays put while a zoomed image is panned (#29).
+- In-memory search and suggestion caches are bounded, so memory no longer grows during long browsing sessions (#29).
+- At most 8 finished download notifications are kept, grouped under one summary (#29).
+
+### Fixed
+
+- Clearing the cache no longer deletes the whole cache directory; the update category removes only downloaded update packages (#29).
+- Starting a download no longer replaces one that is still waiting to run (#29).
+
 ## 0.3.0 - 2026-10-27
 
 ### Added
