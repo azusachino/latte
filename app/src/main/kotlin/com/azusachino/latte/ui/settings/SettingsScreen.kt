@@ -39,6 +39,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -56,6 +57,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.azusachino.latte.BuildConfig
+import com.azusachino.latte.data.cache.CacheManager
 import com.azusachino.latte.data.settings.LattePreferences
 import com.azusachino.latte.data.settings.ThemeMode
 import com.azusachino.latte.data.update.ApkInstaller
@@ -70,8 +72,10 @@ import com.azusachino.latte.ui.theme.GlassDefaults
 import com.azusachino.latte.ui.theme.glassPillSelection
 import com.azusachino.latte.ui.theme.glassSurface
 import com.azusachino.latte.ui.theme.pressScale
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -87,7 +91,15 @@ fun SettingsScreen(
     val themeMode by preferences.themeMode.collectAsStateWithLifecycle()
     val safeMode by preferences.safeMode.collectAsStateWithLifecycle()
 
-    var cacheSizeBytes by remember { mutableLongStateOf(preferences.getCacheSizeBytes()) }
+    val cacheManager = remember { CacheManager(context, preferences) }
+    var cacheSizeBytes by remember { mutableLongStateOf(0L) }
+    var showClearCacheDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        cacheSizeBytes = withContext(Dispatchers.IO) {
+            cacheManager.getTotalCacheSizeBytes()
+        }
+    }
     var showAboutDialog by remember { mutableStateOf(false) }
     var showLicenseDialog by remember { mutableStateOf(false) }
     var showProxyDialog by remember { mutableStateOf(false) }
@@ -238,9 +250,7 @@ fun SettingsScreen(
                     title = "Clear Cache",
                     subtitle = "${formatFileSize(cacheSizeBytes)} total (images, HTTP, updates)",
                     onClick = {
-                        preferences.clearCache()
-                        cacheSizeBytes = preferences.getCacheSizeBytes()
-                        ToastManager.showSuccess("Cache cleared")
+                        showClearCacheDialog = true
                     },
                 )
 
@@ -449,6 +459,22 @@ fun SettingsScreen(
                         Text("Cancel")
                     }
                 }
+            },
+        )
+    }
+
+    if (showClearCacheDialog) {
+        ClearCacheDialog(
+            cacheManager = cacheManager,
+            onDismissRequest = { showClearCacheDialog = false },
+            onClearSuccess = { clearedTypes ->
+                coroutineScope.launch {
+                    cacheSizeBytes = withContext(Dispatchers.IO) {
+                        cacheManager.getTotalCacheSizeBytes()
+                    }
+                }
+                showClearCacheDialog = false
+                ToastManager.showSuccess("Cleared ${clearedTypes.size} cache categories")
             },
         )
     }
@@ -817,7 +843,7 @@ private fun SettingsSwitchRow(
     }
 }
 
-private fun formatFileSize(bytes: Long): String {
+internal fun formatFileSize(bytes: Long): String {
     if (bytes <= 0) return "0 B"
     val units = arrayOf("B", "KB", "MB", "GB")
     var digitGroups = (Math.log10(bytes.toDouble()) / Math.log10(1024.0)).toInt()
