@@ -25,6 +25,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import com.azusachino.latte.data.download.DownloadFallback
+import com.azusachino.latte.data.download.DownloadNotificationPolicy
 import com.azusachino.latte.data.network.OkHttpProvider
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
@@ -35,7 +36,9 @@ class DownloadWorker(
 ) : CoroutineWorker(appContext, workerParams) {
     private val displayName = inputData.getString(KEY_DISPLAY_NAME).orEmpty()
     private val notificationId = displayName.hashCode() and Int.MAX_VALUE
-    private val resultNotificationId = notificationId xor RESULT_NOTIFICATION_MASK
+    private val resultNotificationId = (notificationId xor RESULT_NOTIFICATION_MASK).let {
+        if (it == DownloadNotificationPolicy.SUMMARY_NOTIFICATION_ID) it + 1 else it
+    }
 
     override suspend fun getForegroundInfo(): ForegroundInfo {
         createNotificationChannel()
@@ -52,7 +55,13 @@ class DownloadWorker(
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         if (displayName.isBlank()) return@withContext Result.failure()
         createNotificationChannel()
-        setForeground(getForegroundInfo())
+        pruneCompletedNotifications()
+        try {
+            setForeground(getForegroundInfo())
+            updateGroupSummary()
+        } catch (error: Exception) {
+            android.util.Log.w("DownloadWorker", "Unable to run as foreground service: ${error.message}")
+        }
 
         try {
             val receipt = saveImage(
@@ -312,6 +321,7 @@ class DownloadWorker(
     }
 
     private fun showDownloadResult(receipt: DownloadReceipt) {
+        pruneCompletedNotifications()
         val alreadySaved = receipt.status == "already_saved"
         val title = if (alreadySaved) "Image already saved" else "Image saved"
         val text = if (alreadySaved) {
@@ -334,6 +344,7 @@ class DownloadWorker(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val notification = notificationBuilder(title, text)
+            .setSmallIcon(android.R.drawable.stat_sys_download_done)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .apply {
@@ -344,6 +355,7 @@ class DownloadWorker(
             }
             .build()
         notify(resultNotificationId, notification)
+        updateGroupSummary()
     }
 
     private fun loadNotificationThumbnail(contentUri: String): Bitmap? {
@@ -368,6 +380,7 @@ class DownloadWorker(
     }
 
     private fun showDownloadFailure(message: String) {
+        pruneCompletedNotifications()
         val notification = notificationBuilder(
             "Image download failed",
             "$displayName · $message",
@@ -375,6 +388,75 @@ class DownloadWorker(
             .setAutoCancel(true)
             .build()
         notify(resultNotificationId, notification)
+        updateGroupSummary()
+    }
+
+    private fun pruneCompletedNotifications(keepCount: Int = DownloadNotificationPolicy.MAX_COMPLETED_NOTIFICATIONS) {
+        val manager = applicationContext.getSystemService(NotificationManager::class.java) ?: return
+        val active = runCatching { manager.activeNotifications }.getOrNull() ?: return
+        val items = active.map { sbn ->
+            DownloadNotificationPolicy.NotificationItem(
+                id = sbn.id,
+                tag = sbn.tag,
+                postTime = sbn.postTime,
+                isOngoing = sbn.isOngoing,
+                group = sbn.notification?.group,
+                channelId = sbn.notification?.channelId,
+            )
+        }
+        val toPrune = DownloadNotificationPolicy.findNotificationsToPrune(
+            activeItems = items,
+            targetGroup = notificationGroup,
+            targetChannel = notificationChannelId,
+            maxKeep = keepCount,
+        )
+        for (item in toPrune) {
+            manager.cancel(item.tag, item.id)
+        }
+    }
+
+    private fun updateGroupSummary() {
+        val manager = applicationContext.getSystemService(NotificationManager::class.java) ?: return
+        val active = runCatching { manager.activeNotifications }.getOrNull() ?: return
+        val items = active.map { sbn ->
+            DownloadNotificationPolicy.NotificationItem(
+                id = sbn.id,
+                tag = sbn.tag,
+                postTime = sbn.postTime,
+                isOngoing = sbn.isOngoing,
+                group = sbn.notification?.group,
+                channelId = sbn.notification?.channelId,
+            )
+        }
+        val childCount = DownloadNotificationPolicy.countGroupChildren(
+            activeItems = items,
+            targetGroup = notificationGroup,
+            targetChannel = notificationChannelId,
+        )
+        if (childCount == 0) {
+            manager.cancel(DownloadNotificationPolicy.SUMMARY_NOTIFICATION_ID)
+            return
+        }
+
+        val intent = Intent(applicationContext, MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            applicationContext,
+            DownloadNotificationPolicy.SUMMARY_NOTIFICATION_ID,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val summaryNotification = Notification.Builder(applicationContext, notificationChannelId)
+            .setSmallIcon(android.R.drawable.stat_sys_download_done)
+            .setContentTitle("Latte Downloads")
+            .setContentText(DownloadNotificationPolicy.summaryText(childCount))
+            .setContentIntent(pendingIntent)
+            .setGroup(notificationGroup)
+            .setGroupSummary(true)
+            .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
+            .build()
+
+        manager.notify(DownloadNotificationPolicy.SUMMARY_NOTIFICATION_ID, summaryNotification)
     }
 
     private fun notify(notification: Notification) {
@@ -402,6 +484,38 @@ class DownloadWorker(
         private const val KEY_HEADERS = "headers"
         private const val KEY_FALLBACK_URLS = "fallback_urls"
         private const val MAX_RETRY_COUNT = 2
+
+        fun pruneStaleNotifications(context: Context) {
+            val manager = context.getSystemService(NotificationManager::class.java) ?: return
+            val active = runCatching { manager.activeNotifications }.getOrNull() ?: return
+            val items = active.map { sbn ->
+                DownloadNotificationPolicy.NotificationItem(
+                    id = sbn.id,
+                    tag = sbn.tag,
+                    postTime = sbn.postTime,
+                    isOngoing = sbn.isOngoing,
+                    group = sbn.notification?.group,
+                    channelId = sbn.notification?.channelId,
+                )
+            }
+            val toPrune = DownloadNotificationPolicy.findNotificationsToPrune(
+                activeItems = items,
+                targetGroup = notificationGroup,
+                targetChannel = notificationChannelId,
+                maxKeep = DownloadNotificationPolicy.MAX_COMPLETED_NOTIFICATIONS,
+            )
+            for (item in toPrune) {
+                manager.cancel(item.tag, item.id)
+            }
+            val remainingChildren = DownloadNotificationPolicy.countGroupChildren(
+                activeItems = items.filter { item -> toPrune.none { it.id == item.id && it.tag == item.tag } },
+                targetGroup = notificationGroup,
+                targetChannel = notificationChannelId,
+            )
+            if (remainingChildren == 0) {
+                manager.cancel(DownloadNotificationPolicy.SUMMARY_NOTIFICATION_ID)
+            }
+        }
 
         fun uniqueWorkName(displayName: String): String = "latte-download-$displayName"
 
