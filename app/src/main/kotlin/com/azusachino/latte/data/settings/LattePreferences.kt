@@ -198,11 +198,6 @@ class LattePreferences(private val context: Context) {
         }
     }
 
-    fun getCacheSizeBytes(): Long {
-        val cacheDir = context.cacheDir ?: return 0L
-        return cacheDir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
-    }
-
     fun clearCache() {
         context.cacheDir?.deleteRecursively()
         context.cacheDir?.mkdirs()
