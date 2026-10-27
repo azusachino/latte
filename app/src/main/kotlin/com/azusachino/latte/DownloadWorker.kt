@@ -59,6 +59,8 @@ class DownloadWorker(
         try {
             setForeground(getForegroundInfo())
             updateGroupSummary()
+        } catch (e: CancellationException) {
+            throw e
         } catch (error: Exception) {
             android.util.Log.w("DownloadWorker", "Unable to run as foreground service: ${error.message}")
         }
@@ -391,24 +393,14 @@ class DownloadWorker(
         updateGroupSummary()
     }
 
-    private fun pruneCompletedNotifications(keepCount: Int = DownloadNotificationPolicy.MAX_COMPLETED_NOTIFICATIONS) {
+    private fun pruneCompletedNotifications() {
         val manager = applicationContext.getSystemService(NotificationManager::class.java) ?: return
-        val active = runCatching { manager.activeNotifications }.getOrNull() ?: return
-        val items = active.map { sbn ->
-            DownloadNotificationPolicy.NotificationItem(
-                id = sbn.id,
-                tag = sbn.tag,
-                postTime = sbn.postTime,
-                isOngoing = sbn.isOngoing,
-                group = sbn.notification?.group,
-                channelId = sbn.notification?.channelId,
-            )
-        }
+        val items = manager.getActiveNotificationItems()
         val toPrune = DownloadNotificationPolicy.findNotificationsToPrune(
             activeItems = items,
             targetGroup = notificationGroup,
             targetChannel = notificationChannelId,
-            maxKeep = keepCount,
+            maxKeep = DownloadNotificationPolicy.MAX_COMPLETED_NOTIFICATIONS,
         )
         for (item in toPrune) {
             manager.cancel(item.tag, item.id)
@@ -417,17 +409,7 @@ class DownloadWorker(
 
     private fun updateGroupSummary() {
         val manager = applicationContext.getSystemService(NotificationManager::class.java) ?: return
-        val active = runCatching { manager.activeNotifications }.getOrNull() ?: return
-        val items = active.map { sbn ->
-            DownloadNotificationPolicy.NotificationItem(
-                id = sbn.id,
-                tag = sbn.tag,
-                postTime = sbn.postTime,
-                isOngoing = sbn.isOngoing,
-                group = sbn.notification?.group,
-                channelId = sbn.notification?.channelId,
-            )
-        }
+        val items = manager.getActiveNotificationItems()
         val childCount = DownloadNotificationPolicy.countGroupChildren(
             activeItems = items,
             targetGroup = notificationGroup,
@@ -487,17 +469,7 @@ class DownloadWorker(
 
         fun pruneStaleNotifications(context: Context) {
             val manager = context.getSystemService(NotificationManager::class.java) ?: return
-            val active = runCatching { manager.activeNotifications }.getOrNull() ?: return
-            val items = active.map { sbn ->
-                DownloadNotificationPolicy.NotificationItem(
-                    id = sbn.id,
-                    tag = sbn.tag,
-                    postTime = sbn.postTime,
-                    isOngoing = sbn.isOngoing,
-                    group = sbn.notification?.group,
-                    channelId = sbn.notification?.channelId,
-                )
-            }
+            val items = manager.getActiveNotificationItems()
             val toPrune = DownloadNotificationPolicy.findNotificationsToPrune(
                 activeItems = items,
                 targetGroup = notificationGroup,
@@ -531,6 +503,20 @@ class DownloadWorker(
             KEY_DISPLAY_NAME to displayName,
             KEY_MIME_TYPE to mimeType,
             KEY_HEADERS to org.json.JSONObject(headers).toString(),
+        )
+    }
+}
+
+private fun NotificationManager.getActiveNotificationItems(): List<DownloadNotificationPolicy.NotificationItem> {
+    val active = runCatching { activeNotifications }.getOrNull() ?: return emptyList()
+    return active.map { sbn ->
+        DownloadNotificationPolicy.NotificationItem(
+            id = sbn.id,
+            tag = sbn.tag,
+            postTime = sbn.postTime,
+            isOngoing = sbn.isOngoing,
+            group = sbn.notification?.group,
+            channelId = sbn.notification?.channelId,
         )
     }
 }
