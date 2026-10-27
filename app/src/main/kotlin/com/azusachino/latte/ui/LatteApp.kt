@@ -1,6 +1,7 @@
 package com.azusachino.latte.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -11,9 +12,11 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -21,8 +24,11 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import kotlin.coroutines.cancellation.CancellationException
 import com.azusachino.latte.plugin.storage.SecurePluginStorage
 import com.azusachino.latte.plugin.konachan.KonachanPlugin
 import com.azusachino.latte.plugin.yande.YandePlugin
@@ -162,8 +168,19 @@ fun LatteApp(
         // Root content the toast pill blurs; screens keep their own sources inside it.
         val toastHazeState = rememberHazeState()
         Box(modifier = modifier.fillMaxSize()) {
-            BackHandler(enabled = navigation.size > 1) {
-                popNavigation()
+            var predictiveBackProgress by remember { mutableFloatStateOf(0f) }
+
+            PredictiveBackHandler(enabled = navigation.size > 1) { progressFlow ->
+                try {
+                    progressFlow.collect { backEvent ->
+                        predictiveBackProgress = backEvent.progress
+                    }
+                    popNavigation()
+                } catch (e: CancellationException) {
+                    // Back gesture cancelled
+                } finally {
+                    predictiveBackProgress = 0f
+                }
             }
 
             AnimatedContent(
@@ -180,6 +197,13 @@ fun LatteApp(
                 },
                 modifier = Modifier
                     .fillMaxSize()
+                    .graphicsLayer {
+                        val progress = predictiveBackProgress
+                        scaleX = 1f - (progress * 0.08f)
+                        scaleY = 1f - (progress * 0.08f)
+                        clip = progress > 0f
+                        shape = RoundedCornerShape((progress * 24f).dp)
+                    }
                     .hazeSource(toastHazeState),
             ) { targetNav ->
                 val screen = targetNav.current

@@ -1,15 +1,20 @@
 package com.azusachino.latte.ui.detail
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.VectorConverter
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -19,44 +24,63 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
-
-import androidx.compose.foundation.ExperimentalFoundationApi
+import kotlinx.coroutines.launch
 
 /**
  * Pinch-zoomable box. [onTap] receives the tap's horizontal position as a 0..1 fraction of the
  * box width and whether the content is currently zoomed (scale > 1.05). Scale and offset reset
- * whenever [resetKey] changes.
+ * whenever [resetKey] changes. [onZoomChanged] reports whether the content is currently zoomed.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ZoomableBox(
     modifier: Modifier = Modifier,
     minScale: Float = 1f,
     maxScale: Float = 4f,
     resetKey: Any? = null,
+    onZoomChanged: (Boolean) -> Unit = {},
     onTap: (xFraction: Float, zoomed: Boolean) -> Unit = { _, _ -> },
     content: @Composable () -> Unit,
 ) {
-    var scale by remember(resetKey) { mutableFloatStateOf(1f) }
-    var offset by remember(resetKey) { mutableStateOf(Offset.Zero) }
+    val scaleAnim = remember(resetKey) { Animatable(1f) }
+    val offsetAnim = remember(resetKey) { Animatable(Offset.Zero, Offset.VectorConverter) }
     var boxSize by remember { mutableStateOf(IntSize.Zero) }
     val currentOnTap by rememberUpdatedState(onTap)
+    val currentOnZoomChanged by rememberUpdatedState(onZoomChanged)
+    val scope = rememberCoroutineScope()
+
+    val isZoomed = scaleAnim.value > 1.05f
+    LaunchedEffect(isZoomed) {
+        currentOnZoomChanged(isZoomed)
+    }
 
     val transformableState = rememberTransformableState { _, zoomChange, panChange, _ ->
-        val newScale = (scale * zoomChange).coerceIn(minScale, maxScale)
-        scale = newScale
-        if (newScale > 1.02f) {
-            val maxOffsetX = (boxSize.width * (scale - 1f)) / 2f
-            val maxOffsetY = (boxSize.height * (scale - 1f)) / 2f
-            offset = Offset(
-                (offset.x + panChange.x).coerceIn(-maxOffsetX, maxOffsetX),
-                (offset.y + panChange.y).coerceIn(-maxOffsetY, maxOffsetY),
-            )
-        } else {
-            scale = 1f
-            offset = Offset.Zero
+        val currentScale = scaleAnim.value
+        val newScale = (currentScale * zoomChange).coerceIn(minScale, maxScale)
+        scope.launch {
+            scaleAnim.snapTo(newScale)
+            if (newScale > 1.02f) {
+                val maxOffsetX = (boxSize.width * (newScale - 1f)) / 2f
+                val maxOffsetY = (boxSize.height * (newScale - 1f)) / 2f
+                offsetAnim.snapTo(
+                    Offset(
+                        (offsetAnim.value.x + panChange.x).coerceIn(-maxOffsetX, maxOffsetX),
+                        (offsetAnim.value.y + panChange.y).coerceIn(-maxOffsetY, maxOffsetY),
+                    ),
+                )
+            } else {
+                offsetAnim.snapTo(Offset.Zero)
+            }
         }
     }
+
+    val zoomAnimSpec = spring<Float>(
+        dampingRatio = 0.85f,
+        stiffness = Spring.StiffnessMediumLow,
+    )
+    val offsetAnimSpec = spring<Offset>(
+        dampingRatio = 0.85f,
+        stiffness = Spring.StiffnessMediumLow,
+    )
 
     Box(
         modifier = modifier
@@ -67,34 +91,44 @@ fun ZoomableBox(
                     onTap = { tapOffset ->
                         currentOnTap(
                             (tapOffset.x / size.width).coerceIn(0f, 1f),
-                            scale > 1.05f,
+                            scaleAnim.value > 1.05f,
                         )
                     },
                     onDoubleTap = { tapOffset ->
-                        if (scale > 1.05f) {
-                            scale = 1f
-                            offset = Offset.Zero
-                        } else {
-                            scale = 2.5f
-                            val centerX = size.width / 2f
-                            val centerY = size.height / 2f
-                            offset = Offset(
-                                (centerX - tapOffset.x) * 1.5f,
-                                (centerY - tapOffset.y) * 1.5f,
-                            )
+                        scope.launch {
+                            if (scaleAnim.value > 1.05f) {
+                                launch { scaleAnim.animateTo(1f, zoomAnimSpec) }
+                                launch { offsetAnim.animateTo(Offset.Zero, offsetAnimSpec) }
+                            } else {
+                                val targetScale = 2.5f
+                                val centerX = size.width / 2f
+                                val centerY = size.height / 2f
+                                val targetOffset = Offset(
+                                    (centerX - tapOffset.x) * (targetScale - 1f),
+                                    (centerY - tapOffset.y) * (targetScale - 1f),
+                                )
+                                val maxOffsetX = (boxSize.width * (targetScale - 1f)) / 2f
+                                val maxOffsetY = (boxSize.height * (targetScale - 1f)) / 2f
+                                val clampedOffset = Offset(
+                                    targetOffset.x.coerceIn(-maxOffsetX, maxOffsetX),
+                                    targetOffset.y.coerceIn(-maxOffsetY, maxOffsetY),
+                                )
+                                launch { scaleAnim.animateTo(targetScale, zoomAnimSpec) }
+                                launch { offsetAnim.animateTo(clampedOffset, offsetAnimSpec) }
+                            }
                         }
                     },
                 )
             }
             .transformable(
                 state = transformableState,
-                canPan = { scale > 1.05f },
+                canPan = { scaleAnim.value > 1.05f },
             )
             .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-                translationX = offset.x
-                translationY = offset.y
+                scaleX = scaleAnim.value
+                scaleY = scaleAnim.value
+                translationX = offsetAnim.value.x
+                translationY = offsetAnim.value.y
             },
         contentAlignment = Alignment.Center,
     ) {

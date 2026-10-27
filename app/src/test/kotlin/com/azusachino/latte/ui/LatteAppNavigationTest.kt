@@ -379,4 +379,22 @@ class LatteAppNavigationTest {
         assertTrue(key1 != key3)
         assertTrue(key2 != key3)
     }
+
+    @Test
+    fun predictiveBackScaleAndCornerRadiusInterpolateProperly() {
+        fun scaleFor(progress: Float) = 1f - (progress * 0.08f)
+        fun cornerRadiusFor(progress: Float) = progress * 24f
+
+        // Initial state at gesture start
+        assertEquals(1.0f, scaleFor(0f), 0.001f)
+        assertEquals(0f, cornerRadiusFor(0f), 0.001f)
+
+        // Mid-gesture peek
+        assertEquals(0.96f, scaleFor(0.5f), 0.001f)
+        assertEquals(12f, cornerRadiusFor(0.5f), 0.001f)
+
+        // Fully dragged to trigger threshold
+        assertEquals(0.92f, scaleFor(1.0f), 0.001f)
+        assertEquals(24f, cornerRadiusFor(1.0f), 0.001f)
+    }
 }

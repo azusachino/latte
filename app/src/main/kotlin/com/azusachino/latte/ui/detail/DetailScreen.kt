@@ -9,6 +9,8 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -201,6 +203,7 @@ fun DetailScreen(
     }
 
     var showTransientPageIndicator by remember { mutableStateOf(false) }
+    var isCurrentPageZoomed by remember(pagerState.currentPage, pixivPageIndex) { mutableStateOf(false) }
 
     LaunchedEffect(pagerState.currentPage, pixivPageIndex) {
         if (!showControls) {
@@ -249,6 +252,7 @@ fun DetailScreen(
         // Horizontal Pager for browsing posts
         HorizontalPager(
             state = pagerState,
+            userScrollEnabled = !isCurrentPageZoomed,
             beyondViewportPageCount = 1,
             modifier = Modifier
                 .fillMaxSize()
@@ -267,6 +271,11 @@ fun DetailScreen(
                 AmbientBackdrop(previewUrl = post.previewUrl)
                 DetailImageView(
                     targetPost = post,
+                    onZoomChanged = { zoomed ->
+                        if (page == pagerState.currentPage) {
+                            isCurrentPageZoomed = zoomed
+                        }
+                    },
                     onTap = { xFraction, zoomed ->
                         when (detailTapAction(xFraction, zoomed, isMultiPagePost, pixivPageIndex, currentPost?.pageCount ?: 0, showControls)) {
                             DetailTapAction.PreviousPage -> pixivPageIndex -= 1
@@ -281,8 +290,14 @@ fun DetailScreen(
         // Top Controls Overlay
         AnimatedVisibility(
             visible = showControls,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = slideInVertically(
+                animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
+                initialOffsetY = { -it },
+            ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
+            exit = slideOutVertically(
+                animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
+                targetOffsetY = { -it },
+            ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
             modifier = Modifier.align(Alignment.TopCenter),
         ) {
             DetailTopBar(
@@ -304,8 +319,14 @@ fun DetailScreen(
         // Bottom Controls Overlay
         AnimatedVisibility(
             visible = showControls,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = slideInVertically(
+                animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
+                initialOffsetY = { it },
+            ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
+            exit = slideOutVertically(
+                animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
+                targetOffsetY = { it },
+            ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
             modifier = Modifier.align(Alignment.BottomCenter),
         ) {
             Column(
@@ -810,6 +831,7 @@ private fun AmbientBackdrop(
 @Composable
 private fun DetailImageView(
     targetPost: Post,
+    onZoomChanged: (Boolean) -> Unit = {},
     onTap: (xFraction: Float, zoomed: Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -817,6 +839,7 @@ private fun DetailImageView(
     ZoomableBox(
         modifier = modifier.fillMaxSize(),
         resetKey = Triple(targetPost.siteId, targetPost.id, targetPost.pageIndex),
+        onZoomChanged = onZoomChanged,
         onTap = onTap,
     ) {
         val imageSources = remember(targetPost.siteId, targetPost.id, targetPost.pageIndex) {
