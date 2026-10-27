@@ -55,12 +55,10 @@ class CacheManagerTest {
         val imageFile = File(imageCacheDir, "thumb.jpg").apply { writeBytes(ByteArray(500)) }
         val httpFile = File(httpCacheDir, "response.json").apply { writeBytes(ByteArray(300)) }
         val updateFile = File(updatesDir, "update.apk").apply { writeBytes(ByteArray(1000)) }
-        val rootApk = File(rootCacheDir, "latte.apk").apply { writeBytes(ByteArray(800)) }
 
         cacheManager.clearCache(setOf(CacheType.UPDATES))
 
         assertFalse(updateFile.exists())
-        assertFalse(rootApk.exists())
         assertTrue(imageFile.exists())
         assertTrue(httpFile.exists())
         assertEquals(0, searchClearCount)

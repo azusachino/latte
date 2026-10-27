@@ -92,13 +92,7 @@ class CacheManager internal constructor(
     }
 
     private fun calculateUpdateFilesSize(): Long {
-        var size = calculateDirSize(updatesDir)
-        val cacheDir = baseCacheDir ?: return size
-        val rootApks = cacheDir.listFiles { file ->
-            file.isFile && (file.name.endsWith(".apk", ignoreCase = true) || file.name.startsWith("update", ignoreCase = true))
-        } ?: emptyArray()
-        size += rootApks.sumOf { it.length() }
-        return size
+        return calculateDirSize(updatesDir)
     }
 
     private fun deleteDirectoryContents(dir: File) {
@@ -111,9 +105,5 @@ class CacheManager internal constructor(
     private fun deleteUpdateFiles() {
         deleteDirectoryContents(updatesDir)
         runCatching { updatesDir.delete() }
-        val cacheDir = baseCacheDir ?: return
-        cacheDir.listFiles { file ->
-            file.isFile && (file.name.endsWith(".apk", ignoreCase = true) || file.name.startsWith("update", ignoreCase = true))
-        }?.forEach { it.delete() }
     }
 }
