@@ -49,7 +49,6 @@ import com.azusachino.latte.plugin.PlatformCapability
 import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.ui.common.ToastHost
 import com.azusachino.latte.ui.common.ToastManager
-import com.azusachino.latte.ui.common.isReducedMotion
 import com.azusachino.latte.ui.explore.FavoriteTagsScreen
 import com.azusachino.latte.ui.detail.DetailScreen
 import com.azusachino.latte.ui.explore.ExploreScreen
@@ -169,7 +168,6 @@ fun LatteApp(
     LatteTheme(themeMode = themeMode, palette = palette) {
         // Root content the toast pill blurs; screens keep their own sources inside it.
         val toastHazeState = rememberHazeState()
-        val reducedMotion = isReducedMotion()
 
         Box(modifier = modifier.fillMaxSize()) {
             val predictiveBackProgress = remember { Animatable(0f) }
@@ -177,30 +175,25 @@ fun LatteApp(
             PredictiveBackHandler(enabled = navigation.size > 1) { progressFlow ->
                 try {
                     progressFlow.collect { backEvent ->
-                        if (!reducedMotion) {
-                            predictiveBackProgress.snapTo(backEvent.progress)
-                        }
+                        predictiveBackProgress.snapTo(backEvent.progress)
                     }
                     // The user completed the predictive back swipe gesture.
                     // Commit the navigation pop, and smoothly settle the scale/corner radius back
                     // to rest so it synchronizes coherently with AnimatedContent's exit transition
                     // instead of snapping scale on the first frame.
                     popNavigation()
-                    if (!reducedMotion) {
-                        predictiveBackProgress.animateTo(
-                            targetValue = 0f,
-                            animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
-                        )
-                    }
+                    predictiveBackProgress.animateTo(
+                        targetValue = 0f,
+                        animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
+                    )
                 } catch (e: CancellationException) {
                     // CancellationException is thrown by PredictiveBackHandler when the user drags
                     // back toward the screen edge to cancel the gesture rather than committing it.
-                    if (!reducedMotion) {
-                        predictiveBackProgress.animateTo(
-                            targetValue = 0f,
-                            animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
-                        )
-                    }
+                    predictiveBackProgress.animateTo(
+                        targetValue = 0f,
+                        animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
+                    )
+                    throw e
                 } finally {
                     predictiveBackProgress.snapTo(0f)
                 }
@@ -221,7 +214,7 @@ fun LatteApp(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        val progress = if (reducedMotion) 0f else predictiveBackProgress.value
+                        val progress = predictiveBackProgress.value
                         scaleX = 1f - (progress * 0.08f)
                         scaleY = 1f - (progress * 0.08f)
                         clip = progress > 0f

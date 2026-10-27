@@ -23,9 +23,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntSize
-import com.azusachino.latte.ui.common.isReducedMotionEnabled
 import kotlinx.coroutines.launch
 
 /**
@@ -43,7 +41,6 @@ fun ZoomableBox(
     onTap: (xFraction: Float, zoomed: Boolean) -> Unit = { _, _ -> },
     content: @Composable () -> Unit,
 ) {
-    val context = LocalContext.current
     val scaleAnim = remember(resetKey) { Animatable(1f) }
     val offsetAnim = remember(resetKey) { Animatable(Offset.Zero, Offset.VectorConverter) }
     var boxSize by remember { mutableStateOf(IntSize.Zero) }
@@ -98,16 +95,10 @@ fun ZoomableBox(
                         )
                     },
                     onDoubleTap = { tapOffset ->
-                        val reducedMotion = context.isReducedMotionEnabled()
                         scope.launch {
                             if (scaleAnim.value > 1.05f) {
-                                if (reducedMotion) {
-                                    scaleAnim.snapTo(1f)
-                                    offsetAnim.snapTo(Offset.Zero)
-                                } else {
-                                    launch { scaleAnim.animateTo(1f, zoomAnimSpec) }
-                                    launch { offsetAnim.animateTo(Offset.Zero, offsetAnimSpec) }
-                                }
+                                launch { scaleAnim.animateTo(1f, zoomAnimSpec) }
+                                launch { offsetAnim.animateTo(Offset.Zero, offsetAnimSpec) }
                             } else {
                                 val targetScale = 2.5f
                                 val centerX = size.width / 2f
@@ -122,13 +113,8 @@ fun ZoomableBox(
                                     targetOffset.x.coerceIn(-maxOffsetX, maxOffsetX),
                                     targetOffset.y.coerceIn(-maxOffsetY, maxOffsetY),
                                 )
-                                if (reducedMotion) {
-                                    scaleAnim.snapTo(targetScale)
-                                    offsetAnim.snapTo(clampedOffset)
-                                } else {
-                                    launch { scaleAnim.animateTo(targetScale, zoomAnimSpec) }
-                                    launch { offsetAnim.animateTo(clampedOffset, offsetAnimSpec) }
-                                }
+                                launch { scaleAnim.animateTo(targetScale, zoomAnimSpec) }
+                                launch { offsetAnim.animateTo(clampedOffset, offsetAnimSpec) }
                             }
                         }
                     },

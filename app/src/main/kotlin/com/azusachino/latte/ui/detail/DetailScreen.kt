@@ -109,7 +109,6 @@ import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.plugin.SitePluginManager
 import com.azusachino.latte.ui.common.ToastManager
 import com.azusachino.latte.ui.common.ToastType
-import com.azusachino.latte.ui.common.isReducedMotion
 import dev.chrisbanes.haze.rememberHazeState
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.delay
@@ -165,7 +164,6 @@ fun DetailScreen(
     }
 
     val hazeState = rememberHazeState()
-    val reducedMotion = isReducedMotion()
     var showControls by remember { mutableStateOf(true) }
     // Pushes the toast pill below the top controls row (10dp + 44dp + 8dp) while it is shown.
     val toastInsetOwner = remember { Any() }
@@ -292,11 +290,11 @@ fun DetailScreen(
         // Top Controls Overlay
         AnimatedVisibility(
             visible = showControls,
-            enter = if (reducedMotion) fadeIn() else slideInVertically(
+            enter = slideInVertically(
                 animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
                 initialOffsetY = { -it },
             ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
-            exit = if (reducedMotion) fadeOut() else slideOutVertically(
+            exit = slideOutVertically(
                 animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
                 targetOffsetY = { -it },
             ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
@@ -321,11 +319,11 @@ fun DetailScreen(
         // Bottom Controls Overlay
         AnimatedVisibility(
             visible = showControls,
-            enter = if (reducedMotion) fadeIn() else slideInVertically(
+            enter = slideInVertically(
                 animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
                 initialOffsetY = { it },
             ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
-            exit = if (reducedMotion) fadeOut() else slideOutVertically(
+            exit = slideOutVertically(
                 animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
                 targetOffsetY = { it },
             ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
