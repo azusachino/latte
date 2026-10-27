@@ -2,10 +2,11 @@ package com.azusachino.latte.data.download
 
 object DownloadNotificationPolicy {
     /**
-     * Android's NotificationManagerService enforces a strict cap of 50 active notifications
-     * per package. SystemUI also caps expanded child notifications in a group to 8.
-     * We keep at most 8 completed download notifications in the notification shade,
-     * ensuring plenty of headroom for ongoing progress notifications and the group summary.
+     * AOSP NotificationManagerService enforces a strict cap of MAX_PACKAGE_NOTIFICATIONS = 50
+     * notifications per package. Ongoing download notifications are bounded by WorkManager's
+     * default parallelism, max(1, min(cores - 1, 4)) (latte sets no custom Configuration).
+     * 8 is latte's own cap on completed notifications, well under 50, ensuring plenty of headroom
+     * for ongoing progress notifications and the group summary.
      */
     const val MAX_COMPLETED_NOTIFICATIONS = 8
 
