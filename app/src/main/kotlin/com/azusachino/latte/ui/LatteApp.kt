@@ -52,81 +52,6 @@ import com.azusachino.latte.ui.theme.LatteTheme
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 
-sealed interface Screen {
-    data object Explore : Screen
-    data class AuthorWorks(val authorId: Long? = null, val authorName: String = "") : Screen
-    data class TagSearch(val query: String) : Screen
-    data class Detail(val posts: List<Post>, val initialIndex: Int, val initialPageIndex: Int = 0) : Screen
-    data object Settings : Screen
-    data object FavoriteTags : Screen
-    data object AccountManager : Screen
-}
-
-internal fun detailPostsFor(screen: Screen.Detail, activePosts: List<Post>): List<Post> {
-    if (activePosts.isEmpty()) return screen.posts
-    val currentWork = screen.posts.getOrNull(screen.initialIndex)?.workIdentity
-    if (currentWork != null && activePosts.getOrNull(screen.initialIndex)?.workIdentity == currentWork) {
-        return activePosts
-    }
-    if (screen.posts.isNotEmpty() && activePosts.firstOrNull()?.workIdentity == screen.posts.firstOrNull()?.workIdentity) {
-        if (currentWork == null || activePosts.any { it.workIdentity == currentWork }) {
-            return activePosts
-        }
-    }
-    return screen.posts
-}
-
-internal data class ScreenStack(
-    val screens: List<Screen> = listOf(Screen.Explore),
-) {
-    val current: Screen
-        get() = screens.last()
-
-    val size: Int
-        get() = screens.size
-
-    fun push(screen: Screen): ScreenStack = copy(screens = screens + screen)
-
-    fun pop(): ScreenStack = if (screens.size > 1) {
-        copy(screens = screens.dropLast(1))
-    } else {
-        this
-    }
-
-    fun popAndRestoreDetailFeed(clearSearch: () -> Unit): ScreenStack {
-        val returningToDetail = screens.getOrNull(screens.lastIndex - 1) is Screen.Detail
-        val fromSearchOrAuthor = current is Screen.TagSearch || current is Screen.AuthorWorks
-        if (fromSearchOrAuthor && returningToDetail) {
-            clearSearch()
-        }
-        return pop()
-    }
-
-    fun replaceTop(screen: Screen): ScreenStack = if (screens.isNotEmpty()) {
-        copy(screens = screens.dropLast(1) + screen)
-    } else {
-        copy(screens = listOf(screen))
-    }
-}
-
-private val Screen.stateKey: String
-    get() = when (this) {
-        is Screen.Explore -> "explore"
-        is Screen.AuthorWorks -> "author-works:${authorId ?: authorName}"
-        is Screen.TagSearch -> "tag-search:${query}"
-        is Screen.Detail -> "detail:${posts.getOrNull(initialIndex)?.workIdentity ?: initialIndex}:$initialPageIndex"
-        is Screen.Settings -> "settings"
-        is Screen.FavoriteTags -> "favorite-tags"
-        is Screen.AccountManager -> "account-manager"
-    }
-
-// A quick, slightly overshooting settle (inspired by transitions.dev's toggle
-// curve) rather than Compose's flatter default spring for slideIn/Out.
-private val screenSlideSpec = spring<IntOffset>(
-    dampingRatio = 0.8f,
-    stiffness = Spring.StiffnessMediumLow,
-)
-
 @Composable
 fun LatteApp(
     exploreViewModel: ExploreViewModel = viewModel(),
@@ -177,17 +102,40 @@ fun LatteApp(
     var activeLoginPlugin by remember { mutableStateOf<SitePlugin?>(null) }
     val saveableStateHolder = rememberSaveableStateHolder()
 
+    fun restoreFeedForDetail(screen: Screen.Detail) {
+        val state = exploreViewModel.uiState.value
+        when {
+            screen.parentAuthorId != null -> {
+                if (state.pixivAuthorId != screen.parentAuthorId || !state.isSearch) {
+                    exploreViewModel.loadPixivUserWorks(
+                        screen.parentAuthorId,
+                        screen.parentAuthorName.orEmpty(),
+                    )
+                }
+            }
+            screen.parentSearchTags != null -> {
+                val activeTags = if (state.supportsUserFeeds) state.pixivSearchTags else state.searchTags
+                if (activeTags != screen.parentSearchTags || !state.isSearch) {
+                    exploreViewModel.search(screen.parentSearchTags)
+                }
+            }
+            else -> {
+                if (state.isSearch) {
+                    exploreViewModel.clearSearch()
+                }
+            }
+        }
+    }
+
     fun popNavigation() {
-        navigation = navigation.popAndRestoreDetailFeed(exploreViewModel::clearSearch)
+        navigation = navigation.popAndRestoreDetailFeed { targetDetail ->
+            restoreFeedForDetail(targetDetail)
+        }
     }
 
     LaunchedEffect(navigation.current) {
         when (val screen = navigation.current) {
-            is Screen.Explore -> {
-                if (exploreViewModel.uiState.value.isSearch) {
-                    exploreViewModel.clearSearch()
-                }
-            }
+            is Screen.Explore -> Unit
             is Screen.AuthorWorks -> {
                 val state = exploreViewModel.uiState.value
                 if (screen.authorId != null && (state.pixivAuthorId != screen.authorId || !state.isSearch)) {
@@ -202,6 +150,9 @@ fun LatteApp(
                 if (activeTags != screen.query || !state.isSearch) {
                     exploreViewModel.search(screen.query)
                 }
+            }
+            is Screen.Detail -> {
+                restoreFeedForDetail(screen)
             }
             else -> Unit
         }
@@ -253,10 +204,23 @@ fun LatteApp(
                                 pixivPlugin = pixivPlugin,
                                 platformPlugins = sitePluginManager.byPlatform(),
                                 onPostClick = { index ->
+                                    val state = exploreViewModel.uiState.value
+                                    val (parentSearchTags, parentAuthorId, parentAuthorName) = when {
+                                        state.pixivAuthorId != null -> Triple(null, state.pixivAuthorId, state.pixivAuthorName)
+                                        state.isSearch -> Triple(
+                                            if (state.supportsUserFeeds) state.pixivSearchTags else state.searchTags,
+                                            null,
+                                            null,
+                                        )
+                                        else -> Triple(null, null, null)
+                                    }
                                     navigation = navigation.push(
                                         Screen.Detail(
-                                            posts = exploreViewModel.uiState.value.posts,
+                                            posts = state.posts,
                                             initialIndex = index,
+                                            parentSearchTags = parentSearchTags,
+                                            parentAuthorId = parentAuthorId,
+                                            parentAuthorName = parentAuthorName,
                                         ),
                                     )
                                 },

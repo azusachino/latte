@@ -4,6 +4,7 @@ import com.azusachino.latte.data.model.MediaVariant
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.model.PostRating
 import com.azusachino.latte.plugin.PlatformId
+import com.azusachino.latte.ui.detail.detailPageIndicatorText
 import com.azusachino.latte.ui.explore.dispatchExploreBack
 import com.azusachino.latte.ui.explore.shouldHandleSearchBack
 import org.junit.Assert.assertEquals
@@ -272,5 +273,110 @@ class LatteAppNavigationTest {
         navigation = navigation.pop()
         assertEquals(1, navigation.size)
         assertEquals(Screen.Explore, navigation.current)
+    }
+
+    @Test
+    fun detailPageIndicatorFormatsFeedAndMultiPageCorrectly() {
+        // Standard feed position
+        assertEquals("1 / 40", detailPageIndicatorText(currentPage = 0, totalPosts = 40))
+        assertEquals("20 / 40", detailPageIndicatorText(currentPage = 19, totalPosts = 40))
+        assertEquals("40 / 40", detailPageIndicatorText(currentPage = 39, totalPosts = 40))
+
+        // Empty feed returns blank
+        assertEquals("", detailPageIndicatorText(currentPage = 0, totalPosts = 0))
+
+        // Multi-page post
+        assertEquals(
+            "5 / 25 · p1/8",
+            detailPageIndicatorText(
+                currentPage = 4,
+                totalPosts = 25,
+                isMultiPagePost = true,
+                pixivPageIndex = 0,
+                postPageCount = 8,
+            ),
+        )
+        assertEquals(
+            "5 / 25 · p3/8",
+            detailPageIndicatorText(
+                currentPage = 4,
+                totalPosts = 25,
+                isMultiPagePost = true,
+                pixivPageIndex = 2,
+                postPageCount = 8,
+            ),
+        )
+
+        // Non multi-page with pageCount > 1 does not append page index
+        assertEquals(
+            "5 / 25",
+            detailPageIndicatorText(
+                currentPage = 4,
+                totalPosts = 25,
+                isMultiPagePost = false,
+                pixivPageIndex = 2,
+                postPageCount = 8,
+            ),
+        )
+
+        // Boundary clamping
+        assertEquals("1 / 10", detailPageIndicatorText(currentPage = -5, totalPosts = 10))
+        assertEquals("10 / 10", detailPageIndicatorText(currentPage = 99, totalPosts = 10))
+    }
+
+    @Test
+    fun returningFromTagSearchToDetailPreservesParentSearchContext() {
+        var restoredDetail: Screen.Detail? = null
+        val detailWithParentSearch = Screen.Detail(
+            posts = listOf(samplePost(1)),
+            initialIndex = 0,
+            parentSearchTags = "genshin",
+        )
+        val tagSearch = Screen.TagSearch(query = "citlali")
+
+        val restored = ScreenStack()
+            .push(detailWithParentSearch)
+            .push(tagSearch)
+            .popAndRestoreDetailFeed { target -> restoredDetail = target }
+
+        assertEquals(detailWithParentSearch, restored.current)
+        assertEquals("genshin", restoredDetail?.parentSearchTags)
+    }
+
+    @Test
+    fun returningFromAuthorWorksToDetailPreservesParentAuthorContext() {
+        var restoredDetail: Screen.Detail? = null
+        val detailWithParentAuthor = Screen.Detail(
+            posts = listOf(samplePost(1)),
+            initialIndex = 0,
+            parentAuthorId = 12345L,
+            parentAuthorName = "torino",
+        )
+        val authorWorks = Screen.AuthorWorks(authorId = 99999L, authorName = "other_artist")
+
+        val restored = ScreenStack()
+            .push(detailWithParentAuthor)
+            .push(authorWorks)
+            .popAndRestoreDetailFeed { target -> restoredDetail = target }
+
+        assertEquals(detailWithParentAuthor, restored.current)
+        assertEquals(12345L, restoredDetail?.parentAuthorId)
+        assertEquals("torino", restoredDetail?.parentAuthorName)
+    }
+
+    @Test
+    fun screenDetailStateKeyDistinguishesDifferentParentContexts() {
+        val post = samplePost(1)
+        val plainDetail = Screen.Detail(posts = listOf(post), initialIndex = 0)
+        val searchDetail = Screen.Detail(posts = listOf(post), initialIndex = 0, parentSearchTags = "tagA")
+        val authorDetail = Screen.Detail(posts = listOf(post), initialIndex = 0, parentAuthorId = 777L)
+
+        val key1 = plainDetail.stateKey
+        val key2 = searchDetail.stateKey
+        val key3 = authorDetail.stateKey
+
+        assertTrue(key1 != key2)
+        assertTrue(key1 != key3)
+        assertTrue(key2 != key3)
     }
 }
