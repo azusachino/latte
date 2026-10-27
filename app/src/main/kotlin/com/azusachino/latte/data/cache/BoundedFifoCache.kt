@@ -26,16 +26,6 @@ class BoundedFifoCache<K : Any, V : Any>(val maxSize: Int) {
         }
     }
 
-    fun getOrPut(key: K, defaultValue: () -> V): V = synchronized(lock) {
-        val existing = entries[key]
-        if (existing != null) {
-            return existing
-        }
-        val newEntry = defaultValue()
-        entries[key] = newEntry
-        return newEntry
-    }
-
     fun remove(key: K): V? = synchronized(lock) {
         entries.remove(key)
     }
@@ -52,8 +42,4 @@ class BoundedFifoCache<K : Any, V : Any>(val maxSize: Int) {
     }
 
     operator fun contains(key: K): Boolean = containsKey(key)
-
-    fun snapshot(): Map<K, V> = synchronized(lock) {
-        LinkedHashMap(entries)
-    }
 }

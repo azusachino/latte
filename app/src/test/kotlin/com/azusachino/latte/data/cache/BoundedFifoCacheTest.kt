@@ -67,26 +67,6 @@ class BoundedFifoCacheTest {
     }
 
     @Test
-    fun getOrPutComputesOnlyWhenMissing() {
-        val cache = BoundedFifoCache<String, String>(maxSize = 2)
-        var computeCount = 0
-
-        val val1 = cache.getOrPut("key") {
-            computeCount++
-            "computed"
-        }
-        assertEquals("computed", val1)
-        assertEquals(1, computeCount)
-
-        val val2 = cache.getOrPut("key") {
-            computeCount++
-            "second"
-        }
-        assertEquals("computed", val2)
-        assertEquals(1, computeCount)
-    }
-
-    @Test
     fun removeAndClearWorkProperly() {
         val cache = BoundedFifoCache<String, String>(maxSize = 5)
         cache["1"] = "one"
@@ -103,18 +83,6 @@ class BoundedFifoCacheTest {
         cache.clear()
         assertEquals(0, cache.size)
         assertFalse(cache.containsKey("2"))
-    }
-
-    @Test
-    fun snapshotReturnsIndependentMap() {
-        val cache = BoundedFifoCache<String, Int>(maxSize = 3)
-        cache["x"] = 100
-        val snap = cache.snapshot()
-        assertEquals(mapOf("x" to 100), snap)
-
-        cache["y"] = 200
-        assertEquals(1, snap.size)
-        assertEquals(2, cache.size)
     }
 
     @Test
