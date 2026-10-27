@@ -67,6 +67,9 @@ internal data class ScreenStack(
     } else {
         copy(screens = listOf(screen))
     }
+
+    val currentStateKey: String
+        get() = "${screens.lastIndex}:${current.stateKey}"
 }
 
 internal val Screen.stateKey: String
@@ -74,7 +77,7 @@ internal val Screen.stateKey: String
         is Screen.Explore -> "explore"
         is Screen.AuthorWorks -> "author-works:${authorId ?: authorName}"
         is Screen.TagSearch -> "tag-search:${query}"
-        is Screen.Detail -> "detail:${posts.getOrNull(initialIndex)?.workIdentity ?: initialIndex}:$initialPageIndex:${parentSearchTags.orEmpty()}:${parentAuthorId ?: ""}"
+        is Screen.Detail -> "detail:${posts.getOrNull(initialIndex)?.workIdentity ?: initialIndex}:$initialPageIndex:${parentSearchTags.orEmpty()}:${parentAuthorId ?: ""}:${parentAuthorName.orEmpty()}"
         is Screen.Settings -> "settings"
         is Screen.FavoriteTags -> "favorite-tags"
         is Screen.AccountManager -> "account-manager"

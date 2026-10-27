@@ -207,7 +207,7 @@ fun LatteApp(
                     .hazeSource(toastHazeState),
             ) { targetNav ->
                 val screen = targetNav.current
-                saveableStateHolder.SaveableStateProvider(screen.stateKey) {
+                saveableStateHolder.SaveableStateProvider(targetNav.currentStateKey) {
                     when (screen) {
                         is Screen.Explore, is Screen.AuthorWorks, is Screen.TagSearch -> {
                             ExploreScreen(

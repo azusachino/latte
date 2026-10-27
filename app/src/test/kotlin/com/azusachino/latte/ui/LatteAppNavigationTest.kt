@@ -370,14 +370,34 @@ class LatteAppNavigationTest {
         val plainDetail = Screen.Detail(posts = listOf(post), initialIndex = 0)
         val searchDetail = Screen.Detail(posts = listOf(post), initialIndex = 0, parentSearchTags = "tagA")
         val authorDetail = Screen.Detail(posts = listOf(post), initialIndex = 0, parentAuthorId = 777L)
+        val authorNameDetail = Screen.Detail(posts = listOf(post), initialIndex = 0, parentAuthorName = "authorX")
 
         val key1 = plainDetail.stateKey
         val key2 = searchDetail.stateKey
         val key3 = authorDetail.stateKey
+        val key4 = authorNameDetail.stateKey
 
         assertTrue(key1 != key2)
         assertTrue(key1 != key3)
+        assertTrue(key1 != key4)
         assertTrue(key2 != key3)
+        assertTrue(key3 != key4)
+    }
+
+    @Test
+    fun stackEntryStateKeysAreUniqueWhenSameScreenPushedMultipleTimes() {
+        val tagSearch = Screen.TagSearch(query = "citlali")
+        val detail = Screen.Detail(posts = listOf(samplePost(1)), initialIndex = 0)
+
+        val stack1 = ScreenStack().push(tagSearch)
+        val key1 = stack1.currentStateKey
+
+        val stack2 = stack1.push(detail).push(tagSearch)
+        val key2 = stack2.currentStateKey
+
+        assertEquals("1:tag-search:citlali", key1)
+        assertEquals("3:tag-search:citlali", key2)
+        assertTrue(key1 != key2)
     }
 
     @Test
