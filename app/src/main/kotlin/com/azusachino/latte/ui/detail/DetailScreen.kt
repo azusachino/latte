@@ -14,6 +14,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -74,6 +75,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -233,7 +235,7 @@ fun DetailScreen(
                 DetailImageView(
                     targetPost = post,
                     onTap = { xFraction, zoomed ->
-                        when (detailTapAction(xFraction, zoomed, isMultiPagePost, pixivPageIndex, currentPost?.pageCount ?: 0)) {
+                        when (detailTapAction(xFraction, zoomed, isMultiPagePost, pixivPageIndex, currentPost?.pageCount ?: 0, showControls)) {
                             DetailTapAction.PreviousPage -> pixivPageIndex -= 1
                             DetailTapAction.NextPage -> pixivPageIndex += 1
                             DetailTapAction.ToggleControls -> showControls = !showControls
@@ -253,6 +255,9 @@ fun DetailScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .pointerInput(Unit) {
+                        detectTapGestures { }
+                    }
                     .statusBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -395,6 +400,9 @@ fun DetailScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .pointerInput(Unit) {
+                        detectTapGestures { }
+                    }
                     .navigationBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -642,6 +650,7 @@ fun DetailScreen(
                                     dark = true,
                                     tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),
                                 )
+                                .pressScale()
                                 .clickable {
                                     if (displayPost != null) {
                                         scope.launch {
@@ -664,7 +673,6 @@ fun DetailScreen(
                                         }
                                     }
                                 }
-                                .pressScale()
                                 .padding(horizontal = 16.dp),
                             contentAlignment = Alignment.Center,
                         ) {
@@ -1257,8 +1265,8 @@ internal sealed interface DetailTapAction {
 }
 
 /**
- * Edge taps (outer 25% on each side) page through a multi-page work when not zoomed.
- * Middle taps, zoomed taps, single-page works and edges past the first or last page toggle controls.
+ * Edge taps (outer 25% on each side) page through a multi-page work when controls are hidden and not zoomed.
+ * When controls are shown, middle taps, zoomed taps, single-page works and edges past the first or last page toggle controls.
  */
 internal fun detailTapAction(
     xFraction: Float,
@@ -1266,7 +1274,9 @@ internal fun detailTapAction(
     isMultiPage: Boolean,
     pageIndex: Int,
     pageCount: Int,
+    controlsVisible: Boolean = false,
 ): DetailTapAction {
+    if (controlsVisible) return DetailTapAction.ToggleControls
     val edgeLeft = xFraction < 0.25f
     val edgeRight = xFraction > 0.75f
     if (!isMultiPage || zoomed || !(edgeLeft || edgeRight)) return DetailTapAction.ToggleControls

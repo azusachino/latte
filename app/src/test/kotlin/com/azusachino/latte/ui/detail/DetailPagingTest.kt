@@ -92,4 +92,16 @@ class DetailPagingTest {
             detailTapAction(xFraction = 0.9f, zoomed = false, isMultiPage = false, pageIndex = 0, pageCount = 1),
         )
     }
+
+    @Test
+    fun edgeTapWhileControlsVisibleTogglesControlsInsteadOfPaging() {
+        assertEquals(
+            DetailTapAction.ToggleControls,
+            detailTapAction(xFraction = 0.9f, zoomed = false, isMultiPage = true, pageIndex = 1, pageCount = 3, controlsVisible = true),
+        )
+        assertEquals(
+            DetailTapAction.ToggleControls,
+            detailTapAction(xFraction = 0.1f, zoomed = false, isMultiPage = true, pageIndex = 1, pageCount = 3, controlsVisible = true),
+        )
+    }
 }

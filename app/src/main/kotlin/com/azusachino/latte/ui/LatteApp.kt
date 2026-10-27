@@ -63,8 +63,17 @@ sealed interface Screen {
 }
 
 internal fun detailPostsFor(screen: Screen.Detail, activePosts: List<Post>): List<Post> {
-    val currentWork = screen.posts.getOrNull(screen.initialIndex)?.workIdentity ?: return screen.posts
-    return activePosts.takeIf { it.getOrNull(screen.initialIndex)?.workIdentity == currentWork } ?: screen.posts
+    if (activePosts.isEmpty()) return screen.posts
+    val currentWork = screen.posts.getOrNull(screen.initialIndex)?.workIdentity
+    if (currentWork != null && activePosts.getOrNull(screen.initialIndex)?.workIdentity == currentWork) {
+        return activePosts
+    }
+    if (screen.posts.isNotEmpty() && activePosts.firstOrNull()?.workIdentity == screen.posts.firstOrNull()?.workIdentity) {
+        if (currentWork == null || activePosts.any { it.workIdentity == currentWork }) {
+            return activePosts
+        }
+    }
+    return screen.posts
 }
 
 internal data class ScreenStack(
@@ -85,7 +94,9 @@ internal data class ScreenStack(
     }
 
     fun popAndRestoreDetailFeed(clearSearch: () -> Unit): ScreenStack {
-        if (current is Screen.TagSearch && screens.getOrNull(screens.lastIndex - 1) is Screen.Detail) {
+        val returningToDetail = screens.getOrNull(screens.lastIndex - 1) is Screen.Detail
+        val fromSearchOrAuthor = current is Screen.TagSearch || current is Screen.AuthorWorks
+        if (fromSearchOrAuthor && returningToDetail) {
             clearSearch()
         }
         return pop()
@@ -281,7 +292,13 @@ fun LatteApp(
                                 onTagClick = { tag, postIndex, pageIndex ->
                                     exploreViewModel.search(tag)
                                     navigation = navigation
-                                        .replaceTop(screen.copy(initialIndex = postIndex, initialPageIndex = pageIndex))
+                                        .replaceTop(
+                                            screen.copy(
+                                                posts = postsToDisplay,
+                                                initialIndex = postIndex,
+                                                initialPageIndex = pageIndex,
+                                            ),
+                                        )
                                         .push(Screen.TagSearch(query = tag))
                                 },
                                 onAuthorClick = { post, postIndex, pageIndex ->
@@ -293,7 +310,13 @@ fun LatteApp(
                                         }
                                     }
                                     navigation = navigation
-                                        .replaceTop(screen.copy(initialIndex = postIndex, initialPageIndex = pageIndex))
+                                        .replaceTop(
+                                            screen.copy(
+                                                posts = postsToDisplay,
+                                                initialIndex = postIndex,
+                                                initialPageIndex = pageIndex,
+                                            ),
+                                        )
                                         .push(
                                             Screen.AuthorWorks(
                                                 authorId = post.authorId,

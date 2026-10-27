@@ -28,11 +28,37 @@ class LatteAppNavigationTest {
     }
 
     @Test
+    fun returningFromAuthorWorksToDetailClearsTheAuthorSearchState() {
+        var cleared = false
+        val detail = Screen.Detail(posts = listOf(samplePost(1)), initialIndex = 0)
+        val authorWorks = Screen.AuthorWorks(authorId = 42L, authorName = "Artist")
+
+        val restored = ScreenStack()
+            .push(detail)
+            .push(authorWorks)
+            .popAndRestoreDetailFeed { cleared = true }
+
+        assertTrue(cleared)
+        assertEquals(detail, restored.current)
+    }
+
+    @Test
     fun returningFromTagSearchToItsExploreParentPreservesSearchState() {
         var cleared = false
 
         ScreenStack()
             .push(Screen.TagSearch(query = "tag"))
+            .popAndRestoreDetailFeed { cleared = true }
+
+        assertFalse(cleared)
+    }
+
+    @Test
+    fun returningFromAuthorWorksToItsExploreParentPreservesSearchState() {
+        var cleared = false
+
+        ScreenStack()
+            .push(Screen.AuthorWorks(authorId = 42L, authorName = "Artist"))
             .popAndRestoreDetailFeed { cleared = true }
 
         assertFalse(cleared)
@@ -69,10 +95,37 @@ class LatteAppNavigationTest {
     }
 
     @Test
+    fun authorWorksBackAndForwardKeepsTheOriginalDetailFeedAndPage() {
+        val originalPosts = listOf(samplePost(1), samplePost(2), samplePost(3))
+        val authorResults = listOf(samplePost(90), samplePost(91))
+        val detail = Screen.Detail(posts = originalPosts, initialIndex = 1)
+        var navigation = ScreenStack().push(detail)
+            .replaceTop(detail.copy(initialIndex = 1))
+            .push(Screen.AuthorWorks(authorId = 42L, authorName = "Artist"))
+
+        assertEquals(Screen.AuthorWorks(authorId = 42L, authorName = "Artist"), navigation.current)
+        navigation = navigation.pop()
+        val restored = navigation.current as Screen.Detail
+        val restoredPosts = detailPostsFor(restored, authorResults)
+
+        assertEquals(originalPosts, restoredPosts)
+        assertEquals(2L, restoredPosts[restored.initialIndex].id)
+    }
+
+    @Test
     fun detailFeedStillAcceptsMorePostsWhenItsCurrentWorkMatches() {
         val originalPosts = listOf(samplePost(1), samplePost(2))
         val extendedFeed = originalPosts + samplePost(3)
         val detail = Screen.Detail(posts = originalPosts, initialIndex = 1)
+
+        assertEquals(extendedFeed, detailPostsFor(detail, extendedFeed))
+    }
+
+    @Test
+    fun detailFeedAcceptsExtendedFeedWhenScrolledPastInitialSlice() {
+        val initialSlice = (1L..30L).map { samplePost(it) }
+        val extendedFeed = (1L..60L).map { samplePost(it) }
+        val detail = Screen.Detail(posts = initialSlice, initialIndex = 45)
 
         assertEquals(extendedFeed, detailPostsFor(detail, extendedFeed))
     }
