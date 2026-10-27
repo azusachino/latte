@@ -326,6 +326,9 @@ fun LatteApp(
                                 onOpenAccountManager = {
                                     navigation = navigation.push(Screen.AccountManager)
                                 },
+                                onClearSearchCaches = {
+                                    exploreViewModel.clearSearchCaches()
+                                },
                             )
                         }
                         is Screen.FavoriteTags -> {

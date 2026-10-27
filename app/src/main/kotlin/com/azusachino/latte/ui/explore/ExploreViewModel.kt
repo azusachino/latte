@@ -379,6 +379,13 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     internal fun cachedPixivSearch(query: String): FeedState? = pixivSearchCache[query]
     internal fun cachedPixivUserWorks(userId: Long): FeedState? = pixivUserWorksCache[userId]
 
+    fun clearSearchCaches() {
+        yandeSearchCache.clear()
+        yandeSuggestionCache.clear()
+        pixivSearchCache.clear()
+        pixivUserWorksCache.clear()
+    }
+
     private fun launchMoebooru(block: suspend CoroutineScope.() -> Unit) {
         viewModelScope.launch(moebooruJob, block = block)
     }

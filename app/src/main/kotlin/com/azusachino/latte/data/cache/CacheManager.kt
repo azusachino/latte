@@ -19,11 +19,18 @@ class CacheManager internal constructor(
     private val cacheDirProvider: () -> File?,
     private val clearSearchAction: () -> Unit,
 ) {
-    constructor(context: Context, preferences: LattePreferences) : this(
+    constructor(
+        context: Context,
+        preferences: LattePreferences,
+        onClearSearchCaches: () -> Unit = {},
+    ) : this(
         context = context,
         preferences = preferences,
         cacheDirProvider = { context.cacheDir },
-        clearSearchAction = { preferences.clearRecentSearches() },
+        clearSearchAction = {
+            preferences.clearRecentSearches()
+            onClearSearchCaches()
+        },
     )
 
     private val baseCacheDir: File?

@@ -84,6 +84,7 @@ fun SettingsScreen(
     preferences: LattePreferences,
     onBack: () -> Unit,
     onOpenAccountManager: () -> Unit = {},
+    onClearSearchCaches: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -91,7 +92,13 @@ fun SettingsScreen(
     val themeMode by preferences.themeMode.collectAsStateWithLifecycle()
     val safeMode by preferences.safeMode.collectAsStateWithLifecycle()
 
-    val cacheManager = remember { CacheManager(context, preferences) }
+    val cacheManager = remember {
+        CacheManager(
+            context = context,
+            preferences = preferences,
+            onClearSearchCaches = onClearSearchCaches,
+        )
+    }
     var cacheSizeBytes by remember { mutableLongStateOf(0L) }
     var showClearCacheDialog by remember { mutableStateOf(false) }
 
