@@ -13,13 +13,16 @@
 
 ## Overview
 
-Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenticated, multi-platform personal art workstation (`0.0.2`, `0.0.3`, `0.1.0`, `0.1.1`, `0.1.2`, `0.1.3`, and `0.2.0`). This roadmap establishes the sequence of milestones, architectural requirements, UX standards, and cache policies.
+Latte is evolving from a single-site anonymous reader (`0.0.1`) into an authenticated, multi-platform personal art workstation (`0.0.2`, `0.0.3`, `0.1.0`, `0.1.1`, `0.1.2`, `0.1.3`, `0.2.0`, `0.2.4`, `0.3.0`, and `0.3.1`). This roadmap establishes the sequence of milestones, architectural requirements, UX standards, and cache policies.
 
 ```text
-0.0.1 ──> 0.0.2 ──> 0.0.3 ──> 0.1.0 ──> 0.1.1 ──> 0.1.2 ──> 0.1.3 ──> 0.2.0 ──> 0.2.1 ──> 0.2.2 ──> 0.2.4 (Delivered)
-• Browse  • Auth    • Pixiv   • Fav tags • Proxy    • Batch   • Signing • Diet    • Data     • Trampoline • Generic Layers (#19)
-• Feed    • Scores  • OAuth2  • Following• Referer  • Insets  • Updater • DoH     • Cache    • Moebooru   • Tab-Driven Pager
-• Save    • Cache   • Feeds   • Konachan • Clearance• Reset   • MinSdk  • Web SSO • Tabs     • SingleTask • Infinite Swipe
+0.0.1 ──> 0.0.2 ──> 0.0.3 ──> 0.1.0 ──> 0.1.1 ──> 0.1.2 ──> 0.1.3 ──> 0.2.0 ──> 0.2.1 ──> 0.2.2 ──> 0.2.4
+                                                                                                    │
+0.3.1 (Delivered) <── 0.3.0 <───────────────────────────────────────────────────────────────────────┘
+• Page index          • Liquid Glass
+• Feed preserve       • Pixiv Paging
+• Bounded cache       • Fallback DL
+• Predictive back     • MinSdk 33
 ```
 
 ---
@@ -333,6 +336,41 @@ a defect.
 
 - Kotlin 2.4.21, Compose BOM 2026.09.00, AGP 9.4.1, Gradle 9.7.0, compileSdk 37; minSdk raised to 33.
 - Regression tests guard download order, Pixiv originals, feed errors, de-duplicated paging, Detail paging decisions and the notification stack.
+
+---
+
+## Milestone 0.3.1: Detail Flow, Transition Polish, Bounded Caches & Queue Reliability
+
+> **Status**: Released as `v0.3.1` on 2026-10-27 (#29). Detail page position indicator, search query and feed preservation across navigation levels, predictive back gestures, spring double-tap zoom, directional vertical chrome transitions, bounded in-memory FIFO caches, granular multi-category cache clearing, notification queue cap with group summary, and lifecycle-aware state collection (`collectAsStateWithLifecycle`).
+
+### 1. Detail Flow & Navigation Preservation
+
+- A header capsule in Detail shows the feed index (`1 / 40`), appending sub-page indexes for multi-page Pixiv works (`5 / 25 · p2/8`). A transient floating pill briefly displays the page index when chrome is hidden.
+- Returning from Detail or child views to Explore preserves the active search query, results, and scroll position instead of destructively clearing search state.
+- Nested navigation preserves parent feed context (`parentSearchTags`, `parentAuthorId`, `parentAuthorName`), restoring parent feeds upon return without redundant network requests.
+- Unique state keys per navigation stack entry (`$index:$stateKey`) isolate saved UI state across nested searches and tag explorations.
+
+### 2. UX & Transitions
+
+- Predictive back gesture integration in `LatteApp` smoothly interpolates scale and corner radius, synchronizing scale recovery with the horizontal slide exit transition.
+- Double-tap zoom uses spring physics (`dampingRatio = 0.85f`, `stiffness = MediumLow`), replacing abrupt scale jumps.
+- Pinch-zoom locks the pager (`HorizontalPager.userScrollEnabled = !isCurrentPageZoomed`), preventing accidental artwork switching while panning.
+- Directional vertical slide transitions animate the top bar and bottom action bar.
+
+### 3. Caching & Memory
+
+- In-memory search and suggestion caches (`ExploreViewModel`) are bounded by `BoundedFifoCache` (`yandeSearchCache` [30], `yandeSuggestionCache` [50], `pixivSearchCache` [30], `pixivUserWorksCache` [30]), evicting oldest entries on capacity overflow and eliminating unbounded memory growth during continuous browsing.
+- Granular `CacheManager` with category selection replaces blind recursive deletion of `context.cacheDir`:
+  - `IMAGES`: Coil 3 disk and memory caches.
+  - `NETWORK`: OkHttp HTTP cache eviction.
+  - `UPDATES`: Downloaded installer packages in `cacheDir/updates/`.
+  - `SEARCH`: DataStore search history and in-memory search caches.
+- Clear Cache dialog in Settings displays live sizes per category with non-blocking background clearing.
+
+### 4. Background & Lifecycle Reliability
+
+- Download notifications in the tray are capped at 8 completed items, well under AOSP's 50-notification per-package threshold, avoiding system queue lockups while maintaining an active group summary.
+- Adopts `collectAsStateWithLifecycle()` across Compose UI, automatically pausing state flow collection when the app is backgrounded.
 
 ---
 

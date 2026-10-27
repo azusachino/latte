@@ -102,12 +102,12 @@ class UpdateService(
             }
         }
 
-        var minSdk = 29
+        var minSdk = 33
         var minSupported: String? = null
 
         val minSdkMatch = Regex("""(?i)(?:min[-_]?sdk|requires android sdk)[:\s]+(\d+)""").find(body)
         if (minSdkMatch != null) {
-            minSdk = minSdkMatch.groupValues[1].toIntOrNull() ?: 29
+            minSdk = minSdkMatch.groupValues[1].toIntOrNull() ?: 33
         }
 
         val minSupportedMatch = Regex("""(?i)(?:min(?:imum)?[-_]?supported(?:[-_]?version)?|requires app version)[:\s]+v?(\d+\.\d+(?:\.\d+)?)""").find(body)

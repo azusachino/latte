@@ -32,7 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
@@ -240,7 +240,7 @@ fun ToastHost(
     hazeState: HazeState,
     modifier: Modifier = Modifier,
 ) {
-    val visible by ToastManager.visible.collectAsState()
+    val visible by ToastManager.visible.collectAsStateWithLifecycle()
     // Dismissed toasts stay in the stack, flagged as leaving, until their exit animation ends.
     val stack = remember { mutableStateListOf<ToastMessage>() }
     val leavingIds = remember { mutableStateSetOf<Long>() }
@@ -259,7 +259,7 @@ fun ToastHost(
         stack.addAll(merged)
     }
 
-    val targetTopInset by ToastManager.topInset.collectAsState()
+    val targetTopInset by ToastManager.topInset.collectAsStateWithLifecycle()
     val topInset by animateDpAsState(targetValue = targetTopInset, label = "toastTopInset")
 
     val density = LocalDensity.current

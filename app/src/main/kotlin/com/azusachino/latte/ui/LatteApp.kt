@@ -1,7 +1,9 @@
 package com.azusachino.latte.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
@@ -11,18 +13,25 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.launch
 import com.azusachino.latte.plugin.storage.SecurePluginStorage
 import com.azusachino.latte.plugin.konachan.KonachanPlugin
 import com.azusachino.latte.plugin.yande.YandePlugin
@@ -52,70 +61,6 @@ import com.azusachino.latte.ui.theme.LatteTheme
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 
-sealed interface Screen {
-    data object Explore : Screen
-    data class AuthorWorks(val authorId: Long? = null, val authorName: String = "") : Screen
-    data class TagSearch(val query: String) : Screen
-    data class Detail(val posts: List<Post>, val initialIndex: Int, val initialPageIndex: Int = 0) : Screen
-    data object Settings : Screen
-    data object FavoriteTags : Screen
-    data object AccountManager : Screen
-}
-
-internal fun detailPostsFor(screen: Screen.Detail, activePosts: List<Post>): List<Post> {
-    val currentWork = screen.posts.getOrNull(screen.initialIndex)?.workIdentity ?: return screen.posts
-    return activePosts.takeIf { it.getOrNull(screen.initialIndex)?.workIdentity == currentWork } ?: screen.posts
-}
-
-internal data class ScreenStack(
-    val screens: List<Screen> = listOf(Screen.Explore),
-) {
-    val current: Screen
-        get() = screens.last()
-
-    val size: Int
-        get() = screens.size
-
-    fun push(screen: Screen): ScreenStack = copy(screens = screens + screen)
-
-    fun pop(): ScreenStack = if (screens.size > 1) {
-        copy(screens = screens.dropLast(1))
-    } else {
-        this
-    }
-
-    fun popAndRestoreDetailFeed(clearSearch: () -> Unit): ScreenStack {
-        if (current is Screen.TagSearch && screens.getOrNull(screens.lastIndex - 1) is Screen.Detail) {
-            clearSearch()
-        }
-        return pop()
-    }
-
-    fun replaceTop(screen: Screen): ScreenStack = if (screens.isNotEmpty()) {
-        copy(screens = screens.dropLast(1) + screen)
-    } else {
-        copy(screens = listOf(screen))
-    }
-}
-
-private val Screen.stateKey: String
-    get() = when (this) {
-        is Screen.Explore -> "explore"
-        is Screen.AuthorWorks -> "author-works:${authorId ?: authorName}"
-        is Screen.TagSearch -> "tag-search:${query}"
-        is Screen.Detail -> "detail:${posts.getOrNull(initialIndex)?.workIdentity ?: initialIndex}:$initialPageIndex"
-        is Screen.Settings -> "settings"
-        is Screen.FavoriteTags -> "favorite-tags"
-        is Screen.AccountManager -> "account-manager"
-    }
-
-// A quick, slightly overshooting settle (inspired by transitions.dev's toggle
-// curve) rather than Compose's flatter default spring for slideIn/Out.
-private val screenSlideSpec = spring<IntOffset>(
-    dampingRatio = 0.8f,
-    stiffness = Spring.StiffnessMediumLow,
-)
-
 @Composable
 fun LatteApp(
     exploreViewModel: ExploreViewModel = viewModel(),
@@ -123,8 +68,8 @@ fun LatteApp(
 ) {
     val context = LocalContext.current
     val downloadManager = remember { DownloadManager(context) }
-    val themeMode by exploreViewModel.preferences.themeMode.collectAsState()
-    val exploreUiState by exploreViewModel.uiState.collectAsState()
+    val themeMode by exploreViewModel.preferences.themeMode.collectAsStateWithLifecycle()
+    val exploreUiState by exploreViewModel.uiState.collectAsStateWithLifecycle()
     val palette = when (exploreUiState.platform) {
         PlatformId.PIXIV -> LattePalette.PIXIV
         PlatformId.YANDE -> LattePalette.YANDE
@@ -166,17 +111,40 @@ fun LatteApp(
     var activeLoginPlugin by remember { mutableStateOf<SitePlugin?>(null) }
     val saveableStateHolder = rememberSaveableStateHolder()
 
+    fun restoreFeedForDetail(screen: Screen.Detail) {
+        val state = exploreViewModel.uiState.value
+        when {
+            screen.parentAuthorId != null -> {
+                if (state.pixivAuthorId != screen.parentAuthorId || !state.isSearch) {
+                    exploreViewModel.loadPixivUserWorks(
+                        screen.parentAuthorId,
+                        screen.parentAuthorName.orEmpty(),
+                    )
+                }
+            }
+            screen.parentSearchTags != null -> {
+                val activeTags = if (state.supportsUserFeeds) state.pixivSearchTags else state.searchTags
+                if (activeTags != screen.parentSearchTags || !state.isSearch) {
+                    exploreViewModel.search(screen.parentSearchTags)
+                }
+            }
+            else -> {
+                if (state.isSearch) {
+                    exploreViewModel.clearSearch()
+                }
+            }
+        }
+    }
+
     fun popNavigation() {
-        navigation = navigation.popAndRestoreDetailFeed(exploreViewModel::clearSearch)
+        navigation = navigation.popAndRestoreDetailFeed { targetDetail ->
+            restoreFeedForDetail(targetDetail)
+        }
     }
 
     LaunchedEffect(navigation.current) {
         when (val screen = navigation.current) {
-            is Screen.Explore -> {
-                if (exploreViewModel.uiState.value.isSearch) {
-                    exploreViewModel.clearSearch()
-                }
-            }
+            is Screen.Explore -> Unit
             is Screen.AuthorWorks -> {
                 val state = exploreViewModel.uiState.value
                 if (screen.authorId != null && (state.pixivAuthorId != screen.authorId || !state.isSearch)) {
@@ -192,6 +160,9 @@ fun LatteApp(
                     exploreViewModel.search(screen.query)
                 }
             }
+            is Screen.Detail -> {
+                restoreFeedForDetail(screen)
+            }
             else -> Unit
         }
     }
@@ -199,9 +170,37 @@ fun LatteApp(
     LatteTheme(themeMode = themeMode, palette = palette) {
         // Root content the toast pill blurs; screens keep their own sources inside it.
         val toastHazeState = rememberHazeState()
+        val backSettleScope = rememberCoroutineScope()
+
         Box(modifier = modifier.fillMaxSize()) {
-            BackHandler(enabled = navigation.size > 1) {
-                popNavigation()
+            val predictiveBackProgress = remember { Animatable(0f) }
+
+            PredictiveBackHandler(enabled = navigation.size > 1) { progressFlow ->
+                try {
+                    progressFlow.collect { backEvent ->
+                        predictiveBackProgress.snapTo(backEvent.progress)
+                    }
+                    // The user completed the predictive back swipe gesture.
+                    // Commit the navigation pop, and smoothly settle the scale/corner radius back
+                    // to rest so it synchronizes coherently with AnimatedContent's exit transition
+                    // instead of snapping scale on the first frame.
+                    popNavigation()
+                    predictiveBackProgress.animateTo(
+                        targetValue = 0f,
+                        animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
+                    )
+                } catch (e: CancellationException) {
+                    // When the gesture is cancelled, androidx PredictiveBackHandler cancels the handler
+                    // coroutine. Launching the settle in backSettleScope guarantees the animation
+                    // runs to completion rather than immediately aborting in the cancelled coroutine.
+                    backSettleScope.launch {
+                        predictiveBackProgress.animateTo(
+                            targetValue = 0f,
+                            animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
+                        )
+                    }
+                    throw e
+                }
             }
 
             AnimatedContent(
@@ -218,10 +217,17 @@ fun LatteApp(
                 },
                 modifier = Modifier
                     .fillMaxSize()
+                    .graphicsLayer {
+                        val progress = predictiveBackProgress.value
+                        scaleX = 1f - (progress * 0.08f)
+                        scaleY = 1f - (progress * 0.08f)
+                        clip = progress > 0f
+                        shape = RoundedCornerShape((progress * 24f).dp)
+                    }
                     .hazeSource(toastHazeState),
             ) { targetNav ->
                 val screen = targetNav.current
-                saveableStateHolder.SaveableStateProvider(screen.stateKey) {
+                saveableStateHolder.SaveableStateProvider(targetNav.currentStateKey) {
                     when (screen) {
                         is Screen.Explore, is Screen.AuthorWorks, is Screen.TagSearch -> {
                             ExploreScreen(
@@ -242,10 +248,23 @@ fun LatteApp(
                                 pixivPlugin = pixivPlugin,
                                 platformPlugins = sitePluginManager.byPlatform(),
                                 onPostClick = { index ->
+                                    val state = exploreViewModel.uiState.value
+                                    val (parentSearchTags, parentAuthorId, parentAuthorName) = when {
+                                        state.pixivAuthorId != null -> Triple(null, state.pixivAuthorId, state.pixivAuthorName)
+                                        state.isSearch -> Triple(
+                                            if (state.supportsUserFeeds) state.pixivSearchTags else state.searchTags,
+                                            null,
+                                            null,
+                                        )
+                                        else -> Triple(null, null, null)
+                                    }
                                     navigation = navigation.push(
                                         Screen.Detail(
-                                            posts = exploreViewModel.uiState.value.posts,
+                                            posts = state.posts,
                                             initialIndex = index,
+                                            parentSearchTags = parentSearchTags,
+                                            parentAuthorId = parentAuthorId,
+                                            parentAuthorName = parentAuthorName,
                                         ),
                                     )
                                 },
@@ -281,7 +300,13 @@ fun LatteApp(
                                 onTagClick = { tag, postIndex, pageIndex ->
                                     exploreViewModel.search(tag)
                                     navigation = navigation
-                                        .replaceTop(screen.copy(initialIndex = postIndex, initialPageIndex = pageIndex))
+                                        .replaceTop(
+                                            screen.copy(
+                                                posts = postsToDisplay,
+                                                initialIndex = postIndex,
+                                                initialPageIndex = pageIndex,
+                                            ),
+                                        )
                                         .push(Screen.TagSearch(query = tag))
                                 },
                                 onAuthorClick = { post, postIndex, pageIndex ->
@@ -293,7 +318,13 @@ fun LatteApp(
                                         }
                                     }
                                     navigation = navigation
-                                        .replaceTop(screen.copy(initialIndex = postIndex, initialPageIndex = pageIndex))
+                                        .replaceTop(
+                                            screen.copy(
+                                                posts = postsToDisplay,
+                                                initialIndex = postIndex,
+                                                initialPageIndex = pageIndex,
+                                            ),
+                                        )
                                         .push(
                                             Screen.AuthorWorks(
                                                 authorId = post.authorId,
@@ -314,6 +345,9 @@ fun LatteApp(
                                 },
                                 onOpenAccountManager = {
                                     navigation = navigation.push(Screen.AccountManager)
+                                },
+                                onClearSearchCaches = {
+                                    exploreViewModel.clearSearchCaches()
                                 },
                             )
                         }

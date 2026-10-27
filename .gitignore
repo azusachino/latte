@@ -21,6 +21,7 @@ captures/
 *.pyc
 *.swp
 .DS_Store
+.tmp/
 
 # IntelliJ / Android Studio
 *.iml

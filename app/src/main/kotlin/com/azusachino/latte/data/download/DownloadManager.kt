@@ -39,6 +39,7 @@ class DownloadManager(private val context: Context) {
 
     suspend fun enqueueBatchDownload(posts: List<Post>): BatchDownloadResult =
         withContext(Dispatchers.IO) {
+            DownloadWorker.pruneStaleNotifications(context)
             var started = 0
             var alreadySaved = 0
             var alreadyRunning = 0
@@ -62,6 +63,7 @@ class DownloadManager(private val context: Context) {
 
     suspend fun enqueueDownload(post: Post, preferredVariant: MediaVariant? = null): DownloadResult =
         withContext(Dispatchers.IO) {
+            DownloadWorker.pruneStaleNotifications(context)
             val candidates = DownloadFallback.candidateUrls(post, preferredVariant)
             val displayName = DownloadIdentity.displayName(post)
             val ext = DownloadIdentity.fileExtension(post)
@@ -78,7 +80,11 @@ class DownloadManager(private val context: Context) {
                 workManager.getWorkInfosForUniqueWork(uniqueName).get()
             }.getOrDefault(emptyList())
 
-            if (workInfos.any { !it.state.isFinished }) {
+            if (workInfos.any {
+                it.state == WorkInfo.State.RUNNING ||
+                    it.state == WorkInfo.State.ENQUEUED ||
+                    it.state == WorkInfo.State.BLOCKED
+            }) {
                 return@withContext DownloadResult.AlreadyRunning(displayName)
             }
 
@@ -108,7 +114,7 @@ class DownloadManager(private val context: Context) {
 
             workManager.enqueueUniqueWork(
                 uniqueName,
-                ExistingWorkPolicy.KEEP,
+                ExistingWorkPolicy.REPLACE,
                 request,
             )
 

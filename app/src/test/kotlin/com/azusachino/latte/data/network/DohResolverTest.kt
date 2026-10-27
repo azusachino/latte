@@ -14,7 +14,7 @@ class DohResolverTest {
         val addresses = DohResolver.resolve("yande.re")
         if (addresses != null) {
             assertTrue(addresses.isNotEmpty())
-            assertTrue(addresses.first() is InetAddress)
+            assertNotNull(addresses.first().hostAddress)
         }
     }
 }

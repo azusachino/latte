@@ -190,9 +190,12 @@ class LattePreferences(private val context: Context) {
         }
     }
 
-    fun getCacheSizeBytes(): Long {
-        val cacheDir = context.cacheDir ?: return 0L
-        return cacheDir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+    fun clearRecentSearches() {
+        scope.launch {
+            dataStore.edit { values ->
+                values.remove(KEY_RECENT_SEARCHES)
+            }
+        }
     }
 
     fun clearCache() {

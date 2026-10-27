@@ -15,6 +15,7 @@ import com.azusachino.latte.plugin.PluginFeedResult
 import com.azusachino.latte.plugin.PluginFeedSource
 import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.ui.common.ToastManager
+import com.azusachino.latte.data.cache.BoundedFifoCache
 import com.azusachino.latte.data.settings.LattePreferences
 import com.azusachino.latte.plugin.PlatformCapability
 import com.azusachino.latte.plugin.PlatformId
@@ -355,10 +356,10 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     private fun cancelAllPixivJobs() = cancelFeedJobs(PlatformId.PIXIV)
     private var moebooruJob = SupervisorJob(viewModelScope.coroutineContext[Job])
     private val gridPositions = mutableMapOf<ExploreGridKey, GridPosition>()
-    private val yandeSearchCache = mutableMapOf<Pair<PlatformId, String>, FeedState>()
-    private val yandeSuggestionCache = mutableMapOf<Pair<PlatformId, String>, List<String>>()
-    private val pixivSearchCache = mutableMapOf<String, FeedState>()
-    private val pixivUserWorksCache = mutableMapOf<Long, FeedState>()
+    private val yandeSearchCache = BoundedFifoCache<Pair<PlatformId, String>, FeedState>(maxSize = 30)
+    private val yandeSuggestionCache = BoundedFifoCache<Pair<PlatformId, String>, List<String>>(maxSize = 50)
+    private val pixivSearchCache = BoundedFifoCache<String, FeedState>(maxSize = 30)
+    private val pixivUserWorksCache = BoundedFifoCache<Long, FeedState>(maxSize = 30)
     private val sessionResetObserved = mutableMapOf<PlatformId, SitePlugin>()
     val preferences = LattePreferences(application)
 
@@ -377,6 +378,13 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         yandeSearchCache[_uiState.value.platform to tags]
     internal fun cachedPixivSearch(query: String): FeedState? = pixivSearchCache[query]
     internal fun cachedPixivUserWorks(userId: Long): FeedState? = pixivUserWorksCache[userId]
+
+    fun clearSearchCaches() {
+        yandeSearchCache.clear()
+        yandeSuggestionCache.clear()
+        pixivSearchCache.clear()
+        pixivUserWorksCache.clear()
+    }
 
     private fun launchMoebooru(block: suspend CoroutineScope.() -> Unit) {
         viewModelScope.launch(moebooruJob, block = block)
@@ -1209,7 +1217,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             if (kind == PluginFeedKind.SEARCH && state.pixivSearchTags.isNotBlank()) {
                 pixivSearchCache[state.pixivSearchTags] = updated
             } else if (kind == PluginFeedKind.AUTHOR_WORKS && state.pixivAuthorId != null) {
-                pixivUserWorksCache[state.pixivAuthorId!!] = updated
+                pixivUserWorksCache[state.pixivAuthorId] = updated
             }
             nextState
         }

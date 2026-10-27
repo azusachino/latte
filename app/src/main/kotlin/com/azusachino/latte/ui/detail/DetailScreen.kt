@@ -9,11 +9,14 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -60,7 +63,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -74,6 +77,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -107,6 +111,7 @@ import com.azusachino.latte.ui.common.ToastManager
 import com.azusachino.latte.ui.common.ToastType
 import dev.chrisbanes.haze.rememberHazeState
 import dev.chrisbanes.haze.hazeSource
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
@@ -181,6 +186,39 @@ fun DetailScreen(
         PlatformCapability.USER_FEED in currentPost.platform.capabilities &&
         currentPost.pageCount > 1
 
+    val pageIndicatorText = remember(
+        pagerState.currentPage,
+        detailPosts.size,
+        isMultiPagePost,
+        pixivPageIndex,
+        currentPost?.pageCount,
+    ) {
+        detailPageIndicatorText(
+            currentPage = pagerState.currentPage,
+            totalPosts = detailPosts.size,
+            isMultiPagePost = isMultiPagePost,
+            pixivPageIndex = pixivPageIndex,
+            postPageCount = currentPost?.pageCount ?: 1,
+        )
+    }
+
+    var showTransientPageIndicator by remember { mutableStateOf(false) }
+    var isCurrentPageZoomed by remember(pagerState.currentPage, pixivPageIndex) { mutableStateOf(false) }
+
+    LaunchedEffect(pagerState.currentPage, pixivPageIndex) {
+        if (!showControls) {
+            showTransientPageIndicator = true
+            delay(1500)
+            showTransientPageIndicator = false
+        }
+    }
+
+    LaunchedEffect(showControls) {
+        if (showControls) {
+            showTransientPageIndicator = false
+        }
+    }
+
     LaunchedEffect(currentPost?.siteId, currentPost?.id) {
         inlineActionError = null
     }
@@ -214,6 +252,7 @@ fun DetailScreen(
         // Horizontal Pager for browsing posts
         HorizontalPager(
             state = pagerState,
+            userScrollEnabled = !isCurrentPageZoomed,
             beyondViewportPageCount = 1,
             modifier = Modifier
                 .fillMaxSize()
@@ -232,8 +271,13 @@ fun DetailScreen(
                 AmbientBackdrop(previewUrl = post.previewUrl)
                 DetailImageView(
                     targetPost = post,
+                    onZoomChanged = { zoomed ->
+                        if (page == pagerState.currentPage) {
+                            isCurrentPageZoomed = zoomed
+                        }
+                    },
                     onTap = { xFraction, zoomed ->
-                        when (detailTapAction(xFraction, zoomed, isMultiPagePost, pixivPageIndex, currentPost?.pageCount ?: 0)) {
+                        when (detailTapAction(xFraction, zoomed, isMultiPagePost, pixivPageIndex, currentPost?.pageCount ?: 0, showControls)) {
                             DetailTapAction.PreviousPage -> pixivPageIndex -= 1
                             DetailTapAction.NextPage -> pixivPageIndex += 1
                             DetailTapAction.ToggleControls -> showControls = !showControls
@@ -246,155 +290,51 @@ fun DetailScreen(
         // Top Controls Overlay
         AnimatedVisibility(
             visible = showControls,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = slideInVertically(
+                animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
+                initialOffsetY = { -it },
+            ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
+            exit = slideOutVertically(
+                animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
+                targetOffsetY = { -it },
+            ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
             modifier = Modifier.align(Alignment.TopCenter),
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                // Left pill: Circular frosted glass back button
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = CircleShape, dark = true)
-                        .pressScale(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    IconButton(
-                        onClick = onBack,
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White,
-                        )
-                    }
-                }
-
-                // Center capsule: Floating frosted glass pill
-                val centerTitle = remember(currentPost?.id, currentPost?.title, currentPost?.platform) {
-                    when {
-                        currentPost == null -> ""
-                        !currentPost.title.isNullOrBlank() -> currentPost.title.orEmpty()
-                        else -> "#${currentPost.id} · ${currentPost.platform.displayName}"
-                    }
-                }
-
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 8.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (centerTitle.isNotBlank()) {
-                        Box(
-                            modifier = Modifier
-                                .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = RoundedCornerShape(GlassDefaults.PillCornerRadius), dark = true)
-                                .padding(horizontal = 14.dp, vertical = 8.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text = centerTitle,
-                                color = Color.White,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 14.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                }
-
-                // Right pill: Circular frosted glass action buttons for Browser and Share
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (currentPost != null) {
-                        // Open in browser
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = CircleShape, dark = true)
-                                .pressScale(),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            IconButton(
-                                onClick = {
-                                    val intent = Intent(
-                                        Intent.ACTION_VIEW,
-                                        Uri.parse(
-                                            currentPost.canonicalUrl
-                                                ?: currentPost.source
-                                                ?: "https://yande.re/post/show/${currentPost.id}",
-                                        ),
-                                    )
-                                    context.startActivity(intent)
-                                },
-                                modifier = Modifier.fillMaxSize(),
-                            ) {
-                                Icon(
-                                    imageVector = LatteIcons.OpenInBrowser,
-                                    contentDescription = "Open in browser",
-                                    tint = Color.White,
-                                )
-                            }
-                        }
-
-                        // Share
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = CircleShape, dark = true)
-                                .pressScale(),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            IconButton(
-                                onClick = {
-                                    val intent = Intent(Intent.ACTION_SEND).apply {
-                                        type = "text/plain"
-                                        putExtra(
-                                            Intent.EXTRA_TEXT,
-                                            currentPost.canonicalUrl
-                                                ?: currentPost.source
-                                                ?: "https://yande.re/post/show/${currentPost.id}",
-                                        )
-                                    }
-                                    context.startActivity(Intent.createChooser(intent, "Share post"))
-                                },
-                                modifier = Modifier.fillMaxSize(),
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Share,
-                                    contentDescription = "Share",
-                                    tint = Color.White,
-                                )
-                            }
-                        }
-                    } else {
-                        Spacer(modifier = Modifier.size(44.dp))
-                    }
-                }
-            }
+            DetailTopBar(
+                currentPost = currentPost,
+                pageIndicatorText = pageIndicatorText,
+                hazeState = hazeState,
+                onBack = onBack,
+            )
         }
+
+        // Transient Page Indicator when controls are hidden
+        TransientDetailPageIndicator(
+            text = pageIndicatorText,
+            visible = !showControls && showTransientPageIndicator,
+            hazeState = hazeState,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
 
         // Bottom Controls Overlay
         AnimatedVisibility(
             visible = showControls,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = slideInVertically(
+                animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
+                initialOffsetY = { it },
+            ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
+            exit = slideOutVertically(
+                animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
+                targetOffsetY = { it },
+            ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
             modifier = Modifier.align(Alignment.BottomCenter),
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .pointerInput(Unit) {
+                        detectTapGestures { }
+                    }
                     .navigationBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -547,7 +487,7 @@ fun DetailScreen(
                             currentPlugin.capabilities.contains(PlatformCapability.FAVORITES) &&
                             displayPost != null
                         ) {
-                            val isPluginLoggedIn by currentPlugin.isLoggedInFlow.collectAsState(initial = currentPlugin.isLoggedIn)
+                            val isPluginLoggedIn by currentPlugin.isLoggedInFlow.collectAsStateWithLifecycle(initialValue = currentPlugin.isLoggedIn)
                             val post = displayPost
                             val currentScore = localScores[post.id] ?: currentPlugin.getScore(post.id) ?: 0
                             val hasUserFeedCapability = PlatformCapability.USER_FEED in post.platform.capabilities
@@ -642,6 +582,7 @@ fun DetailScreen(
                                     dark = true,
                                     tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),
                                 )
+                                .pressScale()
                                 .clickable {
                                     if (displayPost != null) {
                                         scope.launch {
@@ -664,7 +605,6 @@ fun DetailScreen(
                                         }
                                     }
                                 }
-                                .pressScale()
                                 .padding(horizontal = 16.dp),
                             contentAlignment = Alignment.Center,
                         ) {
@@ -768,7 +708,7 @@ fun DetailScreen(
 
                         // Personal Rating (0-3 stars)
                         if (currentPlugin != null && currentPlugin.capabilities.contains(PlatformCapability.SCORING)) {
-                            val isPluginLoggedIn by currentPlugin.isLoggedInFlow.collectAsState(initial = currentPlugin.isLoggedIn)
+                            val isPluginLoggedIn by currentPlugin.isLoggedInFlow.collectAsStateWithLifecycle(initialValue = currentPlugin.isLoggedIn)
                             val currentScore = localScores[currentPost.id] ?: currentPlugin.getScore(currentPost.id) ?: 0
 
                             Spacer(modifier = Modifier.height(16.dp))
@@ -832,14 +772,14 @@ fun DetailScreen(
                                             val wasFavorite = favoriteTags.any {
                                                 it.tag == tag && it.platform == currentPost.platform
                                             }
-                                            onToggleFavoriteTag?.invoke(tag, currentPost.platform)
+                                            onToggleFavoriteTag(tag, currentPost.platform)
                                             if (wasFavorite) {
                                                 ToastManager.show(
                                                     message = "Removed favorite tag \"$tag\"",
                                                     type = ToastType.INFO,
                                                     actionLabel = "Undo",
                                                 ) {
-                                                    onToggleFavoriteTag?.invoke(tag, currentPost.platform)
+                                                    onToggleFavoriteTag(tag, currentPost.platform)
                                                 }
                                             }
                                         }
@@ -891,6 +831,7 @@ private fun AmbientBackdrop(
 @Composable
 private fun DetailImageView(
     targetPost: Post,
+    onZoomChanged: (Boolean) -> Unit = {},
     onTap: (xFraction: Float, zoomed: Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -898,6 +839,7 @@ private fun DetailImageView(
     ZoomableBox(
         modifier = modifier.fillMaxSize(),
         resetKey = Triple(targetPost.siteId, targetPost.id, targetPost.pageIndex),
+        onZoomChanged = onZoomChanged,
         onTap = onTap,
     ) {
         val imageSources = remember(targetPost.siteId, targetPost.id, targetPost.pageIndex) {
@@ -1257,8 +1199,8 @@ internal sealed interface DetailTapAction {
 }
 
 /**
- * Edge taps (outer 25% on each side) page through a multi-page work when not zoomed.
- * Middle taps, zoomed taps, single-page works and edges past the first or last page toggle controls.
+ * Edge taps (outer 25% on each side) page through a multi-page work when controls are hidden and not zoomed.
+ * When controls are shown, middle taps, zoomed taps, single-page works and edges past the first or last page toggle controls.
  */
 internal fun detailTapAction(
     xFraction: Float,
@@ -1266,7 +1208,9 @@ internal fun detailTapAction(
     isMultiPage: Boolean,
     pageIndex: Int,
     pageCount: Int,
+    controlsVisible: Boolean = false,
 ): DetailTapAction {
+    if (controlsVisible) return DetailTapAction.ToggleControls
     val edgeLeft = xFraction < 0.25f
     val edgeRight = xFraction > 0.75f
     if (!isMultiPage || zoomed || !(edgeLeft || edgeRight)) return DetailTapAction.ToggleControls
