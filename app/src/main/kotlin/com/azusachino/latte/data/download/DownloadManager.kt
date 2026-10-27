@@ -80,7 +80,11 @@ class DownloadManager(private val context: Context) {
                 workManager.getWorkInfosForUniqueWork(uniqueName).get()
             }.getOrDefault(emptyList())
 
-            if (workInfos.any { it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED }) {
+            if (workInfos.any {
+                it.state == WorkInfo.State.RUNNING ||
+                    it.state == WorkInfo.State.ENQUEUED ||
+                    it.state == WorkInfo.State.BLOCKED
+            }) {
                 return@withContext DownloadResult.AlreadyRunning(displayName)
             }
 
