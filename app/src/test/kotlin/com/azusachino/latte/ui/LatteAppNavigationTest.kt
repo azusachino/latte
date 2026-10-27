@@ -365,6 +365,51 @@ class LatteAppNavigationTest {
     }
 
     @Test
+    fun popAndRestoreDetailFeedRefetchesWhenParentFeedWasEvictedFromBoundedCache() {
+        val boundedCache = com.azusachino.latte.data.cache.BoundedFifoCache<String, List<Post>>(maxSize = 2)
+        val initialPosts = listOf(samplePost(1))
+        boundedCache["parent_query"] = initialPosts
+
+        // Simulate subsequent searches evicting the parent query
+        boundedCache["query_2"] = listOf(samplePost(2))
+        boundedCache["query_3"] = listOf(samplePost(3))
+
+        // Confirm parent query was evicted
+        org.junit.Assert.assertNull(boundedCache["parent_query"])
+
+        val detail = Screen.Detail(
+            posts = initialPosts,
+            initialIndex = 0,
+            parentSearchTags = "parent_query",
+        )
+        val tagSearch = Screen.TagSearch(query = "query_3")
+
+        var refetchedTags: String? = null
+        var restoredFeedPosts: List<Post>? = null
+
+        val stack = ScreenStack()
+            .push(detail)
+            .push(tagSearch)
+            .popAndRestoreDetailFeed { target ->
+                val cached = boundedCache[target.parentSearchTags.orEmpty()]
+                if (cached != null) {
+                    restoredFeedPosts = cached
+                } else {
+                    refetchedTags = target.parentSearchTags
+                    // Simulate refetch response
+                    val fetched = listOf(samplePost(1), samplePost(10))
+                    boundedCache[target.parentSearchTags.orEmpty()] = fetched
+                    restoredFeedPosts = fetched
+                }
+            }
+
+        assertEquals(detail, stack.current)
+        assertEquals("parent_query", refetchedTags)
+        assertEquals(2, restoredFeedPosts?.size)
+        assertEquals(listOf(samplePost(1), samplePost(10)), boundedCache["parent_query"])
+    }
+
+    @Test
     fun screenDetailStateKeyDistinguishesDifferentParentContexts() {
         val post = samplePost(1)
         val plainDetail = Screen.Detail(posts = listOf(post), initialIndex = 0)
