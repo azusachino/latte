@@ -61,7 +61,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -555,7 +555,7 @@ fun DetailScreen(
                             currentPlugin.capabilities.contains(PlatformCapability.FAVORITES) &&
                             displayPost != null
                         ) {
-                            val isPluginLoggedIn by currentPlugin.isLoggedInFlow.collectAsState(initial = currentPlugin.isLoggedIn)
+                            val isPluginLoggedIn by currentPlugin.isLoggedInFlow.collectAsStateWithLifecycle(initialValue = currentPlugin.isLoggedIn)
                             val post = displayPost
                             val currentScore = localScores[post.id] ?: currentPlugin.getScore(post.id) ?: 0
                             val hasUserFeedCapability = PlatformCapability.USER_FEED in post.platform.capabilities
@@ -776,7 +776,7 @@ fun DetailScreen(
 
                         // Personal Rating (0-3 stars)
                         if (currentPlugin != null && currentPlugin.capabilities.contains(PlatformCapability.SCORING)) {
-                            val isPluginLoggedIn by currentPlugin.isLoggedInFlow.collectAsState(initial = currentPlugin.isLoggedIn)
+                            val isPluginLoggedIn by currentPlugin.isLoggedInFlow.collectAsStateWithLifecycle(initialValue = currentPlugin.isLoggedIn)
                             val currentScore = localScores[currentPost.id] ?: currentPlugin.getScore(currentPost.id) ?: 0
 
                             Spacer(modifier = Modifier.height(16.dp))
@@ -840,14 +840,14 @@ fun DetailScreen(
                                             val wasFavorite = favoriteTags.any {
                                                 it.tag == tag && it.platform == currentPost.platform
                                             }
-                                            onToggleFavoriteTag?.invoke(tag, currentPost.platform)
+                                            onToggleFavoriteTag(tag, currentPost.platform)
                                             if (wasFavorite) {
                                                 ToastManager.show(
                                                     message = "Removed favorite tag \"$tag\"",
                                                     type = ToastType.INFO,
                                                     actionLabel = "Undo",
                                                 ) {
-                                                    onToggleFavoriteTag?.invoke(tag, currentPost.platform)
+                                                    onToggleFavoriteTag(tag, currentPost.platform)
                                                 }
                                             }
                                         }

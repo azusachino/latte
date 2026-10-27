@@ -39,7 +39,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -83,17 +83,17 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val columnCount by preferences.columnCount.collectAsState()
-    val themeMode by preferences.themeMode.collectAsState()
-    val safeMode by preferences.safeMode.collectAsState()
+    val columnCount by preferences.columnCount.collectAsStateWithLifecycle()
+    val themeMode by preferences.themeMode.collectAsStateWithLifecycle()
+    val safeMode by preferences.safeMode.collectAsStateWithLifecycle()
 
     var cacheSizeBytes by remember { mutableLongStateOf(preferences.getCacheSizeBytes()) }
     var showAboutDialog by remember { mutableStateOf(false) }
     var showLicenseDialog by remember { mutableStateOf(false) }
     var showProxyDialog by remember { mutableStateOf(false) }
 
-    val proxyHost by preferences.proxyHost.collectAsState()
-    val proxyPort by preferences.proxyPort.collectAsState()
+    val proxyHost by preferences.proxyHost.collectAsStateWithLifecycle()
+    val proxyPort by preferences.proxyPort.collectAsStateWithLifecycle()
 
     val coroutineScope = rememberCoroutineScope()
     val updateService = remember { UpdateService() }

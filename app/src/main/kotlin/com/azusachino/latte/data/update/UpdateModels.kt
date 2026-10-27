@@ -23,7 +23,7 @@ data class GitHubAssetDto(
 
 @Serializable
 data class ReleaseMetadata(
-    @SerialName("min_sdk") val minSdk: Int = 29,
+    @SerialName("min_sdk") val minSdk: Int = 33,
     @SerialName("min_supported_version") val minSupportedVersion: String? = null,
 )
 
@@ -36,7 +36,7 @@ data class UpdateInfo(
     val fileName: String,
     val fileSize: Long,
     val publishedAt: String,
-    val minSdk: Int = 29,
+    val minSdk: Int = 33,
     val minSupportedVersion: String? = null,
     val isMandatory: Boolean = false,
     val isDeviceSupported: Boolean = true,

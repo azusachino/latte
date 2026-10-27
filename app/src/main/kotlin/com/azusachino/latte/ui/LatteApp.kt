@@ -12,13 +12,13 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -134,8 +134,8 @@ fun LatteApp(
 ) {
     val context = LocalContext.current
     val downloadManager = remember { DownloadManager(context) }
-    val themeMode by exploreViewModel.preferences.themeMode.collectAsState()
-    val exploreUiState by exploreViewModel.uiState.collectAsState()
+    val themeMode by exploreViewModel.preferences.themeMode.collectAsStateWithLifecycle()
+    val exploreUiState by exploreViewModel.uiState.collectAsStateWithLifecycle()
     val palette = when (exploreUiState.platform) {
         PlatformId.PIXIV -> LattePalette.PIXIV
         PlatformId.YANDE -> LattePalette.YANDE

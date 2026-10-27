@@ -1209,7 +1209,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             if (kind == PluginFeedKind.SEARCH && state.pixivSearchTags.isNotBlank()) {
                 pixivSearchCache[state.pixivSearchTags] = updated
             } else if (kind == PluginFeedKind.AUTHOR_WORKS && state.pixivAuthorId != null) {
-                pixivUserWorksCache[state.pixivAuthorId!!] = updated
+                pixivUserWorksCache[state.pixivAuthorId] = updated
             }
             nextState
         }

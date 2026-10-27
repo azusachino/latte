@@ -26,7 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -115,7 +115,7 @@ fun AccountManagerScreen(
                     .glassSurface(shape = RoundedCornerShape(16.dp), isElevated = true),
             ) {
                 pluginManager.plugins.forEachIndexed { index, plugin ->
-                    val isLoggedIn by plugin.isLoggedInFlow.collectAsState(initial = plugin.isLoggedIn)
+                    val isLoggedIn by plugin.isLoggedInFlow.collectAsStateWithLifecycle(initialValue = plugin.isLoggedIn)
 
                     AccountPreferenceWidget(
                         plugin = plugin,

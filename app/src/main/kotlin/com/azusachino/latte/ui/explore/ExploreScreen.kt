@@ -97,7 +97,7 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -267,8 +267,8 @@ fun ExploreScreen(
     downloadManager: DownloadManager? = null,
     modifier: Modifier = Modifier,
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val columnCount by viewModel.columnCount.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val columnCount by viewModel.columnCount.collectAsStateWithLifecycle()
     val popularGridState = rememberLazyStaggeredGridState()
     val newestGridState = rememberLazyStaggeredGridState()
     val favoritesGridState = rememberLazyStaggeredGridState()
@@ -279,7 +279,7 @@ fun ExploreScreen(
     val pixivSearchGridState = rememberLazyStaggeredGridState()
     val pixivUserWorksGridState = rememberLazyStaggeredGridState()
     val activePlugin = platformPlugins.getValue(uiState.platform)
-    val feedTabs = activePlugin?.feedTabs.orEmpty()
+    val feedTabs = activePlugin.feedTabs
     val tabCount = feedTabs.size.coerceAtLeast(1)
     val pagerState = rememberPagerState(initialPage = uiState.selectedTab.coerceAtMost(tabCount - 1)) { tabCount }
     val coroutineScope = rememberCoroutineScope()
@@ -306,7 +306,7 @@ fun ExploreScreen(
     var platformMenuOpen by remember { mutableStateOf(false) }
     val platformAccent = Color(uiState.platform.accentColor)
     val pixivIsLoggedIn = pixivPlugin?.let { plugin ->
-        val isLoggedIn by plugin.isLoggedInFlow.collectAsState(initial = plugin.isLoggedIn)
+        val isLoggedIn by plugin.isLoggedInFlow.collectAsStateWithLifecycle(initialValue = plugin.isLoggedIn)
         isLoggedIn
     } ?: false
 
@@ -1012,7 +1012,7 @@ fun ExploreScreen(
                                         if (uiState.supportsUserFeeds) viewModel.refreshPixiv(PluginFeedKind.POPULAR)
                                         else viewModel.refreshPopular()
                                     },
-                                    onRequireLogin = activePlugin?.let { p -> { onRequireLogin(p) } },
+                                    onRequireLogin = { onRequireLogin(activePlugin) },
                                     selectedPostIds = selectedPostIds,
                                     onToggleSelect = onToggleSelect,
                                 )
@@ -1037,7 +1037,7 @@ fun ExploreScreen(
                                         if (uiState.supportsUserFeeds) viewModel.refreshPixiv(PluginFeedKind.POPULAR)
                                         else viewModel.refreshPopular()
                                     },
-                                    onRequireLogin = activePlugin?.let { p -> { onRequireLogin(p) } },
+                                    onRequireLogin = { onRequireLogin(activePlugin) },
                                     selectedPostIds = selectedPostIds,
                                     onToggleSelect = onToggleSelect,
                                 )
@@ -1050,7 +1050,7 @@ fun ExploreScreen(
                                     plugin = activePlugin,
                                     feed = feed,
                                     label = if (tab.kind == PluginFeedKind.FOLLOWED) "Sign in to see followed updates"
-                                           else (activePlugin?.favoritesPrompt ?: "Sign in to see favorites"),
+                                           else activePlugin.favoritesPrompt,
                                     emptyTitle = if (tab.kind == PluginFeedKind.FOLLOWED) "No updates yet" else "No favorites yet",
                                     emptyHint = if (tab.kind == PluginFeedKind.FOLLOWED) {
                                         "Posts from artists you follow will show up here."
@@ -1065,15 +1065,15 @@ fun ExploreScreen(
                                     onRequireLogin = onRequireLogin,
                                     onLoadMore = {
                                         if (uiState.supportsUserFeeds) viewModel.loadMorePixiv(tab.kind)
-                                        else if (tab.kind == PluginFeedKind.FAVORITES) activePlugin?.getDisplayUsername()?.let(viewModel::loadMoreFavorites)
+                                        else if (tab.kind == PluginFeedKind.FAVORITES) activePlugin.getDisplayUsername()?.let(viewModel::loadMoreFavorites)
                                     },
                                     onRetry = {
                                         if (uiState.supportsUserFeeds) viewModel.loadPixivInitial(tab.kind)
-                                        else if (tab.kind == PluginFeedKind.FAVORITES) activePlugin?.getDisplayUsername()?.let(viewModel::loadFavoritesInitial)
+                                        else if (tab.kind == PluginFeedKind.FAVORITES) activePlugin.getDisplayUsername()?.let(viewModel::loadFavoritesInitial)
                                     },
                                     onRefresh = {
                                         if (uiState.supportsUserFeeds) viewModel.refreshPixiv(tab.kind)
-                                        else if (tab.kind == PluginFeedKind.FAVORITES) activePlugin?.getDisplayUsername()?.let(viewModel::refreshFavorites)
+                                        else if (tab.kind == PluginFeedKind.FAVORITES) activePlugin.getDisplayUsername()?.let(viewModel::refreshFavorites)
                                     },
                                     selectedPostIds = selectedPostIds,
                                     onToggleSelect = onToggleSelect,
@@ -1254,7 +1254,7 @@ private fun FeedGrid(
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Text(
-                                        text = feed.notice!!,
+                                        text = feed.notice,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         style = MaterialTheme.typography.bodyLarge,
                                     )
@@ -1413,7 +1413,7 @@ private fun PersonalFeedContent(
 ) {
     if (plugin == null) return
 
-    val isLoggedIn by plugin.isLoggedInFlow.collectAsState(initial = plugin.isLoggedIn)
+    val isLoggedIn by plugin.isLoggedInFlow.collectAsStateWithLifecycle(initialValue = plugin.isLoggedIn)
     val username = plugin.getDisplayUsername()
     val needsUsername = PlatformCapability.USER_FEED !in plugin.capabilities
 

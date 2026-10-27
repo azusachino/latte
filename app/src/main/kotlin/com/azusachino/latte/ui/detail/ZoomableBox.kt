@@ -42,7 +42,7 @@ fun ZoomableBox(
     var boxSize by remember { mutableStateOf(IntSize.Zero) }
     val currentOnTap by rememberUpdatedState(onTap)
 
-    val transformableState = rememberTransformableState { zoomChange, panChange, _ ->
+    val transformableState = rememberTransformableState { _, zoomChange, panChange, _ ->
         val newScale = (scale * zoomChange).coerceIn(minScale, maxScale)
         scale = newScale
         if (newScale > 1.02f) {
