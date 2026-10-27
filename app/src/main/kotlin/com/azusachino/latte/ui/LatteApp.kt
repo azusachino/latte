@@ -20,6 +20,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -30,6 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.launch
 import com.azusachino.latte.plugin.storage.SecurePluginStorage
 import com.azusachino.latte.plugin.konachan.KonachanPlugin
 import com.azusachino.latte.plugin.yande.YandePlugin
@@ -168,6 +170,7 @@ fun LatteApp(
     LatteTheme(themeMode = themeMode, palette = palette) {
         // Root content the toast pill blurs; screens keep their own sources inside it.
         val toastHazeState = rememberHazeState()
+        val backSettleScope = rememberCoroutineScope()
 
         Box(modifier = modifier.fillMaxSize()) {
             val predictiveBackProgress = remember { Animatable(0f) }
@@ -187,15 +190,16 @@ fun LatteApp(
                         animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
                     )
                 } catch (e: CancellationException) {
-                    // CancellationException is thrown by PredictiveBackHandler when the user drags
-                    // back toward the screen edge to cancel the gesture rather than committing it.
-                    predictiveBackProgress.animateTo(
-                        targetValue = 0f,
-                        animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
-                    )
+                    // When the gesture is cancelled, androidx PredictiveBackHandler cancels the handler
+                    // coroutine. Launching the settle in backSettleScope guarantees the animation
+                    // runs to completion rather than immediately aborting in the cancelled coroutine.
+                    backSettleScope.launch {
+                        predictiveBackProgress.animateTo(
+                            targetValue = 0f,
+                            animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
+                        )
+                    }
                     throw e
-                } finally {
-                    predictiveBackProgress.snapTo(0f)
                 }
             }
 
