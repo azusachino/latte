@@ -1747,12 +1747,13 @@ private fun PoolListItem(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun PostGridItem(
+internal fun PostGridItem(
     post: Post,
     isSelectionMode: Boolean = false,
     isSelected: Boolean = false,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
+    bottomLabel: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val imageSources = remember(post.siteId, post.id, post.pageIndex) { post.imageSources }
@@ -1906,6 +1907,20 @@ private fun PostGridItem(
                         )
                     }
                 }
+            }
+
+            if (bottomLabel != null) {
+                Text(
+                    text = bottomLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(8.dp)
+                        .glassPillSelection(selected = false, shape = RoundedCornerShape(12.dp))
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                )
             }
         }
     }

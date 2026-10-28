@@ -1,24 +1,20 @@
 package com.azusachino.latte.ui.history
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -34,26 +30,22 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil3.compose.AsyncImage
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.settings.LattePreferences
 import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.ui.common.GlassPillChip
 import com.azusachino.latte.ui.common.GlassTopBar
 import com.azusachino.latte.ui.common.glassCard
-import com.azusachino.latte.ui.theme.glassPillSelection
+import com.azusachino.latte.ui.explore.PostGridItem
 import com.azusachino.latte.ui.theme.pressScale
 
 /**
- * Posts the owner has opened, most recent first, across every platform. The
- * glass pills narrow the list to one platform. Tapping a card opens Detail
- * over the filtered list, so it can be swiped through like a feed.
+ * Posts the owner has opened, most recent first, across every platform, laid
+ * out in the same grid as Explore. Each tile carries its platform name at the
+ * bottom. The glass pills narrow the grid to one platform, and tapping a tile
+ * opens Detail over the filtered grid so it can be swiped through.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,6 +56,7 @@ fun ViewHistoryScreen(
     modifier: Modifier = Modifier,
 ) {
     val history by preferences.viewHistory.collectAsStateWithLifecycle()
+    val columnCount by preferences.columnCount.collectAsStateWithLifecycle()
     var platformFilter by rememberSaveable { mutableStateOf<PlatformId?>(null) }
     val visible = remember(history, platformFilter) {
         history.filter { platformFilter == null || it.platform == platformFilter }
@@ -118,65 +111,23 @@ fun ViewHistoryScreen(
             when {
                 history.isEmpty() -> EmptyHistory("Posts you open will appear here.")
                 visible.isEmpty() -> EmptyHistory("No ${platformFilter?.displayName} posts in your history yet.")
-                else -> LazyColumn(
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                else -> LazyVerticalStaggeredGrid(
+                    columns = StaggeredGridCells.Fixed(columnCount),
+                    contentPadding = PaddingValues(start = 4.dp, end = 4.dp, bottom = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalItemSpacing = 4.dp,
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     itemsIndexed(visible, key = { _, post -> "${post.siteId}:${post.id}" }) { index, post ->
-                        HistoryCard(post = post, onClick = { onPostClick(visible, index) })
+                        PostGridItem(
+                            post = post,
+                            onClick = { onPostClick(visible, index) },
+                            bottomLabel = post.platform.displayName,
+                        )
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun HistoryCard(post: Post, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .glassCard()
-            .clickable(onClick = onClick)
-            .padding(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        AsyncImage(
-            model = post.previewUrl,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(64.dp)
-                .clip(RoundedCornerShape(10.dp)),
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = post.title ?: "#${post.id}",
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            PlatformPill(post.platform.displayName)
-        }
-    }
-}
-
-@Composable
-private fun PlatformPill(label: String) {
-    Box(
-        modifier = Modifier
-            .glassPillSelection(selected = false, shape = RoundedCornerShape(12.dp))
-            .padding(horizontal = 10.dp, vertical = 3.dp),
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 
