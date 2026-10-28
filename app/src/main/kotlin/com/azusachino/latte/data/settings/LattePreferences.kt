@@ -2,6 +2,7 @@ package com.azusachino.latte.data.settings
 
 import android.content.Context
 import com.azusachino.latte.data.model.FavoriteTag
+import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.plugin.PlatformId
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -16,11 +17,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import java.io.File
 
+@Serializable
 enum class ThemeMode {
     SYSTEM, LIGHT, DARK
 }
@@ -62,6 +65,18 @@ object LattePreferenceCodecs {
     private val listSerializer = ListSerializer(String.serializer())
 
     private val favoriteTagsSerializer = ListSerializer(FavoriteTag.serializer())
+
+    private val postsSerializer = ListSerializer(Post.serializer())
+
+    fun encodeViewHistory(values: List<Post>): String =
+        json.encodeToString(postsSerializer, values)
+
+    fun decodeViewHistory(value: String): List<Post> =
+        runCatching { json.decodeFromString(postsSerializer, value) }.getOrDefault(emptyList())
+
+    /** Puts [post] first, dropping any earlier view of the same work, and keeps the newest [limit]. */
+    fun recordView(existing: List<Post>, post: Post, limit: Int = 200): List<Post> =
+        (listOf(post) + existing.filterNot { it.siteId == post.siteId && it.id == post.id }).take(limit)
 }
 
 class LattePreferences(private val context: Context) {
@@ -93,6 +108,9 @@ class LattePreferences(private val context: Context) {
     private val _proxyPort = MutableStateFlow<Int?>(null)
     val proxyPort: StateFlow<Int?> = _proxyPort.asStateFlow()
 
+    private val _viewHistory = MutableStateFlow<List<Post>>(emptyList())
+    val viewHistory: StateFlow<List<Post>> = _viewHistory.asStateFlow()
+
     init {
         scope.launch {
             migrateLegacyPrefsOnce()
@@ -115,6 +133,9 @@ class LattePreferences(private val context: Context) {
                 }
                 _recentSearches.value = runCatching { values[KEY_RECENT_SEARCHES] }.getOrNull()
                     ?.let(LattePreferenceCodecs::decodeRecentSearches)
+                    ?: emptyList()
+                _viewHistory.value = runCatching { values[KEY_VIEW_HISTORY] }.getOrNull()
+                    ?.let(LattePreferenceCodecs::decodeViewHistory)
                     ?: emptyList()
                 _proxyHost.value = values[KEY_HTTP_PROXY_HOST]
                 _proxyPort.value = values[KEY_HTTP_PROXY_PORT]
@@ -190,6 +211,61 @@ class LattePreferences(private val context: Context) {
         }
     }
 
+    fun recordView(post: Post) {
+        scope.launch {
+            dataStore.edit { values ->
+                val existing = values[KEY_VIEW_HISTORY]
+                    ?.let(LattePreferenceCodecs::decodeViewHistory)
+                    ?: emptyList()
+                values[KEY_VIEW_HISTORY] = LattePreferenceCodecs.encodeViewHistory(
+                    LattePreferenceCodecs.recordView(existing, post),
+                )
+            }
+        }
+    }
+
+    fun clearViewHistory() {
+        scope.launch {
+            dataStore.edit { values -> values.remove(KEY_VIEW_HISTORY) }
+        }
+    }
+
+    fun exportBackup(): String = LatteBackupCodec.encode(
+        LatteBackup(
+            columnCount = _columnCount.value,
+            themeMode = _themeMode.value,
+            safeMode = _safeMode.value,
+            favoriteTags = _favoriteTags.value,
+            recentSearches = _recentSearches.value,
+            proxyHost = _proxyHost.value,
+            proxyPort = _proxyPort.value,
+            viewHistory = _viewHistory.value,
+        ),
+    )
+
+    /** Replaces the local settings and history with [text]'s contents. Credentials are untouched. */
+    suspend fun importBackup(text: String): Result<Unit> {
+        val backup = LatteBackupCodec.decode(text).getOrElse { return Result.failure(it) }
+        dataStore.edit { values ->
+            values[KEY_COLUMN_COUNT] = backup.columnCount
+            values[KEY_THEME_MODE] = backup.themeMode.name
+            values[KEY_SAFE_MODE] = backup.safeMode
+            values[KEY_FAVORITE_TAGS] = LattePreferenceCodecs.encodeFavoriteTags(backup.favoriteTags)
+            values[KEY_RECENT_SEARCHES] = LattePreferenceCodecs.encodeRecentSearches(backup.recentSearches)
+            values[KEY_VIEW_HISTORY] = LattePreferenceCodecs.encodeViewHistory(backup.viewHistory)
+            val host = backup.proxyHost
+            val port = backup.proxyPort
+            if (host.isNullOrBlank() || port == null || port <= 0) {
+                values.remove(KEY_HTTP_PROXY_HOST)
+                values.remove(KEY_HTTP_PROXY_PORT)
+            } else {
+                values[KEY_HTTP_PROXY_HOST] = host
+                values[KEY_HTTP_PROXY_PORT] = port
+            }
+        }
+        return Result.success(Unit)
+    }
+
     fun clearRecentSearches() {
         scope.launch {
             dataStore.edit { values ->
@@ -223,6 +299,7 @@ class LattePreferences(private val context: Context) {
         private val KEY_SAFE_MODE = booleanPreferencesKey("safe_mode")
         private val KEY_FAVORITE_TAGS = stringPreferencesKey("favorite_tags")
         private val KEY_RECENT_SEARCHES = stringPreferencesKey("recent_searches")
+        private val KEY_VIEW_HISTORY = stringPreferencesKey("view_history")
         private val KEY_HTTP_PROXY_HOST = stringPreferencesKey("http_proxy_host")
         private val KEY_HTTP_PROXY_PORT = intPreferencesKey("http_proxy_port")
     }

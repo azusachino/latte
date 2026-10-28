@@ -11,6 +11,7 @@ data class ArtworkIdentity(
     val workId: Long,
 )
 
+@Serializable
 data class ArtworkPage(
     val pageIndex: Int,
     val width: Int,

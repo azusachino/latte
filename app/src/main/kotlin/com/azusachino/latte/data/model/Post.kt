@@ -1,8 +1,10 @@
 package com.azusachino.latte.data.model
 
 import com.azusachino.latte.plugin.PlatformId
+import kotlinx.serialization.Serializable
 import java.time.LocalDate
 
+@Serializable
 enum class PostRating {
     SAFE, QUESTIONABLE, EXPLICIT, UNKNOWN;
 
@@ -20,6 +22,7 @@ enum class PopularPeriod {
     DAY, WEEK, MONTH, YEAR
 }
 
+@Serializable
 data class MediaVariant(
     val id: String,
     val url: String,
@@ -31,6 +34,7 @@ data class MediaVariant(
     val fallbackOnPreviewFailure: Boolean = false,
 )
 
+@Serializable
 data class Post(
     val id: Long,
     val platform: PlatformId,
