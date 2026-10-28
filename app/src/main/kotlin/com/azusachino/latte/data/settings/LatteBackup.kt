@@ -30,7 +30,10 @@ data class LatteBackup(
 object LatteBackupCodec {
     private val json = Json {
         ignoreUnknownKeys = true
+        // Write defaults too, so the file always states its format version.
+        encodeDefaults = true
         prettyPrint = true
+        prettyPrintIndent = "  "
     }
 
     fun encode(backup: LatteBackup): String =

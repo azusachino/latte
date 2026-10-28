@@ -47,6 +47,14 @@ class LatteBackupTest {
     }
 
     @Test
+    fun encodedBackupAlwaysStatesItsVersionAndEveryField() {
+        val text = LatteBackupCodec.encode(LatteBackup())
+        assertTrue(text.contains("\"version\": 1"))
+        assertTrue(text.contains("\"viewHistory\": []"))
+        assertTrue(text.contains("\"proxyHost\": null"))
+    }
+
+    @Test
     fun unknownFieldsFromNewerBuildsAreIgnored() {
         val text = """{"version":1,"columnCount":4,"someFutureField":true}"""
         val decoded = LatteBackupCodec.decode(text).getOrThrow()

@@ -133,7 +133,7 @@ fun SettingsScreen(
 
     var pendingRestoreText by remember { mutableStateOf<String?>(null) }
     val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json"),
+        ActivityResultContracts.CreateDocument("application/octet-stream"),
     ) { uri ->
         if (uri != null) {
             coroutineScope.launch {
@@ -346,7 +346,7 @@ fun SettingsScreen(
                     icon = Icons.Default.KeyboardArrowUp,
                     title = "Export Backup",
                     subtitle = "Settings, favorite tags, searches and history (no accounts)",
-                    onClick = { exportLauncher.launch("latte-backup.json") },
+                    onClick = { exportLauncher.launch("latte-backup.lattebak") },
                 )
 
                 SettingsDivider()
@@ -355,7 +355,7 @@ fun SettingsScreen(
                     icon = Icons.Default.Refresh,
                     title = "Restore Backup",
                     subtitle = "Replace local data with a backup file",
-                    onClick = { importLauncher.launch(arrayOf("application/json")) },
+                    onClick = { importLauncher.launch(arrayOf("*/*")) },
                 )
             }
 

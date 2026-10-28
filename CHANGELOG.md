@@ -5,7 +5,7 @@
 ### Added
 
 - Viewing history: posts you open are kept, most recent first (up to 200), and listed under Settings > Viewing History. Tapping one opens Detail over the list so you can swipe through it; the same screen clears the history.
-- Backup and restore: Settings > Data > Export Backup saves your settings, favorite tags, recent searches and viewing history to a JSON file. Restore Backup replaces local data from such a file. Accounts are not included, so sign in again after restoring.
+- Backup and restore: Settings > Data > Export Backup saves your settings, favorite tags, recent searches and viewing history to a .lattebak file (JSON, schema in docs/schemas/latte-backup-v1.schema.json). Restore Backup replaces local data from such a file. Accounts are not included, so sign in again after restoring.
 - Back to top: a button appears in every feed once you scroll past the first screen of posts, and returns you to the top.
 
 ## 0.3.1 - 2026-10-27
