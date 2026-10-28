@@ -72,6 +72,7 @@ import com.azusachino.latte.data.update.UpdateCheckResult
 import com.azusachino.latte.data.update.UpdateDownloader
 import com.azusachino.latte.data.update.UpdateInfo
 import com.azusachino.latte.data.update.UpdateService
+import com.azusachino.latte.ui.common.GlassPillChip
 import com.azusachino.latte.ui.common.LatteIcons
 import com.azusachino.latte.ui.common.ToastManager
 import com.azusachino.latte.ui.theme.GlassDefaults
@@ -839,35 +840,6 @@ private fun SettingsSectionHeader(title: String) {
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 8.dp),
     )
-}
-
-@Composable
-private fun GlassPillChip(
-    selected: Boolean,
-    onClick: () -> Unit,
-    label: String,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .pressScale()
-            .glassPillSelection(selected = selected)
-            .clip(RoundedCornerShape(GlassDefaults.PillCornerRadius))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            color = if (selected) {
-                MaterialTheme.colorScheme.onPrimaryContainer
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-        )
-    }
 }
 
 @Composable
