@@ -133,6 +133,7 @@ fun DetailScreen(
     onRequireLogin: (SitePlugin) -> Unit = {},
     favoriteTags: List<FavoriteTag> = emptyList(),
     onToggleFavoriteTag: ((tag: String, platform: PlatformId) -> Unit)? = null,
+    onPostViewed: (Post) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val detailPosts = posts
@@ -217,6 +218,10 @@ fun DetailScreen(
         if (showControls) {
             showTransientPageIndicator = false
         }
+    }
+
+    LaunchedEffect(currentPost?.siteId, currentPost?.id) {
+        currentPost?.let(onPostViewed)
     }
 
     LaunchedEffect(currentPost?.siteId, currentPost?.id) {

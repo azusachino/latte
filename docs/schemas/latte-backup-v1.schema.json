@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/azusachino/latte/docs/schemas/latte-backup-v1.schema.json",
+  "title": "Latte backup (.lattebak)",
+  "description": "Settings, favorite tags, recent searches and viewing history exported by Latte. The .lattebak file is this JSON document, gzip-compressed. Accounts are never included.",
+  "type": "object",
+  "required": ["version", "columnCount", "themeMode", "safeMode", "favoriteTags", "recentSearches", "proxyHost", "proxyPort", "viewHistory"],
+  "additionalProperties": true,
+  "properties": {
+    "version": { "const": 1 },
+    "columnCount": { "type": "integer", "minimum": 1 },
+    "themeMode": { "enum": ["SYSTEM", "LIGHT", "DARK"] },
+    "safeMode": { "type": "boolean" },
+    "favoriteTags": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["tag", "platform"],
+        "properties": {
+          "tag": { "type": "string" },
+          "platform": { "$ref": "#/$defs/platform" }
+        }
+      }
+    },
+    "recentSearches": { "type": "array", "items": { "type": "string" } },
+    "proxyHost": { "type": ["string", "null"] },
+    "proxyPort": { "type": ["integer", "null"], "minimum": 1, "maximum": 65535 },
+    "viewHistory": { "type": "array", "items": { "$ref": "#/$defs/post" } }
+  },
+  "$defs": {
+    "platform": { "enum": ["YANDE", "KONACHAN", "PIXIV"] },
+    "rating": { "enum": ["SAFE", "QUESTIONABLE", "EXPLICIT", "UNKNOWN"] },
+    "mediaVariant": {
+      "type": "object",
+      "required": ["id", "url", "width", "height"],
+      "properties": {
+        "id": { "type": "string" },
+        "url": { "type": "string" },
+        "width": { "type": "integer" },
+        "height": { "type": "integer" },
+        "fileSize": { "type": ["integer", "null"] },
+        "extension": { "type": ["string", "null"] },
+        "downloadPriority": { "type": "integer" },
+        "fallbackOnPreviewFailure": { "type": "boolean" }
+      }
+    },
+    "post": {
+      "type": "object",
+      "required": ["id", "platform", "rating", "tags", "score", "author", "source", "createdAt", "width", "height", "previewUrl", "sampleUrl", "jpegUrl", "originalUrl", "variants"],
+      "properties": {
+        "id": { "type": "integer" },
+        "platform": { "$ref": "#/$defs/platform" },
+        "rating": { "$ref": "#/$defs/rating" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "score": { "type": "integer" },
+        "author": { "type": ["string", "null"] },
+        "source": { "type": ["string", "null"] },
+        "createdAt": { "type": ["integer", "null"] },
+        "width": { "type": "integer" },
+        "height": { "type": "integer" },
+        "previewUrl": { "type": "string" },
+        "sampleUrl": { "type": "string" },
+        "jpegUrl": { "type": ["string", "null"] },
+        "originalUrl": { "type": "string" },
+        "variants": { "type": "array", "items": { "$ref": "#/$defs/mediaVariant" } },
+        "title": { "type": ["string", "null"] },
+        "canonicalUrl": { "type": ["string", "null"] },
+        "bookmarkCount": { "type": ["integer", "null"] },
+        "isBookmarked": { "type": "boolean" },
+        "pageIndex": { "type": "integer" },
+        "pageCount": { "type": "integer" },
+        "pages": { "type": "array" },
+        "authorId": { "type": ["integer", "null"] }
+      }
+    }
+  }
+}

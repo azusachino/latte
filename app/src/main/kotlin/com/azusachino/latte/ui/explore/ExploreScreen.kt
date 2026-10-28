@@ -60,6 +60,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -85,6 +86,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -1386,9 +1388,35 @@ private fun FeedGrid(
                     trackColor = Color.Transparent,
                 )
             }
+
+            val coroutineScope = rememberCoroutineScope()
+            val showBackToTop by remember {
+                derivedStateOf { shouldShowBackToTop(gridState.firstVisibleItemIndex) }
+            }
+            AnimatedVisibility(
+                visible = showBackToTop,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
+                enter = fadeIn() + scaleIn(),
+                exit = fadeOut() + scaleOut(),
+            ) {
+                SmallFloatingActionButton(
+                    onClick = { coroutineScope.launch { gridState.animateScrollToItem(0) } },
+                    modifier = Modifier.pressScale(),
+                ) {
+                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Back to top")
+                }
+            }
         }
     }
 }
+
+// Shows the button once the feed is well past the first screenful of posts.
+internal const val BACK_TO_TOP_THRESHOLD_ITEMS = 12
+
+internal fun shouldShowBackToTop(firstVisibleIndex: Int): Boolean =
+    firstVisibleIndex >= BACK_TO_TOP_THRESHOLD_ITEMS
 
 @Composable
 private fun PersonalFeedContent(
@@ -1719,12 +1747,13 @@ private fun PoolListItem(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun PostGridItem(
+internal fun PostGridItem(
     post: Post,
     isSelectionMode: Boolean = false,
     isSelected: Boolean = false,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
+    bottomLabel: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val imageSources = remember(post.siteId, post.id, post.pageIndex) { post.imageSources }
@@ -1878,6 +1907,20 @@ private fun PostGridItem(
                         )
                     }
                 }
+            }
+
+            if (bottomLabel != null) {
+                Text(
+                    text = bottomLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(8.dp)
+                        .glassPillSelection(selected = false, shape = RoundedCornerShape(12.dp))
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                )
             }
         }
     }

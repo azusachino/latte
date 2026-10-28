@@ -55,6 +55,7 @@ import com.azusachino.latte.ui.explore.FavoriteTagsScreen
 import com.azusachino.latte.ui.detail.DetailScreen
 import com.azusachino.latte.ui.explore.ExploreScreen
 import com.azusachino.latte.ui.explore.ExploreViewModel
+import com.azusachino.latte.ui.history.ViewHistoryScreen
 import com.azusachino.latte.ui.settings.SettingsScreen
 import com.azusachino.latte.ui.theme.LattePalette
 import com.azusachino.latte.ui.theme.LatteTheme
@@ -280,7 +281,7 @@ fun LatteApp(
                             )
                         }
                         is Screen.Detail -> {
-                            val postsToDisplay = detailPostsFor(screen, exploreUiState.posts)
+                            val postsToDisplay = if (screen.fromHistory) screen.posts else detailPostsFor(screen, exploreUiState.posts)
                             DetailScreen(
                                 posts = postsToDisplay,
                                 initialIndex = screen.initialIndex,
@@ -335,6 +336,9 @@ fun LatteApp(
                                 onRequireLogin = { plugin ->
                                     activeLoginPlugin = plugin
                                 },
+                                onPostViewed = { post ->
+                                    exploreViewModel.preferences.recordView(post)
+                                },
                             )
                         }
                         is Screen.Settings -> {
@@ -345,6 +349,9 @@ fun LatteApp(
                                 },
                                 onOpenAccountManager = {
                                     navigation = navigation.push(Screen.AccountManager)
+                                },
+                                onOpenViewHistory = {
+                                    navigation = navigation.push(Screen.ViewHistory)
                                 },
                                 onClearSearchCaches = {
                                     exploreViewModel.clearSearchCaches()
@@ -359,6 +366,17 @@ fun LatteApp(
                                     exploreViewModel.selectPlatform(favorite.platform)
                                     exploreViewModel.search(favorite.tag)
                                     navigation = navigation.push(Screen.TagSearch(query = favorite.tag))
+                                },
+                            )
+                        }
+                        is Screen.ViewHistory -> {
+                            ViewHistoryScreen(
+                                preferences = exploreViewModel.preferences,
+                                onBack = { popNavigation() },
+                                onPostClick = { posts, index ->
+                                    navigation = navigation.push(
+                                        Screen.Detail(posts = posts, initialIndex = index, fromHistory = true),
+                                    )
                                 },
                             )
                         }

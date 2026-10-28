@@ -20,10 +20,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -58,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.azusachino.latte.BuildConfig
 import com.azusachino.latte.data.cache.CacheManager
+import com.azusachino.latte.data.settings.LatteBackupCodec
 import com.azusachino.latte.data.settings.LattePreferences
 import com.azusachino.latte.data.settings.ThemeMode
 import com.azusachino.latte.data.update.ApkInstaller
@@ -66,6 +72,7 @@ import com.azusachino.latte.data.update.UpdateCheckResult
 import com.azusachino.latte.data.update.UpdateDownloader
 import com.azusachino.latte.data.update.UpdateInfo
 import com.azusachino.latte.data.update.UpdateService
+import com.azusachino.latte.ui.common.GlassPillChip
 import com.azusachino.latte.ui.common.LatteIcons
 import com.azusachino.latte.ui.common.ToastManager
 import com.azusachino.latte.ui.theme.GlassDefaults
@@ -77,6 +84,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.time.LocalDateTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,6 +92,7 @@ fun SettingsScreen(
     preferences: LattePreferences,
     onBack: () -> Unit,
     onOpenAccountManager: () -> Unit = {},
+    onOpenViewHistory: () -> Unit = {},
     onClearSearchCaches: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -124,6 +133,79 @@ fun SettingsScreen(
     var downloadProgress by remember { mutableStateOf<DownloadProgress?>(null) }
     var downloadedApkFile by remember { mutableStateOf<File?>(null) }
     var downloadErrorMessage by remember { mutableStateOf<String?>(null) }
+
+    var pendingRestoreBytes by remember { mutableStateOf<ByteArray?>(null) }
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/octet-stream"),
+    ) { uri ->
+        if (uri != null) {
+            coroutineScope.launch {
+                val saved = withContext(Dispatchers.IO) {
+                    runCatching {
+                        context.contentResolver.openOutputStream(uri)?.use { it.write(preferences.exportBackup()) }
+                            ?: error("Could not open the backup file")
+                    }.isSuccess
+                }
+                if (saved) {
+                    ToastManager.showSuccess("Backup saved")
+                } else {
+                    ToastManager.showWarning("Could not save the backup")
+                }
+            }
+        }
+    }
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            coroutineScope.launch {
+                val bytes = withContext(Dispatchers.IO) {
+                    runCatching {
+                        context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    }.getOrNull()
+                }
+                if (bytes == null) {
+                    ToastManager.showWarning("Could not read the backup file")
+                } else {
+                    pendingRestoreBytes = bytes
+                }
+            }
+        }
+    }
+
+    pendingRestoreBytes?.let { bytes ->
+        AlertDialog(
+            onDismissRequest = { pendingRestoreBytes = null },
+            title = { Text("Restore backup?") },
+            text = {
+                Text(
+                    "This replaces your settings, favorite tags, recent searches and viewing history. " +
+                        "Accounts are not included, so sign in again if needed.",
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingRestoreBytes = null
+                        coroutineScope.launch {
+                            if (preferences.importBackup(bytes).isSuccess) {
+                                ToastManager.showSuccess("Backup restored")
+                            } else {
+                                ToastManager.showWarning("That file is not a valid Latte backup")
+                            }
+                        }
+                    },
+                ) {
+                    Text("Restore")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingRestoreBytes = null }) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -250,6 +332,35 @@ fun SettingsScreen(
             }
 
             // Storage & Network Section
+            SettingsSectionHeader("Data")
+            SettingsGroupCard {
+                SettingsRow(
+                    icon = Icons.Default.DateRange,
+                    title = "Viewing History",
+                    subtitle = "Posts you have opened",
+                    showChevron = true,
+                    onClick = onOpenViewHistory,
+                )
+
+                SettingsDivider()
+
+                SettingsRow(
+                    icon = Icons.Default.KeyboardArrowUp,
+                    title = "Export Backup",
+                    subtitle = "Settings, favorite tags, searches and history (no accounts)",
+                    onClick = { exportLauncher.launch(LatteBackupCodec.fileName(LocalDateTime.now())) },
+                )
+
+                SettingsDivider()
+
+                SettingsRow(
+                    icon = Icons.Default.Refresh,
+                    title = "Restore Backup",
+                    subtitle = "Replace local data with a backup file",
+                    onClick = { importLauncher.launch(arrayOf("*/*")) },
+                )
+            }
+
             SettingsSectionHeader("Storage & Network")
             SettingsGroupCard {
                 SettingsRow(
@@ -729,35 +840,6 @@ private fun SettingsSectionHeader(title: String) {
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 8.dp),
     )
-}
-
-@Composable
-private fun GlassPillChip(
-    selected: Boolean,
-    onClick: () -> Unit,
-    label: String,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .pressScale()
-            .glassPillSelection(selected = selected)
-            .clip(RoundedCornerShape(GlassDefaults.PillCornerRadius))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            color = if (selected) {
-                MaterialTheme.colorScheme.onPrimaryContainer
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-        )
-    }
 }
 
 @Composable
