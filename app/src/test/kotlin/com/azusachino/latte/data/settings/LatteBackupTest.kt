@@ -67,6 +67,28 @@ class LatteBackupTest {
     }
 
     @Test
+    fun compressedBackupRoundTripsAndStartsWithGzipMagic() {
+        val backup = LatteBackup(viewHistory = listOf(post(1, "first"), post(2)))
+        val bytes = LatteBackupCodec.encodeCompressed(backup)
+        assertEquals(0x1f.toByte(), bytes[0])
+        assertEquals(0x8b.toByte(), bytes[1])
+        assertEquals(backup, LatteBackupCodec.decodeBytes(bytes).getOrThrow())
+    }
+
+    @Test
+    fun plainJsonBackupStillDecodes() {
+        val backup = LatteBackup(columnCount = 3)
+        val bytes = LatteBackupCodec.encode(backup).toByteArray(Charsets.UTF_8)
+        assertEquals(backup, LatteBackupCodec.decodeBytes(bytes).getOrThrow())
+    }
+
+    @Test
+    fun truncatedGzipIsRejected() {
+        val bytes = LatteBackupCodec.encodeCompressed(LatteBackup()).copyOf(6)
+        assertTrue(LatteBackupCodec.decodeBytes(bytes).isFailure)
+    }
+
+    @Test
     fun malformedFileIsRejected() {
         assertTrue(LatteBackupCodec.decode("not a backup").isFailure)
     }

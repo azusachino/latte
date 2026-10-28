@@ -230,7 +230,7 @@ class LattePreferences(private val context: Context) {
         }
     }
 
-    fun exportBackup(): String = LatteBackupCodec.encode(
+    fun exportBackup(): ByteArray = LatteBackupCodec.encodeCompressed(
         LatteBackup(
             columnCount = _columnCount.value,
             themeMode = _themeMode.value,
@@ -244,8 +244,8 @@ class LattePreferences(private val context: Context) {
     )
 
     /** Replaces the local settings and history with [text]'s contents. Credentials are untouched. */
-    suspend fun importBackup(text: String): Result<Unit> {
-        val backup = LatteBackupCodec.decode(text).getOrElse { return Result.failure(it) }
+    suspend fun importBackup(bytes: ByteArray): Result<Unit> {
+        val backup = LatteBackupCodec.decodeBytes(bytes).getOrElse { return Result.failure(it) }
         dataStore.edit { values ->
             values[KEY_COLUMN_COUNT] = backup.columnCount
             values[KEY_THEME_MODE] = backup.themeMode.name

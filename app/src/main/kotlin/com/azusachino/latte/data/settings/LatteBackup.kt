@@ -4,6 +4,9 @@ import com.azusachino.latte.data.model.FavoriteTag
 import com.azusachino.latte.data.model.Post
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.io.ByteArrayOutputStream
+import java.util.zip.GZIPInputStream
+import java.util.zip.GZIPOutputStream
 
 /**
  * A portable copy of the local preferences, favorite tags, recent searches and
@@ -48,4 +51,21 @@ object LatteBackupCodec {
         }
         backup
     }
+
+    /** The .lattebak file: the JSON gzip-compressed. */
+    fun encodeCompressed(backup: LatteBackup): ByteArray {
+        val out = ByteArrayOutputStream()
+        GZIPOutputStream(out).use { it.write(encode(backup).toByteArray(Charsets.UTF_8)) }
+        return out.toByteArray()
+    }
+
+    /** Accepts a gzip-compressed backup, or plain JSON for files written before compression. */
+    fun decodeBytes(bytes: ByteArray): Result<LatteBackup> = runCatching {
+        val isGzip = bytes.size >= 2 && bytes[0] == GZIP_MAGIC_1 && bytes[1] == GZIP_MAGIC_2
+        val json = if (isGzip) GZIPInputStream(bytes.inputStream()).use { it.readBytes() } else bytes
+        json.toString(Charsets.UTF_8)
+    }.mapCatching { text -> decode(text).getOrThrow() }
+
+    private const val GZIP_MAGIC_1: Byte = 0x1f.toByte()
+    private const val GZIP_MAGIC_2: Byte = 0x8b.toByte()
 }

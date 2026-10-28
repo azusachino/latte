@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/azusachino/latte/docs/schemas/latte-backup-v1.schema.json",
   "title": "Latte backup (.lattebak)",
-  "description": "Settings, favorite tags, recent searches and viewing history exported by Latte. Accounts are never included.",
+  "description": "Settings, favorite tags, recent searches and viewing history exported by Latte. The .lattebak file is this JSON document, gzip-compressed. Accounts are never included.",
   "type": "object",
   "required": ["version", "columnCount", "themeMode", "safeMode", "favoriteTags", "recentSearches", "proxyHost", "proxyPort", "viewHistory"],
   "additionalProperties": true,

@@ -131,7 +131,7 @@ fun SettingsScreen(
     var downloadedApkFile by remember { mutableStateOf<File?>(null) }
     var downloadErrorMessage by remember { mutableStateOf<String?>(null) }
 
-    var pendingRestoreText by remember { mutableStateOf<String?>(null) }
+    var pendingRestoreBytes by remember { mutableStateOf<ByteArray?>(null) }
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/octet-stream"),
     ) { uri ->
@@ -139,9 +139,8 @@ fun SettingsScreen(
             coroutineScope.launch {
                 val saved = withContext(Dispatchers.IO) {
                     runCatching {
-                        context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { writer ->
-                            writer.write(preferences.exportBackup())
-                        } ?: error("Could not open the backup file")
+                        context.contentResolver.openOutputStream(uri)?.use { it.write(preferences.exportBackup()) }
+                            ?: error("Could not open the backup file")
                     }.isSuccess
                 }
                 if (saved) {
@@ -157,23 +156,23 @@ fun SettingsScreen(
     ) { uri ->
         if (uri != null) {
             coroutineScope.launch {
-                val text = withContext(Dispatchers.IO) {
+                val bytes = withContext(Dispatchers.IO) {
                     runCatching {
-                        context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                        context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
                     }.getOrNull()
                 }
-                if (text == null) {
+                if (bytes == null) {
                     ToastManager.showWarning("Could not read the backup file")
                 } else {
-                    pendingRestoreText = text
+                    pendingRestoreBytes = bytes
                 }
             }
         }
     }
 
-    pendingRestoreText?.let { text ->
+    pendingRestoreBytes?.let { bytes ->
         AlertDialog(
-            onDismissRequest = { pendingRestoreText = null },
+            onDismissRequest = { pendingRestoreBytes = null },
             title = { Text("Restore backup?") },
             text = {
                 Text(
@@ -184,9 +183,9 @@ fun SettingsScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        pendingRestoreText = null
+                        pendingRestoreBytes = null
                         coroutineScope.launch {
-                            if (preferences.importBackup(text).isSuccess) {
+                            if (preferences.importBackup(bytes).isSuccess) {
                                 ToastManager.showSuccess("Backup restored")
                             } else {
                                 ToastManager.showWarning("That file is not a valid Latte backup")
@@ -198,7 +197,7 @@ fun SettingsScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pendingRestoreText = null }) {
+                TextButton(onClick = { pendingRestoreBytes = null }) {
                     Text("Cancel")
                 }
             },
