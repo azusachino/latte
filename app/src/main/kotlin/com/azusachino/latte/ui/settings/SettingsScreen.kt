@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.azusachino.latte.BuildConfig
 import com.azusachino.latte.data.cache.CacheManager
+import com.azusachino.latte.data.settings.LatteBackupCodec
 import com.azusachino.latte.data.settings.LattePreferences
 import com.azusachino.latte.data.settings.ThemeMode
 import com.azusachino.latte.data.update.ApkInstaller
@@ -82,6 +83,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.time.LocalDateTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -345,7 +347,7 @@ fun SettingsScreen(
                     icon = Icons.Default.KeyboardArrowUp,
                     title = "Export Backup",
                     subtitle = "Settings, favorite tags, searches and history (no accounts)",
-                    onClick = { exportLauncher.launch("latte-backup.lattebak") },
+                    onClick = { exportLauncher.launch(LatteBackupCodec.fileName(LocalDateTime.now())) },
                 )
 
                 SettingsDivider()

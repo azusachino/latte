@@ -8,6 +8,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.LocalDateTime
 
 class LatteBackupTest {
 
@@ -86,6 +87,12 @@ class LatteBackupTest {
     fun truncatedGzipIsRejected() {
         val bytes = LatteBackupCodec.encodeCompressed(LatteBackup()).copyOf(6)
         assertTrue(LatteBackupCodec.decodeBytes(bytes).isFailure)
+    }
+
+    @Test
+    fun exportFileNameIsTimestamped() {
+        val name = LatteBackupCodec.fileName(LocalDateTime.of(2026, 10, 28, 9, 30))
+        assertEquals("latte_2026-10-28_09-30.lattebak", name)
     }
 
     @Test

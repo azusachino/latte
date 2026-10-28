@@ -5,6 +5,9 @@ import com.azusachino.latte.data.model.Post
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.ByteArrayOutputStream
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 
@@ -31,6 +34,10 @@ data class LatteBackup(
 }
 
 object LatteBackupCodec {
+    // Mihon-style name, e.g. latte_2026-10-28_09-30.lattebak, so exports sort and never collide.
+    fun fileName(now: LocalDateTime): String =
+        "latte_${now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm", Locale.ENGLISH))}.lattebak"
+
     private val json = Json {
         ignoreUnknownKeys = true
         // Write defaults too, so the file always states its format version.
