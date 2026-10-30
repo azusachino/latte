@@ -35,9 +35,11 @@ import dev.chrisbanes.haze.HazeState
 @Composable
 fun DetailTopBar(
     currentPost: Post?,
+    postUrl: String?,
     pageIndicatorText: String,
     hazeState: HazeState,
     onBack: () -> Unit,
+    onDetails: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -86,6 +88,8 @@ fun DetailTopBar(
             title = centerTitle,
             pageIndicator = pageIndicatorText,
             hazeState = hazeState,
+            onClick = onDetails,
+            enabled = currentPost != null,
             modifier = Modifier
                 .weight(1f)
                 .padding(horizontal = 8.dp),
@@ -96,7 +100,7 @@ fun DetailTopBar(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (currentPost != null) {
+            if (!postUrl.isNullOrBlank()) {
                 // Open in browser
                 Box(
                     modifier = Modifier
@@ -109,11 +113,7 @@ fun DetailTopBar(
                         onClick = {
                             val intent = Intent(
                                 Intent.ACTION_VIEW,
-                                Uri.parse(
-                                    currentPost.canonicalUrl
-                                        ?: currentPost.source
-                                        ?: "https://yande.re/post/show/${currentPost.id}",
-                                ),
+                                Uri.parse(postUrl),
                             )
                             context.startActivity(intent)
                         },
@@ -141,9 +141,7 @@ fun DetailTopBar(
                                 type = "text/plain"
                                 putExtra(
                                     Intent.EXTRA_TEXT,
-                                    currentPost.canonicalUrl
-                                        ?: currentPost.source
-                                        ?: "https://yande.re/post/show/${currentPost.id}",
+                                    postUrl,
                                 )
                             }
                             context.startActivity(Intent.createChooser(intent, "Share post"))

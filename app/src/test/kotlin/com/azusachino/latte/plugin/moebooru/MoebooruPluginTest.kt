@@ -1,5 +1,8 @@
 package com.azusachino.latte.plugin.moebooru
 
+import com.azusachino.latte.data.network.moebooru.MoebooruPostDto
+import com.azusachino.latte.data.network.moebooru.toDomain
+
 import com.azusachino.latte.data.network.SessionCookieStore
 import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.plugin.storage.PluginStorage
@@ -226,6 +229,19 @@ class MoebooruPluginTest {
         assertFalse(plugin.isLoggedIn)
         assertNull(storage.get("yande.re", "username"))
         assertEquals(2, mockServer.requestCount)
+    }
+
+    @Test
+    fun postUrlsUseTheirOwnSiteForLegacyPosts() {
+        val storage = InMemoryStorage()
+        for (platform in listOf(PlatformId.YANDE, PlatformId.KONACHAN)) {
+            val plugin = MoebooruPlugin(storage, httpClient, platform.apiUrl, platform, platform.displayName)
+            val post = MoebooruPostDto(
+                id = 123, source = "https://example.com/original",
+            ).toDomain(platform)
+                .copy(canonicalUrl = null)
+            assertEquals("${platform.webUrl}/post/show/123", plugin.postUrl(post))
+        }
     }
 
     @Test

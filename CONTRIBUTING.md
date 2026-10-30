@@ -33,6 +33,9 @@ post media to the repository.
 - Keep changes focused and explain the user-visible result.
 - Preserve Yande's component composition, workflow, dataflow, and gesture
   behavior when changing the UI; Material 3 is the implementation layer.
+- Keep site-specific behavior in site or protocol-family plugin implementations.
+  Shared models, UI, and contracts must not branch on platform identity or
+  construct site-specific URLs; use neutral plugin capabilities instead.
 - Add or update tests for behavior changes.
 - Include screenshots for meaningful visual changes.
 - Use conventional commit prefixes such as `feat:`, `fix:`, `test:`, `docs:`,

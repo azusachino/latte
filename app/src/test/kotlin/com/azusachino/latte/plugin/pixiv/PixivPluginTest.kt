@@ -1,5 +1,9 @@
 package com.azusachino.latte.plugin.pixiv
 
+import com.azusachino.latte.data.network.moebooru.MoebooruPostDto
+import com.azusachino.latte.data.network.moebooru.toDomain
+import com.azusachino.latte.plugin.PlatformId
+
 import com.azusachino.latte.plugin.AuthFlow
 import com.azusachino.latte.plugin.storage.PluginStorage
 import com.azusachino.latte.data.network.PixivFeedKind
@@ -30,6 +34,17 @@ class PixivPluginTest {
     @After
     fun tearDown() {
         server.shutdown()
+    }
+
+    @Test
+    fun postUrlUsesPixivArtworkLink() {
+        val plugin = plugin(InMemoryStorage())
+        val post = MoebooruPostDto(
+            id = 123, source = "https://example.com/source",
+        ).toDomain(PlatformId.PIXIV)
+        assertEquals("https://example.com/canonical", plugin.postUrl(post.copy(canonicalUrl = "https://example.com/canonical")))
+        assertEquals("https://www.pixiv.net/artworks/123", plugin.postUrl(post.copy(canonicalUrl = null)))
+        assertEquals("https://www.pixiv.net/artworks/123", plugin.postUrl(post.copy(canonicalUrl = null, source = null)))
     }
 
     @Test

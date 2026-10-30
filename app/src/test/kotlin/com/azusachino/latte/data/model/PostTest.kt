@@ -66,7 +66,10 @@ class PostTest {
         assertEquals(1, dtos.size)
 
         val post = dtos.first().toDomain(PlatformId.YANDE)
-        assertEquals(PlatformId.KONACHAN, dtos.first().toDomain(PlatformId.KONACHAN).platform)
+        val konachanPost = dtos.first().toDomain(PlatformId.KONACHAN)
+        assertEquals(PlatformId.KONACHAN, konachanPost.platform)
+        assertEquals("https://konachan.net/post/show/123456", konachanPost.canonicalUrl)
+        assertEquals("https://yande.re/post/show/123456", post.canonicalUrl)
         assertEquals(123456L, post.id)
         assertEquals(PostRating.SAFE, post.rating)
         assertEquals(listOf("genshin_impact", "furina", "solo", "blue_hair"), post.tags)

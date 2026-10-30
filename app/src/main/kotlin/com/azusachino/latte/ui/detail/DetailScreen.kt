@@ -307,9 +307,11 @@ fun DetailScreen(
         ) {
             DetailTopBar(
                 currentPost = currentPost,
+                postUrl = currentPost?.let { currentPlugin?.postUrl(it) ?: it.canonicalUrl ?: it.source },
                 pageIndicatorText = pageIndicatorText,
                 hazeState = hazeState,
                 onBack = onBack,
+                onDetails = { showInspectSheet = true },
             )
         }
 
@@ -610,7 +612,7 @@ fun DetailScreen(
                                         }
                                     }
                                 }
-                                .padding(horizontal = 16.dp),
+                                .padding(horizontal = 22.dp),
                             contentAlignment = Alignment.Center,
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {

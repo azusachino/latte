@@ -1,5 +1,6 @@
 package com.azusachino.latte.plugin
 
+import com.azusachino.latte.data.model.Post
 import kotlinx.coroutines.flow.Flow
 import okhttp3.Request
 
@@ -37,6 +38,9 @@ interface SitePlugin {
         get() = AuthFlow.BROWSER in supportedAuthFlows
     val supportsCookieImport: Boolean
         get() = authType == AuthType.CREDENTIALS
+
+    /** Site-owned public post URL, including for posts restored from older history. */
+    fun postUrl(post: Post): String? = post.canonicalUrl ?: post.source
 
     /** Feed access for plugins that serve paged personal feeds; null otherwise. */
     val feedSource: PluginFeedSource? get() = null
