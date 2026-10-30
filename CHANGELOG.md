@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.4 - 2026-10-30
+
+### Added
+
+- Explore shows a transparent tab-position pill (`2 / 4`) in the bottom-left corner, so you always know which tab of the pager you are on; it hides while searching.
+
+### Fixed
+
+- Revisiting the Favorites tab while a page was still loading no longer appends stale pages over a fresh list: the favorites initial load, paging and pull-to-refresh now cancel and serialize their loads per platform.
+
 ## 0.3.3 - 2026-10-30
 
 ### Changed
