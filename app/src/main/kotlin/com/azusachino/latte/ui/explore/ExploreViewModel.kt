@@ -386,9 +386,8 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         pixivUserWorksCache.clear()
     }
 
-    private fun launchMoebooru(block: suspend CoroutineScope.() -> Unit) {
+    private fun launchMoebooru(block: suspend CoroutineScope.() -> Unit): Job =
         viewModelScope.launch(moebooruJob, block = block)
-    }
 
     private fun cancelMoebooruLoads() {
         moebooruJob.cancel()
@@ -1319,19 +1318,37 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun loadFavoritesInitial(username: String) {
-        launchMoebooru {
-            _uiState.update { it.copy(favoritesFeed = it.favoritesFeed.copy(isLoading = true, error = null, page = 1)) }
+        // Favorites refetches on every landing on its tab; serialize the loads
+        // like the Pixiv feeds so a stale page cannot land after a fresh one.
+        val platform = _uiState.value.platform
+        cancelFeedJob(platform, PluginFeedKind.FAVORITES)
+        _uiState.update {
+            it.copy(
+                favoritesFeed = it.favoritesFeed.copy(
+                    isLoading = true,
+                    isLoadingMore = false,
+                    isRefreshing = false,
+                    error = null,
+                    page = 1,
+                )
+            )
+        }
+        feedJobs[platform to PluginFeedKind.FAVORITES] = launchMoebooru {
             try {
-                val posts = loadPosts(PluginFeedKind.FAVORITES)
-                _uiState.update {
-                    it.copy(
-                        favoritesFeed = it.favoritesFeed.copy(
-                            posts = posts,
-                            isLoading = false,
-                            hasMore = posts.isNotEmpty(),
-                        )
-                    )
-                }
+                applyIfActive(
+                    request = { loadPosts(PluginFeedKind.FAVORITES) },
+                    apply = { posts ->
+                        _uiState.update {
+                            it.copy(
+                                favoritesFeed = it.favoritesFeed.copy(
+                                    posts = posts,
+                                    isLoading = false,
+                                    hasMore = posts.isNotEmpty(),
+                                )
+                            )
+                        }
+                    },
+                )
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 _uiState.update {
@@ -1347,24 +1364,31 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun loadMoreFavorites(username: String) {
-        val feed = _uiState.value.favoritesFeed
+        val state = _uiState.value
+        val feed = state.favoritesFeed
         if (feed.isLoading || feed.isLoadingMore || !feed.hasMore) return
 
+        val platform = state.platform
+        cancelFeedJob(platform, PluginFeedKind.FAVORITES)
         _uiState.update { it.copy(favoritesFeed = it.favoritesFeed.copy(isLoadingMore = true)) }
-        launchMoebooru {
-            val nextPage = feed.page + 1
+        val nextPage = feed.page + 1
+        feedJobs[platform to PluginFeedKind.FAVORITES] = launchMoebooru {
             try {
-                val newPosts = loadPosts(PluginFeedKind.FAVORITES, page = nextPage)
-                _uiState.update {
-                    it.copy(
-                        favoritesFeed = it.favoritesFeed.copy(
-                            posts = it.favoritesFeed.posts.appendDistinct(newPosts),
-                            page = nextPage,
-                            hasMore = newPosts.isNotEmpty(),
-                            isLoadingMore = false,
-                        )
-                    )
-                }
+                applyIfActive(
+                    request = { loadPosts(PluginFeedKind.FAVORITES, page = nextPage) },
+                    apply = { newPosts ->
+                        _uiState.update {
+                            it.copy(
+                                favoritesFeed = it.favoritesFeed.copy(
+                                    posts = it.favoritesFeed.posts.appendDistinct(newPosts),
+                                    page = nextPage,
+                                    hasMore = newPosts.isNotEmpty(),
+                                    isLoadingMore = false,
+                                )
+                            )
+                        }
+                    },
+                )
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 _uiState.update { it.copy(favoritesFeed = it.favoritesFeed.copy(isLoadingMore = false)) }
@@ -1373,20 +1397,35 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun refreshFavorites(username: String) {
-        launchMoebooru {
-            _uiState.update { it.copy(favoritesFeed = it.favoritesFeed.copy(isRefreshing = true, error = null)) }
+        val platform = _uiState.value.platform
+        cancelFeedJob(platform, PluginFeedKind.FAVORITES)
+        _uiState.update {
+            it.copy(
+                favoritesFeed = it.favoritesFeed.copy(
+                    isRefreshing = true,
+                    isLoading = false,
+                    isLoadingMore = false,
+                    error = null,
+                )
+            )
+        }
+        feedJobs[platform to PluginFeedKind.FAVORITES] = launchMoebooru {
             try {
-                val posts = loadPosts(PluginFeedKind.FAVORITES)
-                _uiState.update {
-                    it.copy(
-                        favoritesFeed = it.favoritesFeed.copy(
-                            posts = posts,
-                            isRefreshing = false,
-                            page = 1,
-                            hasMore = posts.isNotEmpty(),
-                        )
-                    )
-                }
+                applyIfActive(
+                    request = { loadPosts(PluginFeedKind.FAVORITES) },
+                    apply = { posts ->
+                        _uiState.update {
+                            it.copy(
+                                favoritesFeed = it.favoritesFeed.copy(
+                                    posts = posts,
+                                    isRefreshing = false,
+                                    page = 1,
+                                    hasMore = posts.isNotEmpty(),
+                                )
+                            )
+                        }
+                    },
+                )
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 _uiState.update {
@@ -1502,6 +1541,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         when {
             state.isSearch -> loadMoreSearch()
             state.selectedTab == 0 -> loadMorePopular()
+            state.selectedTab == 2 -> activePlugin()?.getDisplayUsername()?.let(::loadMoreFavorites)
             else -> loadMoreNewest()
         }
     }
@@ -1515,6 +1555,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         when {
             state.isSearch -> search(state.searchTags)
             state.selectedTab == 0 -> refreshPopular()
+            state.selectedTab == 2 -> activePlugin()?.getDisplayUsername()?.let(::refreshFavorites)
             else -> refreshNewest()
         }
     }
@@ -1528,6 +1569,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         when {
             state.isSearch -> search(state.searchTags)
             state.selectedTab == 0 -> loadPopularInitial()
+            state.selectedTab == 2 -> activePlugin()?.getDisplayUsername()?.let(::loadFavoritesInitial)
             else -> loadNewestInitial()
         }
     }
