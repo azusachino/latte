@@ -37,13 +37,13 @@ class PixivPluginTest {
     }
 
     @Test
-    fun postUrlPreservesPixivCanonicalAndSourceFallback() {
+    fun postUrlUsesPixivArtworkLink() {
         val plugin = plugin(InMemoryStorage())
         val post = MoebooruPostDto(
             id = 123, source = "https://example.com/source",
         ).toDomain(PlatformId.PIXIV)
         assertEquals("https://example.com/canonical", plugin.postUrl(post.copy(canonicalUrl = "https://example.com/canonical")))
-        assertEquals("https://example.com/source", plugin.postUrl(post.copy(canonicalUrl = null)))
+        assertEquals("https://www.pixiv.net/artworks/123", plugin.postUrl(post.copy(canonicalUrl = null)))
         assertEquals("https://www.pixiv.net/artworks/123", plugin.postUrl(post.copy(canonicalUrl = null, source = null)))
     }
 
