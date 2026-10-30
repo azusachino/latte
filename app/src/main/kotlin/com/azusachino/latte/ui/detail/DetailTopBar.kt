@@ -109,11 +109,7 @@ fun DetailTopBar(
                         onClick = {
                             val intent = Intent(
                                 Intent.ACTION_VIEW,
-                                Uri.parse(
-                                    currentPost.canonicalUrl
-                                        ?: currentPost.source
-                                        ?: "https://yande.re/post/show/${currentPost.id}",
-                                ),
+                                Uri.parse(currentPost.postUrl),
                             )
                             context.startActivity(intent)
                         },
@@ -141,9 +137,7 @@ fun DetailTopBar(
                                 type = "text/plain"
                                 putExtra(
                                     Intent.EXTRA_TEXT,
-                                    currentPost.canonicalUrl
-                                        ?: currentPost.source
-                                        ?: "https://yande.re/post/show/${currentPost.id}",
+                                    currentPost.postUrl,
                                 )
                             }
                             context.startActivity(Intent.createChooser(intent, "Share post"))

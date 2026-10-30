@@ -60,6 +60,12 @@ data class Post(
     val pages: List<ArtworkPage> = emptyList(),
     val authorId: Long? = null,
 ) {
+    val postUrl: String
+        get() = when (platform) {
+            PlatformId.YANDE, PlatformId.KONACHAN -> "${platform.webUrl}/post/show/$id"
+            PlatformId.PIXIV -> canonicalUrl ?: source ?: "https://www.pixiv.net/artworks/$id"
+        }
+
     val siteId: String
         get() = platform.externalId
 

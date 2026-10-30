@@ -1,12 +1,14 @@
 # Latte
 
+![Latte app icon](app/src/main/res/mipmap-xhdpi/ic_launcher.png)
+
 [![CI](https://github.com/azusachino/latte/actions/workflows/ci.yml/badge.svg)](https://github.com/azusachino/latte/actions/workflows/ci.yml)
 
-Latte is a personal image-board client for [yande.re](https://yande.re/),
-[konachan.net](https://konachan.net/), and [Pixiv](https://www.pixiv.net/), built with Kotlin, Jetpack Compose, Material 3,
-and Coil 3. It focuses on the daily loop — explore feeds, read detail pages,
-continue with a tag — with follow, favorite tags, and local saves across all three platforms. Its architecture cleanly isolates
-network models, domain entities, and the presentation layer.
+Latte is a native Android image-board client for [yande.re](https://yande.re/),
+[konachan.net](https://konachan.net/), and [Pixiv](https://www.pixiv.net/).
+Browse feeds, explore tags and artists, view artwork, and save images locally.
+It is built with Kotlin, Jetpack Compose, Material 3, and Coil 3, and requires
+Android 13 or later.
 
 The Yande/account baseline is recorded in the Spec Kit artifacts under
 `specs/002-account-manager/`; the Pixiv illustration experience in
@@ -46,6 +48,7 @@ Popular / Newest / Favorites / Pools / Search -> PluginFeedSource -> Staggered G
 - **Search Support**: Recent searches and tag autocomplete on yande.re; trending tags and autocomplete on Pixiv.
 - **Safe Mode**: User-configurable toggle under Settings (default: safe). Yande adds `rating:safe`; Pixiv keeps only normalized `x_restrict == 0` results and advances through cursors when a page is filtered out.
 - **Reliable Saves**: Background downloads via Android WorkManager into `Pictures/Latte` with duplicate prevention and notifications.
+- **History and Backup**: Revisit viewed posts and export or restore settings, tags, searches, and viewing history. Accounts are not included.
 
 ## Development
 

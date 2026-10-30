@@ -70,6 +70,7 @@ fun MoebooruPostDto.toDomain(platform: PlatformId): Post {
         score = score,
         author = author,
         source = source,
+        canonicalUrl = "${platform.webUrl}/post/show/$id",
         createdAt = createdAt,
         width = width,
         height = height,

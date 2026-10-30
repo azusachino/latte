@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.3 - 2026-10-30
+
+### Fixed
+
+- Share and open yande.re and Konachan posts using their own post links, including posts saved in viewing history.
+
 ## 0.3.2 - 2026-10-28
 
 ### Added
