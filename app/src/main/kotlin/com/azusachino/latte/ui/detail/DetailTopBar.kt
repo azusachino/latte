@@ -35,6 +35,7 @@ import dev.chrisbanes.haze.HazeState
 @Composable
 fun DetailTopBar(
     currentPost: Post?,
+    postUrl: String?,
     pageIndicatorText: String,
     hazeState: HazeState,
     onBack: () -> Unit,
@@ -99,7 +100,7 @@ fun DetailTopBar(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (currentPost != null) {
+            if (!postUrl.isNullOrBlank()) {
                 // Open in browser
                 Box(
                     modifier = Modifier
@@ -112,7 +113,7 @@ fun DetailTopBar(
                         onClick = {
                             val intent = Intent(
                                 Intent.ACTION_VIEW,
-                                Uri.parse(currentPost.postUrl),
+                                Uri.parse(postUrl),
                             )
                             context.startActivity(intent)
                         },
@@ -140,7 +141,7 @@ fun DetailTopBar(
                                 type = "text/plain"
                                 putExtra(
                                     Intent.EXTRA_TEXT,
-                                    currentPost.postUrl,
+                                    postUrl,
                                 )
                             }
                             context.startActivity(Intent.createChooser(intent, "Share post"))

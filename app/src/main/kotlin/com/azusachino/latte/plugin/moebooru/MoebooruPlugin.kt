@@ -1,5 +1,6 @@
 package com.azusachino.latte.plugin.moebooru
 
+import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.network.SessionCookieStore
 import com.azusachino.latte.data.network.moebooru.MoebooruApi
 import com.azusachino.latte.plugin.AuthType
@@ -46,6 +47,8 @@ open class MoebooruPlugin(
         PluginFeedTab("Favorites", PluginFeedKind.FAVORITES, requiresAuthentication = true),
         PluginFeedTab("Pools", PluginFeedKind.POOLS),
     )
+    override fun postUrl(post: Post): String = "${platform.webUrl}/post/show/${post.id}"
+
     override val iconRes: Int? = null
     override val authType: AuthType = AuthType.CREDENTIALS
     private var cachedUsername: String? = storage.get(id, KEY_USERNAME)

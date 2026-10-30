@@ -1,5 +1,6 @@
 package com.azusachino.latte.plugin.pixiv
 
+import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.network.PixivApi
 import com.azusachino.latte.data.network.PixivBookmarkResult
 import com.azusachino.latte.data.network.PixivOAuthClient
@@ -32,6 +33,8 @@ class PixivPlugin(
 ) : SitePlugin {
     override val platform: PlatformId = PlatformId.PIXIV
     override val name: String = "Pixiv"
+    override fun postUrl(post: Post): String =
+        post.canonicalUrl ?: post.source ?: "${platform.webUrl}/artworks/${post.id}"
     override val iconRes: Int? = null
     override val authType: AuthType = AuthType.OAUTH2
     override val feedSource: PluginFeedSource by lazy { PixivFeedSource(api) }

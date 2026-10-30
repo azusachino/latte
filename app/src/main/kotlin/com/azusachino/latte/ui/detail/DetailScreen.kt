@@ -307,6 +307,7 @@ fun DetailScreen(
         ) {
             DetailTopBar(
                 currentPost = currentPost,
+                postUrl = currentPost?.let { currentPlugin?.postUrl(it) ?: it.canonicalUrl ?: it.source },
                 pageIndicatorText = pageIndicatorText,
                 hazeState = hazeState,
                 onBack = onBack,
