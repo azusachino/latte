@@ -143,6 +143,8 @@ open class MoebooruPlugin(
     // POST /post/vote.json (which errors on a re-vote) -- but the favorite
     // (score 3) tier is separately exposed via the users who favorited a
     // post, so that's the one tier we can recover after login/restart.
+    // Returns 0 when the server confirms the username is NOT among the
+    // favoriters (a stale local favorite must clear), null when unknown.
     override suspend fun refreshScore(postId: Long): Int? = withContext(Dispatchers.IO) {
         val username = cachedUsername ?: return@withContext null
         try {
@@ -164,7 +166,8 @@ open class MoebooruPlugin(
                 userScores[postId] = 3
                 3
             } else {
-                null
+                // Confirmed absent; leave any known 1/2 vote in the map alone.
+                0
             }
         } catch (e: Exception) {
             null

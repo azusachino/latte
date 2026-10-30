@@ -1,6 +1,7 @@
 package com.azusachino.latte.ui.explore
 
 import android.app.Application
+import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.azusachino.latte.data.model.PoolSummary
@@ -330,6 +331,26 @@ internal suspend fun <T> applyIfActive(
     if (currentCoroutineContext().isActive) apply(result)
 }
 
+/**
+ * Feed cache that stops serving entries once they age past [ttlMs], so a
+ * re-search re-fetches instead of freezing old results. Refresh paths must
+ * write their fresh result back here or the next read reverts it.
+ */
+private class TtlFeedCache<K : Any>(maxSize: Int, private val ttlMs: Long) {
+    private val entries = BoundedFifoCache<K, Pair<FeedState, Long>>(maxSize)
+
+    operator fun get(key: K): FeedState? {
+        val (feed, cachedAt) = entries[key] ?: return null
+        return feed.takeIf { SystemClock.elapsedRealtime() - cachedAt < ttlMs }
+    }
+
+    operator fun set(key: K, feed: FeedState) {
+        entries[key] = feed to SystemClock.elapsedRealtime()
+    }
+
+    fun clear() = entries.clear()
+}
+
 class ExploreViewModel(application: Application) : AndroidViewModel(application) {
     private val plugins = mutableMapOf<PlatformId, SitePlugin>()
     private val feedSources = mutableMapOf<PlatformId, PluginFeedSource>()
@@ -356,10 +377,10 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     private fun cancelAllPixivJobs() = cancelFeedJobs(PlatformId.PIXIV)
     private var moebooruJob = SupervisorJob(viewModelScope.coroutineContext[Job])
     private val gridPositions = mutableMapOf<ExploreGridKey, GridPosition>()
-    private val yandeSearchCache = BoundedFifoCache<Pair<PlatformId, String>, FeedState>(maxSize = 30)
+    private val yandeSearchCache = TtlFeedCache<Pair<PlatformId, String>>(maxSize = 30, ttlMs = SEARCH_CACHE_TTL_MS)
     private val yandeSuggestionCache = BoundedFifoCache<Pair<PlatformId, String>, List<String>>(maxSize = 50)
-    private val pixivSearchCache = BoundedFifoCache<String, FeedState>(maxSize = 30)
-    private val pixivUserWorksCache = BoundedFifoCache<Long, FeedState>(maxSize = 30)
+    private val pixivSearchCache = TtlFeedCache<String>(maxSize = 30, ttlMs = SEARCH_CACHE_TTL_MS)
+    private val pixivUserWorksCache = TtlFeedCache<Long>(maxSize = 30, ttlMs = SEARCH_CACHE_TTL_MS)
     private val sessionResetObserved = mutableMapOf<PlatformId, SitePlugin>()
     val preferences = LattePreferences(application)
 
@@ -972,7 +993,9 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                     pixivAuthorFollowed = pixivAuthorFollowStates[userId],
                 )
             }
-            if (pixivAuthorFollowStates[userId] == null) loadPixivFollowState(userId)
+            // Re-check on every open so web-side unfollows are not masked by
+            // this session's cached state; the cache above only pre-renders.
+            loadPixivFollowState(userId)
             return
         }
         _uiState.update {
@@ -1281,14 +1304,18 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             try {
                 val posts = loadPosts(PluginFeedKind.SEARCH, query = state.searchTags)
                 _uiState.update {
-                    it.copy(
-                        searchFeed = it.searchFeed.copy(
-                            posts = posts,
-                            isRefreshing = false,
-                            page = 1,
-                            hasMore = posts.isNotEmpty(),
-                        )
+                    val updatedFeed = it.searchFeed.copy(
+                        posts = posts,
+                        isRefreshing = false,
+                        page = 1,
+                        hasMore = posts.isNotEmpty(),
                     )
+                    // Write the fresh result back, or the next re-search of the
+                    // same tag would resurrect the stale cached list.
+                    if (it.searchTags == state.searchTags) {
+                        yandeSearchCache[it.platform to state.searchTags] = updatedFeed
+                    }
+                    it.copy(searchFeed = updatedFeed)
                 }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
@@ -1572,5 +1599,10 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             state.selectedTab == 2 -> activePlugin()?.getDisplayUsername()?.let(::loadFavoritesInitial)
             else -> loadNewestInitial()
         }
+    }
+
+    private companion object {
+        /** Re-searches older than this fetch fresh results instead of the cache. */
+        const val SEARCH_CACHE_TTL_MS = 60_000L
     }
 }
