@@ -52,7 +52,7 @@ class MoebooruFeedSourceTest {
     }
 
     @Test
-    fun safeModeFiltersMoebooruPagesAtTheSource() = runTest {
+    fun safeModeFiltersDiscoveryFeedsButNotPersonalFavorites() = runTest {
         val source = MoebooruFeedSource(
             api = MoebooruApi(server.url("/").toString().removeSuffix("/"), PlatformId.YANDE),
             username = { "test_artist" },
@@ -61,7 +61,9 @@ class MoebooruFeedSourceTest {
             PluginFeedKind.POPULAR to "order:score date:2026-09-26 rating:safe",
             PluginFeedKind.NEWEST to "rating:safe",
             PluginFeedKind.SEARCH to "landscape rating:safe",
-            PluginFeedKind.FAVORITES to "vote:3:test_artist rating:safe",
+            // The favorites feed is the user's own collection: Safe Mode must
+            // not hide it, or the feed silently freezes around filtered posts.
+            PluginFeedKind.FAVORITES to "vote:3:test_artist",
         ).forEach { (kind, tags) ->
             server.enqueue(MockResponse().setBody("[]"))
             source.load(

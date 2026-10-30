@@ -438,6 +438,36 @@ internal fun FeedGrid(
                     Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Back to top")
                 }
             }
+
+            // Transparent feed-page cursor: which fetched page the viewport is
+            // in. Per-page count is the loaded average, exact while pages are
+            // full. Hidden on an empty feed; bottom-start keeps it clear of the
+            // back-to-top FAB.
+            val feedPageCursor by remember(feed.posts.size, feed.page) {
+                derivedStateOf {
+                    val perPage = (feed.posts.size / feed.page.coerceAtLeast(1)).coerceAtLeast(1)
+                    gridState.firstVisibleItemIndex / perPage + 1
+                }
+            }
+            AnimatedVisibility(
+                visible = feed.posts.isNotEmpty(),
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 16.dp, bottom = 16.dp),
+            ) {
+                Text(
+                    text = "Page $feedPageCursor",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(Color.Black.copy(alpha = 0.32f))
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                )
+            }
         }
     }
 }

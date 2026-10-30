@@ -1022,28 +1022,6 @@ fun ExploreScreen(
                         }
                     }
                 }
-
-                // Transparent tab-position pill: which pager page is active.
-                // Bottom-start keeps it clear of the bottom-end back-to-top FAB.
-                AnimatedVisibility(
-                    visible = !uiState.isSearch,
-                    enter = fadeIn(),
-                    exit = fadeOut(),
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(start = 16.dp, bottom = 16.dp),
-                ) {
-                    Text(
-                        text = "${pagerState.currentPage + 1} / $tabCount",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.White,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(999.dp))
-                            .background(Color.Black.copy(alpha = 0.32f))
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                    )
-                }
             }
         }
     }
