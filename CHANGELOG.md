@@ -2,6 +2,10 @@
 
 ## 0.3.3 - 2026-10-30
 
+### Changed
+
+- Tap the detail title and page indicator to open post details; the Save button is wider.
+
 ### Fixed
 
 - Share and open yande.re and Konachan posts using their own post links, including posts saved in viewing history.

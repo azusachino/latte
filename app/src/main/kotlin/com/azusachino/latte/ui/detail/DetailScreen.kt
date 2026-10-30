@@ -310,6 +310,7 @@ fun DetailScreen(
                 pageIndicatorText = pageIndicatorText,
                 hazeState = hazeState,
                 onBack = onBack,
+                onDetails = { showInspectSheet = true },
             )
         }
 
@@ -610,7 +611,7 @@ fun DetailScreen(
                                         }
                                     }
                                 }
-                                .padding(horizontal = 16.dp),
+                                .padding(horizontal = 22.dp),
                             contentAlignment = Alignment.Center,
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {

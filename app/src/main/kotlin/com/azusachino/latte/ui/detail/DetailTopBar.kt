@@ -38,6 +38,7 @@ fun DetailTopBar(
     pageIndicatorText: String,
     hazeState: HazeState,
     onBack: () -> Unit,
+    onDetails: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -86,6 +87,8 @@ fun DetailTopBar(
             title = centerTitle,
             pageIndicator = pageIndicatorText,
             hazeState = hazeState,
+            onClick = onDetails,
+            enabled = currentPost != null,
             modifier = Modifier
                 .weight(1f)
                 .padding(horizontal = 8.dp),
