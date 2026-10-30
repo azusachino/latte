@@ -48,7 +48,7 @@ class MoebooruFeedSourceTest {
         assertTrue(result is PluginFeedResult.Success)
         val post = (result as PluginFeedResult.Success).page.items.single()
         assertEquals(PlatformId.KONACHAN, post.platform)
-        assertEquals("/post.json?page=1&limit=100&tags=vote%3A3%3Atest_artist", request.path)
+        assertEquals("/post.json?page=1&limit=100&tags=vote%3A3%3Atest_artist%20order%3Avote", request.path)
     }
 
     @Test
