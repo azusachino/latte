@@ -116,7 +116,7 @@ class MoebooruApi(
         }
 
     companion object {
-        fun favoriteTags(username: String): String = "vote:3:${username.trim()}"
+        fun favoriteTags(username: String): String = "vote:3:${username.trim()} order:vote"
 
         fun poolTags(poolId: Long): String = "pool:$poolId"
 

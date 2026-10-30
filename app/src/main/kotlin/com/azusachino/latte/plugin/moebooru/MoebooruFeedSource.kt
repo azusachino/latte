@@ -55,10 +55,13 @@ class MoebooruFeedSource(
                 )
                 PluginFeedKind.FAVORITES -> {
                     val user = username() ?: return PluginFeedResult.AuthRequired
-                    // Personal collection: Safe Mode must not hide the user's
-                    // own favorites, or the feed silently freezes around the
-                    // posts the filter removes.
-                    api.getPosts(page = request.page, tags = MoebooruApi.favoriteTags(user))
+                    // Order by vote recency like the site's favorites view, so
+                    // freshly favorited posts surface at the top; Safe Mode
+                    // applies to this feed by design.
+                    api.getPosts(
+                        page = request.page,
+                        tags = MoebooruTags.safeMode(MoebooruApi.favoriteTags(user), request.safeMode),
+                    )
                 }
                 PluginFeedKind.FOLLOWED,
                 PluginFeedKind.AUTHOR_WORKS,

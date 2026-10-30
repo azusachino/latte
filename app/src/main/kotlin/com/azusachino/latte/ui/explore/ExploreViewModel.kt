@@ -185,10 +185,8 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         preferences.setColumnCount(count)
     }
 
-    // Safe Mode is a discovery filter; the favorites feed is the user's own
-    // collection, so filtered-out posts must never silently freeze it.
-    private fun applyLocalFilters(kind: PluginFeedKind, posts: List<Post>): List<Post> =
-        if (kind == PluginFeedKind.FAVORITES) posts else filterPosts(posts, preferences.safeMode.value)
+    private fun applyLocalFilters(posts: List<Post>): List<Post> =
+        filterPosts(posts, preferences.safeMode.value)
 
     private suspend fun loadPools(query: String?, page: Int): List<PoolSummary> =
         poolSources[_uiState.value.platform]?.load(query, page)?.getOrElse { throw it }
@@ -209,7 +207,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             date = date,
             safeMode = preferences.safeMode.value,
         )) ?: PluginFeedResult.TransportFailure("Active platform feed is not configured")
-        return result.feedPostsOrThrow { applyLocalFilters(kind, it) }
+        return result.feedPostsOrThrow(::applyLocalFilters)
     }
 
     /** Logs the raw cause; only the mapped message reaches the UI. */
@@ -389,7 +387,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                     refresh = true,
                     safeMode = preferences.safeMode.value,
                 )) ?: PluginFeedResult.TransportFailure("Active platform feed is not configured")
-                val posts = result.feedPostsOrThrow { applyLocalFilters(PluginFeedKind.POPULAR, it) }
+                val posts = result.feedPostsOrThrow(::applyLocalFilters)
                 _uiState.update {
                     val feed = it.popularFeed.copy(posts = posts, isLoading = false, hasMore = posts.isNotEmpty())
                     it.copy(popularFeed = feed)
@@ -420,7 +418,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                         safeMode = preferences.safeMode.value,
                     ),
                 ) ?: PluginFeedResult.TransportFailure("Active platform feed is not configured")
-                val posts = result.feedPostsOrThrow { applyLocalFilters(PluginFeedKind.NEWEST, it) }
+                val posts = result.feedPostsOrThrow(::applyLocalFilters)
                 _uiState.update {
                     val feed = it.newestFeed.copy(posts = posts, isLoading = false, hasMore = posts.isNotEmpty())
                     it.copy(newestFeed = feed)
@@ -868,11 +866,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     private fun applyPixivResult(kind: PluginFeedKind, result: PluginFeedResult, isAppend: Boolean) {
         when (result) {
             is PluginFeedResult.Success -> {
-                val visibleItems = if (kind == PluginFeedKind.FAVORITES) {
-                    result.page.items
-                } else {
-                    filterPosts(result.page.items, preferences.safeMode.value)
-                }
+                val visibleItems = filterPosts(result.page.items, preferences.safeMode.value)
                 val hasMore = result.page.nextCursor != null
                 val currentFeed = pixivFeed(_uiState.value, kind)
                 val base = if (isAppend) currentFeed.posts else emptyList()
