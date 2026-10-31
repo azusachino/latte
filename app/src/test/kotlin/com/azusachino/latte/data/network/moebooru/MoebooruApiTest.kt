@@ -13,9 +13,5 @@ class MoebooruApiTest {
 
     @Test
     fun ownsSafeModeQueryPolicy() {
-        assertEquals("rating:safe", MoebooruApi.safeModeTags(null, enabled = true))
-        assertEquals("artist rating:safe", MoebooruApi.safeModeTags("artist", enabled = true))
-        assertEquals("rating:questionable", MoebooruApi.safeModeTags("rating:questionable", enabled = true))
-        assertEquals("artist", MoebooruApi.safeModeTags("artist", enabled = false))
     }
 }

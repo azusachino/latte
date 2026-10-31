@@ -309,47 +309,8 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
 
     // doesn't refetch it.
 
-    fun loadMore() {
-        val state = _uiState.value
-        if (state.supportsUserFeeds) {
-            loadMorePixiv()
-            return
-        }
-        when {
-            state.isSearch -> loadMoreSearch()
-            state.selectedTab == 0 -> loadMorePopular()
-            state.selectedTab == 2 -> loadMoreFavorites()
-            else -> loadMoreNewest()
-        }
-    }
 
-    fun refresh() {
-        val state = _uiState.value
-        if (state.supportsUserFeeds) {
-            refreshPixiv()
-            return
-        }
-        when {
-            state.isSearch -> search(state.searchTags)
-            state.selectedTab == 0 -> refreshPopular()
-            state.selectedTab == 2 -> refreshFavorites()
-            else -> refreshNewest()
-        }
-    }
 
-    fun loadInitial() {
-        val state = _uiState.value
-        if (state.supportsUserFeeds) {
-            loadPixivInitial()
-            return
-        }
-        when {
-            state.isSearch -> search(state.searchTags)
-            state.selectedTab == 0 -> loadPopularInitial()
-            state.selectedTab == 2 -> loadFavoritesInitial()
-            else -> loadNewestInitial()
-        }
-    }
 
     internal companion object {
         /** Re-searches older than this fetch fresh results instead of the cache. */
