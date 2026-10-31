@@ -51,18 +51,14 @@ data class PoolListState(
 )
 
 // Tab indices: 0 = Popular, 1 = Newest, 2 = Favorites, 3 = Pools
+//
+// Feed states live in exactly ONE store: [feeds], keyed by platform and feed
+// kind. There are deliberately no flat per-feed fields — dual stores diverged
+// on reset paths and served stale content (see #33/#35 history). All writes
+// go through [withFeed]; all reads through [feed].
 data class ExploreUiState(
     val platform: PlatformId = PlatformId.YANDE,
     val feeds: Map<PlatformId, Map<PluginFeedKind, FeedState>> = emptyMap(),
-    val popularFeed: FeedState = FeedState(),
-    val newestFeed: FeedState = FeedState(),
-    val favoritesFeed: FeedState = FeedState(),
-    val searchFeed: FeedState = FeedState(),
-    val pixivPopularFeed: FeedState = FeedState(),
-    val pixivFollowedFeed: FeedState = FeedState(),
-    val pixivFavoritesFeed: FeedState = FeedState(),
-    val pixivSearchFeed: FeedState = FeedState(),
-    val pixivUserWorksFeed: FeedState = FeedState(),
     val poolsFeed: PoolListState = PoolListState(),
     val poolCovers: Map<Long, String> = emptyMap(),
     val searchTags: String = "",
@@ -81,26 +77,8 @@ data class ExploreUiState(
     val popularDate: LocalDate = LocalDate.now(),
     val selectedTab: Int = 0,
 ) {
-    fun feed(targetPlatform: PlatformId, kind: PluginFeedKind): FeedState {
-        feeds[targetPlatform]?.get(kind)?.let { return it }
-        return when (targetPlatform) {
-            PlatformId.PIXIV -> when (kind) {
-                PluginFeedKind.POPULAR -> pixivPopularFeed
-                PluginFeedKind.FOLLOWED -> pixivFollowedFeed
-                PluginFeedKind.FAVORITES -> pixivFavoritesFeed
-                PluginFeedKind.SEARCH -> pixivSearchFeed
-                PluginFeedKind.AUTHOR_WORKS -> pixivUserWorksFeed
-                else -> FeedState()
-            }
-            else -> when (kind) {
-                PluginFeedKind.POPULAR -> popularFeed
-                PluginFeedKind.NEWEST -> newestFeed
-                PluginFeedKind.FAVORITES -> favoritesFeed
-                PluginFeedKind.SEARCH -> searchFeed
-                else -> FeedState()
-            }
-        }
-    }
+    fun feed(targetPlatform: PlatformId, kind: PluginFeedKind): FeedState =
+        feeds[targetPlatform]?.get(kind) ?: FeedState()
 
     fun feed(kind: PluginFeedKind): FeedState =
         feed(platform, kind)
@@ -110,34 +88,16 @@ data class ExploreUiState(
         kind: PluginFeedKind,
         transform: (FeedState) -> FeedState,
     ): ExploreUiState {
-        val currentFeed = feed(targetPlatform, kind)
-        val updatedFeed = transform(currentFeed)
+        val updatedFeed = transform(feed(targetPlatform, kind))
         val currentPlatformFeeds = feeds[targetPlatform].orEmpty() + (kind to updatedFeed)
-        val newFeeds = feeds + (targetPlatform to currentPlatformFeeds)
-
-        return when (targetPlatform) {
-            PlatformId.PIXIV -> when (kind) {
-                PluginFeedKind.POPULAR -> copy(feeds = newFeeds, pixivPopularFeed = updatedFeed)
-                PluginFeedKind.FOLLOWED -> copy(feeds = newFeeds, pixivFollowedFeed = updatedFeed)
-                PluginFeedKind.FAVORITES -> copy(feeds = newFeeds, pixivFavoritesFeed = updatedFeed)
-                PluginFeedKind.SEARCH -> copy(feeds = newFeeds, pixivSearchFeed = updatedFeed)
-                PluginFeedKind.AUTHOR_WORKS -> copy(feeds = newFeeds, pixivUserWorksFeed = updatedFeed)
-                else -> copy(feeds = newFeeds)
-            }
-            else -> when (kind) {
-                PluginFeedKind.POPULAR -> copy(feeds = newFeeds, popularFeed = updatedFeed)
-                PluginFeedKind.NEWEST -> copy(feeds = newFeeds, newestFeed = updatedFeed)
-                PluginFeedKind.FAVORITES -> copy(feeds = newFeeds, favoritesFeed = updatedFeed)
-                PluginFeedKind.SEARCH -> copy(feeds = newFeeds, searchFeed = updatedFeed)
-                else -> copy(feeds = newFeeds)
-            }
-        }
+        return copy(feeds = feeds + (targetPlatform to currentPlatformFeeds))
     }
 
     fun withFeed(
         kind: PluginFeedKind,
         transform: (FeedState) -> FeedState,
     ): ExploreUiState = withFeed(platform, kind, transform)
+
     val activeSearchTags: String
         get() = if (supportsUserFeeds) {
             pixivAuthorName ?: pixivSearchTags
@@ -146,12 +106,14 @@ data class ExploreUiState(
         }
 
     val supportsUserFeeds: Boolean get() = PlatformCapability.USER_FEED in platform.capabilities
+
     fun feedState(kind: PluginFeedKind): FeedState = when (kind) {
-        PluginFeedKind.POPULAR -> pixivPopularFeed
-        PluginFeedKind.FOLLOWED -> pixivFollowedFeed
-        PluginFeedKind.FAVORITES -> pixivFavoritesFeed
-        PluginFeedKind.SEARCH -> pixivSearchFeed
-        PluginFeedKind.AUTHOR_WORKS -> pixivUserWorksFeed
+        PluginFeedKind.POPULAR,
+        PluginFeedKind.FOLLOWED,
+        PluginFeedKind.FAVORITES,
+        PluginFeedKind.SEARCH,
+        PluginFeedKind.AUTHOR_WORKS,
+        -> feed(PlatformId.PIXIV, kind)
         PluginFeedKind.NEWEST, PluginFeedKind.POOLS -> FeedState()
     }
 
@@ -161,80 +123,80 @@ data class ExploreUiState(
     val posts: List<Post>
         get() = when {
             isSearch -> when {
-                !supportsUserFeeds -> searchFeed.posts
-                pixivAuthorId != null -> pixivUserWorksFeed.posts
-                else -> pixivSearchFeed.posts
+                !supportsUserFeeds -> feed(PluginFeedKind.SEARCH).posts
+                pixivAuthorId != null -> feed(PlatformId.PIXIV, PluginFeedKind.AUTHOR_WORKS).posts
+                else -> feed(PlatformId.PIXIV, PluginFeedKind.SEARCH).posts
             }
             supportsUserFeeds && selectedTab == 0 -> feedState(PluginFeedKind.FOLLOWED).posts
             supportsUserFeeds && selectedTab == 1 -> feedState(PluginFeedKind.POPULAR).posts
             supportsUserFeeds && selectedTab == 2 -> feedState(PluginFeedKind.FAVORITES).posts
-            selectedTab == 0 -> popularFeed.posts
-            selectedTab == 1 -> newestFeed.posts
-            selectedTab == 2 -> favoritesFeed.posts
+            selectedTab == 0 -> feed(PluginFeedKind.POPULAR).posts
+            selectedTab == 1 -> feed(PluginFeedKind.NEWEST).posts
+            selectedTab == 2 -> feed(PluginFeedKind.FAVORITES).posts
             else -> emptyList()
         }
 
     val isLoading: Boolean
         get() = when {
             isSearch -> when {
-                !supportsUserFeeds -> searchFeed.isLoading
-                pixivAuthorId != null -> pixivUserWorksFeed.isLoading
-                else -> pixivSearchFeed.isLoading
+                !supportsUserFeeds -> feed(PluginFeedKind.SEARCH).isLoading
+                pixivAuthorId != null -> feed(PlatformId.PIXIV, PluginFeedKind.AUTHOR_WORKS).isLoading
+                else -> feed(PlatformId.PIXIV, PluginFeedKind.SEARCH).isLoading
             }
             supportsUserFeeds && selectedTab == 0 -> feedState(PluginFeedKind.FOLLOWED).isLoading
             supportsUserFeeds && selectedTab == 1 -> feedState(PluginFeedKind.POPULAR).isLoading
             supportsUserFeeds && selectedTab == 2 -> feedState(PluginFeedKind.FAVORITES).isLoading
-            selectedTab == 0 -> popularFeed.isLoading
-            selectedTab == 1 -> newestFeed.isLoading
-            selectedTab == 2 -> favoritesFeed.isLoading
+            selectedTab == 0 -> feed(PluginFeedKind.POPULAR).isLoading
+            selectedTab == 1 -> feed(PluginFeedKind.NEWEST).isLoading
+            selectedTab == 2 -> feed(PluginFeedKind.FAVORITES).isLoading
             else -> false
         }
 
     val isLoadingMore: Boolean
         get() = when {
             isSearch -> when {
-                !supportsUserFeeds -> searchFeed.isLoadingMore
-                pixivAuthorId != null -> pixivUserWorksFeed.isLoadingMore
-                else -> pixivSearchFeed.isLoadingMore
+                !supportsUserFeeds -> feed(PluginFeedKind.SEARCH).isLoadingMore
+                pixivAuthorId != null -> feed(PlatformId.PIXIV, PluginFeedKind.AUTHOR_WORKS).isLoadingMore
+                else -> feed(PlatformId.PIXIV, PluginFeedKind.SEARCH).isLoadingMore
             }
             supportsUserFeeds && selectedTab == 0 -> feedState(PluginFeedKind.FOLLOWED).isLoadingMore
             supportsUserFeeds && selectedTab == 1 -> feedState(PluginFeedKind.POPULAR).isLoadingMore
             supportsUserFeeds && selectedTab == 2 -> feedState(PluginFeedKind.FAVORITES).isLoadingMore
-            selectedTab == 0 -> popularFeed.isLoadingMore
-            selectedTab == 1 -> newestFeed.isLoadingMore
-            selectedTab == 2 -> favoritesFeed.isLoadingMore
+            selectedTab == 0 -> feed(PluginFeedKind.POPULAR).isLoadingMore
+            selectedTab == 1 -> feed(PluginFeedKind.NEWEST).isLoadingMore
+            selectedTab == 2 -> feed(PluginFeedKind.FAVORITES).isLoadingMore
             else -> false
         }
 
     val isRefreshing: Boolean
         get() = when {
             isSearch -> when {
-                !supportsUserFeeds -> searchFeed.isRefreshing
-                pixivAuthorId != null -> pixivUserWorksFeed.isRefreshing
-                else -> pixivSearchFeed.isRefreshing
+                !supportsUserFeeds -> feed(PluginFeedKind.SEARCH).isRefreshing
+                pixivAuthorId != null -> feed(PlatformId.PIXIV, PluginFeedKind.AUTHOR_WORKS).isRefreshing
+                else -> feed(PlatformId.PIXIV, PluginFeedKind.SEARCH).isRefreshing
             }
             supportsUserFeeds && selectedTab == 0 -> feedState(PluginFeedKind.FOLLOWED).isRefreshing
             supportsUserFeeds && selectedTab == 1 -> feedState(PluginFeedKind.POPULAR).isRefreshing
             supportsUserFeeds && selectedTab == 2 -> feedState(PluginFeedKind.FAVORITES).isRefreshing
-            selectedTab == 0 -> popularFeed.isRefreshing
-            selectedTab == 1 -> newestFeed.isRefreshing
-            selectedTab == 2 -> favoritesFeed.isRefreshing
+            selectedTab == 0 -> feed(PluginFeedKind.POPULAR).isRefreshing
+            selectedTab == 1 -> feed(PluginFeedKind.NEWEST).isRefreshing
+            selectedTab == 2 -> feed(PluginFeedKind.FAVORITES).isRefreshing
             else -> false
         }
 
     val error: FeedError?
         get() = when {
             isSearch -> when {
-                !supportsUserFeeds -> searchFeed.error
-                pixivAuthorId != null -> pixivUserWorksFeed.error
-                else -> pixivSearchFeed.error
+                !supportsUserFeeds -> feed(PluginFeedKind.SEARCH).error
+                pixivAuthorId != null -> feed(PlatformId.PIXIV, PluginFeedKind.AUTHOR_WORKS).error
+                else -> feed(PlatformId.PIXIV, PluginFeedKind.SEARCH).error
             }
             supportsUserFeeds && selectedTab == 0 -> feedState(PluginFeedKind.FOLLOWED).error
             supportsUserFeeds && selectedTab == 1 -> feedState(PluginFeedKind.POPULAR).error
             supportsUserFeeds && selectedTab == 2 -> feedState(PluginFeedKind.FAVORITES).error
-            selectedTab == 0 -> popularFeed.error
-            selectedTab == 1 -> newestFeed.error
-            selectedTab == 2 -> favoritesFeed.error
+            selectedTab == 0 -> feed(PluginFeedKind.POPULAR).error
+            selectedTab == 1 -> feed(PluginFeedKind.NEWEST).error
+            selectedTab == 2 -> feed(PluginFeedKind.FAVORITES).error
             else -> null
         }
 }
@@ -242,8 +204,6 @@ data class ExploreUiState(
 internal fun ExploreUiState.forPlatform(platform: PlatformId): ExploreUiState = copy(
     platform = platform,
     selectedTab = 0,
-    // Both slot stores reset together; the map must never outlive the flat
-    // mirror or feed() (map-first) would serve the previous site's content.
     feeds = emptyMap(),
     searchTags = "",
     pixivSearchTags = "",
@@ -251,15 +211,6 @@ internal fun ExploreUiState.forPlatform(platform: PlatformId): ExploreUiState = 
     pixivAuthorName = null,
     pixivAuthorFollowed = null,
     activePoolName = null,
-    popularFeed = FeedState(),
-    newestFeed = FeedState(),
-    favoritesFeed = FeedState(),
-    searchFeed = FeedState(),
-    pixivPopularFeed = FeedState(),
-    pixivFollowedFeed = FeedState(),
-    pixivFavoritesFeed = FeedState(),
-    pixivSearchFeed = FeedState(),
-    pixivUserWorksFeed = FeedState(),
     poolsFeed = PoolListState(),
     poolCovers = emptyMap(),
     yandeSearchSuggestions = emptyList(),
@@ -274,19 +225,13 @@ internal fun ExploreUiState.pixivFeedToReloadAfterAuthentication(): PluginFeedKi
 }
 
 internal fun ExploreUiState.clearStalePixivAuthErrors(): ExploreUiState {
-    // Reset the slot in BOTH stores (map first, flat mirror) so they cannot
-    // diverge on which auth errors are stale.
     var cleared = this
     for (kind in listOf(PluginFeedKind.FOLLOWED, PluginFeedKind.FAVORITES, PluginFeedKind.SEARCH, PluginFeedKind.AUTHOR_WORKS)) {
-        val slot = feed(PlatformId.PIXIV, kind)
-        if (slot.authRequired) cleared = cleared.withFeed(PlatformId.PIXIV, kind) { FeedState() }
+        if (feed(PlatformId.PIXIV, kind).authRequired) {
+            cleared = cleared.withFeed(PlatformId.PIXIV, kind) { FeedState() }
+        }
     }
-    return cleared.copy(
-        pixivFollowedFeed = if (pixivFollowedFeed.authRequired) FeedState() else pixivFollowedFeed,
-        pixivFavoritesFeed = if (pixivFavoritesFeed.authRequired) FeedState() else pixivFavoritesFeed,
-        pixivSearchFeed = if (pixivSearchFeed.authRequired) FeedState() else pixivSearchFeed,
-        pixivUserWorksFeed = if (pixivUserWorksFeed.authRequired) FeedState() else pixivUserWorksFeed,
-    )
+    return cleared
 }
 
 internal fun pixivKindForTab(tabIndex: Int): PluginFeedKind? = when (tabIndex) {
@@ -300,14 +245,7 @@ internal fun followProviderFor(plugins: Map<PlatformId, SitePlugin>): SitePlugin
     plugins[PlatformId.PIXIV]?.takeIf { PlatformCapability.FOLLOW_AUTHORS in it.capabilities }
 
 internal fun pixivFeed(state: ExploreUiState, kind: PluginFeedKind): FeedState =
-    when (kind) {
-        PluginFeedKind.POPULAR -> state.pixivPopularFeed
-        PluginFeedKind.FOLLOWED -> state.pixivFollowedFeed
-        PluginFeedKind.FAVORITES -> state.pixivFavoritesFeed
-        PluginFeedKind.SEARCH -> state.pixivSearchFeed
-        PluginFeedKind.AUTHOR_WORKS -> state.pixivUserWorksFeed
-        PluginFeedKind.NEWEST, PluginFeedKind.POOLS -> FeedState()
-    }
+    state.feed(PlatformId.PIXIV, kind)
 
 internal fun filterPosts(posts: List<Post>, safeMode: Boolean): List<Post> =
     if (safeMode) posts.filter { it.rating == PostRating.SAFE } else posts
@@ -319,4 +257,3 @@ internal suspend fun <T> applyIfActive(
     val result = request()
     if (currentCoroutineContext().isActive) apply(result)
 }
-

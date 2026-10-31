@@ -102,7 +102,7 @@ internal fun ExploreViewModel.shiftPopularDate(amount: Int) {
 
 internal fun ExploreViewModel.loadPopularInitial() {
     launchMoebooru {
-        _uiState.update { it.copy(popularFeed = it.popularFeed.copy(isLoading = true, error = null, page = 1)) }
+        _uiState.update { it.withFeed(PluginFeedKind.POPULAR) { f -> f.copy(isLoading = true, error = null, page = 1) } }
         try {
             val state = _uiState.value
             val result = activeFeedSource()?.load(PluginFeedRequest(
@@ -115,18 +115,16 @@ internal fun ExploreViewModel.loadPopularInitial() {
             )) ?: PluginFeedResult.TransportFailure("Active platform feed is not configured")
             val posts = result.feedPostsOrThrow(::applyLocalFilters)
             _uiState.update {
-                val feed = it.popularFeed.copy(posts = posts, isLoading = false, hasMore = posts.isNotEmpty())
-                it.copy(popularFeed = feed)
+                val feed = it.feed(PluginFeedKind.POPULAR).copy(posts = posts, isLoading = false, hasMore = posts.isNotEmpty())
+                it.withFeed(PluginFeedKind.POPULAR) { f -> feed }
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             _uiState.update {
-                it.copy(
-                    popularFeed = it.popularFeed.copy(
-                        isLoading = false,
-                        error = feedError(e),
-                    )
-                )
+                it.withFeed(PluginFeedKind.POPULAR) { f -> f.copy(
+                    isLoading = false,
+                    error = feedError(e),
+                )}
             }
         }
     }
@@ -134,7 +132,7 @@ internal fun ExploreViewModel.loadPopularInitial() {
 
 internal fun ExploreViewModel.loadNewestInitial() {
     launchMoebooru {
-        _uiState.update { it.copy(newestFeed = it.newestFeed.copy(isLoading = true, error = null, page = 1)) }
+        _uiState.update { it.withFeed(PluginFeedKind.NEWEST) { f -> f.copy(isLoading = true, error = null, page = 1) } }
         try {
             val result = activeFeedSource()?.load(
                 PluginFeedRequest(
@@ -146,125 +144,115 @@ internal fun ExploreViewModel.loadNewestInitial() {
             ) ?: PluginFeedResult.TransportFailure("Active platform feed is not configured")
             val posts = result.feedPostsOrThrow(::applyLocalFilters)
             _uiState.update {
-                val feed = it.newestFeed.copy(posts = posts, isLoading = false, hasMore = posts.isNotEmpty())
-                it.copy(newestFeed = feed)
+                val feed = it.feed(PluginFeedKind.NEWEST).copy(posts = posts, isLoading = false, hasMore = posts.isNotEmpty())
+                it.withFeed(PluginFeedKind.NEWEST) { f -> feed }
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             _uiState.update {
-                it.copy(
-                    newestFeed = it.newestFeed.copy(
-                        isLoading = false,
-                        error = feedError(e),
-                    )
-                )
+                it.withFeed(PluginFeedKind.NEWEST) { f -> f.copy(
+                    isLoading = false,
+                    error = feedError(e),
+                )}
             }
         }
     }
 }
 
 internal fun ExploreViewModel.loadMorePopular() {
-    val feed = _uiState.value.popularFeed
+    val feed = _uiState.value.feed(PluginFeedKind.POPULAR)
     if (feed.isLoading || feed.isLoadingMore || !feed.hasMore) return
 
-    _uiState.update { it.copy(popularFeed = it.popularFeed.copy(isLoadingMore = true)) }
+    _uiState.update { it.withFeed(PluginFeedKind.POPULAR) { f -> f.copy(isLoadingMore = true) } }
     launchMoebooru {
         val nextPage = feed.page + 1
         try {
             val state = _uiState.value
             val newPosts = loadPosts(PluginFeedKind.POPULAR, page = nextPage, period = state.popularPeriod, date = state.popularDate)
             _uiState.update {
-                it.copy(
-                    popularFeed = it.popularFeed.copy(
-                        posts = it.popularFeed.posts.appendDistinct(newPosts),
-                        page = nextPage,
-                        hasMore = newPosts.isNotEmpty(),
-                        isLoadingMore = false,
-                    )
-                )
+                it.withFeed(PluginFeedKind.POPULAR) { f -> f.copy(
+                    posts = it.feed(PluginFeedKind.POPULAR).posts.appendDistinct(newPosts),
+                    page = nextPage,
+                    hasMore = newPosts.isNotEmpty(),
+                    isLoadingMore = false,
+                )}
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
-            _uiState.update { it.copy(popularFeed = it.popularFeed.copy(isLoadingMore = false)) }
+            _uiState.update { it.withFeed(PluginFeedKind.POPULAR) { f -> f.copy(isLoadingMore = false) } }
         }
     }
 }
 
 internal fun ExploreViewModel.loadMoreNewest() {
-    val feed = _uiState.value.newestFeed
+    val feed = _uiState.value.feed(PluginFeedKind.NEWEST)
     if (feed.isLoading || feed.isLoadingMore || !feed.hasMore) return
 
-    _uiState.update { it.copy(newestFeed = it.newestFeed.copy(isLoadingMore = true)) }
+    _uiState.update { it.withFeed(PluginFeedKind.NEWEST) { f -> f.copy(isLoadingMore = true) } }
     launchMoebooru {
         val nextPage = feed.page + 1
         try {
             val newPosts = loadPosts(PluginFeedKind.NEWEST, page = nextPage)
             _uiState.update {
-                it.copy(
-                    newestFeed = it.newestFeed.copy(
-                        posts = it.newestFeed.posts.appendDistinct(newPosts),
-                        page = nextPage,
-                        hasMore = newPosts.isNotEmpty(),
-                        isLoadingMore = false,
-                    )
-                )
+                it.withFeed(PluginFeedKind.NEWEST) { f -> f.copy(
+                    posts = it.feed(PluginFeedKind.NEWEST).posts.appendDistinct(newPosts),
+                    page = nextPage,
+                    hasMore = newPosts.isNotEmpty(),
+                    isLoadingMore = false,
+                )}
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
-            _uiState.update { it.copy(newestFeed = it.newestFeed.copy(isLoadingMore = false)) }
+            _uiState.update { it.withFeed(PluginFeedKind.NEWEST) { f -> f.copy(isLoadingMore = false) } }
         }
     }
 }
 
 internal fun ExploreViewModel.refreshPopular() {
     launchMoebooru {
-        _uiState.update { it.copy(popularFeed = it.popularFeed.copy(isRefreshing = true, error = null)) }
+        _uiState.update { it.withFeed(PluginFeedKind.POPULAR) { f -> f.copy(isRefreshing = true, error = null) } }
         try {
             val state = _uiState.value
             val posts = loadPosts(PluginFeedKind.POPULAR, period = state.popularPeriod, date = state.popularDate)
             _uiState.update {
-                it.copy(
-                    popularFeed = it.popularFeed.copy(
-                        posts = posts,
-                        isRefreshing = false,
-                        page = 1,
-                        hasMore = posts.isNotEmpty(),
-                    )
-                )
+                it.withFeed(PluginFeedKind.POPULAR) { f -> f.copy(
+                    posts = posts,
+                    isRefreshing = false,
+                    page = 1,
+                    hasMore = posts.isNotEmpty(),
+                )}
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             _uiState.update {
-                it.copy(popularFeed = it.popularFeed.copy(isRefreshing = false, error = feedError(e)))
-            }
+                it.withFeed(PluginFeedKind.POPULAR) { f -> f.copy(isRefreshing = false, error = feedError(e)) }
         }
     }
 }
 
+}
 internal fun ExploreViewModel.refreshNewest() {
     launchMoebooru {
-        _uiState.update { it.copy(newestFeed = it.newestFeed.copy(isRefreshing = true, error = null)) }
+        _uiState.update { it.withFeed(PluginFeedKind.NEWEST) { f -> f.copy(isRefreshing = true, error = null) } }
         try {
             val posts = loadPosts(PluginFeedKind.NEWEST)
             _uiState.update {
-                it.copy(
-                    newestFeed = it.newestFeed.copy(
-                        posts = posts,
-                        isRefreshing = false,
-                        page = 1,
-                        hasMore = posts.isNotEmpty(),
-                    )
-                )
+                it.withFeed(PluginFeedKind.NEWEST) { f -> f.copy(
+                    posts = posts,
+                    isRefreshing = false,
+                    page = 1,
+                    hasMore = posts.isNotEmpty(),
+                )}
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             _uiState.update {
-                it.copy(newestFeed = it.newestFeed.copy(isRefreshing = false, error = feedError(e)))
-            }
+                it.withFeed(PluginFeedKind.NEWEST) { f -> f.copy(isRefreshing = false, error = feedError(e)) }
         }
     }
 }
 
+}
 internal fun ExploreViewModel.openPool(pool: PoolSummary) {
     search(tags = MoebooruTags.pool(pool.id), poolName = "#${pool.id} · ${pool.displayName}")
 }
@@ -275,15 +263,13 @@ internal fun ExploreViewModel.loadFavoritesInitial() {
     val platform = _uiState.value.platform
     cancelFeedJob(platform, PluginFeedKind.FAVORITES)
     _uiState.update {
-        it.copy(
-            favoritesFeed = it.favoritesFeed.copy(
-                isLoading = true,
-                isLoadingMore = false,
-                isRefreshing = false,
-                error = null,
-                page = 1,
-            )
-        )
+        it.withFeed(PluginFeedKind.FAVORITES) { f -> f.copy(
+            isLoading = true,
+            isLoadingMore = false,
+            isRefreshing = false,
+            error = null,
+            page = 1,
+        )}
     }
     feedJobs[platform to PluginFeedKind.FAVORITES] = launchMoebooru {
         try {
@@ -291,25 +277,21 @@ internal fun ExploreViewModel.loadFavoritesInitial() {
                 request = { loadPosts(PluginFeedKind.FAVORITES) },
                 apply = { posts ->
                     _uiState.update {
-                        it.copy(
-                            favoritesFeed = it.favoritesFeed.copy(
-                                posts = posts,
-                                isLoading = false,
-                                hasMore = posts.isNotEmpty(),
-                            )
-                        )
+                        it.withFeed(PluginFeedKind.FAVORITES) { f -> f.copy(
+                            posts = posts,
+                            isLoading = false,
+                            hasMore = posts.isNotEmpty(),
+                        )}
                     }
                 },
             )
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             _uiState.update {
-                it.copy(
-                    favoritesFeed = it.favoritesFeed.copy(
-                        isLoading = false,
-                        error = feedError(e),
-                    )
-                )
+                it.withFeed(PluginFeedKind.FAVORITES) { f -> f.copy(
+                    isLoading = false,
+                    error = feedError(e),
+                )}
             }
         }
     }
@@ -317,12 +299,12 @@ internal fun ExploreViewModel.loadFavoritesInitial() {
 
 internal fun ExploreViewModel.loadMoreFavorites() {
     val state = _uiState.value
-    val feed = state.favoritesFeed
+    val feed = state.feed(PluginFeedKind.FAVORITES)
     if (feed.isLoading || feed.isLoadingMore || !feed.hasMore) return
 
     val platform = state.platform
     cancelFeedJob(platform, PluginFeedKind.FAVORITES)
-    _uiState.update { it.copy(favoritesFeed = it.favoritesFeed.copy(isLoadingMore = true)) }
+    _uiState.update { it.withFeed(PluginFeedKind.FAVORITES) { f -> f.copy(isLoadingMore = true) } }
     val nextPage = feed.page + 1
     feedJobs[platform to PluginFeedKind.FAVORITES] = launchMoebooru {
         try {
@@ -330,20 +312,18 @@ internal fun ExploreViewModel.loadMoreFavorites() {
                 request = { loadPosts(PluginFeedKind.FAVORITES, page = nextPage) },
                 apply = { newPosts ->
                     _uiState.update {
-                        it.copy(
-                            favoritesFeed = it.favoritesFeed.copy(
-                                posts = it.favoritesFeed.posts.appendDistinct(newPosts),
-                                page = nextPage,
-                                hasMore = newPosts.isNotEmpty(),
-                                isLoadingMore = false,
-                            )
-                        )
+                        it.withFeed(PluginFeedKind.FAVORITES) { f -> f.copy(
+                            posts = it.feed(PluginFeedKind.FAVORITES).posts.appendDistinct(newPosts),
+                            page = nextPage,
+                            hasMore = newPosts.isNotEmpty(),
+                            isLoadingMore = false,
+                        )}
                     }
                 },
             )
         } catch (e: Exception) {
             if (e is CancellationException) throw e
-            _uiState.update { it.copy(favoritesFeed = it.favoritesFeed.copy(isLoadingMore = false)) }
+            _uiState.update { it.withFeed(PluginFeedKind.FAVORITES) { f -> f.copy(isLoadingMore = false) } }
         }
     }
 }
@@ -352,14 +332,12 @@ internal fun ExploreViewModel.refreshFavorites() {
     val platform = _uiState.value.platform
     cancelFeedJob(platform, PluginFeedKind.FAVORITES)
     _uiState.update {
-        it.copy(
-            favoritesFeed = it.favoritesFeed.copy(
-                isRefreshing = true,
-                isLoading = false,
-                isLoadingMore = false,
-                error = null,
-            )
-        )
+        it.withFeed(PluginFeedKind.FAVORITES) { f -> f.copy(
+            isRefreshing = true,
+            isLoading = false,
+            isLoadingMore = false,
+            error = null,
+        )}
     }
     feedJobs[platform to PluginFeedKind.FAVORITES] = launchMoebooru {
         try {
@@ -367,26 +345,24 @@ internal fun ExploreViewModel.refreshFavorites() {
                 request = { loadPosts(PluginFeedKind.FAVORITES) },
                 apply = { posts ->
                     _uiState.update {
-                        it.copy(
-                            favoritesFeed = it.favoritesFeed.copy(
-                                posts = posts,
-                                isRefreshing = false,
-                                page = 1,
-                                hasMore = posts.isNotEmpty(),
-                            )
-                        )
+                        it.withFeed(PluginFeedKind.FAVORITES) { f -> f.copy(
+                            posts = posts,
+                            isRefreshing = false,
+                            page = 1,
+                            hasMore = posts.isNotEmpty(),
+                        )}
                     }
                 },
             )
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             _uiState.update {
-                it.copy(favoritesFeed = it.favoritesFeed.copy(isRefreshing = false, error = feedError(e)))
-            }
+                it.withFeed(PluginFeedKind.FAVORITES) { f -> f.copy(isRefreshing = false, error = feedError(e)) }
         }
     }
 }
 
+}
 internal fun ExploreViewModel.loadPoolsInitial(query: String = "") {
     launchMoebooru {
         _uiState.update { it.copy(poolsFeed = it.poolsFeed.copy(isLoading = true, error = null, page = 1, query = query)) }
