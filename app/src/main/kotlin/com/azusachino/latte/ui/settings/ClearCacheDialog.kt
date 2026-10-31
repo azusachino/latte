@@ -36,6 +36,7 @@ import com.azusachino.latte.data.cache.CacheType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.azusachino.latte.ui.common.formatFileSize
 
 @Composable
 fun ClearCacheDialog(

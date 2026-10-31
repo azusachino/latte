@@ -278,7 +278,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             PluginFeedKind.FAVORITES -> {
                 val plugin = activePlugin() ?: return
                 if (!plugin.isLoggedIn) return
-                loadFavoritesInitial(plugin.getDisplayUsername().orEmpty())
+                loadFavoritesInitial()
             }
             else -> {}
         }
@@ -300,9 +300,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             when (state.selectedTab) {
                 0 -> loadMorePopular()
                 1 -> loadMoreNewest()
-                2 -> {
-                    activePlugin()?.getDisplayUsername()?.let(::loadMoreFavorites)
-                }
+                2 -> loadMoreFavorites()
             }
         }
     }
@@ -311,47 +309,8 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
 
     // doesn't refetch it.
 
-    fun loadMore() {
-        val state = _uiState.value
-        if (state.supportsUserFeeds) {
-            loadMorePixiv()
-            return
-        }
-        when {
-            state.isSearch -> loadMoreSearch()
-            state.selectedTab == 0 -> loadMorePopular()
-            state.selectedTab == 2 -> activePlugin()?.getDisplayUsername()?.let(::loadMoreFavorites)
-            else -> loadMoreNewest()
-        }
-    }
 
-    fun refresh() {
-        val state = _uiState.value
-        if (state.supportsUserFeeds) {
-            refreshPixiv()
-            return
-        }
-        when {
-            state.isSearch -> search(state.searchTags)
-            state.selectedTab == 0 -> refreshPopular()
-            state.selectedTab == 2 -> activePlugin()?.getDisplayUsername()?.let(::refreshFavorites)
-            else -> refreshNewest()
-        }
-    }
 
-    fun loadInitial() {
-        val state = _uiState.value
-        if (state.supportsUserFeeds) {
-            loadPixivInitial()
-            return
-        }
-        when {
-            state.isSearch -> search(state.searchTags)
-            state.selectedTab == 0 -> loadPopularInitial()
-            state.selectedTab == 2 -> activePlugin()?.getDisplayUsername()?.let(::loadFavoritesInitial)
-            else -> loadNewestInitial()
-        }
-    }
 
     internal companion object {
         /** Re-searches older than this fetch fresh results instead of the cache. */

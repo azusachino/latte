@@ -100,6 +100,7 @@ import com.azusachino.latte.data.download.DownloadIdentity
 import com.azusachino.latte.data.download.DownloadManager
 import com.azusachino.latte.data.download.DownloadResult
 import com.azusachino.latte.data.model.Post
+import com.azusachino.latte.ui.common.formatFileSize
 import com.azusachino.latte.data.model.FavoriteTag
 import com.azusachino.latte.data.model.PostRating
 import com.azusachino.latte.data.model.forPage
@@ -348,15 +349,4 @@ internal fun TagChip(
     }
 }
 
-internal fun formatFileSize(bytes: Long?): String {
-    if (bytes == null || bytes <= 0) return ""
-    val units = arrayOf("B", "KB", "MB", "GB")
-    var size = bytes.toDouble()
-    var unitIndex = 0
-    while (size >= 1024 && unitIndex < units.size - 1) {
-        size /= 1024
-        unitIndex++
-    }
-    return String.format(java.util.Locale.US, "%.1f %s", size, units[unitIndex])
-}
 

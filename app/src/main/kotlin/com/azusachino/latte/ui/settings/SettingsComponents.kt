@@ -65,6 +65,7 @@ import com.azusachino.latte.BuildConfig
 import com.azusachino.latte.data.cache.CacheManager
 import com.azusachino.latte.data.settings.LatteBackupCodec
 import com.azusachino.latte.data.settings.LattePreferences
+import com.azusachino.latte.ui.common.formatFileSize
 import com.azusachino.latte.data.settings.ThemeMode
 import com.azusachino.latte.data.update.ApkInstaller
 import com.azusachino.latte.data.update.DownloadProgress
@@ -214,11 +215,3 @@ internal fun SettingsSwitchRow(
     }
 }
 
-internal fun formatFileSize(bytes: Long): String {
-    if (bytes <= 0) return "0 B"
-    val units = arrayOf("B", "KB", "MB", "GB")
-    var digitGroups = (Math.log10(bytes.toDouble()) / Math.log10(1024.0)).toInt()
-    if (digitGroups >= units.size) digitGroups = units.size - 1
-    val df = java.text.DecimalFormat("#,##0.#")
-    return "${df.format(bytes / Math.pow(1024.0, digitGroups.toDouble()))} ${units[digitGroups]}"
-}

@@ -269,7 +269,7 @@ internal fun ExploreViewModel.openPool(pool: PoolSummary) {
     search(tags = MoebooruTags.pool(pool.id), poolName = "#${pool.id} · ${pool.displayName}")
 }
 
-internal fun ExploreViewModel.loadFavoritesInitial(username: String) {
+internal fun ExploreViewModel.loadFavoritesInitial() {
     // Favorites refetches on every landing on its tab; serialize the loads
     // like the Pixiv feeds so a stale page cannot land after a fresh one.
     val platform = _uiState.value.platform
@@ -315,7 +315,7 @@ internal fun ExploreViewModel.loadFavoritesInitial(username: String) {
     }
 }
 
-internal fun ExploreViewModel.loadMoreFavorites(username: String) {
+internal fun ExploreViewModel.loadMoreFavorites() {
     val state = _uiState.value
     val feed = state.favoritesFeed
     if (feed.isLoading || feed.isLoadingMore || !feed.hasMore) return
@@ -348,7 +348,7 @@ internal fun ExploreViewModel.loadMoreFavorites(username: String) {
     }
 }
 
-internal fun ExploreViewModel.refreshFavorites(username: String) {
+internal fun ExploreViewModel.refreshFavorites() {
     val platform = _uiState.value.platform
     cancelFeedJob(platform, PluginFeedKind.FAVORITES)
     _uiState.update {
