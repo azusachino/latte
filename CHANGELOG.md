@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.6 - 2026-10-31
+
+### Fixed
+
+- The explore grid no longer flickers while flinging: feed thumbnails use a plain image view with a flat placeholder instead of a per-item subcomposition, and image crossfade no longer replays over the whole grid when you return to the app.
+- Pixiv detail shows the page original's size and extension again: the mirror fallback ranked above the original for bestVariant.
+- Platform switches, Safe Mode changes and sign-outs reset both feed-state stores together, so stale feed entries could not resurface.
+
+### Changed
+
+- File sizes render through one shared formatter; settings cache sizes gain the trailing decimal ("20.0 MB").
+- ExploreViewModel is split into per-feed-family files (Moebooru / Pixiv / Search), detail media, metadata and rating into their own files, shared settings rows into SettingsComponents; no behavior change.
+
 ## 0.3.5 - 2026-10-30
 
 ### Fixed
