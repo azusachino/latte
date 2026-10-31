@@ -44,7 +44,7 @@ fun MoebooruPostDto.toDomain(platform: PlatformId): Post {
                 height = jpegHeight ?: height,
                 fileSize = jpegFileSize,
                 extension = "jpg",
-                downloadPriority = 4,
+                downloadPriority = 3,
             )
         )
     }
@@ -57,7 +57,9 @@ fun MoebooruPostDto.toDomain(platform: PlatformId): Post {
                 height = height,
                 fileSize = fileSize,
                 extension = fileExt,
-                downloadPriority = 3,
+                // The original outranks the jpeg re-encode: downloads and the
+                // detail size label must reflect the file the site serves.
+                downloadPriority = 4,
             )
         )
     }
