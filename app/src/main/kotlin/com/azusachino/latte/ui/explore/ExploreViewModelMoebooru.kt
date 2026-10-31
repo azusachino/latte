@@ -35,6 +35,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+
 internal fun ExploreViewModel.launchMoebooru(block: suspend CoroutineScope.() -> Unit): Job =
     viewModelScope.launch(moebooruJob, block = block)
 
@@ -67,7 +68,6 @@ internal suspend fun ExploreViewModel.loadPosts(
     )) ?: PluginFeedResult.TransportFailure("Active platform feed is not configured")
     return result.feedPostsOrThrow(::applyLocalFilters)
 }
-
 
 internal fun ExploreViewModel.feedError(cause: Throwable): FeedError {
     android.util.Log.w("LatteExplore", "feed load failed: ${cause.message}", cause)

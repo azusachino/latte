@@ -1,6 +1,5 @@
 package com.azusachino.latte.ui.explore
 
-
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -235,7 +234,6 @@ fun GlassSegmentedTabs(
     }
 }
 
-
 @Composable
 internal fun PlatformLogo(
     label: String,
@@ -260,7 +258,6 @@ internal fun PlatformLogo(
     }
 }
 
-
 internal fun toggleFavoriteTagWithUndo(
     tag: String,
     platform: PlatformId,
@@ -274,7 +271,6 @@ internal fun toggleFavoriteTagWithUndo(
         }
     }
 }
-
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable

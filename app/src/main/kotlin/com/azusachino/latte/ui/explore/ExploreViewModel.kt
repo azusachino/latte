@@ -100,15 +100,12 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         gridPositions[key] = position
     }
 
-
     fun clearSearchCaches() {
         yandeSearchCache.clear()
         yandeSuggestionCache.clear()
         pixivSearchCache.clear()
         pixivUserWorksCache.clear()
     }
-
-
 
     init {
         viewModelScope.launch {
@@ -176,9 +173,6 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     fun setColumnCount(count: Int) {
         preferences.setColumnCount(count)
     }
-
-
-
 
     fun configurePlugin(plugin: SitePlugin) {
         plugins[plugin.platform] = plugin
@@ -250,8 +244,6 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     internal fun activePlugin(): SitePlugin? = plugins[_uiState.value.platform]
     internal fun activeFeedSource(): PluginFeedSource? = feedSources[_uiState.value.platform]
 
-
-
     fun selectPlatform(platform: PlatformId) {
         val previous = _uiState.value.platform
         if (previous == platform) return
@@ -295,11 +287,6 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     fun selectPopularTab() = selectTab(0)
     fun selectNewestTab() = selectTab(1)
 
-
-
-
-
-
     fun loadMoreActiveFeed() {
         val state = _uiState.value
         if (state.isSearch) {
@@ -320,36 +307,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-
-
-
-
-
-
-
-
     internal val pixivAuthorFollowStates = mutableMapOf<Long, Boolean>()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     // doesn't refetch it.
 

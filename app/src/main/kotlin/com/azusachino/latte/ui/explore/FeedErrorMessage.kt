@@ -14,6 +14,7 @@ data class FeedError(val title: String, val hint: String? = null)
 internal class FeedLoadFailure(val result: PluginFeedResult) : Exception(result.toString())
 
 /** Success yields [filter] applied to its items; [PluginFeedResult.Empty] is an empty feed, not a failure. */
+
 internal fun PluginFeedResult.feedPostsOrThrow(filter: (List<Post>) -> List<Post>): List<Post> = when (this) {
     is PluginFeedResult.Success -> filter(page.items)
     PluginFeedResult.Empty -> emptyList()
@@ -27,6 +28,7 @@ private val OfflineMarkers = listOf("unable to resolve host", "failed to connect
 private val ServerErrorPattern = Regex("""\bHTTP 5\d\d\b""")
 
 /** Maps any feed failure to a message. [site] is the platform display name, e.g. "Yande". */
+
 internal fun Throwable.toFeedError(site: String): FeedError {
     if (this is FeedLoadFailure) return result.toFeedError(site)
     val causes = generateSequence(this) { it.cause }.take(MAX_CAUSE_DEPTH)

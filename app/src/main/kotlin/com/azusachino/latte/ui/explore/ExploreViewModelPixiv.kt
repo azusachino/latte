@@ -34,6 +34,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+
 internal fun ExploreViewModel.retryPixivAfterAuthentication() {
     val state = _uiState.value
     if (!state.supportsUserFeeds) return
@@ -315,7 +316,6 @@ internal fun ExploreViewModel.updatePixivFeed(kind: PluginFeedKind, transform: (
         nextState
     }
 }
-
 
 internal fun ExploreViewModel.selectedPixivKind(): PluginFeedKind = when (_uiState.value.selectedTab) {
     0 -> PluginFeedKind.FOLLOWED
