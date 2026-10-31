@@ -145,7 +145,9 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         pixivSearchCache.clear()
         pixivUserWorksCache.clear()
         _uiState.update {
+            // Both slot stores reset together (see forPlatform).
             it.copy(
+                feeds = emptyMap(),
                 popularFeed = FeedState(),
                 newestFeed = FeedState(),
                 favoritesFeed = FeedState(),
@@ -256,8 +258,10 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         pixivUserWorksCache.clear()
         yandeSearchCache.clear()
         _uiState.update { state ->
+            // Both slot stores reset together (see forPlatform).
             if (platform == PlatformId.PIXIV) {
                 state.copy(
+                    feeds = state.feeds - PlatformId.PIXIV,
                     pixivFollowedFeed = FeedState(),
                     pixivFavoritesFeed = FeedState(),
                     pixivSearchFeed = FeedState(),
@@ -265,6 +269,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                 )
             } else {
                 state.copy(
+                    feeds = state.feeds - platform,
                     popularFeed = FeedState(),
                     newestFeed = FeedState(),
                     favoritesFeed = FeedState(),
