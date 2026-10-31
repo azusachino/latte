@@ -990,15 +990,15 @@ fun ExploreScreen(
                                     onRequireLogin = onRequireLogin,
                                     onLoadMore = {
                                         if (uiState.supportsUserFeeds) viewModel.loadMorePixiv(tab.kind)
-                                        else if (tab.kind == PluginFeedKind.FAVORITES) activePlugin.getDisplayUsername()?.let(viewModel::loadMoreFavorites)
+                                        else if (tab.kind == PluginFeedKind.FAVORITES) viewModel.loadMoreFavorites()
                                     },
                                     onRetry = {
                                         if (uiState.supportsUserFeeds) viewModel.loadPixivInitial(tab.kind)
-                                        else if (tab.kind == PluginFeedKind.FAVORITES) activePlugin.getDisplayUsername()?.let(viewModel::loadFavoritesInitial)
+                                        else if (tab.kind == PluginFeedKind.FAVORITES) viewModel.loadFavoritesInitial()
                                     },
                                     onRefresh = {
                                         if (uiState.supportsUserFeeds) viewModel.refreshPixiv(tab.kind)
-                                        else if (tab.kind == PluginFeedKind.FAVORITES) activePlugin.getDisplayUsername()?.let(viewModel::refreshFavorites)
+                                        else if (tab.kind == PluginFeedKind.FAVORITES) viewModel.refreshFavorites()
                                     },
                                     selectedPostIds = selectedPostIds,
                                     onToggleSelect = onToggleSelect,

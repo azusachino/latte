@@ -278,7 +278,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             PluginFeedKind.FAVORITES -> {
                 val plugin = activePlugin() ?: return
                 if (!plugin.isLoggedIn) return
-                loadFavoritesInitial(plugin.getDisplayUsername().orEmpty())
+                loadFavoritesInitial()
             }
             else -> {}
         }
@@ -300,9 +300,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             when (state.selectedTab) {
                 0 -> loadMorePopular()
                 1 -> loadMoreNewest()
-                2 -> {
-                    activePlugin()?.getDisplayUsername()?.let(::loadMoreFavorites)
-                }
+                2 -> loadMoreFavorites()
             }
         }
     }
@@ -320,7 +318,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         when {
             state.isSearch -> loadMoreSearch()
             state.selectedTab == 0 -> loadMorePopular()
-            state.selectedTab == 2 -> activePlugin()?.getDisplayUsername()?.let(::loadMoreFavorites)
+            state.selectedTab == 2 -> loadMoreFavorites()
             else -> loadMoreNewest()
         }
     }
@@ -334,7 +332,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         when {
             state.isSearch -> search(state.searchTags)
             state.selectedTab == 0 -> refreshPopular()
-            state.selectedTab == 2 -> activePlugin()?.getDisplayUsername()?.let(::refreshFavorites)
+            state.selectedTab == 2 -> refreshFavorites()
             else -> refreshNewest()
         }
     }
@@ -348,7 +346,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         when {
             state.isSearch -> search(state.searchTags)
             state.selectedTab == 0 -> loadPopularInitial()
-            state.selectedTab == 2 -> activePlugin()?.getDisplayUsername()?.let(::loadFavoritesInitial)
+            state.selectedTab == 2 -> loadFavoritesInitial()
             else -> loadNewestInitial()
         }
     }
