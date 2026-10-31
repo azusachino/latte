@@ -55,6 +55,9 @@ import com.azusachino.latte.ui.explore.FavoriteTagsScreen
 import com.azusachino.latte.ui.detail.DetailScreen
 import com.azusachino.latte.ui.explore.ExploreScreen
 import com.azusachino.latte.ui.explore.ExploreViewModel
+import com.azusachino.latte.ui.explore.clearSearch
+import com.azusachino.latte.ui.explore.loadPixivUserWorks
+import com.azusachino.latte.ui.explore.search
 import com.azusachino.latte.ui.history.ViewHistoryScreen
 import com.azusachino.latte.ui.settings.SettingsScreen
 import com.azusachino.latte.ui.theme.LattePalette

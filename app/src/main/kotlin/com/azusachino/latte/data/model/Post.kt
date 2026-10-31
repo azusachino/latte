@@ -114,7 +114,9 @@ fun Post.forPage(index: Int): Post {
                     width = page.width,
                     height = page.height,
                     extension = page.mediaRef.extension,
-                    downloadPriority = 5,
+                    // Last-resort download mirror: Pixiv download ordering is
+                    // host-based and ignores this, so keep it out of bestVariant.
+                    downloadPriority = 1,
                     fallbackOnPreviewFailure = true,
                 )
             },

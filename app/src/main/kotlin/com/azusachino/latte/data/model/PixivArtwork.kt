@@ -178,7 +178,8 @@ fun PixivIllustDto.toPost(): Post {
                     width = firstPage.width,
                     height = firstPage.height,
                     extension = firstPage.mediaRef.extension,
-                    downloadPriority = 5,
+                    // Last-resort download mirror: keep it out of bestVariant.
+                    downloadPriority = 1,
                     fallbackOnPreviewFailure = true,
                 )
             },

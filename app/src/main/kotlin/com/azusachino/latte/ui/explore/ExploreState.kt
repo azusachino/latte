@@ -242,6 +242,9 @@ data class ExploreUiState(
 internal fun ExploreUiState.forPlatform(platform: PlatformId): ExploreUiState = copy(
     platform = platform,
     selectedTab = 0,
+    // Both slot stores reset together; the map must never outlive the flat
+    // mirror or feed() (map-first) would serve the previous site's content.
+    feeds = emptyMap(),
     searchTags = "",
     pixivSearchTags = "",
     pixivAuthorId = null,
@@ -270,12 +273,21 @@ internal fun ExploreUiState.pixivFeedToReloadAfterAuthentication(): PluginFeedKi
     else -> pixivKindForTab(selectedTab)
 }
 
-internal fun ExploreUiState.clearStalePixivAuthErrors(): ExploreUiState = copy(
-    pixivFollowedFeed = if (pixivFollowedFeed.authRequired) FeedState() else pixivFollowedFeed,
-    pixivFavoritesFeed = if (pixivFavoritesFeed.authRequired) FeedState() else pixivFavoritesFeed,
-    pixivSearchFeed = if (pixivSearchFeed.authRequired) FeedState() else pixivSearchFeed,
-    pixivUserWorksFeed = if (pixivUserWorksFeed.authRequired) FeedState() else pixivUserWorksFeed,
-)
+internal fun ExploreUiState.clearStalePixivAuthErrors(): ExploreUiState {
+    // Reset the slot in BOTH stores (map first, flat mirror) so they cannot
+    // diverge on which auth errors are stale.
+    var cleared = this
+    for (kind in listOf(PluginFeedKind.FOLLOWED, PluginFeedKind.FAVORITES, PluginFeedKind.SEARCH, PluginFeedKind.AUTHOR_WORKS)) {
+        val slot = feed(PlatformId.PIXIV, kind)
+        if (slot.authRequired) cleared = cleared.withFeed(PlatformId.PIXIV, kind) { FeedState() }
+    }
+    return cleared.copy(
+        pixivFollowedFeed = if (pixivFollowedFeed.authRequired) FeedState() else pixivFollowedFeed,
+        pixivFavoritesFeed = if (pixivFavoritesFeed.authRequired) FeedState() else pixivFavoritesFeed,
+        pixivSearchFeed = if (pixivSearchFeed.authRequired) FeedState() else pixivSearchFeed,
+        pixivUserWorksFeed = if (pixivUserWorksFeed.authRequired) FeedState() else pixivUserWorksFeed,
+    )
+}
 
 internal fun pixivKindForTab(tabIndex: Int): PluginFeedKind? = when (tabIndex) {
     0 -> PluginFeedKind.FOLLOWED
