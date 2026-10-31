@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.5 - 2026-10-30
+
+### Fixed
+
+- The Favorites tab now orders by vote recency like the site's favorites view, so freshly favorited posts (even older uploads) appear at the top on refresh instead of sinking below the first page.
+- Moebooru downloads and the detail size label use the original file again: the JPEG re-encode ranked above the original, so a ~20MB PNG saved as a 754KB JPG.
+- Re-searching a tag no longer resurrects stale results: feed caches expire after a minute and pull-to-refresh writes fresh results back.
+- Detail re-checks your yande.re/Konachan favorite state on every open and Pixiv follow state on every works view, so changes made on the web show up.
+
+### Changed
+
+- Explore is split into focused files (state, feed grid, pools, popular controls, tabs); no behavior change.
+
 ## 0.3.4 - 2026-10-30
 
 ### Added
