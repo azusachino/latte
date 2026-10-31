@@ -48,11 +48,9 @@ internal fun ExploreViewModel.retryPixivAfterAuthentication() {
 
 internal fun ExploreViewModel.onPixivLoggedOut() {
     _uiState.update { current ->
-        current.copy(
-            pixivFollowedFeed = FeedState(),
-            pixivFavoritesFeed = FeedState(),
-            pixivAuthorFollowed = null,
-        )
+        listOf(PluginFeedKind.FOLLOWED, PluginFeedKind.FAVORITES)
+            .fold(current) { state, kind -> state.withFeed(PlatformId.PIXIV, kind) { FeedState() } }
+            .copy(pixivAuthorFollowed = null)
     }
     pixivAuthorFollowStates.clear()
 }
@@ -71,10 +69,10 @@ internal fun ExploreViewModel.searchPixiv(query: String) {
                 pixivSearchTags = trimmed,
                 pixivAuthorId = null,
                 pixivAuthorName = null,
-                pixivSearchFeed = cached,
-                pixivUserWorksFeed = FeedState(),
                 activePoolName = null,
             )
+                .withFeed(PlatformId.PIXIV, PluginFeedKind.SEARCH) { cached }
+                .withFeed(PlatformId.PIXIV, PluginFeedKind.AUTHOR_WORKS) { FeedState() }
         }
         return
     }
@@ -83,9 +81,9 @@ internal fun ExploreViewModel.searchPixiv(query: String) {
             pixivSearchTags = trimmed,
             pixivAuthorId = null,
             pixivAuthorName = null,
-            pixivUserWorksFeed = FeedState(),
             activePoolName = null,
         )
+            .withFeed(PlatformId.PIXIV, PluginFeedKind.AUTHOR_WORKS) { FeedState() }
     }
     loadPixivInitial(PluginFeedKind.SEARCH, trimmed)
 }
@@ -100,11 +98,11 @@ internal fun ExploreViewModel.loadPixivUserWorks(userId: Long, authorName: Strin
                 pixivSearchTags = "",
                 pixivAuthorId = userId,
                 pixivAuthorName = authorName,
-                pixivSearchFeed = FeedState(),
-                pixivUserWorksFeed = cached,
                 activePoolName = null,
                 pixivAuthorFollowed = pixivAuthorFollowStates[userId],
             )
+                .withFeed(PlatformId.PIXIV, PluginFeedKind.SEARCH) { FeedState() }
+                .withFeed(PlatformId.PIXIV, PluginFeedKind.AUTHOR_WORKS) { cached }
         }
         // Re-check on every open so web-side unfollows are not masked by
         // this session's cached state; the cache above only pre-renders.
@@ -116,7 +114,6 @@ internal fun ExploreViewModel.loadPixivUserWorks(userId: Long, authorName: Strin
             pixivSearchTags = "",
             pixivAuthorId = userId,
             pixivAuthorName = authorName,
-            pixivSearchFeed = FeedState(),
             activePoolName = null,
             pixivAuthorFollowed = pixivAuthorFollowStates[userId],
         )
@@ -159,8 +156,7 @@ internal fun ExploreViewModel.togglePixivFollow() {
                     it.copy(
                         pixivAuthorFollowed = !currentlyFollowed,
                         isTogglingPixivFollow = false,
-                        pixivFollowedFeed = FeedState(),
-                    )
+                    ).withFeed(PlatformId.PIXIV, PluginFeedKind.FOLLOWED) { FeedState() }
                 }
                 if (state.selectedTab == 0) {
                     loadPixivInitial(PluginFeedKind.FOLLOWED)

@@ -51,18 +51,18 @@ internal fun ExploreViewModel.loadMoreSearch() {
         }
         return
     }
-    val feed = state.searchFeed
+    val feed = state.feed(PluginFeedKind.SEARCH)
     if (feed.isLoading || feed.isLoadingMore || !feed.hasMore || state.searchTags.isBlank()) return
 
-    _uiState.update { it.copy(searchFeed = it.searchFeed.copy(isLoadingMore = true)) }
+    _uiState.update { it.withFeed(PluginFeedKind.SEARCH) { f -> f.copy(isLoadingMore = true) } }
     launchMoebooru {
         val nextPage = feed.page + 1
         val searchKey = state.searchTags
         try {
             val newPosts = loadPosts(PluginFeedKind.SEARCH, page = nextPage, query = searchKey)
             _uiState.update {
-                val updatedFeed = it.searchFeed.copy(
-                    posts = it.searchFeed.posts.appendDistinct(newPosts),
+                val updatedFeed = it.feed(PluginFeedKind.SEARCH).copy(
+                    posts = it.feed(PluginFeedKind.SEARCH).posts.appendDistinct(newPosts),
                     page = nextPage,
                     hasMore = newPosts.isNotEmpty(),
                     isLoadingMore = false,
@@ -70,11 +70,11 @@ internal fun ExploreViewModel.loadMoreSearch() {
                 if (it.searchTags == searchKey) {
                     yandeSearchCache[it.platform to searchKey] = updatedFeed
                 }
-                it.copy(searchFeed = updatedFeed)
+                it.withFeed(PluginFeedKind.SEARCH) { f -> updatedFeed }
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
-            _uiState.update { it.copy(searchFeed = it.searchFeed.copy(isLoadingMore = false)) }
+            _uiState.update { it.withFeed(PluginFeedKind.SEARCH) { f -> f.copy(isLoadingMore = false) } }
         }
     }
 }
@@ -96,14 +96,13 @@ internal fun ExploreViewModel.search(tags: String, poolName: String? = null) {
             it.copy(
                 searchTags = trimmed,
                 activePoolName = poolName,
-                searchFeed = cached,
-            )
+            ).withFeed(PluginFeedKind.SEARCH) { cached }
         }
         return
     }
     _uiState.update { it.copy(searchTags = trimmed, activePoolName = poolName) }
     launchMoebooru {
-        _uiState.update { it.copy(searchFeed = it.searchFeed.copy(isLoading = true, error = null, page = 1)) }
+        _uiState.update { it.withFeed(PluginFeedKind.SEARCH) { f -> f.copy(isLoading = true, error = null, page = 1) } }
         try {
             val posts = loadPosts(PluginFeedKind.SEARCH, query = trimmed)
             if (poolName == null) {
@@ -112,7 +111,7 @@ internal fun ExploreViewModel.search(tags: String, poolName: String? = null) {
                 preferences.recordRecentSearch(trimmed)
             }
             _uiState.update {
-                val updatedFeed = it.searchFeed.copy(
+                val updatedFeed = it.feed(PluginFeedKind.SEARCH).copy(
                     posts = posts,
                     isLoading = false,
                     hasMore = posts.isNotEmpty(),
@@ -120,17 +119,17 @@ internal fun ExploreViewModel.search(tags: String, poolName: String? = null) {
                 if (it.searchTags == trimmed) {
                     yandeSearchCache[cacheKey] = updatedFeed
                 }
-                it.copy(searchFeed = updatedFeed)
+                it.withFeed(PluginFeedKind.SEARCH) { f -> updatedFeed }
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             _uiState.update {
-                it.copy(searchFeed = it.searchFeed.copy(isLoading = false, error = feedError(e)))
-            }
+                it.withFeed(PluginFeedKind.SEARCH) { f -> f.copy(isLoading = false, error = feedError(e)) }
         }
     }
 }
 
+}
 internal fun ExploreViewModel.loadYandeSearchSupport(query: String) {
     val trimmed = query.trim()
     if (trimmed.length < 2) {
@@ -174,16 +173,14 @@ internal fun ExploreViewModel.clearSearch() {
     cancelAllPixivJobs()
     _uiState.update {
         if (it.supportsUserFeeds) {
-            it.copy(
-                pixivSearchTags = "",
-                pixivAuthorId = null,
-                pixivAuthorName = null,
-                pixivSearchFeed = FeedState(),
-                pixivUserWorksFeed = FeedState(),
-                activePoolName = null,
-            )
+            listOf(
+                PluginFeedKind.SEARCH,
+                PluginFeedKind.AUTHOR_WORKS,
+            ).fold(it.copy(pixivSearchTags = "", pixivAuthorId = null, pixivAuthorName = null, activePoolName = null)) { state, kind ->
+                state.withFeed(PlatformId.PIXIV, kind) { FeedState() }
+            }
         } else {
-            it.copy(searchTags = "", searchFeed = FeedState(), activePoolName = null)
+            it.copy(searchTags = "", activePoolName = null).withFeed(PluginFeedKind.SEARCH) { FeedState() }
         }
     }
 }
@@ -200,11 +197,11 @@ internal fun ExploreViewModel.refreshSearch() {
     if (state.searchTags.isBlank()) return
 
     launchMoebooru {
-        _uiState.update { it.copy(searchFeed = it.searchFeed.copy(isRefreshing = true, error = null)) }
+        _uiState.update { it.withFeed(PluginFeedKind.SEARCH) { f -> f.copy(isRefreshing = true, error = null) } }
         try {
             val posts = loadPosts(PluginFeedKind.SEARCH, query = state.searchTags)
             _uiState.update {
-                val updatedFeed = it.searchFeed.copy(
+                val updatedFeed = it.feed(PluginFeedKind.SEARCH).copy(
                     posts = posts,
                     isRefreshing = false,
                     page = 1,
@@ -215,17 +212,17 @@ internal fun ExploreViewModel.refreshSearch() {
                 if (it.searchTags == state.searchTags) {
                     yandeSearchCache[it.platform to state.searchTags] = updatedFeed
                 }
-                it.copy(searchFeed = updatedFeed)
+                it.withFeed(PluginFeedKind.SEARCH) { f -> updatedFeed }
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             _uiState.update {
-                it.copy(searchFeed = it.searchFeed.copy(isRefreshing = false, error = feedError(e)))
-            }
+                it.withFeed(PluginFeedKind.SEARCH) { f -> f.copy(isRefreshing = false, error = feedError(e)) }
         }
     }
 }
 
+}
 internal fun ExploreViewModel.retrySearch() {
     val state = _uiState.value
     if (!state.isSearch) return

@@ -376,6 +376,7 @@ internal fun FeedGrid(
                         val isSelected = post.id in selectedPostIds
                         PostGridItem(
                             post = post,
+                            modifier = Modifier.animateItem(),
                             isSelectionMode = isSelectionMode,
                             isSelected = isSelected,
                             onClick = {

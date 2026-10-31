@@ -841,9 +841,9 @@ fun ExploreScreen(
             if (uiState.isSearch) {
                 FeedGrid(
                     feed = when {
-                        !uiState.supportsUserFeeds -> uiState.searchFeed
-                        uiState.pixivAuthorId != null -> uiState.pixivUserWorksFeed
-                        else -> uiState.pixivSearchFeed
+                        !uiState.supportsUserFeeds -> uiState.feed(PluginFeedKind.SEARCH)
+                        uiState.pixivAuthorId != null -> uiState.feed(PlatformId.PIXIV, PluginFeedKind.AUTHOR_WORKS)
+                        else -> uiState.feed(PlatformId.PIXIV, PluginFeedKind.SEARCH)
                     },
                     viewModel = viewModel,
                     gridKey = when {

@@ -135,15 +135,6 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
             // Both slot stores reset together (see forPlatform).
             it.copy(
                 feeds = emptyMap(),
-                popularFeed = FeedState(),
-                newestFeed = FeedState(),
-                favoritesFeed = FeedState(),
-                searchFeed = FeedState(),
-                pixivPopularFeed = FeedState(),
-                pixivFollowedFeed = FeedState(),
-                pixivFavoritesFeed = FeedState(),
-                pixivSearchFeed = FeedState(),
-                pixivUserWorksFeed = FeedState(),
             )
         }
         val state = _uiState.value
@@ -180,14 +171,14 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         plugin.poolSource?.let { poolSources[plugin.platform] = it }
         if (plugin.platform == _uiState.value.platform &&
             PlatformCapability.USER_FEED !in plugin.capabilities &&
-            _uiState.value.popularFeed.posts.isEmpty()
+            _uiState.value.feed(PluginFeedKind.POPULAR).posts.isEmpty()
         ) {
             loadPopularInitial()
             loadNewestInitial()
         }
         if (PlatformCapability.USER_FEED in plugin.capabilities) {
             observeSessionReset(plugin)
-            if (_uiState.value.supportsUserFeeds && _uiState.value.pixivFollowedFeed.posts.isEmpty()) {
+            if (_uiState.value.supportsUserFeeds && _uiState.value.feed(PlatformId.PIXIV, PluginFeedKind.FOLLOWED).posts.isEmpty()) {
                 loadPixivInitial(PluginFeedKind.FOLLOWED)
             }
         }
@@ -216,20 +207,15 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         _uiState.update { state ->
             // Both slot stores reset together (see forPlatform).
             if (platform == PlatformId.PIXIV) {
-                state.copy(
-                    feeds = state.feeds - PlatformId.PIXIV,
-                    pixivFollowedFeed = FeedState(),
-                    pixivFavoritesFeed = FeedState(),
-                    pixivSearchFeed = FeedState(),
-                    pixivUserWorksFeed = FeedState(),
-                )
+                listOf(
+                    PluginFeedKind.FOLLOWED,
+                    PluginFeedKind.FAVORITES,
+                    PluginFeedKind.SEARCH,
+                    PluginFeedKind.AUTHOR_WORKS,
+                ).fold(state) { s, kind -> s.withFeed(PlatformId.PIXIV, kind) { FeedState() } }
             } else {
                 state.copy(
                     feeds = state.feeds - platform,
-                    popularFeed = FeedState(),
-                    newestFeed = FeedState(),
-                    favoritesFeed = FeedState(),
-                    searchFeed = FeedState(),
                     poolsFeed = PoolListState(query = state.poolsFeed.query),
                 )
             }
@@ -253,7 +239,7 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         pixivUserWorksCache.clear()
         pixivAuthorFollowStates.clear()
         _uiState.update { it.forPlatform(platform) }
-        if (PlatformCapability.USER_FEED in platform.capabilities && _uiState.value.pixivFollowedFeed.posts.isEmpty()) {
+        if (PlatformCapability.USER_FEED in platform.capabilities && _uiState.value.feed(PlatformId.PIXIV, PluginFeedKind.FOLLOWED).posts.isEmpty()) {
             loadPixivInitial(PluginFeedKind.FOLLOWED)
         } else if (PlatformCapability.USER_FEED !in platform.capabilities) {
             // A Moebooru switch changes the site under the shared tabs; the
