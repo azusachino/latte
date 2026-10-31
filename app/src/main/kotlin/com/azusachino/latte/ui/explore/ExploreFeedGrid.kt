@@ -128,6 +128,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import androidx.compose.ui.graphics.painter.ColorPainter
 import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
 import com.azusachino.latte.data.download.DownloadIdentity
@@ -622,6 +623,7 @@ internal fun PostGridItem(
     val imageSources = remember(post.siteId, post.id, post.pageIndex) { post.imageSources }
     var imageSourceIndex by rememberSaveable(post.siteId, post.id, post.pageIndex) { mutableStateOf(0) }
     var imageRetryCount by rememberSaveable(post.siteId, post.id, post.pageIndex) { mutableStateOf(0) }
+    var imageFailed by rememberSaveable(post.siteId, post.id, post.pageIndex) { mutableStateOf(false) }
     val safeImageSourceIndex = imageSourceIndex.coerceIn(0, (imageSources.size - 1).coerceAtLeast(0))
     val imageUrl = imageSources.getOrNull(safeImageSourceIndex)
     val context = LocalContext.current
@@ -678,54 +680,45 @@ internal fun PostGridItem(
                     )
                 }
             } else {
-                SubcomposeAsyncImage(
+                // AsyncImage, not SubcomposeAsyncImage: per-item subcomposition
+                // is a known flicker source in lazy grids, and the flat
+                // placeholder avoids spinner churn while flinging.
+                AsyncImage(
                     model = imageRequest,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    loading = {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            CircularProgressIndicator(modifier = Modifier.size(28.dp))
-                        }
-                    },
-                    error = {
-                        if (safeImageSourceIndex < imageSources.lastIndex) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                CircularProgressIndicator(modifier = Modifier.size(28.dp))
-                            }
-                        } else {
-                            Box(
-                                modifier = Modifier.fillMaxSize().padding(8.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(
-                                        text = "Image unavailable",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    TextButton(
-                                        onClick = {
-                                            imageSourceIndex = 0
-                                            imageRetryCount++
-                                        },
-                                    ) {
-                                        Text("Retry")
-                                    }
-                                }
-                            }
-                        }
-                    },
+                    placeholder = ColorPainter(MaterialTheme.colorScheme.surfaceVariant),
+                    error = ColorPainter(MaterialTheme.colorScheme.surfaceVariant),
+                    onSuccess = { imageFailed = false },
                     onError = {
                         if (safeImageSourceIndex < imageSources.lastIndex) imageSourceIndex = safeImageSourceIndex + 1
+                        else imageFailed = true
                     },
                     modifier = Modifier.fillMaxSize(),
                 )
+                if (imageFailed) {
+                    Box(
+                        modifier = Modifier.fillMaxSize().padding(8.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "Image unavailable",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            TextButton(
+                                onClick = {
+                                    imageFailed = false
+                                    imageSourceIndex = 0
+                                    imageRetryCount++
+                                },
+                            ) {
+                                Text("Retry")
+                            }
+                        }
+                    }
+                }
             }
 
             if (isSelectionMode) {

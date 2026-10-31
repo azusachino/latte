@@ -49,7 +49,7 @@ class LatteApplication : Application(), SingletonImageLoader.Factory {
                     .maxSizeBytes(512L * 1024 * 1024) // 512 MB
                     .build()
             }
-            .crossfade(true)
+            .crossfade(false)
             .build()
     }
 }
