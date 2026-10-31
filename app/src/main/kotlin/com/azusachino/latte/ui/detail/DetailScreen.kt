@@ -174,6 +174,10 @@ fun DetailScreen(
     }
     var showInspectSheet by remember { mutableStateOf(false) }
     var localScores by remember { mutableStateOf(mapOf<Long, Int>()) }
+    // Server-confirmed favorite state per post (Moebooru probe). Kept apart
+    // from localScores: the probe's "not favorited" must not blank out the
+    // 1/2 star rating the user actually voted.
+    var favoriteOverrides by remember { mutableStateOf(mapOf<Long, Boolean>()) }
     var localBookmarks by remember { mutableStateOf(mapOf<String, Boolean>()) }
     var inlineActionError by remember { mutableStateOf<String?>(null) }
     val heartScale = remember { Animatable(1f) }
@@ -239,12 +243,13 @@ fun DetailScreen(
     }
 
     // The site never tells the app "you already scored this post" up front --
-    // recover a favorite (score 3) set in a prior session or on the web.
+    // recover the favorite state on every open so web-side changes (added or
+    // removed favorites) are not masked by this session's cached score.
     LaunchedEffect(currentPost?.id, currentPlugin?.isLoggedIn) {
         val post = currentPost
-        if (post != null && PlatformCapability.USER_FEED !in post.platform.capabilities && currentPlugin != null && currentPlugin.isLoggedIn && currentPlugin.getScore(post.id) == null) {
+        if (post != null && PlatformCapability.USER_FEED !in post.platform.capabilities && currentPlugin != null && currentPlugin.isLoggedIn) {
             currentPlugin.refreshScore(post.id)?.let { refreshed ->
-                localScores = localScores + (post.id to refreshed)
+                favoriteOverrides = favoriteOverrides + (post.id to (refreshed == 3))
             }
         }
     }
@@ -501,7 +506,7 @@ fun DetailScreen(
                             val isFavorited = if (hasUserFeedCapability) {
                                 localBookmarks[post.workIdentity.toString()] ?: post.isBookmarked
                             } else {
-                                currentScore == 3
+                                favoriteOverrides[post.id] ?: (currentScore == 3)
                             }
 
                             Box(
@@ -554,6 +559,7 @@ fun DetailScreen(
                                                         localBookmarks = localBookmarks + (post.workIdentity.toString() to targetBookmarked)
                                                     } else {
                                                         localScores = localScores + (post.id to targetScore)
+                                                        favoriteOverrides = favoriteOverrides + (post.id to targetBookmarked)
                                                     }
                                                 } else {
                                                     inlineActionError = "Failed to update favorite: ${result.exceptionOrNull()?.message.orEmpty()}"

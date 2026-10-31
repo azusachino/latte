@@ -7,7 +7,7 @@ class MoebooruApiTest {
 
     @Test
     fun buildsSiteOwnedFavoriteAndPoolQueries() {
-        assertEquals("vote:3:alice", MoebooruApi.favoriteTags(" alice "))
+        assertEquals("vote:3:alice order:vote", MoebooruApi.favoriteTags(" alice "))
         assertEquals("pool:42", MoebooruApi.poolTags(42L))
     }
 

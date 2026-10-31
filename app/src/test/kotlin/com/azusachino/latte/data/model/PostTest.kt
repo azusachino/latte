@@ -81,8 +81,8 @@ class PostTest {
         assertEquals(0.75f, post.aspectRatio, 0.001f)
 
         assertEquals(4, post.variants.size)
-        assertEquals("jpeg", post.bestVariant.id)
-        assertEquals("https://files.yande.re/jpeg/abc123def456/yande.re%20123456%20jpeg.jpg", post.bestVariant.url)
+        assertEquals("original", post.bestVariant.id)
+        assertEquals("https://files.yande.re/image/abc123def456/yande.re%20123456.png", post.bestVariant.url)
     }
 
     @Test

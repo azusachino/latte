@@ -55,6 +55,9 @@ class MoebooruFeedSource(
                 )
                 PluginFeedKind.FAVORITES -> {
                     val user = username() ?: return PluginFeedResult.AuthRequired
+                    // Order by vote recency like the site's favorites view, so
+                    // freshly favorited posts surface at the top; Safe Mode
+                    // applies to this feed by design.
                     api.getPosts(
                         page = request.page,
                         tags = MoebooruTags.safeMode(MoebooruApi.favoriteTags(user), request.safeMode),

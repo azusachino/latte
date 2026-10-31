@@ -48,7 +48,7 @@ class MoebooruFeedSourceTest {
         assertTrue(result is PluginFeedResult.Success)
         val post = (result as PluginFeedResult.Success).page.items.single()
         assertEquals(PlatformId.KONACHAN, post.platform)
-        assertEquals("/post.json?page=1&limit=100&tags=vote%3A3%3Atest_artist", request.path)
+        assertEquals("/post.json?page=1&limit=100&tags=vote%3A3%3Atest_artist%20order%3Avote", request.path)
     }
 
     @Test
@@ -61,7 +61,9 @@ class MoebooruFeedSourceTest {
             PluginFeedKind.POPULAR to "order:score date:2026-09-26 rating:safe",
             PluginFeedKind.NEWEST to "rating:safe",
             PluginFeedKind.SEARCH to "landscape rating:safe",
-            PluginFeedKind.FAVORITES to "vote:3:test_artist rating:safe",
+            // Vote-recency order matches the site's favorites view; Safe Mode
+            // applies to this feed by design.
+            PluginFeedKind.FAVORITES to "vote:3:test_artist order:vote rating:safe",
         ).forEach { (kind, tags) ->
             server.enqueue(MockResponse().setBody("[]"))
             source.load(
