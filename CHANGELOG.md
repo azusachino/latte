@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.7 - 2026-10-31
+
+### Added
+
+- Feed grid items animate placement and fade as pages load, so insertions (like a fresh favorite at the top) glide instead of popping.
+
+### Fixed
+
+- Explore feed state now lives in a single store keyed by platform and feed kind. The legacy flat mirror fields that could diverge from the map on reset paths are gone entirely, covered by new unit tests (slot roundtrip, platform-switch clears, stale-auth clearing, tab getters).
+
 ## 0.3.6 - 2026-10-31
 
 ### Fixed
