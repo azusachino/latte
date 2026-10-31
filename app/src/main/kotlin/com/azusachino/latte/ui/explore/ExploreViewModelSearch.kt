@@ -34,8 +34,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+
 internal fun ExploreViewModel.cachedYandeSearch(tags: String): FeedState? =
     yandeSearchCache[_uiState.value.platform to tags]
+
 internal fun ExploreViewModel.cachedPixivSearch(query: String): FeedState? = pixivSearchCache[query]
 internal fun ExploreViewModel.cachedPixivUserWorks(userId: Long): FeedState? = pixivUserWorksCache[userId]
 

@@ -1,6 +1,5 @@
 package com.azusachino.latte.ui.explore
 
-
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState

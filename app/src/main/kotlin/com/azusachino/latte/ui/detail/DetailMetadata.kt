@@ -348,7 +348,6 @@ internal fun TagChip(
     }
 }
 
-
 internal fun formatFileSize(bytes: Long?): String {
     if (bytes == null || bytes <= 0) return ""
     val units = arrayOf("B", "KB", "MB", "GB")

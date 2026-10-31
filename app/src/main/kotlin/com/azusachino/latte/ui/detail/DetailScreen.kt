@@ -815,8 +815,6 @@ fun DetailScreen(
  * pinches fall through to the image.
  */
 
-
-
 /** The Detail list asks for more posts once the viewer is within this many posts of the end. */
 private const val DETAIL_LOAD_MORE_THRESHOLD = 5
 
@@ -833,6 +831,7 @@ internal sealed interface DetailTapAction {
  * Edge taps (outer 25% on each side) page through a multi-page work when controls are hidden and not zoomed.
  * When controls are shown, middle taps, zoomed taps, single-page works and edges past the first or last page toggle controls.
  */
+
 internal fun detailTapAction(
     xFraction: Float,
     zoomed: Boolean,
@@ -866,5 +865,4 @@ internal fun calculateAspectRatio(width: Int, height: Int): String {
 }
 
 private fun gcd(a: Int, b: Int): Int = if (b == 0) a else gcd(b, a % b)
-
 

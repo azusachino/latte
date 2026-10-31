@@ -31,6 +31,7 @@ import kotlinx.coroutines.launch
  * box width and whether the content is currently zoomed (scale > 1.05). Scale and offset reset
  * whenever [resetKey] changes. [onZoomChanged] reports whether the content is currently zoomed.
  */
+
 @Composable
 fun ZoomableBox(
     modifier: Modifier = Modifier,
