@@ -723,10 +723,10 @@ fun ExploreScreen(
                                             val isBookmarked = uiState.bookmarks.any {
                                                 it.tag == searchQuery.trim() && it.platform == uiState.platform
                                             }
-                                            // A text action, not an icon: the
-                                            // bookmark icon already means "open
-                                            // the bookmarks page" in the top bar.
-                                            TextButton(
+                                            // Library-add family: "save to my
+                                            // collection", distinct from the
+                                            // bookmark icon that opens the page.
+                                            IconButton(
                                                 onClick = {
                                                     toggleBookmarkWithUndo(
                                                         tag = searchQuery.trim(),
@@ -735,12 +735,12 @@ fun ExploreScreen(
                                                         toggle = viewModel::toggleBookmark,
                                                     )
                                                 },
-                                                contentPadding = PaddingValues(horizontal = 8.dp),
+                                                modifier = Modifier.pressScale(),
                                             ) {
-                                                Text(
-                                                    text = if (isBookmarked) "Bookmarked" else "Bookmark",
-                                                    style = MaterialTheme.typography.labelLarge,
-                                                    color = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                Icon(
+                                                    imageVector = if (isBookmarked) LatteIcons.LibraryAddCheck else LatteIcons.LibraryAdd,
+                                                    contentDescription = if (isBookmarked) "Remove from bookmarks" else "Add to bookmarks",
+                                                    tint = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                                 )
                                             }
                                             IconButton(

@@ -50,6 +50,14 @@ object LatteIcons {
         createIcon("BookmarkBorder", "M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z")
     }
 
+    val LibraryAdd: ImageVector by lazy {
+        createIcon("LibraryAdd", "M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9h-4v4h-2v-4H9V9h4V5h2v4h4v2z")
+    }
+
+    val LibraryAddCheck: ImageVector by lazy {
+        createIcon("LibraryAddCheck", "M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7.53 12L9.4 10.93l1.06-1.06 2.01 2.01 4.48-4.48 1.06 1.06-5.54 5.54zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6z")
+    }
+
     val GridView: ImageVector by lazy {
         createIcon("GridView", "M3 3v8h8V3H3zm6 6H5V5h4v4zm-6 4v8h8v-8H3zm6 6H5v-4h4v4zm4-16v8h8V3h-8zm6 6h-4V5h4v4zm-6 4v8h8v-8h-8zm6 6h-4v-4h4v4z")
     }
