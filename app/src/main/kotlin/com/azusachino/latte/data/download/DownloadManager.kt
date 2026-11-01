@@ -65,12 +65,15 @@ class DownloadManager(private val context: Context) {
         withContext(Dispatchers.IO) {
             DownloadWorker.pruneStaleNotifications(context)
             val candidates = DownloadFallback.candidateUrls(post, preferredVariant)
-            val displayName = DownloadIdentity.displayName(post)
+            val displayName = DownloadIdentity.fileName(post)
+            val legacyNamePrefix = DownloadIdentity.legacyNamePrefix(post)
+            val albumPath = DownloadIdentity.albumPath(post.platform)
             val ext = DownloadIdentity.fileExtension(post)
             val mimeType = if (ext == "png") "image/png" else "image/jpeg"
 
-            // 1. Check if already saved in MediaStore
-            if (isAlreadySaved(displayName)) {
+            // 1. Check if already saved in MediaStore, matching both the
+            // canonical identity name and the legacy title-bearing names.
+            if (isAlreadySaved(displayName, legacyNamePrefix)) {
                 return@withContext DownloadResult.AlreadySaved(displayName)
             }
 
@@ -99,6 +102,8 @@ class DownloadManager(private val context: Context) {
                     DownloadWorker.inputData(
                         sourceUrl = candidates.first(),
                         displayName = displayName,
+                        legacyNamePrefix = legacyNamePrefix,
+                        albumPath = albumPath,
                         mimeType = mimeType,
                         headers = headers,
                         fallbackUrls = candidates.drop(1),
@@ -121,16 +126,18 @@ class DownloadManager(private val context: Context) {
             DownloadResult.Started(displayName)
         }
 
-    private fun isAlreadySaved(displayName: String): Boolean {
+    private fun isAlreadySaved(displayName: String, legacyNamePrefix: String): Boolean {
         val resolver: ContentResolver = context.contentResolver
-        val album = DownloadWorker.album
         return resolver.query(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
             arrayOf(MediaStore.Images.Media._ID),
-            "${MediaStore.Images.Media.DISPLAY_NAME} = ? AND " +
-                "${MediaStore.Images.Media.RELATIVE_PATH} = ? AND " +
+            // Match anywhere under the Latte album: the canonical identity
+            // name in a platform subfolder, or the legacy flat title name.
+            "(${MediaStore.Images.Media.DISPLAY_NAME} = ? OR " +
+                "${MediaStore.Images.Media.DISPLAY_NAME} LIKE ?) AND " +
+                "${MediaStore.Images.Media.RELATIVE_PATH} LIKE ? AND " +
                 "${MediaStore.Images.Media.IS_PENDING} = ?",
-            arrayOf(displayName, "$album/", "0"),
+            arrayOf(displayName, "$legacyNamePrefix%", "${DownloadWorker.album}%", "0"),
             null,
         )?.use { cursor ->
             cursor.moveToFirst()
