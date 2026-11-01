@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.9 - 2026-11-01
+
+### Fixed
+
+- Download dedup survives reinstalls: the app requests media read access, so files saved by previous installs stay visible instead of re-downloading as "name (1)" duplicates.
+- Saved downloads use identity-based names (`<platform>_<id>[_pN].<ext>`) in per-platform subfolders of the album; the same work always produces the same file name.
+
+### Changed
+
+- Download dedup runs on a per-platform keyset parsed from the stored file names themselves — O(1) per save (~10 MB even at 100k entries) instead of MediaStore queries. Settings gains "Rebuild Download Index" to rescan after external file changes.
+- Bookmarked tag chips show the bookmark icon, and long-press to bookmark confirms with a toast. Yande/Konachan login drops the unsupported session-cookie import mode.
+
 ## 0.3.8 - 2026-11-01
 
 ### Added
