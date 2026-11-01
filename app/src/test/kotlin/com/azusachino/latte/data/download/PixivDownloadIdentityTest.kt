@@ -112,7 +112,16 @@ class PixivDownloadIdentityTest {
     }
 
     @Test
-    fun legacyNamePrefixMatchesThePreTitleFreeLayout() {
+    fun parseKeyDerivesKeysFromStoredNames() {
+        assertEquals("75034219", DownloadIdentity.parseKey(PlatformId.PIXIV, "pixiv_75034219.jpg"))
+        assertEquals("75034219:p2", DownloadIdentity.parseKey(PlatformId.PIXIV, "pixiv_75034219_p2.jpg"))
+        // Id boundaries: a longer id must not collapse into a shorter one's key.
+        assertEquals("12714400", DownloadIdentity.parseKey(PlatformId.YANDE, "yande.re_12714400.jpg"))
+        assertEquals(null, DownloadIdentity.parseKey(PlatformId.PIXIV, "yande.re_12714400.jpg"))
+    }
+
+    @Test
+    fun keyMatchesParseKeyForTheSameWork() {
         val post = Post(
             id = 75034219,
             platform = PlatformId.PIXIV,
@@ -127,18 +136,17 @@ class PixivDownloadIdentityTest {
             previewUrl = "https://i.pixiv.re/preview.jpg",
             sampleUrl = "https://i.pixiv.re/sample.jpg",
             jpegUrl = null,
-            originalUrl = "https://i.pximg.net/img-original/img/75034219_p0.jpg",
+            originalUrl = "https://i.pximg.net/img-original/img/75034219_p1.jpg",
             variants = emptyList(),
-            title = "Manga Chapter",
             pageIndex = 1,
             pageCount = 2,
         )
-
-        // Old builds saved "<platform> <id>[ pN] <title>.<ext>"; the prefix
-        // must match those files so they dedup against the new names.
-        assertEquals("pixiv 75034219 p2", DownloadIdentity.legacyNamePrefix(post))
-        assertTrue("pixiv 75034219 p2 Manga Chapter.jpg".startsWith(DownloadIdentity.legacyNamePrefix(post)))
+        assertEquals(
+            DownloadIdentity.parseKey(PlatformId.PIXIV, DownloadIdentity.fileName(post)),
+            DownloadIdentity.key(post),
+        )
     }
+
 
     @Test
     fun postAllPagesReturnsSinglePostForSinglePagePost() {

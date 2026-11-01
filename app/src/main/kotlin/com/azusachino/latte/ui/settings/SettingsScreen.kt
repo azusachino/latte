@@ -74,6 +74,7 @@ import com.azusachino.latte.data.update.UpdateInfo
 import com.azusachino.latte.data.update.UpdateService
 import com.azusachino.latte.ui.common.GlassPillChip
 import com.azusachino.latte.ui.common.LatteIcons
+import com.azusachino.latte.data.download.DownloadLibrary
 import com.azusachino.latte.ui.common.ToastManager
 import com.azusachino.latte.ui.theme.GlassDefaults
 import com.azusachino.latte.ui.theme.glassPillSelection
@@ -370,6 +371,18 @@ fun SettingsScreen(
                     subtitle = "${formatFileSize(cacheSizeBytes)} total (images, HTTP, updates)",
                     onClick = {
                         showClearCacheDialog = true
+                    },
+                )
+
+                SettingsDivider()
+
+                SettingsRow(
+                    icon = Icons.Default.Refresh,
+                    title = "Reload Download Library",
+                    subtitle = "Rescan saved files; downloads dedup against this keyset",
+                    onClick = {
+                        val total = DownloadLibrary.refresh(context)
+                        ToastManager.showSuccess("$total saved downloads indexed")
                     },
                 )
 

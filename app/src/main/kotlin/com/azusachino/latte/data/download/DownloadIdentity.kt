@@ -10,12 +10,9 @@ import com.azusachino.latte.plugin.PlatformId
  * Files are saved as `<platform>_<id>[_pN].<ext>` inside a per-platform
  * subfolder of the album (`Pictures/Latte/yande.re/`, ...). The name is pure
  * identity — no title or tags, whose values can vary between sessions — so
- * dedup queries on the canonical name (plus a tolerant match against the
- * legacy title-bearing names) can never misidentify a post.
- *
- * Legacy files from pre-0.3.9 builds were saved flat into the album as
- * `<platform> <id>[ pN] <title>.<ext>`; [legacyNamePrefix] lets dedup match
- * those too, so previously saved posts do not re-download once.
+ * the same work always produces the same name and the same key. Download
+ * dedup runs against the per-platform keyset parsed from these names
+ * ([parseKey] is the single source of key semantics).
  */
 object DownloadIdentity {
     /** Page suffix of the canonical file name, "" for single-page works. */
@@ -26,14 +23,24 @@ object DownloadIdentity {
     fun fileName(post: Post): String =
         "${post.platform.externalId}_${post.id}${pageSuffix(post)}.${fileExtension(post)}"
 
+    /** Dedup key within a platform: the id, plus the page for multi-page works. */
+    fun key(post: Post): String =
+        if (post.pageCount > 1) "${post.id}:p${post.pageIndex + 1}" else "${post.id}"
+
+    private val CURRENT_NAME = Regex("^([a-z.]+)_(\\d+)(?:_p(\\d+))?\\.[a-z]+$")
+
     /**
-     * Prefix of the legacy (pre-0.3.9) file name for the same post, e.g.
-     * `yande.re 1271440` — used as a tolerant LIKE pattern against files
-     * saved by older builds.
+     * Extracts [key] semantics from a stored file name. Returns null for
+     * names this platform did not save.
      */
-    fun legacyNamePrefix(post: Post): String {
-        val pageSuffix = if (post.pageCount > 1) " p${post.pageIndex + 1}" else ""
-        return "${post.platform.externalId} ${post.id}$pageSuffix"
+    fun parseKey(platform: PlatformId, displayName: String): String? {
+        CURRENT_NAME.find(displayName)?.let { match ->
+            val (foundPlatform, id, page) = match.destructured
+            if (foundPlatform == platform.externalId) {
+                return if (page.isNotEmpty()) "$id:p$page" else id
+            }
+        }
+        return null
     }
 
     /** Album subfolder holding this platform's downloads: `Pictures/Latte/<platform>`. */

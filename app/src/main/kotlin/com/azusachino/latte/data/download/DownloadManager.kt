@@ -1,10 +1,6 @@
 package com.azusachino.latte.data.download
 
-import android.content.ContentResolver
-import android.content.ContentUris
 import android.content.Context
-import android.os.Build
-import android.provider.MediaStore
 import androidx.work.BackoffPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
@@ -66,14 +62,16 @@ class DownloadManager(private val context: Context) {
             DownloadWorker.pruneStaleNotifications(context)
             val candidates = DownloadFallback.candidateUrls(post, preferredVariant)
             val displayName = DownloadIdentity.fileName(post)
-            val legacyNamePrefix = DownloadIdentity.legacyNamePrefix(post)
             val albumPath = DownloadIdentity.albumPath(post.platform)
             val ext = DownloadIdentity.fileExtension(post)
             val mimeType = if (ext == "png") "image/png" else "image/jpeg"
 
-            // 1. Check if already saved in MediaStore, matching both the
-            // canonical identity name and the legacy title-bearing names.
-            if (isAlreadySaved(displayName, legacyNamePrefix)) {
+            // 1. Dedup against the saved-library keyset: keys are parsed from
+            // the stored file names themselves, so the set is always
+            // rebuildable and O(1) to query. Reload from Settings if files
+            // were deleted outside the app.
+            DownloadLibrary.ensureLoaded(context)
+            if (DownloadLibrary.isSaved(post)) {
                 return@withContext DownloadResult.AlreadySaved(displayName)
             }
 
@@ -102,7 +100,6 @@ class DownloadManager(private val context: Context) {
                     DownloadWorker.inputData(
                         sourceUrl = candidates.first(),
                         displayName = displayName,
-                        legacyNamePrefix = legacyNamePrefix,
                         albumPath = albumPath,
                         mimeType = mimeType,
                         headers = headers,
@@ -125,22 +122,4 @@ class DownloadManager(private val context: Context) {
 
             DownloadResult.Started(displayName)
         }
-
-    private fun isAlreadySaved(displayName: String, legacyNamePrefix: String): Boolean {
-        val resolver: ContentResolver = context.contentResolver
-        return resolver.query(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            arrayOf(MediaStore.Images.Media._ID),
-            // Match anywhere under the Latte album: the canonical identity
-            // name in a platform subfolder, or the legacy flat title name.
-            "(${MediaStore.Images.Media.DISPLAY_NAME} = ? OR " +
-                "${MediaStore.Images.Media.DISPLAY_NAME} LIKE ?) AND " +
-                "${MediaStore.Images.Media.RELATIVE_PATH} LIKE ? AND " +
-                "${MediaStore.Images.Media.IS_PENDING} = ?",
-            arrayOf(displayName, "$legacyNamePrefix%", "${DownloadWorker.album}%", "0"),
-            null,
-        )?.use { cursor ->
-            cursor.moveToFirst()
-        } ?: false
-    }
 }
