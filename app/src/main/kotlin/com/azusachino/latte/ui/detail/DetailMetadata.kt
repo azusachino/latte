@@ -47,7 +47,6 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Star
 import com.azusachino.latte.ui.common.LatteIcons
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -339,7 +338,7 @@ internal fun TagChip(
             if (isFavorite) {
                 Spacer(modifier = Modifier.width(6.dp))
                 Icon(
-                    imageVector = Icons.Default.Star,
+                    imageVector = LatteIcons.Bookmark,
                     contentDescription = "Bookmarked tag",
                     tint = baseColor,
                     modifier = Modifier.size(14.dp),
