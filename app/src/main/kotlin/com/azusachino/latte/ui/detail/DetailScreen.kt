@@ -793,6 +793,8 @@ fun DetailScreen(
                                                 ) {
                                                     onToggleBookmark(tag, currentPost.platform)
                                                 }
+                                            } else {
+                                                ToastManager.showSuccess("Added bookmark \"$tag\"")
                                             }
                                         }
                                     } else {

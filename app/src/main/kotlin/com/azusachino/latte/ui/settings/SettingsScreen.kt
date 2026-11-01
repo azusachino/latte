@@ -2,6 +2,9 @@ package com.azusachino.latte.ui.settings
 
 import android.content.Intent
 import android.net.Uri
+import androidx.core.content.ContextCompat
+import android.content.pm.PackageManager
+import android.Manifest
 import android.os.Build
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -74,6 +77,7 @@ import com.azusachino.latte.data.update.UpdateInfo
 import com.azusachino.latte.data.update.UpdateService
 import com.azusachino.latte.ui.common.GlassPillChip
 import com.azusachino.latte.ui.common.LatteIcons
+import com.azusachino.latte.data.download.DownloadLibrary
 import com.azusachino.latte.ui.common.ToastManager
 import com.azusachino.latte.ui.theme.GlassDefaults
 import com.azusachino.latte.ui.theme.glassPillSelection
@@ -207,6 +211,17 @@ fun SettingsScreen(
             },
         )
     }
+    val mediaReadLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) {
+            val total = DownloadLibrary.refresh(context)
+            ToastManager.showSuccess("$total saved downloads indexed")
+        } else {
+            ToastManager.showError("Photo access is required to rebuild the index")
+        }
+    }
+
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -370,6 +385,28 @@ fun SettingsScreen(
                     subtitle = "${formatFileSize(cacheSizeBytes)} total (images, HTTP, updates)",
                     onClick = {
                         showClearCacheDialog = true
+                    },
+                )
+
+                SettingsDivider()
+
+                SettingsRow(
+                    icon = Icons.Default.Refresh,
+                    title = "Rebuild Download Index",
+                    subtitle = "Rescan saved files; downloads dedup against this index",
+                    onClick = {
+                        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            Manifest.permission.READ_MEDIA_IMAGES
+                        } else {
+                            Manifest.permission.READ_EXTERNAL_STORAGE
+                        }
+                        if (ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED) {
+                            val total = DownloadLibrary.refresh(context)
+                            ToastManager.showSuccess("$total saved downloads indexed")
+                        } else {
+                            ToastManager.showError("Photo access is required to rebuild the index")
+                            mediaReadLauncher.launch(permission)
+                        }
                     },
                 )
 

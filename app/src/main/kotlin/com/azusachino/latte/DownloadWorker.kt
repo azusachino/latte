@@ -37,7 +37,6 @@ class DownloadWorker(
     workerParams: WorkerParameters,
 ) : CoroutineWorker(appContext, workerParams) {
     private val displayName = inputData.getString(KEY_DISPLAY_NAME).orEmpty()
-    private val legacyNamePrefix = inputData.getString(KEY_LEGACY_NAME_PREFIX).orEmpty()
     private val albumPath = inputData.getString(KEY_ALBUM_PATH) ?: album
     private val notificationId = displayName.hashCode() and Int.MAX_VALUE
     private val resultNotificationId = (notificationId xor RESULT_NOTIFICATION_MASK).let {
@@ -265,13 +264,12 @@ class DownloadWorker(
     ): MediaStoreItem? = resolver.query(
         MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
         arrayOf(MediaStore.Images.Media._ID, MediaStore.MediaColumns.SIZE),
-        // Match the canonical identity name or the legacy title-bearing name,
-        // anywhere under the Latte album.
-        "(${MediaStore.Images.Media.DISPLAY_NAME} = ? OR " +
-            "${MediaStore.Images.Media.DISPLAY_NAME} LIKE ?) AND " +
+        // Exact canonical identity name; dedup gating itself runs against the
+        // keyset before enqueue, this only guards insert races.
+        "${MediaStore.Images.Media.DISPLAY_NAME} = ? AND " +
             "${MediaStore.Images.Media.RELATIVE_PATH} LIKE ? AND " +
             "${MediaStore.Images.Media.IS_PENDING} = ?",
-        arrayOf(displayName, "$legacyNamePrefix%", "${DownloadWorker.album}%", if (pending) "1" else "0"),
+        arrayOf(displayName, "${DownloadWorker.album}%", if (pending) "1" else "0"),
         null,
     )?.use { cursor ->
         if (!cursor.moveToFirst()) return@use null
@@ -467,14 +465,13 @@ class DownloadWorker(
     )
 
     companion object {
-        /** Legacy flat album root; new downloads live in per-platform subfolders. */
+        /** Album root; new downloads live in per-platform subfolders. */
         const val album = "Pictures/Latte"
         private const val notificationChannelId = "latte_downloads"
         private const val notificationGroup = "latte_downloads"
         private const val RESULT_NOTIFICATION_MASK = 0x40000000
         private const val KEY_SOURCE_URL = "source_url"
         private const val KEY_DISPLAY_NAME = "display_name"
-        private const val KEY_LEGACY_NAME_PREFIX = "legacy_name_prefix"
         private const val KEY_ALBUM_PATH = "album_path"
         private const val KEY_MIME_TYPE = "mime_type"
         private const val KEY_HEADERS = "headers"
@@ -518,7 +515,6 @@ class DownloadWorker(
         fun inputData(
             sourceUrl: String,
             displayName: String,
-            legacyNamePrefix: String,
             albumPath: String,
             mimeType: String,
             headers: Map<String, String> = emptyMap(),
@@ -527,7 +523,6 @@ class DownloadWorker(
             KEY_SOURCE_URL to sourceUrl,
             KEY_FALLBACK_URLS to fallbackUrls.toTypedArray(),
             KEY_DISPLAY_NAME to displayName,
-            KEY_LEGACY_NAME_PREFIX to legacyNamePrefix,
             KEY_ALBUM_PATH to albumPath,
             KEY_MIME_TYPE to mimeType,
             KEY_HEADERS to org.json.JSONObject(headers).toString(),
