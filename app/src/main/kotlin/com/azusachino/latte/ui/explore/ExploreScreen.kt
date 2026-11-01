@@ -735,7 +735,9 @@ fun ExploreScreen(
                                                 modifier = Modifier.pressScale(),
                                             ) {
                                                 Icon(
-                                                    imageVector = Icons.Default.Star,
+                                                    // Bookmark icon, not star: the
+                                                    // star is the site-side favorite.
+                                                    imageVector = if (isBookmarked) LatteIcons.Bookmark else LatteIcons.BookmarkBorder,
                                                     contentDescription = if (isBookmarked) "Remove from bookmarks" else "Add to bookmarks",
                                                     tint = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                                 )
