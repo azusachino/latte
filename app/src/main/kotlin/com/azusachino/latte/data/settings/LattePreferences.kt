@@ -77,6 +77,12 @@ object LattePreferenceCodecs {
     /** Puts [post] first, dropping any earlier view of the same work, and keeps the newest [limit]. */
     fun recordView(existing: List<Post>, post: Post, limit: Int = 200): List<Post> =
         (listOf(post) + existing.filterNot { it.siteId == post.siteId && it.id == post.id }).take(limit)
+
+    /** Removes every view whose identity matches a target, preserving order. */
+    fun removeViews(existing: List<Post>, targets: Collection<Post>): List<Post> {
+        val removed = targets.map { it.siteId to it.id }.toSet()
+        return existing.filterNot { it.siteId to it.id in removed }
+    }
 }
 
 class LattePreferences(private val context: Context) {
@@ -219,6 +225,20 @@ class LattePreferences(private val context: Context) {
                     ?: emptyList()
                 values[KEY_VIEW_HISTORY] = LattePreferenceCodecs.encodeViewHistory(
                     LattePreferenceCodecs.recordView(existing, post),
+                )
+            }
+        }
+    }
+
+    fun removeViewedPosts(posts: Collection<Post>) {
+        if (posts.isEmpty()) return
+        scope.launch {
+            dataStore.edit { values ->
+                val existing = values[KEY_VIEW_HISTORY]
+                    ?.let(LattePreferenceCodecs::decodeViewHistory)
+                    ?: emptyList()
+                values[KEY_VIEW_HISTORY] = LattePreferenceCodecs.encodeViewHistory(
+                    LattePreferenceCodecs.removeViews(existing, posts),
                 )
             }
         }

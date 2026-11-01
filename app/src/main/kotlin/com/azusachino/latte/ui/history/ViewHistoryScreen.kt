@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -47,6 +49,8 @@ import com.azusachino.latte.data.settings.LattePreferences
 import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.ui.common.GlassPillChip
 import com.azusachino.latte.ui.common.GlassTopBar
+import com.azusachino.latte.ui.common.ToastManager
+import com.azusachino.latte.ui.common.ToastType
 import com.azusachino.latte.ui.common.glassCard
 import com.azusachino.latte.ui.explore.PostGridItem
 import com.azusachino.latte.ui.explore.shouldShowBackToTop
@@ -58,6 +62,9 @@ import kotlinx.coroutines.launch
  * out in the same grid as Explore. Each tile carries its platform name at the
  * bottom. The glass pills narrow the grid to one platform, and tapping a tile
  * opens Detail over the filtered grid so it can be swiped through.
+ * Long-pressing a tile removes that entry (with an undo toast), and the
+ * top-bar trash clears the whole history — or just the filtered platform,
+ * after asking for confirmation.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,6 +77,7 @@ fun ViewHistoryScreen(
     val history by preferences.viewHistory.collectAsStateWithLifecycle()
     val columnCount by preferences.columnCount.collectAsStateWithLifecycle()
     var platformFilter by rememberSaveable { mutableStateOf<PlatformId?>(null) }
+    var showClearDialog by rememberSaveable { mutableStateOf(false) }
     val visible = remember(history, platformFilter) {
         history.filter { platformFilter == null || it.platform == platformFilter }
     }
@@ -83,7 +91,7 @@ fun ViewHistoryScreen(
                 actions = {
                     if (history.isNotEmpty()) {
                         IconButton(
-                            onClick = { preferences.clearViewHistory() },
+                            onClick = { showClearDialog = true },
                             modifier = Modifier.pressScale(),
                         ) {
                             Icon(
@@ -127,6 +135,47 @@ fun ViewHistoryScreen(
                     posts = visible,
                     columnCount = columnCount,
                     onPostClick = onPostClick,
+                    onRemove = { post ->
+                        preferences.removeViewedPosts(listOf(post))
+                        ToastManager.show("Removed from history", ToastType.INFO, "Undo") {
+                            preferences.recordView(post)
+                        }
+                    },
+                )
+            }
+
+            val filter = platformFilter
+            if (showClearDialog && history.isNotEmpty()) {
+                AlertDialog(
+                    onDismissRequest = { showClearDialog = false },
+                    title = { Text("Clear viewing history?") },
+                    text = {
+                        Text(
+                            if (filter == null) {
+                                "This removes all ${visible.size} saved posts. This cannot be undone."
+                            } else {
+                                "This removes ${visible.size} ${filter.displayName} posts. This cannot be undone."
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            showClearDialog = false
+                            if (filter == null) {
+                                preferences.clearViewHistory()
+                            } else {
+                                preferences.removeViewedPosts(visible)
+                            }
+                        }) {
+                            Text("Clear")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showClearDialog = false }) {
+                            Text("Cancel")
+                        }
+                    },
                 )
             }
         }
@@ -142,6 +191,7 @@ private fun HistoryGrid(
     posts: List<Post>,
     columnCount: Int,
     onPostClick: (posts: List<Post>, index: Int) -> Unit,
+    onRemove: (Post) -> Unit,
 ) {
     val gridState = rememberLazyStaggeredGridState()
     val coroutineScope = rememberCoroutineScope()
@@ -161,6 +211,7 @@ private fun HistoryGrid(
                 PostGridItem(
                     post = post,
                     onClick = { onPostClick(posts, index) },
+                    onLongClick = { onRemove(post) },
                     bottomLabel = post.platform.displayName,
                 )
             }
