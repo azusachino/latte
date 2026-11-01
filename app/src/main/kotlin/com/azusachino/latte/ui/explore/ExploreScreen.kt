@@ -433,23 +433,26 @@ fun ExploreScreen(
                     TopAppBar(
                     title = {
                         Box {
+                            // Only the logo opens the platform menu — not the
+                            // title text, which during search is the query
+                            // itself and must not switch platforms when tapped.
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .pressScale()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable { platformMenuOpen = true }
-                                    .padding(horizontal = 4.dp, vertical = 2.dp),
                             ) {
-                                // Logo first, then the text: a long search-tag
-                                // title ellipsizes instead of pushing the platform
-                                // icon (the menu anchor) out of the bar.
-                                PlatformLogo(
-                                    label = platformLogoLabel(uiState.platform),
-                                    color = platformAccent,
-                                    contentDescription = "Current platform: ${uiState.platform.displayName}",
-                                    modifier = Modifier.size(28.dp),
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .pressScale()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable { platformMenuOpen = true }
+                                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                                ) {
+                                    PlatformLogo(
+                                        label = platformLogoLabel(uiState.platform),
+                                        color = platformAccent,
+                                        contentDescription = "Current platform: ${uiState.platform.displayName}",
+                                        modifier = Modifier.size(28.dp),
+                                    )
+                                }
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = title
