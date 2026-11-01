@@ -92,7 +92,7 @@ class PixivPluginTest {
         val plugin = plugin(InMemoryStorage())
         plugin.login(mapOf("access_token" to "access-token", "user_id" to "42"))
 
-        assertTrue(plugin.setBookmark(75034219, bookmarked = true).isSuccess)
+        assertTrue(plugin.setFavorite(75034219, favorited = true).isSuccess)
         assertEquals("/v2/illust/bookmark/add", server.takeRequest().path)
     }
 

@@ -2,7 +2,7 @@ package com.azusachino.latte.plugin.pixiv
 
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.network.PixivApi
-import com.azusachino.latte.data.network.PixivBookmarkResult
+import com.azusachino.latte.data.network.PixivFavoriteResult
 import com.azusachino.latte.data.network.PixivOAuthClient
 import com.azusachino.latte.data.network.PixivAuthorizationRequest
 import com.azusachino.latte.data.network.PixivSession
@@ -99,13 +99,13 @@ class PixivPlugin(
         invalidateSession()
     }
 
-    override suspend fun setBookmark(postId: Long, bookmarked: Boolean): Result<Unit> =
-        when (val result = api.bookmark(postId, bookmarked)) {
-            PixivBookmarkResult.Success -> Result.success(Unit)
-            PixivBookmarkResult.AuthRequired -> Result.failure(IllegalStateException("Pixiv sign-in required"))
-            is PixivBookmarkResult.RateLimited -> Result.failure(IllegalStateException("Pixiv is rate limiting requests"))
-            is PixivBookmarkResult.UpstreamDrift -> Result.failure(IllegalStateException("Pixiv bookmark response changed"))
-            is PixivBookmarkResult.TransportFailure -> Result.failure(IllegalStateException(result.message))
+    override suspend fun setFavorite(postId: Long, favorited: Boolean): Result<Unit> =
+        when (val result = api.favorite(postId, favorited)) {
+            PixivFavoriteResult.Success -> Result.success(Unit)
+            PixivFavoriteResult.AuthRequired -> Result.failure(IllegalStateException("Pixiv sign-in required"))
+            is PixivFavoriteResult.RateLimited -> Result.failure(IllegalStateException("Pixiv is rate limiting requests"))
+            is PixivFavoriteResult.UpstreamDrift -> Result.failure(IllegalStateException("Pixiv favorite response changed"))
+            is PixivFavoriteResult.TransportFailure -> Result.failure(IllegalStateException(result.message))
         }
 
     override suspend fun searchSupport(query: String): PluginSearchSupport? {
@@ -131,11 +131,11 @@ class PixivPlugin(
 
     override suspend fun setAuthorFollowed(userId: Long, followed: Boolean): Result<Unit> =
         when (val result = api.followAuthor(userId, followed)) {
-            PixivBookmarkResult.Success -> Result.success(Unit)
-            PixivBookmarkResult.AuthRequired -> Result.failure(IllegalStateException("Pixiv sign-in required"))
-            is PixivBookmarkResult.RateLimited -> Result.failure(IllegalStateException("Pixiv is rate limiting requests"))
-            is PixivBookmarkResult.UpstreamDrift -> Result.failure(IllegalStateException("Pixiv follow response changed"))
-            is PixivBookmarkResult.TransportFailure -> Result.failure(IllegalStateException(result.message))
+            PixivFavoriteResult.Success -> Result.success(Unit)
+            PixivFavoriteResult.AuthRequired -> Result.failure(IllegalStateException("Pixiv sign-in required"))
+            is PixivFavoriteResult.RateLimited -> Result.failure(IllegalStateException("Pixiv is rate limiting requests"))
+            is PixivFavoriteResult.UpstreamDrift -> Result.failure(IllegalStateException("Pixiv follow response changed"))
+            is PixivFavoriteResult.TransportFailure -> Result.failure(IllegalStateException(result.message))
         }
 
     override suspend fun isAuthorFollowed(userId: Long): Boolean? =

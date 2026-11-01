@@ -1,6 +1,6 @@
 package com.azusachino.latte.data.settings
 
-import com.azusachino.latte.data.model.FavoriteTag
+import com.azusachino.latte.data.model.Bookmark
 import com.azusachino.latte.data.model.Post
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -12,7 +12,7 @@ import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 
 /**
- * A portable copy of the local preferences, favorite tags, recent searches and
+ * A portable copy of the local preferences, bookmarks, recent searches and
  * view history. Account credentials are deliberately absent: they live in
  * encrypted storage and never leave the device.
  */
@@ -22,7 +22,9 @@ data class LatteBackup(
     val columnCount: Int = 2,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val safeMode: Boolean = true,
-    val favoriteTags: List<FavoriteTag> = emptyList(),
+    // Wire name preserved so backups exported by older builds still restore.
+    @kotlinx.serialization.SerialName("favoriteTags")
+    val bookmarks: List<Bookmark> = emptyList(),
     val recentSearches: List<String> = emptyList(),
     val proxyHost: String? = null,
     val proxyPort: Int? = null,

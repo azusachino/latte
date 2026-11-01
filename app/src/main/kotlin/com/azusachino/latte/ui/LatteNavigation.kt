@@ -19,7 +19,7 @@ sealed interface Screen {
         val fromHistory: Boolean = false,
     ) : Screen
     data object Settings : Screen
-    data object FavoriteTags : Screen
+    data object Bookmarks : Screen
     data object ViewHistory : Screen
     data object AccountManager : Screen
 }
@@ -81,7 +81,7 @@ internal val Screen.stateKey: String
         is Screen.TagSearch -> "tag-search:${query}"
         is Screen.Detail -> "detail:${posts.getOrNull(initialIndex)?.workIdentity ?: initialIndex}:$initialPageIndex:${parentSearchTags.orEmpty()}:${parentAuthorId ?: ""}:${parentAuthorName.orEmpty()}"
         is Screen.Settings -> "settings"
-        is Screen.FavoriteTags -> "favorite-tags"
+        is Screen.Bookmarks -> "bookmarks"
         is Screen.ViewHistory -> "view-history"
         is Screen.AccountManager -> "account-manager"
     }

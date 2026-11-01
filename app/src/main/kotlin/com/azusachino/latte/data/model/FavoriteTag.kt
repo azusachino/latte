@@ -10,7 +10,7 @@ import kotlinx.serialization.Serializable
  * where it should be opened.
  */
 @Serializable
-data class FavoriteTag(
+data class Bookmark(
     @SerialName("tag") val tag: String,
     @SerialName("platform") val platform: PlatformId,
 )

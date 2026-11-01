@@ -1,6 +1,6 @@
 package com.azusachino.latte.ui.explore
 
-import com.azusachino.latte.data.model.FavoriteTag
+import com.azusachino.latte.data.model.Bookmark
 import com.azusachino.latte.data.model.PoolSummary
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.model.PostRating
@@ -68,7 +68,7 @@ data class ExploreUiState(
     val pixivSearchSuggestions: List<String> = emptyList(),
     val pixivTrendingTags: List<String> = emptyList(),
     val yandeSearchSuggestions: List<String> = emptyList(),
-    val favoriteTags: List<FavoriteTag> = emptyList(),
+    val bookmarks: List<Bookmark> = emptyList(),
     val recentSearches: List<String> = emptyList(),
     val pixivAuthorFollowed: Boolean? = null,
     val isTogglingPixivFollow: Boolean = false,

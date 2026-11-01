@@ -1,6 +1,6 @@
 package com.azusachino.latte.data.settings
 
-import com.azusachino.latte.data.model.FavoriteTag
+import com.azusachino.latte.data.model.Bookmark
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.model.PostRating
 import com.azusachino.latte.plugin.PlatformId
@@ -37,7 +37,7 @@ class LatteBackupTest {
             columnCount = 3,
             themeMode = ThemeMode.DARK,
             safeMode = false,
-            favoriteTags = listOf(FavoriteTag("landscape", PlatformId.YANDE)),
+            bookmarks = listOf(Bookmark("landscape", PlatformId.YANDE)),
             recentSearches = listOf("sky", "forest"),
             proxyHost = "127.0.0.1",
             proxyPort = 8080,
