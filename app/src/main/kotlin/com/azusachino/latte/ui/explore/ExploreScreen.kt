@@ -723,7 +723,10 @@ fun ExploreScreen(
                                             val isBookmarked = uiState.bookmarks.any {
                                                 it.tag == searchQuery.trim() && it.platform == uiState.platform
                                             }
-                                            IconButton(
+                                            // A text action, not an icon: the
+                                            // bookmark icon already means "open
+                                            // the bookmarks page" in the top bar.
+                                            TextButton(
                                                 onClick = {
                                                     toggleBookmarkWithUndo(
                                                         tag = searchQuery.trim(),
@@ -732,14 +735,12 @@ fun ExploreScreen(
                                                         toggle = viewModel::toggleBookmark,
                                                     )
                                                 },
-                                                modifier = Modifier.pressScale(),
+                                                contentPadding = PaddingValues(horizontal = 8.dp),
                                             ) {
-                                                Icon(
-                                                    // Bookmark icon, not star: the
-                                                    // star is the site-side favorite.
-                                                    imageVector = if (isBookmarked) LatteIcons.Bookmark else LatteIcons.BookmarkBorder,
-                                                    contentDescription = if (isBookmarked) "Remove from bookmarks" else "Add to bookmarks",
-                                                    tint = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                Text(
+                                                    text = if (isBookmarked) "Bookmarked" else "Bookmark",
+                                                    style = MaterialTheme.typography.labelLarge,
+                                                    color = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                                 )
                                             }
                                             IconButton(
