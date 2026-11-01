@@ -404,6 +404,16 @@ fun ExploreScreen(
                                     .clickable { platformMenuOpen = true }
                                     .padding(horizontal = 4.dp, vertical = 2.dp),
                             ) {
+                                // Logo first, then the text: a long search-tag
+                                // title ellipsizes instead of pushing the platform
+                                // icon (the menu anchor) out of the bar.
+                                PlatformLogo(
+                                    label = platformLogoLabel(uiState.platform),
+                                    color = platformAccent,
+                                    contentDescription = "Current platform: ${uiState.platform.displayName}",
+                                    modifier = Modifier.size(28.dp),
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = title
                                         ?: uiState.activePoolName
@@ -413,13 +423,7 @@ fun ExploreScreen(
                                     color = platformAccent,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                PlatformLogo(
-                                    label = platformLogoLabel(uiState.platform),
-                                    color = platformAccent,
-                                    contentDescription = "Current platform: ${uiState.platform.displayName}",
-                                    modifier = Modifier.size(28.dp),
+                                    modifier = Modifier.weight(1f, fill = false),
                                 )
                             }
                             DropdownMenu(

@@ -23,6 +23,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import com.azusachino.latte.data.download.DownloadFallback
 import com.azusachino.latte.data.download.DownloadNotificationPolicy
@@ -53,7 +55,11 @@ class DownloadWorker(
     }
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        if (displayName.isBlank()) return@withContext Result.failure()
+        downloadGate.withPermit { doWorkGated() }
+    }
+
+    private suspend fun doWorkGated(): Result {
+        if (displayName.isBlank()) return Result.failure()
         createNotificationChannel()
         pruneCompletedNotifications()
         try {
@@ -65,7 +71,7 @@ class DownloadWorker(
             android.util.Log.w("DownloadWorker", "Unable to run as foreground service: ${error.message}")
         }
 
-        try {
+        return try {
             val receipt = saveImage(
                 sourceUrls = listOf(inputData.getString(KEY_SOURCE_URL).orEmpty()) +
                     inputData.getStringArray(KEY_FALLBACK_URLS)?.toList().orEmpty(),
@@ -466,6 +472,16 @@ class DownloadWorker(
         private const val KEY_HEADERS = "headers"
         private const val KEY_FALLBACK_URLS = "fallback_urls"
         private const val MAX_RETRY_COUNT = 2
+
+        // Previews share this process's network with downloads. Each download
+        // worker opens a blocking OkHttp call that bypasses the per-host
+        // concurrency budget async preview fetches live within, so an
+        // unbounded batch of workers starves grid and detail loading on the
+        // very hosts images come from (moebooru serves images from the same
+        // domain as its API). The gate caps concurrent downloads, so preview
+        // traffic always keeps per-host capacity and stays the priority.
+        val downloadGate = Semaphore(permits = DOWNLOAD_CONCURRENCY)
+        const val DOWNLOAD_CONCURRENCY = 2
 
         fun pruneStaleNotifications(context: Context) {
             val manager = context.getSystemService(NotificationManager::class.java) ?: return
