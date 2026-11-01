@@ -279,6 +279,7 @@ internal fun SearchTagChip(
     isFavorite: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    onToggleFavorite: (() -> Unit)? = null,
 ) {
     Box(
         modifier = Modifier
@@ -293,21 +294,26 @@ internal fun SearchTagChip(
         Row(
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (isFavorite) {
-                Icon(
-                    imageVector = Icons.Default.Star,
-                    contentDescription = "Favorited",
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(16.dp),
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-            }
             Text(
                 text = tag,
                 style = MaterialTheme.typography.labelLarge,
                 color = if (isFavorite) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
                 fontWeight = if (isFavorite) FontWeight.SemiBold else FontWeight.Normal,
             )
+            // Visible favorite shortcut: tap the star to toggle, tap the chip
+            // itself to search; long-press keeps the older toggle gesture.
+            if (onToggleFavorite != null) {
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    imageVector = if (isFavorite) Icons.Default.Star else LatteIcons.StarBorder,
+                    contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
+                    tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clickable { onToggleFavorite() }
+                        .padding(2.dp),
+                )
+            }
         }
     }
 }

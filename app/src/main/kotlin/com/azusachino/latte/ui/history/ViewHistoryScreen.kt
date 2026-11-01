@@ -10,15 +10,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
@@ -52,6 +55,7 @@ import com.azusachino.latte.ui.common.GlassTopBar
 import com.azusachino.latte.ui.common.ToastManager
 import com.azusachino.latte.ui.common.ToastType
 import com.azusachino.latte.ui.common.glassCard
+import com.azusachino.latte.ui.common.rememberHeaderVisibleState
 import com.azusachino.latte.ui.explore.PostGridItem
 import com.azusachino.latte.ui.explore.shouldShowBackToTop
 import com.azusachino.latte.ui.theme.pressScale
@@ -81,49 +85,62 @@ fun ViewHistoryScreen(
     val visible = remember(history, platformFilter) {
         history.filter { platformFilter == null || it.platform == platformFilter }
     }
+    val gridState = rememberLazyStaggeredGridState()
+    val headerVisible = rememberHeaderVisibleState(
+        firstVisibleItemIndex = { gridState.firstVisibleItemIndex },
+        trackingKey = gridState,
+    )
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        topBar = {
-            GlassTopBar(
-                title = "Viewing History",
-                onBack = onBack,
-                actions = {
-                    if (history.isNotEmpty()) {
-                        IconButton(
-                            onClick = { showClearDialog = true },
-                            modifier = Modifier.pressScale(),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "Clear viewing history",
-                            )
-                        }
-                    }
-                },
-            )
-        },
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            if (history.isNotEmpty()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    GlassPillChip(
-                        selected = platformFilter == null,
-                        onClick = { platformFilter = null },
-                        label = "All",
+            // Scroll-linked header: the glass bar and platform pills slide
+            // away on a downward scroll and return on the first upward one.
+            AnimatedVisibility(
+                visible = headerVisible,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
+            ) {
+                Column {
+                    GlassTopBar(
+                        title = "Viewing History",
+                        onBack = onBack,
+                        actions = {
+                            if (history.isNotEmpty()) {
+                                IconButton(
+                                    onClick = { showClearDialog = true },
+                                    modifier = Modifier.pressScale(),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Clear viewing history",
+                                    )
+                                }
+                            }
+                        },
                     )
-                    PlatformId.entries.forEach { platform ->
-                        GlassPillChip(
-                            selected = platformFilter == platform,
-                            onClick = { platformFilter = platform },
-                            label = platform.displayName,
-                        )
+                    if (history.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            GlassPillChip(
+                                selected = platformFilter == null,
+                                onClick = { platformFilter = null },
+                                label = "All",
+                            )
+                            PlatformId.entries.forEach { platform ->
+                                GlassPillChip(
+                                    selected = platformFilter == platform,
+                                    onClick = { platformFilter = platform },
+                                    label = platform.displayName,
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -132,6 +149,7 @@ fun ViewHistoryScreen(
                 history.isEmpty() -> EmptyHistory("Posts you open will appear here.")
                 visible.isEmpty() -> EmptyHistory("No ${platformFilter?.displayName} posts in your history yet.")
                 else -> HistoryGrid(
+                    gridState = gridState,
                     posts = visible,
                     columnCount = columnCount,
                     onPostClick = onPostClick,
@@ -188,12 +206,12 @@ fun ViewHistoryScreen(
  */
 @Composable
 private fun HistoryGrid(
+    gridState: LazyStaggeredGridState,
     posts: List<Post>,
     columnCount: Int,
     onPostClick: (posts: List<Post>, index: Int) -> Unit,
     onRemove: (Post) -> Unit,
 ) {
-    val gridState = rememberLazyStaggeredGridState()
     val coroutineScope = rememberCoroutineScope()
     val showBackToTop by remember {
         derivedStateOf { shouldShowBackToTop(gridState.firstVisibleItemIndex) }

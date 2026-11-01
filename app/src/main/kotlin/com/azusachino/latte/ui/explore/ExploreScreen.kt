@@ -68,6 +68,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
 import com.azusachino.latte.ui.common.LatteIcons
+import com.azusachino.latte.ui.common.rememberHeaderVisibleState
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Card
@@ -203,6 +204,7 @@ fun ExploreScreen(
     val pixivFavoritesGridState = rememberLazyStaggeredGridState()
     val pixivSearchGridState = rememberLazyStaggeredGridState()
     val pixivUserWorksGridState = rememberLazyStaggeredGridState()
+    val poolsListState = rememberLazyListState()
     val activePlugin = platformPlugins.getValue(uiState.platform)
     val feedTabs = activePlugin.feedTabs
     val tabCount = feedTabs.size.coerceAtLeast(1)
@@ -243,6 +245,35 @@ fun ExploreScreen(
             uiState.activeSearchTags
         }
     }
+
+    // The list whose scroll drives the hideable top bar: the active tab's
+    // grid, the search grid while searching, or the pools list on the pools
+    // tab. The bar hides once you scroll well into any list and returns on
+    // the first upward scroll.
+    val activeTab = feedTabs.getOrNull(pagerState.currentPage)
+    val isPoolsTab = !uiState.isSearch && activeTab?.kind == PluginFeedKind.POOLS
+    val activeGridState = if (uiState.isSearch) {
+        when {
+            !uiState.supportsUserFeeds -> searchGridState
+            uiState.pixivAuthorId != null -> pixivUserWorksGridState
+            else -> pixivSearchGridState
+        }
+    } else {
+        when (activeTab?.kind) {
+            PluginFeedKind.FOLLOWED -> pixivFollowedGridState
+            PluginFeedKind.POPULAR -> if (uiState.supportsUserFeeds) pixivPopularGridState else popularGridState
+            PluginFeedKind.NEWEST -> newestGridState
+            PluginFeedKind.FAVORITES -> if (uiState.supportsUserFeeds) pixivFavoritesGridState else favoritesGridState
+            else -> popularGridState
+        }
+    }
+    val topBarVisible = rememberHeaderVisibleState(
+        firstVisibleItemIndex = {
+            if (isPoolsTab) poolsListState.firstVisibleItemIndex else activeGridState.firstVisibleItemIndex
+        },
+        trackingKey = if (isPoolsTab) poolsListState else activeGridState,
+        forceVisible = isSelectionMode || isSearchExpanded,
+    )
 
     LaunchedEffect(pagerState.currentPage) {
         selectedPostIds = emptySet()
@@ -359,6 +390,14 @@ fun ExploreScreen(
             }
         },
         topBar = {
+            // Scroll-linked: the whole glass header (bar, search field, tabs,
+            // author header) slides away on a downward scroll and returns on
+            // the first upward one.
+            AnimatedVisibility(
+                visible = topBarVisible,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
+            ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -739,6 +778,16 @@ fun ExploreScreen(
                                                     toggle = viewModel::toggleFavoriteTag,
                                                 )
                                             },
+                                            onToggleFavorite = {
+                                                toggleFavoriteTagWithUndo(
+                                                    tag = tag,
+                                                    platform = PlatformId.PIXIV,
+                                                    wasFavorite = uiState.favoriteTags.any {
+                                                        it.tag == tag && it.platform == PlatformId.PIXIV
+                                                    },
+                                                    toggle = viewModel::toggleFavoriteTag,
+                                                )
+                                            },
                                         )
                                     }
                                 }
@@ -770,6 +819,16 @@ fun ExploreScreen(
                                                 viewModel.search(tag)
                                             },
                                             onLongClick = {
+                                                toggleFavoriteTagWithUndo(
+                                                    tag = tag,
+                                                    platform = uiState.platform,
+                                                    wasFavorite = uiState.favoriteTags.any {
+                                                        it.tag == tag && it.platform == uiState.platform
+                                                    },
+                                                    toggle = viewModel::toggleFavoriteTag,
+                                                )
+                                            },
+                                            onToggleFavorite = {
                                                 toggleFavoriteTagWithUndo(
                                                     tag = tag,
                                                     platform = uiState.platform,
@@ -830,6 +889,7 @@ fun ExploreScreen(
                         }
                     }
                 }
+            }
             }
         },
     ) { innerPadding ->
@@ -899,6 +959,7 @@ fun ExploreScreen(
                             PoolsTabContent(
                                 feed = uiState.poolsFeed,
                                 covers = uiState.poolCovers,
+                                listState = poolsListState,
                                 topPadding = topBarPadding,
                                 onQueryChange = { query -> viewModel.loadPoolsInitial(query) },
                                 onLoadMore = { viewModel.loadMorePools() },
