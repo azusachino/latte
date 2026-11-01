@@ -593,7 +593,6 @@ fun DetailScreen(
                                     backgroundColor = Color.Black,
                                     shape = RoundedCornerShape(22.dp),
                                     dark = true,
-                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),
                                 )
                                 .pressScale()
                                 .clickable {
