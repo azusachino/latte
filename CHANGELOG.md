@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.8 - 2026-11-01
+
+### Added
+
+- Viewing history management: long-press a tile to remove it (with an undo toast), and a confirmed clear that respects the active platform filter. Removal is identity-keyed and unit-tested.
+- Bookmark vocabulary cutover: saved tags are "bookmarks" now (bookmark icons, Bookmarks screen, bookmark wording in settings and backups), while "favorite" means the site-side API favorite (detail heart, Pixiv favorites feed; Pixiv internals renamed accordingly). Existing backups and viewing history stay compatible via preserved wire keys.
+- Hand-drawn platform badges on gradient tiles: a moe heart for yande.re and a wallpaper frame for konachan, uppercase letter fallback for pixiv. The search input saves queries with the library-add icon pair, distinct from the bookmark page icon.
+
+### Fixed
+
+- Explore and history glass headers hide after scrolling down and return on the first upward scroll, using draw-time transforms instead of height animation so scrolling stays smooth; the history header is an overlay and tiles scroll behind the glass.
+- The history grid gains Explore's back-to-top button; the platform menu opens only from the logo; long search-tag titles ellipsize instead of hiding the platform icon; search has a single close affordance.
+- Downloads are capped at two concurrent workers: their blocking calls bypassed the per-host budget that async preview fetches live within, so batches starved grid and detail loading.
+- The Detail save pill drops its tinted background and matches the top-bar glass.
+
 ## 0.3.7 - 2026-10-31
 
 ### Added
