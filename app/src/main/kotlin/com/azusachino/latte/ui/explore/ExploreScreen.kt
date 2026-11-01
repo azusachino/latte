@@ -463,7 +463,16 @@ fun ExploreScreen(
                                     color = platformAccent,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f, fill = false),
+                                    modifier = Modifier
+                                        .weight(1f, fill = false)
+                                        .clickable(
+                                            enabled = uiState.isSearch && title == null,
+                                        ) {
+                                            // The title during search is the
+                                            // query itself: tapping it reopens
+                                            // the input instead of doing nothing.
+                                            isSearchExpanded = true
+                                        },
                                 )
                             }
                             DropdownMenu(
@@ -613,7 +622,10 @@ fun ExploreScreen(
                             modifier = Modifier.pressScale(),
                         ) {
                             Icon(
-                                imageVector = if (isSearchExpanded) Icons.Default.Close else Icons.Default.Search,
+                                // Always the magnifier: the expanded input's
+                                // clear button stays the only close affordance,
+                                // so search mode never shows two X icons.
+                                imageVector = Icons.Default.Search,
                                 contentDescription = "Search",
                             )
                         }
@@ -640,7 +652,9 @@ fun ExploreScreen(
                             modifier = Modifier.pressScale(),
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Star,
+                                // Bookmark, not star: the star means "add to
+                                // favorite"; this opens the saved-tags page.
+                                imageVector = LatteIcons.Bookmark,
                                 contentDescription = "Favorite tags",
                                 tint = if (uiState.favoriteTags.isNotEmpty()) {
                                     MaterialTheme.colorScheme.primary
@@ -710,7 +724,14 @@ fun ExploreScreen(
                                                 it.tag == searchQuery.trim() && it.platform == uiState.platform
                                             }
                                             IconButton(
-                                                onClick = { viewModel.toggleFavoriteTag(searchQuery) },
+                                                onClick = {
+                                                    toggleFavoriteTagWithUndo(
+                                                        tag = searchQuery.trim(),
+                                                        platform = uiState.platform,
+                                                        wasFavorite = isFavorite,
+                                                        toggle = viewModel::toggleFavoriteTag,
+                                                    )
+                                                },
                                                 modifier = Modifier.pressScale(),
                                             ) {
                                                 Icon(
@@ -743,106 +764,6 @@ fun ExploreScreen(
                                     unfocusedBorderColor = Color.Transparent,
                                 ),
                             )
-                        }
-                        if (uiState.supportsUserFeeds && isSearchExpanded) {
-                            val supportTags = if (searchQuery.isBlank()) {
-                                uiState.favoriteTags
-                                    .filter { it.platform == uiState.platform }
-                                    .map { it.tag } + uiState.pixivTrendingTags
-                            } else {
-                                uiState.pixivSearchSuggestions
-                            }
-                            if (supportTags.isNotEmpty()) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .horizontalScroll(rememberScrollState()),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    supportTags.take(8).forEach { tag ->
-                                        SearchTagChip(
-                                            tag = tag,
-                                            isFavorite = uiState.favoriteTags.any {
-                                                it.tag == tag && it.platform == uiState.platform
-                                            },
-                                            onClick = {
-                                                searchQuery = tag
-                                                viewModel.searchPixiv(tag)
-                                            },
-                                            onLongClick = {
-                                                toggleFavoriteTagWithUndo(
-                                                    tag = tag,
-                                                    platform = PlatformId.PIXIV,
-                                                    wasFavorite = uiState.favoriteTags.any {
-                                                        it.tag == tag && it.platform == PlatformId.PIXIV
-                                                    },
-                                                    toggle = viewModel::toggleFavoriteTag,
-                                                )
-                                            },
-                                            onToggleFavorite = {
-                                                toggleFavoriteTagWithUndo(
-                                                    tag = tag,
-                                                    platform = PlatformId.PIXIV,
-                                                    wasFavorite = uiState.favoriteTags.any {
-                                                        it.tag == tag && it.platform == PlatformId.PIXIV
-                                                    },
-                                                    toggle = viewModel::toggleFavoriteTag,
-                                                )
-                                            },
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        if (!uiState.supportsUserFeeds && isSearchExpanded) {
-                            val supportTags = if (searchQuery.isBlank()) {
-                                uiState.favoriteTags
-                                    .filter { it.platform == uiState.platform }
-                                    .map { it.tag } + uiState.recentSearches
-                            } else {
-                                uiState.yandeSearchSuggestions
-                            }
-                            if (supportTags.isNotEmpty()) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .horizontalScroll(rememberScrollState()),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    supportTags.take(10).forEach { tag ->
-                                        SearchTagChip(
-                                            tag = tag,
-                                            isFavorite = uiState.favoriteTags.any {
-                                                it.tag == tag && it.platform == uiState.platform
-                                            },
-                                            onClick = {
-                                                searchQuery = tag
-                                                viewModel.search(tag)
-                                            },
-                                            onLongClick = {
-                                                toggleFavoriteTagWithUndo(
-                                                    tag = tag,
-                                                    platform = uiState.platform,
-                                                    wasFavorite = uiState.favoriteTags.any {
-                                                        it.tag == tag && it.platform == uiState.platform
-                                                    },
-                                                    toggle = viewModel::toggleFavoriteTag,
-                                                )
-                                            },
-                                            onToggleFavorite = {
-                                                toggleFavoriteTagWithUndo(
-                                                    tag = tag,
-                                                    platform = uiState.platform,
-                                                    wasFavorite = uiState.favoriteTags.any {
-                                                        it.tag == tag && it.platform == uiState.platform
-                                                    },
-                                                    toggle = viewModel::toggleFavoriteTag,
-                                                )
-                                            },
-                                        )
-                                    }
-                                }
-                            }
                         }
                     }
                 }

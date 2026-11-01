@@ -53,6 +53,13 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.Canvas
 import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -234,6 +241,22 @@ fun GlassSegmentedTabs(
     }
 }
 
+/** Slightly brighter, for the top edge of the logo tile gradient. */
+private fun Color.brightened(): Color = Color(
+    red + (1f - red) * 0.18f,
+    green + (1f - green) * 0.18f,
+    blue + (1f - blue) * 0.18f,
+    alpha,
+)
+
+/** Slightly darker, for the bottom edge of the logo tile gradient. */
+private fun Color.darkened(): Color = Color(red * 0.76f, green * 0.76f, blue * 0.76f, alpha)
+
+/**
+ * Platform badge: a gradient tile of the accent color carrying a platform
+ * mark — a moe heart for yande.re, a wallpaper frame for konachan — falling
+ * back to the initial letter for platforms without a drawn mark.
+ */
 @Composable
 internal fun PlatformLogo(
     label: String,
@@ -246,15 +269,68 @@ internal fun PlatformLogo(
         modifier = Modifier
             .then(modifier)
             .clip(RoundedCornerShape(9.dp))
-            .background(color)
+            .background(Brush.verticalGradient(listOf(color.brightened(), color.darkened())))
             .semantics { this.contentDescription = contentDescription },
     ) {
-        Text(
-            text = label,
+        when (label) {
+            "Y" -> YandeMark(Modifier.fillMaxSize())
+            "K" -> KonachanMark(Modifier.fillMaxSize())
+            else -> Text(
+                text = label.uppercase(),
+                color = Color.White,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+}
+
+/** White moe heart for yande.re. */
+@Composable
+private fun YandeMark(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val w = size.width
+        val h = size.height
+        val heart = Path().apply {
+            moveTo(0.50f * w, 0.82f * h)
+            cubicTo(0.16f * w, 0.58f * h, 0.14f * w, 0.30f * h, 0.32f * w, 0.24f * h)
+            cubicTo(0.42f * w, 0.20f * h, 0.50f * w, 0.28f * h, 0.50f * w, 0.34f * h)
+            cubicTo(0.50f * w, 0.28f * h, 0.58f * w, 0.20f * h, 0.68f * w, 0.24f * h)
+            cubicTo(0.86f * w, 0.30f * h, 0.84f * w, 0.58f * h, 0.50f * w, 0.82f * h)
+            close()
+        }
+        drawPath(heart, Color.White)
+    }
+}
+
+/** White wallpaper-frame mark for konachan: frame, sun, and ridge line. */
+@Composable
+private fun KonachanMark(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val w = size.width
+        val h = size.height
+        val inset = 0.16f * w
+        drawRoundRect(
             color = Color.White,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
+            topLeft = Offset(inset, inset),
+            size = Size(w - 2 * inset, h - 2 * inset),
+            cornerRadius = CornerRadius(0.10f * w, 0.10f * w),
+            style = Stroke(width = 0.07f * w),
         )
+        drawCircle(
+            color = Color.White,
+            radius = 0.07f * w,
+            center = Offset(0.37f * w, 0.37f * h),
+        )
+        val ridge = Path().apply {
+            moveTo(0.25f * w, 0.71f * h)
+            lineTo(0.43f * w, 0.52f * h)
+            lineTo(0.56f * w, 0.66f * h)
+            lineTo(0.65f * w, 0.58f * h)
+            lineTo(0.75f * w, 0.71f * h)
+            close()
+        }
+        drawPath(ridge, Color.White)
     }
 }
 
@@ -269,51 +345,8 @@ internal fun toggleFavoriteTagWithUndo(
         ToastManager.show("Removed favorite tag \"$tag\"", ToastType.INFO, actionLabel = "Undo") {
             toggle(tag, platform)
         }
+    } else {
+        ToastManager.showSuccess("Added favorite tag \"$tag\"")
     }
 }
 
-@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-@Composable
-internal fun SearchTagChip(
-    tag: String,
-    isFavorite: Boolean,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit,
-    onToggleFavorite: (() -> Unit)? = null,
-) {
-    Box(
-        modifier = Modifier
-            .padding(vertical = 4.dp)
-            .pressScale()
-            .glassPillSelection(selected = isFavorite)
-            .clip(RoundedCornerShape(GlassDefaults.PillCornerRadius))
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = tag,
-                style = MaterialTheme.typography.labelLarge,
-                color = if (isFavorite) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
-                fontWeight = if (isFavorite) FontWeight.SemiBold else FontWeight.Normal,
-            )
-            // Visible favorite shortcut: tap the star to toggle, tap the chip
-            // itself to search; long-press keeps the older toggle gesture.
-            if (onToggleFavorite != null) {
-                Spacer(modifier = Modifier.width(4.dp))
-                Icon(
-                    imageVector = if (isFavorite) Icons.Default.Star else LatteIcons.StarBorder,
-                    contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
-                    tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .size(22.dp)
-                        .clickable { onToggleFavorite() }
-                        .padding(2.dp),
-                )
-            }
-        }
-    }
-}

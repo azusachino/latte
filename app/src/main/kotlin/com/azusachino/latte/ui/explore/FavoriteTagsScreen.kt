@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,6 +34,7 @@ import com.azusachino.latte.data.model.FavoriteTag
 import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.ui.common.GlassTopBar
 import com.azusachino.latte.ui.common.glassCard
+import com.azusachino.latte.ui.common.LatteIcons
 import com.azusachino.latte.ui.theme.GlassDefaults
 import com.azusachino.latte.ui.theme.glassPillSelection
 import com.azusachino.latte.ui.theme.pressScale
@@ -134,7 +134,7 @@ private fun TagPill(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            imageVector = Icons.Default.Star,
+            imageVector = LatteIcons.Bookmark,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onPrimaryContainer,
             modifier = Modifier.size(14.dp),
