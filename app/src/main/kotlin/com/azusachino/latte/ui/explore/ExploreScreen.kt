@@ -68,6 +68,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
 import com.azusachino.latte.ui.common.LatteIcons
+import com.azusachino.latte.ui.common.SlideAwayHeader
 import com.azusachino.latte.ui.common.rememberHeaderVisibleState
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
@@ -392,12 +393,9 @@ fun ExploreScreen(
         topBar = {
             // Scroll-linked: the whole glass header (bar, search field, tabs,
             // author header) slides away on a downward scroll and returns on
-            // the first upward one.
-            AnimatedVisibility(
-                visible = topBarVisible,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut(),
-            ) {
+            // the first upward one, via a draw-time transform so scrolling
+            // never re-lays-out the haze header or the grid.
+            SlideAwayHeader(hidden = !topBarVisible) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

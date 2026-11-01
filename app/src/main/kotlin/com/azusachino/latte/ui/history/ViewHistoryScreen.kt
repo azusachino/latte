@@ -16,27 +16,24 @@ import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,16 +42,21 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.settings.LattePreferences
 import com.azusachino.latte.plugin.PlatformId
+import com.azusachino.latte.ui.common.BackToTopButton
 import com.azusachino.latte.ui.common.GlassPillChip
 import com.azusachino.latte.ui.common.GlassTopBar
 import com.azusachino.latte.ui.common.ToastManager
 import com.azusachino.latte.ui.common.ToastType
 import com.azusachino.latte.ui.common.glassCard
+import com.azusachino.latte.ui.common.SlideAwayHeader
 import com.azusachino.latte.ui.common.rememberHeaderVisibleState
 import com.azusachino.latte.ui.explore.PostGridItem
 import com.azusachino.latte.ui.explore.shouldShowBackToTop
@@ -90,19 +92,46 @@ fun ViewHistoryScreen(
         firstVisibleItemIndex = { gridState.firstVisibleItemIndex },
         trackingKey = gridState,
     )
+    val density = LocalDensity.current
+    var headerHeightPx by remember { mutableIntStateOf(0) }
+    // Keeps the first tiles below the header; constant while the header
+    // slides, so the grid never re-measures mid-scroll. Scrolled tiles render
+    // behind the translucent header, matching Explore.
+    val headerHeight = with(density) {
+        headerHeightPx.toDp().takeIf { it > 0.dp } ?: 112.dp
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
     ) { innerPadding ->
-        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            // Scroll-linked header: the glass bar and platform pills slide
-            // away on a downward scroll and return on the first upward one.
-            AnimatedVisibility(
-                visible = headerVisible,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut(),
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            when {
+                history.isEmpty() -> EmptyHistory("Posts you open will appear here.")
+                visible.isEmpty() -> EmptyHistory("No ${platformFilter?.displayName} posts in your history yet.")
+                else -> HistoryGrid(
+                    gridState = gridState,
+                    posts = visible,
+                    columnCount = columnCount,
+                    onPostClick = onPostClick,
+                    topPadding = headerHeight,
+                    onRemove = { post ->
+                        preferences.removeViewedPosts(listOf(post))
+                        ToastManager.show("Removed from history", ToastType.INFO, "Undo") {
+                            preferences.recordView(post)
+                        }
+                    },
+                )
+            }
+
+            SlideAwayHeader(
+                hidden = !headerVisible,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth(),
             ) {
-                Column {
+                Column(
+                    modifier = Modifier.onSizeChanged { headerHeightPx = it.height },
+                ) {
                     GlassTopBar(
                         title = "Viewing History",
                         onBack = onBack,
@@ -144,23 +173,7 @@ fun ViewHistoryScreen(
                     }
                 }
             }
-
-            when {
-                history.isEmpty() -> EmptyHistory("Posts you open will appear here.")
-                visible.isEmpty() -> EmptyHistory("No ${platformFilter?.displayName} posts in your history yet.")
-                else -> HistoryGrid(
-                    gridState = gridState,
-                    posts = visible,
-                    columnCount = columnCount,
-                    onPostClick = onPostClick,
-                    onRemove = { post ->
-                        preferences.removeViewedPosts(listOf(post))
-                        ToastManager.show("Removed from history", ToastType.INFO, "Undo") {
-                            preferences.recordView(post)
-                        }
-                    },
-                )
-            }
+        }
 
             val filter = platformFilter
             if (showClearDialog && history.isNotEmpty()) {
@@ -197,7 +210,6 @@ fun ViewHistoryScreen(
                 )
             }
         }
-    }
 }
 
 /**
@@ -211,6 +223,7 @@ private fun HistoryGrid(
     columnCount: Int,
     onPostClick: (posts: List<Post>, index: Int) -> Unit,
     onRemove: (Post) -> Unit,
+    topPadding: Dp = 0.dp,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val showBackToTop by remember {
@@ -220,7 +233,7 @@ private fun HistoryGrid(
         LazyVerticalStaggeredGrid(
             state = gridState,
             columns = StaggeredGridCells.Fixed(columnCount),
-            contentPadding = PaddingValues(start = 4.dp, end = 4.dp, bottom = 4.dp),
+            contentPadding = PaddingValues(start = 4.dp, end = 4.dp, top = topPadding, bottom = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalItemSpacing = 4.dp,
             modifier = Modifier.fillMaxSize(),
@@ -243,12 +256,9 @@ private fun HistoryGrid(
             enter = fadeIn() + scaleIn(),
             exit = fadeOut() + scaleOut(),
         ) {
-            SmallFloatingActionButton(
+            BackToTopButton(
                 onClick = { coroutineScope.launch { gridState.animateScrollToItem(0) } },
-                modifier = Modifier.pressScale(),
-            ) {
-                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Back to top")
-            }
+            )
         }
     }
 }

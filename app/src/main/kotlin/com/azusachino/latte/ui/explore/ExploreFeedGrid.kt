@@ -60,13 +60,13 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
+import com.azusachino.latte.ui.common.BackToTopButton
 import com.azusachino.latte.ui.common.LatteIcons
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
@@ -86,7 +86,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -432,12 +431,9 @@ internal fun FeedGrid(
                 enter = fadeIn() + scaleIn(),
                 exit = fadeOut() + scaleOut(),
             ) {
-                SmallFloatingActionButton(
+                BackToTopButton(
                     onClick = { coroutineScope.launch { gridState.animateScrollToItem(0) } },
-                    modifier = Modifier.pressScale(),
-                ) {
-                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Back to top")
-                }
+                )
             }
 
             // Transparent feed-page cursor: which fetched page the viewport is
