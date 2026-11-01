@@ -72,7 +72,7 @@ class PixivApiTest {
     @Test
     fun bookmarkMutationUsesFormBodyAndDoesNotPretendSuccessOnFailure() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
-        assertEquals(PixivBookmarkResult.Success, api().bookmark(75034219, bookmarked = true))
+        assertEquals(PixivFavoriteResult.Success, api().favorite(75034219, favorited = true))
 
         val request = server.takeRequest()
         assertEquals("POST", request.method)
@@ -168,13 +168,13 @@ class PixivApiTest {
     @Test
     fun followAuthorUsesFormBodyAndTypedFailures() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
-        assertEquals(PixivBookmarkResult.Success, api().followAuthor(42, follow = true))
+        assertEquals(PixivFavoriteResult.Success, api().followAuthor(42, follow = true))
         val add = server.takeRequest()
         assertEquals("/v1/user/follow/add", add.path)
         assertEquals("user_id=42&restrict=public", add.body.readUtf8())
 
         server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
-        assertEquals(PixivBookmarkResult.Success, api().followAuthor(42, follow = false))
+        assertEquals(PixivFavoriteResult.Success, api().followAuthor(42, follow = false))
         val delete = server.takeRequest()
         assertEquals("/v1/user/follow/delete", delete.path)
         assertEquals("user_id=42", delete.body.readUtf8())
@@ -182,7 +182,7 @@ class PixivApiTest {
         server.enqueue(
             MockResponse().setResponseCode(400).setBody("Error occurred at the OAuth process"),
         )
-        assertEquals(PixivBookmarkResult.AuthRequired, api().followAuthor(42, follow = true))
+        assertEquals(PixivFavoriteResult.AuthRequired, api().followAuthor(42, follow = true))
     }
 
     @Test

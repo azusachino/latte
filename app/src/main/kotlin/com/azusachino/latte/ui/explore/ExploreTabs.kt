@@ -334,19 +334,19 @@ private fun KonachanMark(modifier: Modifier = Modifier) {
     }
 }
 
-internal fun toggleFavoriteTagWithUndo(
+internal fun toggleBookmarkWithUndo(
     tag: String,
     platform: PlatformId,
-    wasFavorite: Boolean,
+    wasBookmark: Boolean,
     toggle: (String, PlatformId) -> Unit,
 ) {
     toggle(tag, platform)
-    if (wasFavorite) {
-        ToastManager.show("Removed favorite tag \"$tag\"", ToastType.INFO, actionLabel = "Undo") {
+    if (wasBookmark) {
+        ToastManager.show("Removed bookmark \"$tag\"", ToastType.INFO, actionLabel = "Undo") {
             toggle(tag, platform)
         }
     } else {
-        ToastManager.showSuccess("Added favorite tag \"$tag\"")
+        ToastManager.showSuccess("Added bookmark \"$tag\"")
     }
 }
 

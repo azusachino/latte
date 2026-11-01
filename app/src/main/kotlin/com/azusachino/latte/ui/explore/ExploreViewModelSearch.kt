@@ -6,7 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.azusachino.latte.data.model.PoolSummary
 import com.azusachino.latte.plugin.PluginFeedPeriod
-import com.azusachino.latte.data.model.FavoriteTag
+import com.azusachino.latte.data.model.Bookmark
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.model.PostRating
 import com.azusachino.latte.plugin.moebooru.MoebooruTags

@@ -83,20 +83,20 @@ class PixivApi(
         }
     }
 
-    suspend fun bookmark(workId: Long, bookmarked: Boolean): PixivBookmarkResult =
+    suspend fun favorite(workId: Long, favorited: Boolean): PixivFavoriteResult =
         withContext(Dispatchers.IO) {
-            if (workId <= 0) return@withContext PixivBookmarkResult.UpstreamDrift("bookmark")
+            if (workId <= 0) return@withContext PixivFavoriteResult.UpstreamDrift("bookmark")
             if (sessionProvider()?.accessToken.isNullOrBlank()) {
-                return@withContext PixivBookmarkResult.AuthRequired
+                return@withContext PixivFavoriteResult.AuthRequired
             }
 
-            val path = if (bookmarked) {
+            val path = if (favorited) {
                 "v2/illust/bookmark/add"
             } else {
                 "v1/illust/bookmark/delete"
             }
             val bodyBuilder = FormBody.Builder().add("illust_id", workId.toString())
-            if (bookmarked) bodyBuilder.add("restrict", "public")
+            if (favorited) bodyBuilder.add("restrict", "public")
             val url = baseUrl.toHttpUrl().newBuilder().addPathSegments(path).build()
 
             when (val response = execute(
@@ -104,19 +104,19 @@ class PixivApi(
                 operation = "bookmark",
                 decode = { Unit },
             )) {
-                is ReadResult.Success -> PixivBookmarkResult.Success
-                ReadResult.AuthRequired -> PixivBookmarkResult.AuthRequired
-                is ReadResult.RateLimited -> PixivBookmarkResult.RateLimited(response.retryAfterSeconds)
-                is ReadResult.UpstreamDrift -> PixivBookmarkResult.UpstreamDrift(response.operation)
-                is ReadResult.TransportFailure -> PixivBookmarkResult.TransportFailure(response.message)
+                is ReadResult.Success -> PixivFavoriteResult.Success
+                ReadResult.AuthRequired -> PixivFavoriteResult.AuthRequired
+                is ReadResult.RateLimited -> PixivFavoriteResult.RateLimited(response.retryAfterSeconds)
+                is ReadResult.UpstreamDrift -> PixivFavoriteResult.UpstreamDrift(response.operation)
+                is ReadResult.TransportFailure -> PixivFavoriteResult.TransportFailure(response.message)
             }
         }
 
-    suspend fun followAuthor(userId: Long, follow: Boolean): PixivBookmarkResult =
+    suspend fun followAuthor(userId: Long, follow: Boolean): PixivFavoriteResult =
         withContext(Dispatchers.IO) {
-            if (userId <= 0) return@withContext PixivBookmarkResult.UpstreamDrift("follow author")
+            if (userId <= 0) return@withContext PixivFavoriteResult.UpstreamDrift("follow author")
             if (sessionProvider()?.accessToken.isNullOrBlank()) {
-                return@withContext PixivBookmarkResult.AuthRequired
+                return@withContext PixivFavoriteResult.AuthRequired
             }
 
             val path = if (follow) {
@@ -133,11 +133,11 @@ class PixivApi(
                 operation = "follow author",
                 decode = { Unit },
             )) {
-                is ReadResult.Success -> PixivBookmarkResult.Success
-                ReadResult.AuthRequired -> PixivBookmarkResult.AuthRequired
-                is ReadResult.RateLimited -> PixivBookmarkResult.RateLimited(response.retryAfterSeconds)
-                is ReadResult.UpstreamDrift -> PixivBookmarkResult.UpstreamDrift(response.operation)
-                is ReadResult.TransportFailure -> PixivBookmarkResult.TransportFailure(response.message)
+                is ReadResult.Success -> PixivFavoriteResult.Success
+                ReadResult.AuthRequired -> PixivFavoriteResult.AuthRequired
+                is ReadResult.RateLimited -> PixivFavoriteResult.RateLimited(response.retryAfterSeconds)
+                is ReadResult.UpstreamDrift -> PixivFavoriteResult.UpstreamDrift(response.operation)
+                is ReadResult.TransportFailure -> PixivFavoriteResult.TransportFailure(response.message)
             }
         }
 

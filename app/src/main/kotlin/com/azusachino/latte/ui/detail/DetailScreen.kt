@@ -100,7 +100,7 @@ import com.azusachino.latte.data.download.DownloadIdentity
 import com.azusachino.latte.data.download.DownloadManager
 import com.azusachino.latte.data.download.DownloadResult
 import com.azusachino.latte.data.model.Post
-import com.azusachino.latte.data.model.FavoriteTag
+import com.azusachino.latte.data.model.Bookmark
 import com.azusachino.latte.data.model.PostRating
 import com.azusachino.latte.data.model.forPage
 import com.azusachino.latte.plugin.PlatformCapability
@@ -131,8 +131,8 @@ fun DetailScreen(
     onAuthorClick: (post: Post, postIndex: Int, pageIndex: Int) -> Unit = { _, _, _ -> },
     pluginManager: SitePluginManager,
     onRequireLogin: (SitePlugin) -> Unit = {},
-    favoriteTags: List<FavoriteTag> = emptyList(),
-    onToggleFavoriteTag: ((tag: String, platform: PlatformId) -> Unit)? = null,
+    bookmarks: List<Bookmark> = emptyList(),
+    onToggleBookmark: ((tag: String, platform: PlatformId) -> Unit)? = null,
     onPostViewed: (Post) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -178,7 +178,7 @@ fun DetailScreen(
     // from localScores: the probe's "not favorited" must not blank out the
     // 1/2 star rating the user actually voted.
     var favoriteOverrides by remember { mutableStateOf(mapOf<Long, Boolean>()) }
-    var localBookmarks by remember { mutableStateOf(mapOf<String, Boolean>()) }
+    var localFavorites by remember { mutableStateOf(mapOf<String, Boolean>()) }
     var inlineActionError by remember { mutableStateOf<String?>(null) }
     val heartScale = remember { Animatable(1f) }
     val currentPost = detailPosts.getOrNull(pagerState.currentPage)
@@ -504,7 +504,7 @@ fun DetailScreen(
                             val currentScore = localScores[post.id] ?: currentPlugin.getScore(post.id) ?: 0
                             val hasUserFeedCapability = PlatformCapability.USER_FEED in post.platform.capabilities
                             val isFavorited = if (hasUserFeedCapability) {
-                                localBookmarks[post.workIdentity.toString()] ?: post.isBookmarked
+                                localFavorites[post.workIdentity.toString()] ?: post.isFavorited
                             } else {
                                 favoriteOverrides[post.id] ?: (currentScore == 3)
                             }
@@ -549,14 +549,14 @@ fun DetailScreen(
                                                 val targetScore = if (isFavorited) 0 else 3
                                                 val targetBookmarked = !isFavorited
                                                 val result = if (hasUserFeedCapability) {
-                                                    currentPlugin.setBookmark(post.id, targetBookmarked)
+                                                    currentPlugin.setFavorite(post.id, targetBookmarked)
                                                 } else {
                                                     currentPlugin.setScore(post.id, targetScore)
                                                 }
                                                 if (result.isSuccess) {
                                                     inlineActionError = null
                                                     if (hasUserFeedCapability) {
-                                                        localBookmarks = localBookmarks + (post.workIdentity.toString() to targetBookmarked)
+                                                        localFavorites = localFavorites + (post.workIdentity.toString() to targetBookmarked)
                                                     } else {
                                                         localScores = localScores + (post.id to targetScore)
                                                         favoriteOverrides = favoriteOverrides + (post.id to targetBookmarked)
@@ -770,28 +770,28 @@ fun DetailScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             currentPost.tags.forEach { tag ->
-                                val canFavorite = onToggleFavoriteTag != null
+                                val canBookmark = onToggleBookmark != null
                                 TagChip(
                                     tag = tag,
                                     onClick = {
                                         showInspectSheet = false
                                         onTagClick(tag, pagerState.currentPage, pixivPageIndex)
                                     },
-                                    isFavorite = canFavorite &&
-                                        favoriteTags.any { it.tag == tag && it.platform == currentPost.platform },
-                                    onLongClick = if (canFavorite) {
+                                    isFavorite = canBookmark &&
+                                        bookmarks.any { it.tag == tag && it.platform == currentPost.platform },
+                                    onLongClick = if (canBookmark) {
                                         {
-                                            val wasFavorite = favoriteTags.any {
+                                            val wasBookmark = bookmarks.any {
                                                 it.tag == tag && it.platform == currentPost.platform
                                             }
-                                            onToggleFavoriteTag(tag, currentPost.platform)
-                                            if (wasFavorite) {
+                                            onToggleBookmark(tag, currentPost.platform)
+                                            if (wasBookmark) {
                                                 ToastManager.show(
-                                                    message = "Removed favorite tag \"$tag\"",
+                                                    message = "Removed bookmark \"$tag\"",
                                                     type = ToastType.INFO,
                                                     actionLabel = "Undo",
                                                 ) {
-                                                    onToggleFavoriteTag(tag, currentPost.platform)
+                                                    onToggleBookmark(tag, currentPost.platform)
                                                 }
                                             }
                                         }

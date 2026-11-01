@@ -52,8 +52,8 @@ data class PixivIllustDto(
     val width: Int = 0,
     val height: Int = 0,
     @SerialName("x_restrict") val xRestrict: Int = 0,
-    @SerialName("total_bookmarks") val totalBookmarks: Int = 0,
-    @SerialName("is_bookmarked") val isBookmarked: Boolean = false,
+    @SerialName("total_bookmarks") val favoriteCount: Int = 0,
+    @SerialName("is_bookmarked") val isFavorited: Boolean = false,
     @SerialName("meta_pages") val metaPages: List<PixivMetaPageDto> = emptyList(),
     @SerialName("meta_single_page") val metaSinglePage: PixivMetaSinglePageDto = PixivMetaSinglePageDto(),
 )
@@ -195,8 +195,8 @@ fun PixivIllustDto.toPost(): Post {
         title = title.takeIf(String::isNotBlank),
         canonicalUrl = canonicalUrl(id),
         authorId = user?.id?.takeIf { it > 0 },
-        bookmarkCount = totalBookmarks,
-        isBookmarked = isBookmarked,
+        favoriteCount = favoriteCount,
+        isFavorited = isFavorited,
         pageCount = pages.size,
         pages = pages,
     )

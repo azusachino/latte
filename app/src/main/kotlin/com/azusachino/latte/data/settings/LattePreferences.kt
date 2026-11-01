@@ -1,7 +1,7 @@
 package com.azusachino.latte.data.settings
 
 import android.content.Context
-import com.azusachino.latte.data.model.FavoriteTag
+import com.azusachino.latte.data.model.Bookmark
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.plugin.PlatformId
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -46,11 +46,11 @@ object LattePreferenceCodecs {
     fun decodeRecentSearches(value: String): List<String> =
         runCatching { json.decodeFromString(listSerializer, value) }.getOrDefault(emptyList())
 
-    fun encodeFavoriteTags(values: List<FavoriteTag>): String =
-        json.encodeToString(favoriteTagsSerializer, values)
+    fun encodeBookmarks(values: List<Bookmark>): String =
+        json.encodeToString(bookmarksSerializer, values)
 
-    fun decodeFavoriteTags(value: String): List<FavoriteTag> =
-        runCatching { json.decodeFromString(favoriteTagsSerializer, value) }.getOrDefault(emptyList())
+    fun decodeBookmarks(value: String): List<Bookmark> =
+        runCatching { json.decodeFromString(bookmarksSerializer, value) }.getOrDefault(emptyList())
 
     /**
      * Records [query] as the most recent entry: dedupe, trim to [limit],
@@ -64,7 +64,7 @@ object LattePreferenceCodecs {
 
     private val listSerializer = ListSerializer(String.serializer())
 
-    private val favoriteTagsSerializer = ListSerializer(FavoriteTag.serializer())
+    private val bookmarksSerializer = ListSerializer(Bookmark.serializer())
 
     private val postsSerializer = ListSerializer(Post.serializer())
 
@@ -102,8 +102,8 @@ class LattePreferences(private val context: Context) {
     private val _safeMode = MutableStateFlow(true)
     val safeMode: StateFlow<Boolean> = _safeMode.asStateFlow()
 
-    private val _favoriteTags = MutableStateFlow<List<FavoriteTag>>(emptyList())
-    val favoriteTags: StateFlow<List<FavoriteTag>> = _favoriteTags.asStateFlow()
+    private val _bookmarks = MutableStateFlow<List<Bookmark>>(emptyList())
+    val bookmarks: StateFlow<List<Bookmark>> = _bookmarks.asStateFlow()
 
     private val _recentSearches = MutableStateFlow<List<String>>(emptyList())
     val recentSearches: StateFlow<List<String>> = _recentSearches.asStateFlow()
@@ -128,14 +128,14 @@ class LattePreferences(private val context: Context) {
                 _safeMode.value = values[KEY_SAFE_MODE] ?: true
                 // Crash-safe read: a value written with an incompatible shape
                 // (dev-build leftovers) is dropped rather than cast-crashing.
-                val rawFavorites = runCatching { values[KEY_FAVORITE_TAGS] }.getOrNull()
-                if (rawFavorites is String) {
-                    _favoriteTags.value = LattePreferenceCodecs.decodeFavoriteTags(rawFavorites)
+                val rawBookmarks = runCatching { values[KEY_FAVORITE_TAGS] }.getOrNull()
+                if (rawBookmarks is String) {
+                    _bookmarks.value = LattePreferenceCodecs.decodeBookmarks(rawBookmarks)
                 } else {
-                    if (rawFavorites != null) {
+                    if (rawBookmarks != null) {
                         scope.launch { dataStore.edit { it.remove(KEY_FAVORITE_TAGS) } }
                     }
-                    _favoriteTags.value = emptyList()
+                    _bookmarks.value = emptyList()
                 }
                 _recentSearches.value = runCatching { values[KEY_RECENT_SEARCHES] }.getOrNull()
                     ?.let(LattePreferenceCodecs::decodeRecentSearches)
@@ -188,18 +188,18 @@ class LattePreferences(private val context: Context) {
         scope.launch { dataStore.edit { it[KEY_SAFE_MODE] = enabled } }
     }
 
-    fun isFavoriteTag(tag: String, platform: PlatformId): Boolean =
-        _favoriteTags.value.any { it.tag == tag.trim() && it.platform == platform }
+    fun isBookmark(tag: String, platform: PlatformId): Boolean =
+        _bookmarks.value.any { it.tag == tag.trim() && it.platform == platform }
 
-    fun setTagFavorite(tag: String, platform: PlatformId, favorite: Boolean) {
+    fun setTagBookmark(tag: String, platform: PlatformId, favorite: Boolean) {
         val trimmed = tag.trim()
         if (trimmed.isBlank()) return
-        val updated = _favoriteTags.value
+        val updated = _bookmarks.value
             .filterNot { it.tag == trimmed && it.platform == platform }
-            .let { existing -> if (favorite) existing + FavoriteTag(trimmed, platform) else existing }
-        _favoriteTags.value = updated
+            .let { existing -> if (favorite) existing + Bookmark(trimmed, platform) else existing }
+        _bookmarks.value = updated
         scope.launch {
-            dataStore.edit { it[KEY_FAVORITE_TAGS] = LattePreferenceCodecs.encodeFavoriteTags(updated) }
+            dataStore.edit { it[KEY_FAVORITE_TAGS] = LattePreferenceCodecs.encodeBookmarks(updated) }
         }
     }
 
@@ -255,7 +255,7 @@ class LattePreferences(private val context: Context) {
             columnCount = _columnCount.value,
             themeMode = _themeMode.value,
             safeMode = _safeMode.value,
-            favoriteTags = _favoriteTags.value,
+            bookmarks = _bookmarks.value,
             recentSearches = _recentSearches.value,
             proxyHost = _proxyHost.value,
             proxyPort = _proxyPort.value,
@@ -270,7 +270,7 @@ class LattePreferences(private val context: Context) {
             values[KEY_COLUMN_COUNT] = backup.columnCount
             values[KEY_THEME_MODE] = backup.themeMode.name
             values[KEY_SAFE_MODE] = backup.safeMode
-            values[KEY_FAVORITE_TAGS] = LattePreferenceCodecs.encodeFavoriteTags(backup.favoriteTags)
+            values[KEY_FAVORITE_TAGS] = LattePreferenceCodecs.encodeBookmarks(backup.bookmarks)
             values[KEY_RECENT_SEARCHES] = LattePreferenceCodecs.encodeRecentSearches(backup.recentSearches)
             values[KEY_VIEW_HISTORY] = LattePreferenceCodecs.encodeViewHistory(backup.viewHistory)
             val host = backup.proxyHost

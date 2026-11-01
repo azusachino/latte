@@ -180,7 +180,7 @@ fun SettingsScreen(
             title = { Text("Restore backup?") },
             text = {
                 Text(
-                    "This replaces your settings, favorite tags, recent searches and viewing history. " +
+                    "This replaces your settings, bookmarks, recent searches and viewing history. " +
                         "Accounts are not included, so sign in again if needed.",
                 )
             },
@@ -348,7 +348,7 @@ fun SettingsScreen(
                 SettingsRow(
                     icon = Icons.Default.KeyboardArrowUp,
                     title = "Export Backup",
-                    subtitle = "Settings, favorite tags, searches and history (no accounts)",
+                    subtitle = "Settings, bookmarks, searches and history (no accounts)",
                     onClick = { exportLauncher.launch(LatteBackupCodec.fileName(LocalDateTime.now())) },
                 )
 

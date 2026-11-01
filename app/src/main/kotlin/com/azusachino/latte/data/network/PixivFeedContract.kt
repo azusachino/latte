@@ -42,16 +42,16 @@ data class PixivSearchSupport(
     val trendingTags: List<String> = emptyList(),
 )
 
-sealed interface PixivBookmarkResult {
-    data object Success : PixivBookmarkResult
+sealed interface PixivFavoriteResult {
+    data object Success : PixivFavoriteResult
 
-    data object AuthRequired : PixivBookmarkResult
+    data object AuthRequired : PixivFavoriteResult
 
-    data class RateLimited(val retryAfterSeconds: Long?) : PixivBookmarkResult
+    data class RateLimited(val retryAfterSeconds: Long?) : PixivFavoriteResult
 
-    data class UpstreamDrift(val operation: String) : PixivBookmarkResult
+    data class UpstreamDrift(val operation: String) : PixivFavoriteResult
 
-    data class TransportFailure(val message: String) : PixivBookmarkResult
+    data class TransportFailure(val message: String) : PixivFavoriteResult
 }
 
 sealed interface PixivUserDetailResult {

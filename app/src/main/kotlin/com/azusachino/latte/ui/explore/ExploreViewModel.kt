@@ -6,7 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.azusachino.latte.data.model.PoolSummary
 import com.azusachino.latte.plugin.PluginFeedPeriod
-import com.azusachino.latte.data.model.FavoriteTag
+import com.azusachino.latte.data.model.Bookmark
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.model.PostRating
 import com.azusachino.latte.plugin.moebooru.MoebooruTags
@@ -110,11 +110,11 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
     init {
         viewModelScope.launch {
             combine(
-                preferences.favoriteTags,
+                preferences.bookmarks,
                 preferences.recentSearches,
             ) { favorites, recents ->
                 _uiState.update {
-                    it.copy(favoriteTags = favorites, recentSearches = recents)
+                    it.copy(bookmarks = favorites, recentSearches = recents)
                 }
             }.collect { }
         }
@@ -155,10 +155,10 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
         return preferences.cycleColumnCount()
     }
 
-    fun toggleFavoriteTag(query: String, platform: PlatformId = _uiState.value.platform) {
+    fun toggleBookmark(query: String, platform: PlatformId = _uiState.value.platform) {
         val trimmed = query.trim()
         if (trimmed.isBlank()) return
-        preferences.setTagFavorite(trimmed, platform, !preferences.isFavoriteTag(trimmed, platform))
+        preferences.setTagBookmark(trimmed, platform, !preferences.isBookmark(trimmed, platform))
     }
 
     fun setColumnCount(count: Int) {

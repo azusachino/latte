@@ -51,7 +51,7 @@ import com.azusachino.latte.plugin.PlatformCapability
 import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.ui.common.ToastHost
 import com.azusachino.latte.ui.common.ToastManager
-import com.azusachino.latte.ui.explore.FavoriteTagsScreen
+import com.azusachino.latte.ui.explore.BookmarksScreen
 import com.azusachino.latte.ui.detail.DetailScreen
 import com.azusachino.latte.ui.explore.ExploreScreen
 import com.azusachino.latte.ui.explore.ExploreViewModel
@@ -275,8 +275,8 @@ fun LatteApp(
                                 onOpenSettings = {
                                     navigation = navigation.push(Screen.Settings)
                                 },
-                                onOpenFavoriteTags = {
-                                    navigation = navigation.push(Screen.FavoriteTags)
+                                onOpenBookmarks = {
+                                    navigation = navigation.push(Screen.Bookmarks)
                                 },
                                 onRequireLogin = { plugin ->
                                     activeLoginPlugin = plugin
@@ -291,12 +291,12 @@ fun LatteApp(
                                 initialPageIndex = screen.initialPageIndex,
                                 downloadManager = downloadManager,
                                 pluginManager = sitePluginManager,
-                                favoriteTags = exploreUiState.favoriteTags,
+                                bookmarks = exploreUiState.bookmarks,
                                 onLoadMore = {
                                     exploreViewModel.loadMoreActiveFeed()
                                 },
-                                onToggleFavoriteTag = { tag, platform ->
-                                    exploreViewModel.toggleFavoriteTag(tag, platform)
+                                onToggleBookmark = { tag, platform ->
+                                    exploreViewModel.toggleBookmark(tag, platform)
                                 },
                                 onBack = {
                                     popNavigation()
@@ -361,8 +361,8 @@ fun LatteApp(
                                 },
                             )
                         }
-                        is Screen.FavoriteTags -> {
-                            FavoriteTagsScreen(
+                        is Screen.Bookmarks -> {
+                            BookmarksScreen(
                                 viewModel = exploreViewModel,
                                 onBack = { popNavigation() },
                                 onOpenTag = { favorite ->

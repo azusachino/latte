@@ -71,8 +71,8 @@ interface SitePlugin {
     suspend fun setScore(postId: Long, score: Int): Result<Unit> =
         Result.failure(UnsupportedOperationException("Scoring not supported by $name"))
 
-    suspend fun setBookmark(postId: Long, bookmarked: Boolean): Result<Unit> =
-        Result.failure(UnsupportedOperationException("Bookmarks not supported by $name"))
+    suspend fun setFavorite(postId: Long, favorited: Boolean): Result<Unit> =
+        Result.failure(UnsupportedOperationException("Favorites not supported by $name"))
 
     suspend fun setAuthorFollowed(userId: Long, followed: Boolean): Result<Unit> =
         Result.failure(UnsupportedOperationException("Following not supported by $name"))

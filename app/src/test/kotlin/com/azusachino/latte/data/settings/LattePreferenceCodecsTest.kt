@@ -1,6 +1,6 @@
 package com.azusachino.latte.data.settings
 
-import com.azusachino.latte.data.model.FavoriteTag
+import com.azusachino.latte.data.model.Bookmark
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.model.PostRating
 import com.azusachino.latte.plugin.PlatformId
@@ -45,18 +45,18 @@ class LattePreferenceCodecsTest {
     }
 
     @Test
-    fun favoriteTagsRoundTripThroughJsonWithPlatform() {
+    fun bookmarksRoundTripThroughJsonWithPlatform() {
         val values = listOf(
-            FavoriteTag("genshin_impact", PlatformId.YANDE),
-            FavoriteTag("hatsune_miku", PlatformId.PIXIV),
+            Bookmark("genshin_impact", PlatformId.YANDE),
+            Bookmark("hatsune_miku", PlatformId.PIXIV),
         )
-        val encoded = LattePreferenceCodecs.encodeFavoriteTags(values)
-        assertEquals(values, LattePreferenceCodecs.decodeFavoriteTags(encoded))
+        val encoded = LattePreferenceCodecs.encodeBookmarks(values)
+        assertEquals(values, LattePreferenceCodecs.decodeBookmarks(encoded))
     }
 
     @Test
-    fun malformedFavoriteTagsDecodeToEmpty() {
-        assertTrue(LattePreferenceCodecs.decodeFavoriteTags("not json").isEmpty())
+    fun malformedBookmarksDecodeToEmpty() {
+        assertTrue(LattePreferenceCodecs.decodeBookmarks("not json").isEmpty())
     }
 
     private fun post(id: Long, platform: PlatformId = PlatformId.YANDE) = Post(

@@ -30,7 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.azusachino.latte.data.model.FavoriteTag
+import com.azusachino.latte.data.model.Bookmark
 import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.ui.common.GlassTopBar
 import com.azusachino.latte.ui.common.glassCard
@@ -46,20 +46,20 @@ import com.azusachino.latte.ui.theme.pressScale
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FavoriteTagsScreen(
+fun BookmarksScreen(
     viewModel: ExploreViewModel,
     onBack: () -> Unit,
-    onOpenTag: (FavoriteTag) -> Unit,
+    onOpenTag: (Bookmark) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val byPlatform = uiState.favoriteTags
+    val byPlatform = uiState.bookmarks
         .sortedWith(compareBy({ it.platform }, { it.tag }))
         .groupBy { it.platform }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        topBar = { GlassTopBar(title = "Favorite Tags", onBack = onBack) },
+        topBar = { GlassTopBar(title = "Bookmarks", onBack = onBack) },
     ) { innerPadding ->
         if (byPlatform.isEmpty()) {
             Box(
@@ -70,7 +70,7 @@ fun FavoriteTagsScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = "No favorite tags yet. Long-press a tag on a post's detail page " +
+                    text = "No bookmarks yet. Long-press a tag on a post's detail page " +
                         "to save it, or use the star in the search bar.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -107,7 +107,7 @@ fun FavoriteTagsScreen(
                                 TagPill(
                                     favorite = favorite,
                                     onOpen = { onOpenTag(favorite) },
-                                    onRemove = { viewModel.toggleFavoriteTag(favorite.tag, favorite.platform) },
+                                    onRemove = { viewModel.toggleBookmark(favorite.tag, favorite.platform) },
                                 )
                             }
                         }
@@ -120,7 +120,7 @@ fun FavoriteTagsScreen(
 
 @Composable
 private fun TagPill(
-    favorite: FavoriteTag,
+    favorite: Bookmark,
     onOpen: () -> Unit,
     onRemove: () -> Unit,
 ) {
@@ -153,7 +153,7 @@ private fun TagPill(
         ) {
             Icon(
                 imageVector = Icons.Default.Close,
-                contentDescription = "Remove ${favorite.tag} from favorites",
+                contentDescription = "Remove ${favorite.tag} from bookmarks",
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier = Modifier.size(16.dp),
             )

@@ -53,8 +53,12 @@ data class Post(
     val variants: List<MediaVariant>,
     val title: String? = null,
     val canonicalUrl: String? = null,
-    val bookmarkCount: Int? = null,
-    val isBookmarked: Boolean = false,
+    // Wire names preserved: view-history entries stored by older builds
+    // serialize these under the bookmark-era names.
+    @kotlinx.serialization.SerialName("bookmarkCount")
+    val favoriteCount: Int? = null,
+    @kotlinx.serialization.SerialName("isBookmarked")
+    val isFavorited: Boolean = false,
     val pageIndex: Int = 0,
     val pageCount: Int = 1,
     val pages: List<ArtworkPage> = emptyList(),

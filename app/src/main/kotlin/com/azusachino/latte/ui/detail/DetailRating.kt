@@ -100,7 +100,7 @@ import com.azusachino.latte.data.download.DownloadIdentity
 import com.azusachino.latte.data.download.DownloadManager
 import com.azusachino.latte.data.download.DownloadResult
 import com.azusachino.latte.data.model.Post
-import com.azusachino.latte.data.model.FavoriteTag
+import com.azusachino.latte.data.model.Bookmark
 import com.azusachino.latte.data.model.PostRating
 import com.azusachino.latte.data.model.forPage
 import com.azusachino.latte.plugin.PlatformCapability

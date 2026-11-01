@@ -43,7 +43,7 @@ Popular / Newest / Favorites / Pools / Search -> PluginFeedSource -> Staggered G
 - **Image-First Detail Pager**: Full-screen zoomable viewer with memory-cached preview transitions.
 - **Table-Style Metadata**: Clean key-value information sheet displaying resolution, color-coded rating, score, date (`yyyy-MM-dd HH:mm`), file size, and clickable author works/search.
 - **Colorful Tag Chips**: Deterministic 16-color palette with comfortable touch targets; tap any tag to immediately search, long-press to favorite it (favorited tags are visually distinct).
-- **Favorite Tags**: Platform-bound saved tags, favorited from detail pages, search chips, or the search-bar star; the Favorite Tags view opens each tag's feed on its own platform for update checks.
+- **Bookmarks**: Platform-bound saved tags, bookmarked from detail pages or the search-bar star; the Bookmarks view opens each tag's feed on its own platform for update checks. The star means the site-side favorite; the bookmark icon means saved locally.
 - **Pixiv Following**: Follow/unfollow artists from their works view; Pixiv opens on the Following tab with followed updates first.
 - **Search Support**: Recent searches and tag autocomplete on yande.re; trending tags and autocomplete on Pixiv.
 - **Safe Mode**: User-configurable toggle under Settings (default: safe). Yande adds `rating:safe`; Pixiv keeps only normalized `x_restrict == 0` results and advances through cursors when a page is filtered out.

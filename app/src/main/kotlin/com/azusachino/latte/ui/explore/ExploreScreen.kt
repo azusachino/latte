@@ -183,7 +183,7 @@ fun ExploreScreen(
     viewModel: ExploreViewModel,
     onPostClick: (index: Int) -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenFavoriteTags: () -> Unit = {},
+    onOpenBookmarks: () -> Unit = {},
     handleSearchBack: Boolean = true,
     onBack: (() -> Unit)? = null,
     title: String? = null,
@@ -646,17 +646,17 @@ fun ExploreScreen(
                             )
                         }
 
-                        // Favorite tags: saved tags and their update feeds
+                        // Bookmarks: saved tags and their update feeds
                         IconButton(
-                            onClick = onOpenFavoriteTags,
+                            onClick = onOpenBookmarks,
                             modifier = Modifier.pressScale(),
                         ) {
                             Icon(
                                 // Bookmark, not star: the star means "add to
                                 // favorite"; this opens the saved-tags page.
                                 imageVector = LatteIcons.Bookmark,
-                                contentDescription = "Favorite tags",
-                                tint = if (uiState.favoriteTags.isNotEmpty()) {
+                                contentDescription = "Bookmarks",
+                                tint = if (uiState.bookmarks.isNotEmpty()) {
                                     MaterialTheme.colorScheme.primary
                                 } else {
                                     MaterialTheme.colorScheme.onSurfaceVariant
@@ -720,24 +720,24 @@ fun ExploreScreen(
                                 trailingIcon = {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         if (searchQuery.isNotBlank()) {
-                                            val isFavorite = uiState.favoriteTags.any {
+                                            val isBookmarked = uiState.bookmarks.any {
                                                 it.tag == searchQuery.trim() && it.platform == uiState.platform
                                             }
                                             IconButton(
                                                 onClick = {
-                                                    toggleFavoriteTagWithUndo(
+                                                    toggleBookmarkWithUndo(
                                                         tag = searchQuery.trim(),
                                                         platform = uiState.platform,
-                                                        wasFavorite = isFavorite,
-                                                        toggle = viewModel::toggleFavoriteTag,
+                                                        wasBookmark = isBookmarked,
+                                                        toggle = viewModel::toggleBookmark,
                                                     )
                                                 },
                                                 modifier = Modifier.pressScale(),
                                             ) {
                                                 Icon(
                                                     imageVector = Icons.Default.Star,
-                                                    contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
-                                                    tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    contentDescription = if (isBookmarked) "Remove from bookmarks" else "Add to bookmarks",
+                                                    tint = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                                 )
                                             }
                                             IconButton(

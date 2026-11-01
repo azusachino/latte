@@ -60,7 +60,7 @@ class MoebooruFeedSource(
                     // applies to this feed by design.
                     api.getPosts(
                         page = request.page,
-                        tags = MoebooruTags.safeMode(MoebooruApi.favoriteTags(user), request.safeMode),
+                        tags = MoebooruTags.safeMode(MoebooruApi.bookmarks(user), request.safeMode),
                     )
                 }
                 PluginFeedKind.FOLLOWED,

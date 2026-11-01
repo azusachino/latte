@@ -101,7 +101,7 @@ import com.azusachino.latte.data.download.DownloadManager
 import com.azusachino.latte.data.download.DownloadResult
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.ui.common.formatFileSize
-import com.azusachino.latte.data.model.FavoriteTag
+import com.azusachino.latte.data.model.Bookmark
 import com.azusachino.latte.data.model.PostRating
 import com.azusachino.latte.data.model.forPage
 import com.azusachino.latte.plugin.PlatformCapability
@@ -180,9 +180,9 @@ internal fun MetadataTable(
 
             if (PlatformCapability.USER_FEED in post.platform.capabilities) {
                 MetadataTableRow(label = "Pages", value = "${post.pageIndex + 1} / ${post.pageCount}")
-                post.bookmarkCount?.let { count ->
+                post.favoriteCount?.let { count ->
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
-                    MetadataTableRow(label = "Bookmarks", value = count.toString())
+                    MetadataTableRow(label = "Favorites", value = count.toString())
                 }
             } else {
                 // Score
@@ -340,7 +340,7 @@ internal fun TagChip(
                 Spacer(modifier = Modifier.width(6.dp))
                 Icon(
                     imageVector = Icons.Default.Star,
-                    contentDescription = "Favorited tag",
+                    contentDescription = "Bookmarked tag",
                     tint = baseColor,
                     modifier = Modifier.size(14.dp),
                 )
