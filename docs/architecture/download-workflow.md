@@ -30,9 +30,9 @@ gets the same name.
 ```mermaid
 flowchart LR
     UI["DetailScreen / ExploreScreen<br/>(tap save)"] --> DM["DownloadManager"]
-    DM --> DL["DownloadLibrary<br/>(in-memory keyset)"]
+    DM --> DL["DownloadLibrary<br/>(persisted keyset)"]
     DM --> WM["WorkManager<br/>unique work per file name"]
-    WM --> W["DownloadWorker<br/>(semaphore: 2 concurrent)"]
+    WM --> W["DownloadWorker<br/>(semaphore: 8 concurrent)"]
     W --> MS[("MediaStore<br/>Pictures/Latte/&lt;platform&gt;/")]
     W --> DL
     W --> N["Notifications<br/>progress, result, summary"]
@@ -77,7 +77,7 @@ Fallback rules, applied per source when a request fails (`shouldFallback`):
 
 ## Worker (`DownloadWorker`)
 
-Runs under a semaphore of 2 permits, so at most two saves run at once in the process.
+Runs under a semaphore of 8 permits, so at most eight saves run at once in the process. The bytes move through OkHttp's async dispatcher, so they share the per-host budget with previews.
 
 1. **Start.** Posts a foreground notification "Downloading image" with an indeterminate
    progress bar. Failure to become foreground is logged and ignored.
@@ -96,8 +96,8 @@ Runs under a semaphore of 2 permits, so at most two saves run at once in the pro
    items. If another worker published it meanwhile, this row is deleted and the result is
    `already_saved`.
 6. **Publish.** Clears `IS_PENDING`. Result: `completed`.
-7. **Remember.** `DownloadLibrary.remember(displayName)` adds the key to the in-memory
-   keyset. This keeps later taps in the same process on the dedup path.
+7. **Remember.** `DownloadLibrary.remember(context, displayName)` adds the key to the keyset
+   and persists it, so later taps (this process or the next launch) dedup without a rescan.
 8. **Result.** Posts the result notification with a thumbnail. Older completed
    notifications beyond 8 are cancelled, and a group summary is updated.
 
@@ -109,18 +109,20 @@ Error handling:
 
 ## Keyset lifecycle (`DownloadLibrary`)
 
-- `refresh(context)` queries MediaStore for each platform folder and parses every name
-  into a key. It replaces the whole keyset. Settings → Rebuild Download Index calls it.
-- `ensureLoaded` runs `refresh` once per process.
-- `remember` adds one key after a successful save.
-- `isSaved` is an in-memory set lookup.
+The keyset is built once and then persisted in SharedPreferences (`download_library`), one
+string set per platform, plus a `built` flag.
 
-The keyset is not persisted. Each process rebuilds it from MediaStore on first use, so
-files deleted or added outside the app are picked up by Rebuild.
+- **First load** (`ensureLoaded`, once per process): if `built` is unset, one MediaStore scan
+  builds the keyset and persists it. If set, the stored sets are loaded without a scan.
+- **Growth:** `remember` adds each finished download's key and persists. No rescans.
+- **Rebuild** (`refresh`, Settings → Rebuild Download Index): rescans and replaces the set.
+  This is the only way to pick up files added or deleted outside the app.
+- **Permission:** `built` is set only when the scan ran with `READ_MEDIA_IMAGES`. Without it,
+  the scan can see nothing, so the library stays unbuilt and the next load with permission
+  scans again.
 
-**Known dependency:** the scan reads MediaStore, which needs photo access. Without it,
-the scan can return nothing, so dedup stays off until Rebuild runs with permission
-granted. Rebuild surfaces the permission request; the first automatic load does not.
+Files changed by other apps are not tracked until Rebuild. A deleted file still counts as
+saved until then.
 
 ## Notifications
 
@@ -162,7 +164,7 @@ sequenceDiagram
     W->>MS: insert pending row
     W->>W: stream from source (fallback as needed)
     W->>MS: publish (IS_PENDING=0)
-    W->>L: remember(displayName)
+    W->>L: remember(context, displayName)
     W-->>U: result notification
 ```
 
@@ -188,8 +190,7 @@ found the file already exists.
 
 ## Open points
 
-- Auto-load ignores photo permission (see the keyset section).
-- The keyset is rebuilt per process. Very large libraries pay one MediaStore scan on
-  first save after launch.
+- The first launch pays one MediaStore scan to build the keyset. After that the scan
+  only runs on Rebuild or when the library was never built with permission.
 - Batch enqueue calls `enqueueDownload` in sequence, so each post still does a
   WorkManager lookup.

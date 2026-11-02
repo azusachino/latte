@@ -38,7 +38,7 @@ class DownloadLibraryTest {
         val saved = post(4242)
         assertFalse(library.isSaved(saved))
 
-        library.remember(DownloadIdentity.fileName(saved))
+        library.addKeys(DownloadIdentity.fileName(saved))
 
         assertTrue(library.isSaved(saved))
         assertFalse(library.isSaved(post(4243)))

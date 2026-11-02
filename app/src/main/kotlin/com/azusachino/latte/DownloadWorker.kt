@@ -21,8 +21,7 @@ import androidx.work.workDataOf
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
@@ -30,8 +29,12 @@ import com.azusachino.latte.data.download.DownloadFallback
 import com.azusachino.latte.data.download.DownloadLibrary
 import com.azusachino.latte.data.download.DownloadNotificationPolicy
 import com.azusachino.latte.data.network.OkHttpProvider
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
+import okhttp3.Response
 
 class DownloadWorker(
     appContext: Context,
@@ -80,7 +83,7 @@ class DownloadWorker(
                 displayName = displayName,
                 mimeType = inputData.getString(KEY_MIME_TYPE).orEmpty(),
             )
-            DownloadLibrary.remember(displayName)
+            DownloadLibrary.remember(applicationContext, displayName)
             showDownloadResult(receipt)
             Result.success(
                 workDataOf(
@@ -196,50 +199,79 @@ class DownloadWorker(
                 if (offset > 0) header("Range", "bytes=$offset-")
             }
             .build()
-        OkHttpProvider.client.newCall(request).execute().use { response ->
-            if (response.code == 416 && offset > 0) return false
-            val contentType = response.header("Content-Type")
-            if (!response.isSuccessful || !DownloadFallback.acceptsImage(url.host, contentType)) {
-                val message = if (response.isSuccessful) {
-                    "Image server returned ${contentType ?: "a non-image response"}"
-                } else {
-                    "Image server returned HTTP ${response.code}"
+        // Async, so the transfer counts against OkHttp's per-host budget that
+        // previews share. The body is read inside onResponse: returning first
+        // would free the dispatcher slot while the bytes are still streaming.
+        val call = OkHttpProvider.client.newCall(request)
+        return suspendCancellableCoroutine { continuation ->
+            continuation.invokeOnCancellation { call.cancel() }
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    continuation.resumeWith(kotlin.Result.failure(e))
                 }
-                throw HttpStatusException(response.code, contentType, message)
+
+                override fun onResponse(call: Call, response: Response) {
+                    continuation.resumeWith(
+                        runCatching {
+                            response.use { writeResponse(resolver, uri, url, offset, it) { continuation.isActive } }
+                        },
+                    )
+                }
+            })
+        }
+    }
+
+    /** Streams one response into the MediaStore item. Runs on OkHttp's callback thread. */
+    private fun writeResponse(
+        resolver: android.content.ContentResolver,
+        uri: Uri,
+        url: HttpUrl,
+        offset: Long,
+        response: Response,
+        isActive: () -> Boolean,
+    ): Boolean {
+        if (response.code == 416 && offset > 0) return false
+        val contentType = response.header("Content-Type")
+        if (!response.isSuccessful || !DownloadFallback.acceptsImage(url.host, contentType)) {
+            val message = if (response.isSuccessful) {
+                "Image server returned ${contentType ?: "a non-image response"}"
+            } else {
+                "Image server returned HTTP ${response.code}"
             }
-            val body = response.body ?: throw IOException("Image server returned an empty body")
-            val append = offset > 0 && response.code == 206
-            val start = if (append) offset else 0L
-            val totalBytes = body.contentLength().takeIf { it > 0 }?.let { it + start } ?: -1L
-            val outputMode = if (append) "wa" else "w"
-            body.byteStream().use { input ->
-                resolver.openOutputStream(uri, outputMode)?.use { output ->
-                    val buffer = ByteArray(16 * 1024)
-                    var bytesCopied = start
-                    var lastUpdateNanos = 0L
-                    while (true) {
-                        currentCoroutineContext().ensureActive()
-                        val count = input.read(buffer)
-                        if (count < 0) break
-                        output.write(buffer, 0, count)
-                        bytesCopied += count
-                        val now = System.nanoTime()
-                        if (
-                            bytesCopied == totalBytes ||
-                            now - lastUpdateNanos >= 250_000_000L
-                        ) {
-                            showDownloadProgress(bytesCopied, totalBytes)
-                            setProgress(
-                                workDataOf(
-                                    "bytesCopied" to bytesCopied,
-                                    "totalBytes" to totalBytes,
-                                ),
-                            )
-                            lastUpdateNanos = now
-                        }
+            throw HttpStatusException(response.code, contentType, message)
+        }
+        val body = response.body ?: throw IOException("Image server returned an empty body")
+        val append = offset > 0 && response.code == 206
+        val start = if (append) offset else 0L
+        val totalBytes = body.contentLength().takeIf { it > 0 }?.let { it + start } ?: -1L
+        val outputMode = if (append) "wa" else "w"
+        body.byteStream().use { input ->
+            resolver.openOutputStream(uri, outputMode)?.use { output ->
+                val buffer = ByteArray(16 * 1024)
+                var bytesCopied = start
+                var lastUpdateNanos = 0L
+                while (true) {
+                    if (!isActive()) throw CancellationException("Download cancelled")
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    output.write(buffer, 0, count)
+                    bytesCopied += count
+                    val now = System.nanoTime()
+                    if (
+                        bytesCopied == totalBytes ||
+                        now - lastUpdateNanos >= 250_000_000L
+                    ) {
+                        showDownloadProgress(bytesCopied, totalBytes)
+                        setProgressAsync(
+                            workDataOf(
+                                "bytesCopied" to bytesCopied,
+                                "totalBytes" to totalBytes,
+                            ),
+                        )
+                        lastUpdateNanos = now
                     }
-                } ?: error("Latte could not open the MediaStore item")
-            }
+                }
+            } ?: error("Latte could not open the MediaStore item")
         }
         return true
     }
@@ -480,15 +512,11 @@ class DownloadWorker(
         private const val KEY_FALLBACK_URLS = "fallback_urls"
         private const val MAX_RETRY_COUNT = 2
 
-        // Previews share this process's network with downloads. Each download
-        // worker opens a blocking OkHttp call that bypasses the per-host
-        // concurrency budget async preview fetches live within, so an
-        // unbounded batch of workers starves grid and detail loading on the
-        // very hosts images come from (moebooru serves images from the same
-        // domain as its API). The gate caps concurrent downloads, so preview
-        // traffic always keeps per-host capacity and stays the priority.
+        // Downloads run as async OkHttp calls, so they share the per-host
+        // budget with previews (moebooru serves images from the same domain as
+        // its API). This gate only bounds how many workers run at once.
         val downloadGate = Semaphore(permits = DOWNLOAD_CONCURRENCY)
-        const val DOWNLOAD_CONCURRENCY = 2
+        const val DOWNLOAD_CONCURRENCY = 8
 
         fun pruneStaleNotifications(context: Context) {
             val manager = context.getSystemService(NotificationManager::class.java) ?: return
