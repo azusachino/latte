@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.10 - 2026-11-02
+
+### Fixed
+
+- Repeat saves of the same post are caught again: a finished download is recorded in the saved-library keyset, so tapping save again shows "Already saved" instead of starting another download.
+
+### Changed
+
+- The saved-library keyset is persisted and grows with each download. It is built with one scan on first use and no longer rescanned on every launch; Settings → Rebuild Download Index still rescans.
+- Downloads run through OkHttp's async dispatcher, sharing the per-host budget with previews, and up to 8 saves run at once (was 2).
+
 ## 0.3.9 - 2026-11-01
 
 ### Fixed
