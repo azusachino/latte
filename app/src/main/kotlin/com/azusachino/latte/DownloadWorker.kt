@@ -27,6 +27,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import com.azusachino.latte.data.download.DownloadFallback
+import com.azusachino.latte.data.download.DownloadLibrary
 import com.azusachino.latte.data.download.DownloadNotificationPolicy
 import com.azusachino.latte.data.network.OkHttpProvider
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -79,6 +80,7 @@ class DownloadWorker(
                 displayName = displayName,
                 mimeType = inputData.getString(KEY_MIME_TYPE).orEmpty(),
             )
+            DownloadLibrary.remember(displayName)
             showDownloadResult(receipt)
             Result.success(
                 workDataOf(

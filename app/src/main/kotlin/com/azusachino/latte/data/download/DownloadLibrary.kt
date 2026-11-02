@@ -42,6 +42,18 @@ object DownloadLibrary {
         keys[post.platform]?.contains(DownloadIdentity.key(post)) ?: false
     }
 
+    /**
+     * Records a file this process just saved, so repeat downloads of the same
+     * work dedup without waiting for a rescan. Keys come from the file name,
+     * the same way [refresh] parses them.
+     */
+    fun remember(displayName: String) = synchronized(keys) {
+        for (platform in PlatformId.entries) {
+            val key = DownloadIdentity.parseKey(platform, displayName) ?: continue
+            keys[platform] = keys[platform].orEmpty() + key
+        }
+    }
+
     fun keyCount(platform: PlatformId): Int = synchronized(keys) {
         keys[platform]?.size ?: 0
     }
