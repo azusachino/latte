@@ -3,6 +3,8 @@ package com.azusachino.latte.ui
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.background
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import com.azusachino.latte.ui.common.LocalScreenVisibilityScope
@@ -184,7 +186,9 @@ fun LatteApp(
         val toastHazeState = rememberHazeState()
         val backSettleScope = rememberCoroutineScope()
 
-        Box(modifier = modifier.fillMaxSize()) {
+        // Painted under every screen: cross-fades and the predictive-back shrink show this
+        // surface, and the window background follows the system theme, not the app's.
+        Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             val predictiveBackProgress = remember { Animatable(0f) }
 
             PredictiveBackHandler(enabled = navigation.size > 1) { progressFlow ->

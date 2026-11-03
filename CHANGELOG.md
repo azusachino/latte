@@ -10,6 +10,7 @@
 
 ### Fixed
 
+- No light flash between screens when the app theme is Dark and the system is light: the theme background is painted under the screen transitions instead of the system-themed window background showing through.
 - A predictive back swipe could crash the app as the screen settled: the settle spring dipped below zero and produced a negative corner radius.
 - Toasts show above the post details sheet. The sheet is now drawn in the app window instead of a separate dialog window.
 - The details sheet no longer jumps or closes by itself while scrolling long tag lists. Its height stops below the top bar, and it closes on back, a tap outside, or a downward drag on the handle or on content scrolled to its top.
