@@ -175,7 +175,7 @@ internal fun ExploreViewModel.loadPixivInitial(kind: PluginFeedKind = selectedPi
     val activeQuery = query ?: _uiState.value.pixivSearchTags.takeIf { kind == PluginFeedKind.SEARCH }
     val activeUserId = _uiState.value.pixivAuthorId.takeIf { kind == PluginFeedKind.AUTHOR_WORKS }
     cancelPixivJob(kind)
-    updatePixivFeed(kind) { it.copy(isLoading = true, isRefreshing = false, error = null, notice = null, authRequired = false, page = 1, nextCursor = null, autoLoadStreak = 0) }
+    updatePixivFeed(kind) { it.copy(isLoading = true, isRefreshing = false, error = null, notice = null, authRequired = false, page = 1, nextCursor = null, autoLoadStreak = 0, pageCursors = emptyMap()) }
     feedJobs[PlatformId.PIXIV to kind] = viewModelScope.launch {
         applyIfActive(
             request = {
@@ -213,7 +213,7 @@ internal fun ExploreViewModel.refreshPixiv(kind: PluginFeedKind = selectedPixivK
     val activeQuery = query ?: _uiState.value.pixivSearchTags.takeIf { kind == PluginFeedKind.SEARCH }
     val activeUserId = _uiState.value.pixivAuthorId.takeIf { kind == PluginFeedKind.AUTHOR_WORKS }
     cancelPixivJob(kind)
-    updatePixivFeed(kind) { it.copy(isRefreshing = true, error = null, notice = null, authRequired = false, nextCursor = null, autoLoadStreak = 0) }
+    updatePixivFeed(kind) { it.copy(isRefreshing = true, error = null, notice = null, authRequired = false, page = 1, nextCursor = null, autoLoadStreak = 0, pageCursors = emptyMap()) }
     feedJobs[PlatformId.PIXIV to kind] = viewModelScope.launch {
         applyIfActive(
             request = {
@@ -254,7 +254,12 @@ internal fun ExploreViewModel.applyPixivResult(kind: PluginFeedKind, result: Plu
                     autoLoadStreak = streak,
                 )
             }
-            if (shouldContinue) {
+            if (isPaged(kind)) {
+                // Page mode never chains requests; an all-filtered page says so and keeps Next.
+                if (merged.isEmpty() && hasMore) {
+                    updatePixivFeed(kind) { it.copy(notice = "Safe Mode hid every post on page 1") }
+                }
+            } else if (shouldContinue) {
                 loadMorePixiv(kind)
             } else if (addedCount == 0 && hasMore) {
                 updatePixivFeed(kind) {

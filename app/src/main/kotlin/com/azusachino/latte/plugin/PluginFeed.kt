@@ -43,6 +43,8 @@ data class PluginFeedRequest(
     val cursor: String? = null,
     val refresh: Boolean = false,
     val safeMode: Boolean = false,
+    /** Items per page, for sources that let the reader choose; null keeps the source default. */
+    val pageSize: Int? = null,
 )
 
 data class PluginFeedPage(
@@ -66,6 +68,12 @@ sealed interface PluginFeedResult {
 
 interface PluginFeedSource {
     suspend fun load(request: PluginFeedRequest): PluginFeedResult
+
+    /**
+     * Highest [PluginFeedRequest.page] that [load] can open directly for [kind] in one
+     * request, or null when [kind] only pages forward by [PluginFeedRequest.cursor].
+     */
+    fun maxDirectPage(kind: PluginFeedKind): Int? = Int.MAX_VALUE
 }
 
 interface PluginPoolSource {

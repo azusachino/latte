@@ -1,5 +1,10 @@
 package com.azusachino.latte.ui.explore
 
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -67,6 +72,9 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
 import com.azusachino.latte.ui.common.BackToTopButton
+import com.azusachino.latte.ui.common.FeedScrollbar
+import com.azusachino.latte.ui.common.LocalSharedPostTransition
+import com.azusachino.latte.ui.common.sharedPostImage
 import com.azusachino.latte.ui.common.LatteIcons
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
@@ -102,6 +110,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -176,8 +185,10 @@ internal fun FeedGrid(
     header: (@Composable () -> Unit)? = null,
     emptyTitle: String = "No posts yet",
     emptyHint: String = "Pull to refresh or try again later.",
+    pager: FeedPager? = null,
     modifier: Modifier = Modifier,
 ) {
+    val sharedPostTransition = LocalSharedPostTransition.current
     // The header is grid item 0 while shown, so post indices are offset by one.
     val headerCount = if (header != null) 1 else 0
     val latestHeaderCount by rememberUpdatedState(headerCount)
@@ -190,14 +201,16 @@ internal fun FeedGrid(
         }
     }
 
+    // Page mode never fetches on its own: every request is a Prev/Next/Go tap.
     LaunchedEffect(shouldLoadMore) {
-        if (shouldLoadMore) {
+        if (shouldLoadMore && pager == null) {
             onLoadMore()
         }
     }
 
     LaunchedEffect(feed.posts.size, feed.hasMore, feed.nextCursor, feed.isLoading, feed.isLoadingMore) {
         if (
+            pager == null &&
             feed.posts.isEmpty() &&
             feed.hasMore &&
             feed.nextCursor != null &&
@@ -222,7 +235,7 @@ internal fun FeedGrid(
     val pullToRefreshState = rememberPullToRefreshState()
     PullToRefreshBox(
         isRefreshing = feed.isRefreshing,
-        onRefresh = onRefresh,
+        onRefresh = if (pager != null) { { pager.onGoToPage(feed.page) } } else onRefresh,
         modifier = modifier.fillMaxSize(),
         state = pullToRefreshState,
         indicator = {
@@ -340,14 +353,39 @@ internal fun FeedGrid(
                     // The staggered grid cannot honor scrollToItem until its first
                     // layout has measured the current children.
                     withFrameNanos { }
-                    gridState.scrollToItem(
-                        restoredIndex.coerceIn(0, feed.posts.lastIndex) + headerCount,
-                        position.scrollOffset,
-                    )
+                    val targetIndex = restoredIndex.coerceIn(0, feed.posts.lastIndex) + headerCount
+                    // The saveable grid state usually comes back already in place. A redundant
+                    // scrollToItem would drop the grid's remembered columns, and tiles above
+                    // would then re-deal (visibly jump) on the way back up.
+                    if (gridState.firstVisibleItemIndex != targetIndex ||
+                        gridState.firstVisibleItemScrollOffset != position.scrollOffset
+                    ) {
+                        gridState.scrollToItem(targetIndex, position.scrollOffset)
+                    }
                     snapshotFlow { currentGridPosition() }
                         .distinctUntilChanged()
                         .collect { viewModel.saveGridPosition(gridKey, it) }
                 }
+                // A new page starts at its top; the first composition keeps the restored position.
+                var shownPage by remember(gridKey) { mutableIntStateOf(feed.page) }
+                // Page turn: 1 = settled. A new page slides in from the side it came
+                // from while its tiles cascade in; the first composition stays settled.
+                val pageTurn = remember(gridKey) { Animatable(1f) }
+                var turnDirection by remember(gridKey) { mutableIntStateOf(1) }
+                LaunchedEffect(feed.page) {
+                    if (pager != null && feed.page != shownPage) {
+                        turnDirection = if (feed.page > shownPage) 1 else -1
+                        gridState.scrollToItem(0)
+                        pageTurn.snapTo(0f)
+                        shownPage = feed.page
+                        pageTurn.animateTo(1f, tween(durationMillis = PAGE_TURN_MS, easing = LinearEasing))
+                    }
+                    shownPage = feed.page
+                }
+                // While the next page loads, the current one recedes.
+                val turning = pager != null && feed.isLoading
+                val recede by animateFloatAsState(if (turning) 1f else 0f, label = "pageRecede")
+                val slidePx = with(LocalDensity.current) { PAGE_TURN_SLIDE.toPx() }
                 LazyVerticalStaggeredGrid(
                     columns = StaggeredGridCells.Fixed(columnCount),
                     state = gridState,
@@ -359,7 +397,15 @@ internal fun FeedGrid(
                     ),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalItemSpacing = 4.dp,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            val settle = FastOutSlowInEasing.transform(pageTurn.value)
+                            translationX = (1f - settle) * turnDirection * slidePx
+                            alpha = 1f - 0.55f * recede
+                            scaleX = 1f - 0.03f * recede
+                            scaleY = scaleX
+                        },
                 ) {
                     if (header != null) {
                         item(span = StaggeredGridItemSpan.FullLine) {
@@ -375,7 +421,27 @@ internal fun FeedGrid(
                         val isSelected = post.id in selectedPostIds
                         PostGridItem(
                             post = post,
-                            modifier = Modifier.animateItem(),
+                            sharedGrid = gridKey.toString(),
+                            modifier = Modifier
+                                // Page mode swaps every tile at once; the grid's own fades would
+                                // ghost the old page over the cascade, so only placement animates.
+                                // No placement slide: when the staggered grid re-deals columns
+                                // while scrolling up, animating it reads as the grid "updating".
+                                // Page mode also drops the fades, which would ghost the old page.
+                                .then(
+                                    if (pager != null) {
+                                        Modifier.animateItem(fadeInSpec = null, placementSpec = null, fadeOutSpec = null)
+                                    } else {
+                                        Modifier.animateItem(placementSpec = null)
+                                    },
+                                )
+                                .graphicsLayer {
+                                    val shown = tileEntrance(pageTurn.value, index)
+                                    alpha = shown
+                                    translationY = (1f - shown) * slidePx * 0.5f
+                                    scaleX = 0.92f + 0.08f * shown
+                                    scaleY = scaleX
+                                },
                             isSelectionMode = isSelectionMode,
                             isSelected = isSelected,
                             onClick = {
@@ -383,6 +449,7 @@ internal fun FeedGrid(
                                     onToggleSelect?.invoke(post.id)
                                 } else {
                                     viewModel.saveGridPosition(gridKey, currentGridPosition())
+                                    sharedPostTransition?.originGrid = gridKey.toString()
                                     onPostClick(index)
                                 }
                             },
@@ -405,6 +472,15 @@ internal fun FeedGrid(
                         }
                     }
                 }
+            }
+
+            if (feed.posts.isNotEmpty()) {
+                FeedScrollbar(
+                    state = gridState,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = topPadding + 8.dp, bottom = 72.dp),
+                )
             }
 
             if ((feed.isLoading || (feed.isLoadingMore && feed.posts.isEmpty())) && !feed.isRefreshing) {
@@ -446,7 +522,19 @@ internal fun FeedGrid(
                     gridState.firstVisibleItemIndex / perPage + 1
                 }
             }
-            AnimatedVisibility(
+            if (pager != null) {
+                // Stays up on an empty page past 1 so the reader can step back.
+                AnimatedVisibility(
+                    visible = feed.posts.isNotEmpty() || feed.page > 1,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(start = 12.dp, bottom = 12.dp),
+                ) {
+                    FeedPagerBar(pager = pager, feed = feed)
+                }
+            } else AnimatedVisibility(
                 visible = feed.posts.isNotEmpty(),
                 enter = fadeIn(),
                 exit = fadeOut(),
@@ -468,6 +556,23 @@ internal fun FeedGrid(
         }
     }
 }
+
+private const val PAGE_TURN_MS = 700
+private val PAGE_TURN_SLIDE = 56.dp
+
+/**
+ * How far tile [index] has entered (0..1) at page-turn [progress] (0..1): tiles
+ * start one after another, so a new page cascades in from the top. Tiles past the
+ * first screenful share the last start so the cascade never drags.
+ */
+internal fun tileEntrance(progress: Float, index: Int): Float {
+    val start = index.coerceAtMost(TILE_CASCADE_CAP) * TILE_CASCADE_STEP
+    return ((progress - start) / TILE_ENTER_SPAN).coerceIn(0f, 1f)
+}
+
+private const val TILE_CASCADE_CAP = 12
+private const val TILE_CASCADE_STEP = 0.04f
+private const val TILE_ENTER_SPAN = 1f - TILE_CASCADE_CAP * TILE_CASCADE_STEP
 
 // Shows the button once the feed is well past the first screenful of posts.
 internal const val BACK_TO_TOP_THRESHOLD_ITEMS = 12
@@ -494,6 +599,7 @@ internal fun PersonalFeedContent(
     selectedPostIds: Set<Long> = emptySet(),
     onToggleSelect: ((Long) -> Unit)? = null,
     topPadding: androidx.compose.ui.unit.Dp = 0.dp,
+    pager: FeedPager? = null,
     modifier: Modifier = Modifier,
 ) {
     if (plugin == null) return
@@ -537,6 +643,8 @@ internal fun PersonalFeedContent(
             feed.hasMore &&
             !feed.isLoading &&
             !feed.isRefreshing &&
+            // A notice (e.g. Safe Mode hid a whole page) is a settled state, not a reason to refetch.
+            feed.notice == null &&
             (feed.error == null || shouldRetryStaleAuth)
         ) {
             onRetry()
@@ -559,6 +667,7 @@ internal fun PersonalFeedContent(
         onRequireLogin = { onRequireLogin(plugin) },
         selectedPostIds = selectedPostIds,
         onToggleSelect = onToggleSelect,
+        pager = pager,
         modifier = modifier,
     )
 }
@@ -615,6 +724,8 @@ internal fun PostGridItem(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     bottomLabel: String? = null,
+    /** Grid identity for the tile-to-viewer morph; null opts the tile out. */
+    sharedGrid: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val imageSources = remember(post.siteId, post.id, post.pageIndex) { post.imageSources }
@@ -636,6 +747,7 @@ internal fun PostGridItem(
     val imageModifier = Modifier
         .fillMaxWidth()
         .aspectRatio(post.aspectRatio.coerceIn(0.4f, 2.5f))
+        .sharedPostImage(sharedGrid, post)
 
     val cardShape = RoundedCornerShape(GlassDefaults.CardCornerRadius)
     val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f

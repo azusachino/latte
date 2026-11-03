@@ -1,5 +1,6 @@
 package com.azusachino.latte.ui.account
 
+import com.azusachino.latte.ui.common.GlassAlertDialog
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -12,7 +13,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import com.azusachino.latte.ui.common.LatteIcons
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -114,7 +114,7 @@ fun PluginLoginDialog(
         }
     }
 
-    AlertDialog(
+    GlassAlertDialog(
         onDismissRequest = { if (!isLoading) onDismissRequest() },
         title = { Text(if (tokenImport) "Connect ${plugin.name}" else "Sign in to ${plugin.name}") },
         text = {

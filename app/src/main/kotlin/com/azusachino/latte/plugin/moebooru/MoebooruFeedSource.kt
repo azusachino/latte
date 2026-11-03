@@ -47,10 +47,12 @@ class MoebooruFeedSource(
                 )
                 PluginFeedKind.NEWEST -> api.getPosts(
                     page = request.page,
+                    limit = request.pageSize ?: MoebooruApi.DEFAULT_PAGE_SIZE,
                     tags = MoebooruTags.safeMode(null, request.safeMode),
                 )
                 PluginFeedKind.SEARCH -> api.getPosts(
                     page = request.page,
+                    limit = request.pageSize ?: MoebooruApi.DEFAULT_PAGE_SIZE,
                     tags = MoebooruTags.safeMode(request.query, request.safeMode),
                 )
                 PluginFeedKind.FAVORITES -> {
@@ -60,6 +62,7 @@ class MoebooruFeedSource(
                     // applies to this feed by design.
                     api.getPosts(
                         page = request.page,
+                        limit = request.pageSize ?: MoebooruApi.DEFAULT_PAGE_SIZE,
                         tags = MoebooruTags.safeMode(MoebooruApi.bookmarks(user), request.safeMode),
                     )
                 }

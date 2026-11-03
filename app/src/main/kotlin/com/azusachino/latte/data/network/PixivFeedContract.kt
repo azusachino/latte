@@ -15,6 +15,8 @@ data class PixivFeedRequest(
     val query: String? = null,
     val userId: Long? = null,
     val cursor: String? = null,
+    /** Item offset for a direct page jump; ignored when [cursor] is set. */
+    val offset: Int? = null,
     val refresh: Boolean = false,
 )
 

@@ -35,6 +35,8 @@ data class FeedState(
     val hasMore: Boolean = true,
     val nextCursor: String? = null,
     val autoLoadStreak: Int = 0,
+    /** Page-mode continuation cursors by page number, for cursor-only sources. */
+    val pageCursors: Map<Int, String> = emptyMap(),
     /** Informational (non-error) message, rendered in normal body styling. */
     val notice: String? = null,
 )

@@ -1,5 +1,6 @@
 package com.azusachino.latte.ui.settings
 
+import com.azusachino.latte.ui.common.GlassAlertDialog
 import android.content.Intent
 import android.net.Uri
 import androidx.core.content.ContextCompat
@@ -32,7 +33,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -80,8 +80,10 @@ import com.azusachino.latte.ui.common.LatteIcons
 import com.azusachino.latte.data.download.DownloadLibrary
 import com.azusachino.latte.ui.common.ToastManager
 import com.azusachino.latte.ui.theme.GlassDefaults
+import com.azusachino.latte.ui.theme.glassBackdrop
 import com.azusachino.latte.ui.theme.glassPillSelection
-import com.azusachino.latte.ui.theme.glassSurface
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import com.azusachino.latte.ui.theme.pressScale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -105,6 +107,8 @@ fun SettingsScreen(
     val columnCount by preferences.columnCount.collectAsStateWithLifecycle()
     val themeMode by preferences.themeMode.collectAsStateWithLifecycle()
     val safeMode by preferences.safeMode.collectAsStateWithLifecycle()
+    val pagedBrowsing by preferences.pagedBrowsing.collectAsStateWithLifecycle()
+    val pageSize by preferences.pageSize.collectAsStateWithLifecycle()
 
     val cacheManager = remember {
         CacheManager(
@@ -179,7 +183,7 @@ fun SettingsScreen(
     }
 
     pendingRestoreBytes?.let { bytes ->
-        AlertDialog(
+        GlassAlertDialog(
             onDismissRequest = { pendingRestoreBytes = null },
             title = { Text("Restore backup?") },
             text = {
@@ -223,15 +227,18 @@ fun SettingsScreen(
     }
 
 
+    // The settings list scrolls under a frosted header, like Explore.
+    val hazeState = rememberHazeState()
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .glassSurface(
+                    .glassBackdrop(
+                        hazeState = hazeState,
+                        backgroundColor = MaterialTheme.colorScheme.background,
                         shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
-                        isElevated = true,
                     ),
             ) {
                 TopAppBar(
@@ -264,8 +271,9 @@ fun SettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState()),
+                .hazeSource(hazeState)
+                .verticalScroll(rememberScrollState())
+                .padding(innerPadding),
         ) {
             // Accounts Section
             SettingsSectionHeader("Accounts")
@@ -289,6 +297,37 @@ fun SettingsScreen(
                     checked = safeMode,
                     onCheckedChange = { preferences.setSafeMode(it) },
                 )
+                SettingsDivider()
+                SettingsSwitchRow(
+                    icon = LatteIcons.ViewAgenda,
+                    title = "Browse by page",
+                    subtitle = "One page at a time with Prev, Next and Go to page, instead of infinite scroll",
+                    checked = pagedBrowsing,
+                    onCheckedChange = { preferences.setPagedBrowsing(it) },
+                )
+                SettingsDivider()
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+                    Text(
+                        text = "Posts per page",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        text = "yande.re and konachan. Pixiv always serves 30.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LattePreferences.PAGE_SIZES.forEach { size ->
+                            GlassPillChip(
+                                selected = pageSize == size,
+                                onClick = { preferences.setPageSize(size) },
+                                label = size.toString(),
+                            )
+                        }
+                    }
+                }
             }
 
             // Appearance Section
@@ -494,7 +533,7 @@ fun SettingsScreen(
     }
 
     if (showAboutDialog) {
-        AlertDialog(
+        GlassAlertDialog(
             onDismissRequest = { showAboutDialog = false },
             title = { Text("About Latte") },
             text = {
@@ -518,7 +557,7 @@ fun SettingsScreen(
     }
 
     if (showLicenseDialog) {
-        AlertDialog(
+        GlassAlertDialog(
             onDismissRequest = { showLicenseDialog = false },
             title = { Text("Open Source License") },
             text = {
@@ -552,7 +591,7 @@ fun SettingsScreen(
         var tempHost by remember { mutableStateOf(proxyHost.orEmpty()) }
         var tempPort by remember { mutableStateOf(proxyPort?.toString().orEmpty()) }
 
-        AlertDialog(
+        GlassAlertDialog(
             onDismissRequest = { showProxyDialog = false },
             title = { Text("HTTP Proxy") },
             text = {
@@ -638,7 +677,7 @@ fun SettingsScreen(
     val updateInfo = updateInfoToPrompt
     if (updateInfo != null) {
         if (!updateInfo.isDeviceSupported) {
-            AlertDialog(
+            GlassAlertDialog(
                 onDismissRequest = { updateInfoToPrompt = null },
                 title = { Text("Unsupported Android Version") },
                 text = {
@@ -662,7 +701,7 @@ fun SettingsScreen(
                 },
             )
         } else {
-            AlertDialog(
+            GlassAlertDialog(
                 onDismissRequest = {
                     if (!updateInfo.isMandatory && downloadProgress !is DownloadProgress.Downloading) {
                         updateInfoToPrompt = null

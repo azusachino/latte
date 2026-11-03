@@ -12,7 +12,11 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
@@ -102,6 +106,26 @@ class LattePreferences(private val context: Context) {
     private val _safeMode = MutableStateFlow(true)
     val safeMode: StateFlow<Boolean> = _safeMode.asStateFlow()
 
+    private val _pagedBrowsing = MutableStateFlow(false)
+    /** Feeds show one numbered page at a time instead of scrolling infinitely. */
+    val pagedBrowsing: StateFlow<Boolean> = _pagedBrowsing.asStateFlow()
+
+    private val _pageSize = MutableStateFlow(DEFAULT_PAGE_SIZE)
+    /** Posts per feed page on sources that let the reader choose (yande.re, konachan). */
+    val pageSize: StateFlow<Int> = _pageSize.asStateFlow()
+
+    /** Real page-size changes only, like [pagedBrowsingChanges]. */
+    val pageSizeChanges: Flow<Int> = dataStore.data
+        .map { it[KEY_PAGE_SIZE] ?: DEFAULT_PAGE_SIZE }
+        .distinctUntilChanged()
+        .drop(1)
+
+    /** Real page-mode toggles only: the first read of the stored value is not a change. */
+    val pagedBrowsingChanges: Flow<Boolean> = dataStore.data
+        .map { it[KEY_PAGED_BROWSING] ?: false }
+        .distinctUntilChanged()
+        .drop(1)
+
     private val _bookmarks = MutableStateFlow<List<Bookmark>>(emptyList())
     val bookmarks: StateFlow<List<Bookmark>> = _bookmarks.asStateFlow()
 
@@ -126,6 +150,8 @@ class LattePreferences(private val context: Context) {
                     ?.let { mode -> runCatching { ThemeMode.valueOf(mode) }.getOrNull() }
                     ?: ThemeMode.SYSTEM
                 _safeMode.value = values[KEY_SAFE_MODE] ?: true
+                _pagedBrowsing.value = values[KEY_PAGED_BROWSING] ?: false
+                _pageSize.value = values[KEY_PAGE_SIZE] ?: DEFAULT_PAGE_SIZE
                 // Crash-safe read: a value written with an incompatible shape
                 // (dev-build leftovers) is dropped rather than cast-crashing.
                 val rawBookmarks = runCatching { values[KEY_FAVORITE_TAGS] }.getOrNull()
@@ -186,6 +212,15 @@ class LattePreferences(private val context: Context) {
 
     fun setSafeMode(enabled: Boolean) {
         scope.launch { dataStore.edit { it[KEY_SAFE_MODE] = enabled } }
+    }
+
+    fun setPagedBrowsing(enabled: Boolean) {
+        scope.launch { dataStore.edit { it[KEY_PAGED_BROWSING] = enabled } }
+    }
+
+    fun setPageSize(size: Int) {
+        if (size !in PAGE_SIZES) return
+        scope.launch { dataStore.edit { it[KEY_PAGE_SIZE] = size } }
     }
 
     fun isBookmark(tag: String, platform: PlatformId): Boolean =
@@ -255,6 +290,8 @@ class LattePreferences(private val context: Context) {
             columnCount = _columnCount.value,
             themeMode = _themeMode.value,
             safeMode = _safeMode.value,
+            pagedBrowsing = _pagedBrowsing.value,
+            pageSize = _pageSize.value,
             bookmarks = _bookmarks.value,
             recentSearches = _recentSearches.value,
             proxyHost = _proxyHost.value,
@@ -270,6 +307,8 @@ class LattePreferences(private val context: Context) {
             values[KEY_COLUMN_COUNT] = backup.columnCount
             values[KEY_THEME_MODE] = backup.themeMode.name
             values[KEY_SAFE_MODE] = backup.safeMode
+            values[KEY_PAGED_BROWSING] = backup.pagedBrowsing
+            values[KEY_PAGE_SIZE] = backup.pageSize.takeIf { it in PAGE_SIZES } ?: DEFAULT_PAGE_SIZE
             values[KEY_FAVORITE_TAGS] = LattePreferenceCodecs.encodeBookmarks(backup.bookmarks)
             values[KEY_RECENT_SEARCHES] = LattePreferenceCodecs.encodeRecentSearches(backup.recentSearches)
             values[KEY_VIEW_HISTORY] = LattePreferenceCodecs.encodeViewHistory(backup.viewHistory)
@@ -317,6 +356,12 @@ class LattePreferences(private val context: Context) {
         private val KEY_COLUMN_COUNT = intPreferencesKey("column_count")
         private val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
         private val KEY_SAFE_MODE = booleanPreferencesKey("safe_mode")
+        private val KEY_PAGED_BROWSING = booleanPreferencesKey("paged_browsing")
+        private val KEY_PAGE_SIZE = intPreferencesKey("page_size")
+
+        /** Choosable posts-per-page sizes. */
+        val PAGE_SIZES = listOf(30, 50, 100)
+        const val DEFAULT_PAGE_SIZE = 30
         private val KEY_FAVORITE_TAGS = stringPreferencesKey("favorite_tags")
         private val KEY_RECENT_SEARCHES = stringPreferencesKey("recent_searches")
         private val KEY_VIEW_HISTORY = stringPreferencesKey("view_history")

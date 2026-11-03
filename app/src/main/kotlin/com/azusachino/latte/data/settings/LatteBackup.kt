@@ -22,6 +22,8 @@ data class LatteBackup(
     val columnCount: Int = 2,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val safeMode: Boolean = true,
+    val pagedBrowsing: Boolean = false,
+    val pageSize: Int = 30,
     // Wire name preserved so backups exported by older builds still restore.
     @kotlinx.serialization.SerialName("favoriteTags")
     val bookmarks: List<Bookmark> = emptyList(),

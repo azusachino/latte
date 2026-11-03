@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.3.11 - 2026-11-03
+
+### Added
+
+- Browse by page (Settings → Content): feeds show one page at a time with Prev, Next and Go to page instead of infinite scroll. Each page change is one request: Pixiv Following, search and author works jump straight to page N by offset (up to page 167, Pixiv's 5000-item cap), yande.re/konachan by page number. Pixiv Favorites pages by cursor, so it has Prev/Next but no direct jump. Popular stays infinite. In page mode nothing auto-loads.
+- Feed grids have a draggable scrollbar thumb that appears while scrolling.
+- Posts per page (Settings → Content): 30 (default), 50 or 100 for yande.re and konachan, in both browsing modes. Pixiv always serves 30.
+
+### Fixed
+
+- Scrolling back up no longer reshuffles tiles: returning from the viewer keeps the grid's column layout, and column re-deals are no longer animated as slides.
+- The scrollbar thumb is a visible light pill. It moves smoothly with the content instead of stepping per tile, stays up for 2 seconds after scrolling, and dragging it scrolls the grid continuously instead of jumping.
+- No light flash between screens when the app theme is Dark and the system is light: the theme background is painted under the screen transitions instead of the system-themed window background showing through.
+- A predictive back swipe could crash the app as the screen settled: the settle spring dipped below zero and produced a negative corner radius.
+- Toasts show above the post details sheet. The sheet is now drawn in the app window instead of a separate dialog window.
+- The details sheet no longer jumps or closes by itself while scrolling long tag lists. Its height stops below the top bar, and it closes on back, a tap outside, or a downward drag on the handle or on content scrolled to its top.
+
+### Changed
+
+- The launcher icon is an adaptive icon: Ayu-chan peeks up from the bottom edge of the launcher's shape at about twice her old size, instead of sitting small on a white plate. The unused 1 MB icon drawable and legacy launcher PNGs are gone from the APK.
+- The page-mode pager shows only the page number between its arrows.
+- Go to page is now a page dial: a rolling page readout, quick jumps (First, ±1, ±10, Last), a scrubber when the last page is known, and a built-in glass keypad with haptics. An out-of-range page shakes the readout.
+- Page turns animate: the current page recedes while the next loads, then the new page slides in from the direction of travel and its tiles cascade in. The pager number rolls the same way, with a haptic tick.
+- Opening a post morphs its grid tile into the viewer, and going back shrinks the image into its tile again, including from the predictive back gesture.
+- The Explore header picks up a faint tint of the platform accent, its actions sit in one glass capsule, and the tab indicator follows the pager while you swipe, in the accent colour. Tapping a tab animates the pager across.
+- Glass beyond the image viewer: the details sheet frosts the image behind it, every dialog blurs the app behind it with the platform's cross-window blur and a translucent container, and the Settings list scrolls under a frosted header.
+
 ## 0.3.10 - 2026-11-02
 
 ### Fixed

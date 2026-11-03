@@ -3,10 +3,19 @@ package com.azusachino.latte.ui
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.background
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import com.azusachino.latte.ui.common.LocalScreenVisibilityScope
+import com.azusachino.latte.ui.common.LocalSharedPostTransition
+import com.azusachino.latte.ui.common.SharedPostTransition
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -65,6 +74,7 @@ import com.azusachino.latte.ui.theme.LatteTheme
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun LatteApp(
     exploreViewModel: ExploreViewModel = viewModel(),
@@ -176,7 +186,9 @@ fun LatteApp(
         val toastHazeState = rememberHazeState()
         val backSettleScope = rememberCoroutineScope()
 
-        Box(modifier = modifier.fillMaxSize()) {
+        // Painted under every screen: cross-fades and the predictive-back shrink show this
+        // surface, and the window background follows the system theme, not the app's.
+        Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             val predictiveBackProgress = remember { Animatable(0f) }
 
             PredictiveBackHandler(enabled = navigation.size > 1) { progressFlow ->
@@ -207,11 +219,19 @@ fun LatteApp(
                 }
             }
 
+            SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
+            val sharedPostTransition = remember(this) { SharedPostTransition(this) }
+            CompositionLocalProvider(LocalSharedPostTransition provides sharedPostTransition) {
             AnimatedContent(
                 targetState = navigation,
                 label = "ScreenTransition",
                 transitionSpec = {
-                    if (targetState.size >= initialState.size) {
+                    val opensOrClosesViewer = (targetState.current is Screen.Detail) != (initialState.current is Screen.Detail)
+                    if (opensOrClosesViewer) {
+                        // The tapped image flies between tile and viewer; a cross-fade
+                        // keeps everything else out of its way.
+                        fadeIn(tween(ViewerFadeMillis)).togetherWith(fadeOut(tween(ViewerFadeMillis)))
+                    } else if (targetState.size >= initialState.size) {
                         (slideInHorizontally(screenSlideSpec) { width -> width } + fadeIn())
                             .togetherWith(slideOutHorizontally(screenSlideSpec) { width -> -width / 3 } + fadeOut())
                     } else {
@@ -222,7 +242,8 @@ fun LatteApp(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        val progress = predictiveBackProgress.value
+                        // The settle spring dips just below 0; a negative corner radius crashes the outline.
+                        val progress = predictiveBackProgress.value.coerceIn(0f, 1f)
                         scaleX = 1f - (progress * 0.08f)
                         scaleY = 1f - (progress * 0.08f)
                         clip = progress > 0f
@@ -231,6 +252,7 @@ fun LatteApp(
                     .hazeSource(toastHazeState),
             ) { targetNav ->
                 val screen = targetNav.current
+                CompositionLocalProvider(LocalScreenVisibilityScope provides this) {
                 saveableStateHolder.SaveableStateProvider(targetNav.currentStateKey) {
                     when (screen) {
                         is Screen.Explore, is Screen.AuthorWorks, is Screen.TagSearch -> {
@@ -393,6 +415,9 @@ fun LatteApp(
                         }
                     }
                 }
+                }
+            }
+            }
             }
 
             // Global Login Dialog
@@ -412,3 +437,6 @@ fun LatteApp(
         }
     }
 }
+
+/** Cross-fade length while an image flies between a grid tile and the viewer. */
+private const val ViewerFadeMillis = 320

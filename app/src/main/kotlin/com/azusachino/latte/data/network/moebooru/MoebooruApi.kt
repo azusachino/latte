@@ -24,7 +24,7 @@ class MoebooruApi(
         isLenient = true
     }
 
-    suspend fun getPosts(page: Int = 1, limit: Int = 100, tags: String? = null): List<Post> =
+    suspend fun getPosts(page: Int = 1, limit: Int = DEFAULT_PAGE_SIZE, tags: String? = null): List<Post> =
         withContext(Dispatchers.IO) {
             val urlBuilder = "$baseUrl/post.json".toHttpUrl().newBuilder()
                 .addQueryParameter("page", page.toString())
@@ -116,6 +116,9 @@ class MoebooruApi(
         }
 
     companion object {
+        /** Posts per page when the reader has not chosen a size. */
+        const val DEFAULT_PAGE_SIZE = 100
+
         fun bookmarks(username: String): String = "vote:3:${username.trim()} order:vote"
 
         fun poolTags(poolId: Long): String = "pool:$poolId"

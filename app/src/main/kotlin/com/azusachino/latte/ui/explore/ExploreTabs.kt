@@ -119,6 +119,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
@@ -170,6 +171,9 @@ fun GlassSegmentedTabs(
     selectedIndex: Int,
     onTabSelected: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    /** Fractional tab position (e.g. a pager's page + offset); the indicator tracks it live. */
+    position: Float? = null,
+    accent: Color = MaterialTheme.colorScheme.primary,
 ) {
     BoxWithConstraints(
         modifier = modifier
@@ -180,7 +184,7 @@ fun GlassSegmentedTabs(
     ) {
         val tabCount = tabs.size.coerceAtLeast(1)
         val tabWidth = maxWidth / tabCount
-        val indicatorOffset by animateDpAsState(
+        val settledOffset by animateDpAsState(
             targetValue = tabWidth * selectedIndex.coerceIn(0, tabCount - 1),
             animationSpec = spring(
                 dampingRatio = 0.8f,
@@ -188,18 +192,26 @@ fun GlassSegmentedTabs(
             ),
             label = "glass_tab_indicator_offset",
         )
+        // Follows the finger while the pager is dragged; springs on its own otherwise.
+        val livePosition = position?.coerceIn(0f, (tabCount - 1).toFloat())
+        val indicatorOffset = if (livePosition != null) tabWidth * livePosition else settledOffset
+        val focus = livePosition ?: selectedIndex.toFloat()
 
-        // Sliding glass pill indicator behind active tab
+        // Sliding indicator: an accent-tinted glass pill with a soft accent rim.
         Box(
             modifier = Modifier
                 .offset(x = indicatorOffset)
                 .width(tabWidth)
                 .height(36.dp)
                 .clip(RoundedCornerShape(GlassDefaults.PillCornerRadius))
-                .background(MaterialTheme.colorScheme.primaryContainer),
+                .background(
+                    Brush.verticalGradient(
+                        listOf(accent.copy(alpha = 0.26f), accent.copy(alpha = 0.14f)),
+                    ),
+                )
+                .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(GlassDefaults.PillCornerRadius)),
         )
 
-        // Segmented tabs row
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -209,6 +221,8 @@ fun GlassSegmentedTabs(
         ) {
             tabs.forEachIndexed { index, title ->
                 val isSelected = index == selectedIndex
+                // 1 under the indicator, 0 a full tab away: colour blends as it slides past.
+                val nearness = (1f - kotlin.math.abs(focus - index)).coerceIn(0f, 1f)
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -225,13 +239,9 @@ fun GlassSegmentedTabs(
                     Text(
                         text = title,
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            fontWeight = if (nearness > 0.5f) FontWeight.Bold else FontWeight.Medium,
                         ),
-                        color = if (isSelected) {
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
+                        color = lerp(MaterialTheme.colorScheme.onSurfaceVariant, accent, nearness),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )

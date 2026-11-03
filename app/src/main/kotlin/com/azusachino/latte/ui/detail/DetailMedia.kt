@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -92,6 +93,7 @@ import com.azusachino.latte.ui.theme.glassBackdrop
 import com.azusachino.latte.ui.theme.glassSurface
 import com.azusachino.latte.ui.theme.pressScale
 import coil3.compose.AsyncImage
+import com.azusachino.latte.ui.common.sharedPostImage
 import coil3.compose.SubcomposeAsyncImage
 import coil3.imageLoader
 import coil3.request.ImageRequest
@@ -151,6 +153,8 @@ internal fun DetailImageView(
     onZoomChanged: (Boolean) -> Unit = {},
     onTap: (xFraction: Float, zoomed: Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    /** Grid this image morphs to and from; null keeps it out of the shared transition. */
+    sharedGrid: String? = null,
 ) {
     val context = LocalContext.current
     ZoomableBox(
@@ -190,6 +194,15 @@ internal fun DetailImageView(
 
             Box(
                 modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+            // Sized to the picture itself, so the shared bounds are the visible image, not the screen.
+            Box(
+                modifier = if (targetPost.width > 0 && targetPost.height > 0) {
+                    Modifier.aspectRatio(targetPost.aspectRatio)
+                } else {
+                    Modifier.fillMaxSize()
+                }.sharedPostImage(sharedGrid, targetPost),
                 contentAlignment = Alignment.Center,
             ) {
                 // If a low-res preview is available, display it immediately so the screen never blanks black
@@ -268,6 +281,7 @@ internal fun DetailImageView(
                     },
                     modifier = Modifier.fillMaxSize(),
                 )
+            }
             }
         }
     }
