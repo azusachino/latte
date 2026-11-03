@@ -35,6 +35,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -44,6 +45,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.offset
+import com.azusachino.latte.ui.theme.GlassDefaults
 import com.azusachino.latte.ui.theme.glassBackdrop
 import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.launch
@@ -148,8 +150,14 @@ internal fun BoxScope.DetailInspectSheet(
                 .fillMaxWidth()
                 .onSizeChanged { sheetHeight = it.height }
                 .offset { IntOffset(0, (hidden.value * sheetHeight).roundToInt()) }
-                // Frosted over the image like the rest of the detail chrome, tinted to the theme for legible text.
-                .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = shape)
+                // Frosted over the image, but tinted nearly opaque: a thin tint takes on the
+                // photo's colour and washes out the pastel tag chips.
+                .glassBackdrop(
+                    hazeState,
+                    backgroundColor = Color.Black,
+                    shape = shape,
+                    tint = if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) GlassDefaults.DarkSurfaceElevated else GlassDefaults.LightSurfaceElevated,
+                )
                 // Taps on the sheet itself must not fall through to the scrim.
                 .pointerInput(Unit) { detectTapGestures { } }
                 .nestedScroll(nestedScroll),
