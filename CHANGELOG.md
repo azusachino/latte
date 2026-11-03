@@ -19,6 +19,7 @@
 
 ### Changed
 
+- The launcher icon is an adaptive icon: Ayu-chan fills the launcher's shape instead of sitting at half size on a white plate. The unused 1 MB icon drawable and legacy launcher PNGs are gone from the APK.
 - The page-mode pager shows only the page number between its arrows.
 - Go to page is now a page dial: a rolling page readout, quick jumps (First, ±1, ±10, Last), a scrubber when the last page is known, and a built-in glass keypad with haptics. An out-of-range page shakes the readout.
 - Page turns animate: the current page recedes while the next loads, then the new page slides in from the direction of travel and its tiles cascade in. The pager number rolls the same way, with a haptic tick.
