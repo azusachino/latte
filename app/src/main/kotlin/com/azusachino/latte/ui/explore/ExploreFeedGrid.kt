@@ -353,10 +353,15 @@ internal fun FeedGrid(
                     // The staggered grid cannot honor scrollToItem until its first
                     // layout has measured the current children.
                     withFrameNanos { }
-                    gridState.scrollToItem(
-                        restoredIndex.coerceIn(0, feed.posts.lastIndex) + headerCount,
-                        position.scrollOffset,
-                    )
+                    val targetIndex = restoredIndex.coerceIn(0, feed.posts.lastIndex) + headerCount
+                    // The saveable grid state usually comes back already in place. A redundant
+                    // scrollToItem would drop the grid's remembered columns, and tiles above
+                    // would then re-deal (visibly jump) on the way back up.
+                    if (gridState.firstVisibleItemIndex != targetIndex ||
+                        gridState.firstVisibleItemScrollOffset != position.scrollOffset
+                    ) {
+                        gridState.scrollToItem(targetIndex, position.scrollOffset)
+                    }
                     snapshotFlow { currentGridPosition() }
                         .distinctUntilChanged()
                         .collect { viewModel.saveGridPosition(gridKey, it) }
@@ -420,11 +425,14 @@ internal fun FeedGrid(
                             modifier = Modifier
                                 // Page mode swaps every tile at once; the grid's own fades would
                                 // ghost the old page over the cascade, so only placement animates.
+                                // No placement slide: when the staggered grid re-deals columns
+                                // while scrolling up, animating it reads as the grid "updating".
+                                // Page mode also drops the fades, which would ghost the old page.
                                 .then(
                                     if (pager != null) {
-                                        Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)
+                                        Modifier.animateItem(fadeInSpec = null, placementSpec = null, fadeOutSpec = null)
                                     } else {
-                                        Modifier.animateItem()
+                                        Modifier.animateItem(placementSpec = null)
                                     },
                                 )
                                 .graphicsLayer {

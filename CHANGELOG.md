@@ -10,6 +10,8 @@
 
 ### Fixed
 
+- Scrolling back up no longer reshuffles tiles: returning from the viewer keeps the grid's column layout, and column re-deals are no longer animated as slides.
+- The scrollbar thumb is a visible light pill. It moves smoothly with the content instead of stepping per tile, stays up for 2 seconds after scrolling, and dragging it scrolls the grid continuously instead of jumping.
 - No light flash between screens when the app theme is Dark and the system is light: the theme background is painted under the screen transitions instead of the system-themed window background showing through.
 - A predictive back swipe could crash the app as the screen settled: the settle spring dipped below zero and produced a negative corner radius.
 - Toasts show above the post details sheet. The sheet is now drawn in the app window instead of a separate dialog window.
