@@ -16,6 +16,8 @@
 ### Changed
 
 - The page-mode pager shows only the page number between its arrows.
+- Go to page is now a page dial: a rolling page readout, quick jumps (First, ±1, ±10, Last), a scrubber when the last page is known, and a built-in glass keypad with haptics. An out-of-range page shakes the readout.
+- Page turns animate: the current page recedes while the next loads, then the new page slides in from the direction of travel and its tiles cascade in. The pager number rolls the same way, with a haptic tick.
 - Glass beyond the image viewer: the details sheet frosts the image behind it, every dialog blurs the app behind it with the platform's cross-window blur and a translucent container, and the Settings list scrolls under a frosted header.
 
 ## 0.3.10 - 2026-11-02

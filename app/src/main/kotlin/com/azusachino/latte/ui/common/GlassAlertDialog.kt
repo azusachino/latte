@@ -48,7 +48,7 @@ fun GlassAlertDialog(
 
 /** Blurs the app behind the enclosing dialog window. Call from inside dialog content. */
 @Composable
-private fun DialogBackdropBlur() {
+internal fun DialogBackdropBlur() {
     val view = LocalView.current
     val radiusPx = with(LocalDensity.current) { BLUR_RADIUS.roundToPx() }
     SideEffect {
@@ -68,3 +68,8 @@ private fun View.dialogWindowProvider(): DialogWindowProvider? =
 
 private val BLUR_RADIUS = 24.dp
 private const val DIM_AMOUNT = 0.25f
+
+/** Translucent container colour for a glass dialog over a blurred backdrop. */
+@Composable
+internal fun glassDialogColor(): androidx.compose.ui.graphics.Color =
+    if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) GlassDefaults.DarkDialog else GlassDefaults.LightDialog

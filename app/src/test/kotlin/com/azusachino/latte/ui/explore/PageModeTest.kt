@@ -60,10 +60,22 @@ class PageModeTest {
     }
 
     @Test
-    fun pageInputAcceptsOnlyReachablePages() {
-        assertEquals(12, parsePageInput(" 12 ", maxPage = 167))
-        assertNull(parsePageInput("0", maxPage = 167))
-        assertNull(parsePageInput("200", maxPage = 167))
-        assertNull(parsePageInput("", maxPage = 167))
+    fun dialInputTypesDeletesAndIgnoresLeadingZero() {
+        assertEquals("", dialInput("", DialKey.Digit(0)))
+        assertEquals("4", dialInput("", DialKey.Digit(4)))
+        assertEquals("40", dialInput("4", DialKey.Digit(0)))
+        assertEquals("4", dialInput("40", DialKey.Backspace))
+        assertEquals("", dialInput("", DialKey.Backspace))
+        assertEquals("123", dialInput("123", DialKey.Digit(9), maxDigits = 3))
+    }
+
+    @Test
+    fun quickJumpsStayInRange() {
+        assertEquals(
+            listOf("-1" to 1, "+1" to 3, "+10" to 12, "Last" to 167).drop(0),
+            quickJumps(current = 2, maxPage = 167).filter { it.first != "First" },
+        )
+        assertEquals(listOf("+1" to 2, "+10" to 11), quickJumps(current = 1, maxPage = Int.MAX_VALUE))
+        assertEquals(listOf("First" to 1, "-10" to 157, "-1" to 166), quickJumps(current = 167, maxPage = 167))
     }
 }

@@ -1,5 +1,15 @@
 package com.azusachino.latte.ui.explore
 
+import androidx.compose.ui.platform.LocalDensity
+
+import androidx.compose.animation.core.FastOutSlowInEasing
+
+import androidx.compose.animation.core.LinearEasing
+
+import androidx.compose.animation.core.tween
+
+import androidx.compose.animation.core.Animatable
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -355,10 +365,24 @@ internal fun FeedGrid(
                 }
                 // A new page starts at its top; the first composition keeps the restored position.
                 var shownPage by remember(gridKey) { mutableIntStateOf(feed.page) }
+                // Page turn: 1 = settled. A new page slides in from the side it came
+                // from while its tiles cascade in; the first composition stays settled.
+                val pageTurn = remember(gridKey) { Animatable(1f) }
+                var turnDirection by remember(gridKey) { mutableIntStateOf(1) }
                 LaunchedEffect(feed.page) {
-                    if (pager != null && feed.page != shownPage) gridState.scrollToItem(0)
+                    if (pager != null && feed.page != shownPage) {
+                        turnDirection = if (feed.page > shownPage) 1 else -1
+                        gridState.scrollToItem(0)
+                        pageTurn.snapTo(0f)
+                        shownPage = feed.page
+                        pageTurn.animateTo(1f, tween(durationMillis = PAGE_TURN_MS, easing = LinearEasing))
+                    }
                     shownPage = feed.page
                 }
+                // While the next page loads, the current one recedes.
+                val turning = pager != null && feed.isLoading
+                val recede by animateFloatAsState(if (turning) 1f else 0f, label = "pageRecede")
+                val slidePx = with(LocalDensity.current) { PAGE_TURN_SLIDE.toPx() }
                 LazyVerticalStaggeredGrid(
                     columns = StaggeredGridCells.Fixed(columnCount),
                     state = gridState,
@@ -370,7 +394,15 @@ internal fun FeedGrid(
                     ),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalItemSpacing = 4.dp,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            val settle = FastOutSlowInEasing.transform(pageTurn.value)
+                            translationX = (1f - settle) * turnDirection * slidePx
+                            alpha = 1f - 0.55f * recede
+                            scaleX = 1f - 0.03f * recede
+                            scaleY = scaleX
+                        },
                 ) {
                     if (header != null) {
                         item(span = StaggeredGridItemSpan.FullLine) {
@@ -386,7 +418,23 @@ internal fun FeedGrid(
                         val isSelected = post.id in selectedPostIds
                         PostGridItem(
                             post = post,
-                            modifier = Modifier.animateItem(),
+                            modifier = Modifier
+                                // Page mode swaps every tile at once; the grid's own fades would
+                                // ghost the old page over the cascade, so only placement animates.
+                                .then(
+                                    if (pager != null) {
+                                        Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)
+                                    } else {
+                                        Modifier.animateItem()
+                                    },
+                                )
+                                .graphicsLayer {
+                                    val shown = tileEntrance(pageTurn.value, index)
+                                    alpha = shown
+                                    translationY = (1f - shown) * slidePx * 0.5f
+                                    scaleX = 0.92f + 0.08f * shown
+                                    scaleY = scaleX
+                                },
                             isSelectionMode = isSelectionMode,
                             isSelected = isSelected,
                             onClick = {
@@ -500,6 +548,23 @@ internal fun FeedGrid(
         }
     }
 }
+
+private const val PAGE_TURN_MS = 700
+private val PAGE_TURN_SLIDE = 56.dp
+
+/**
+ * How far tile [index] has entered (0..1) at page-turn [progress] (0..1): tiles
+ * start one after another, so a new page cascades in from the top. Tiles past the
+ * first screenful share the last start so the cascade never drags.
+ */
+internal fun tileEntrance(progress: Float, index: Int): Float {
+    val start = index.coerceAtMost(TILE_CASCADE_CAP) * TILE_CASCADE_STEP
+    return ((progress - start) / TILE_ENTER_SPAN).coerceIn(0f, 1f)
+}
+
+private const val TILE_CASCADE_CAP = 12
+private const val TILE_CASCADE_STEP = 0.04f
+private const val TILE_ENTER_SPAN = 1f - TILE_CASCADE_CAP * TILE_CASCADE_STEP
 
 // Shows the button once the feed is well past the first screenful of posts.
 internal const val BACK_TO_TOP_THRESHOLD_ITEMS = 12
