@@ -44,7 +44,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.offset
-import com.azusachino.latte.ui.theme.glassSurface
+import com.azusachino.latte.ui.theme.glassBackdrop
+import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -56,6 +57,7 @@ import kotlin.math.roundToInt
  */
 @Composable
 internal fun BoxScope.DetailInspectSheet(
+    hazeState: HazeState,
     onDismiss: () -> Unit,
     content: @Composable () -> Unit,
 ) {
@@ -146,8 +148,8 @@ internal fun BoxScope.DetailInspectSheet(
                 .fillMaxWidth()
                 .onSizeChanged { sheetHeight = it.height }
                 .offset { IntOffset(0, (hidden.value * sheetHeight).roundToInt()) }
-                .background(MaterialTheme.colorScheme.surface, shape)
-                .glassSurface(shape = shape, isElevated = true)
+                // Frosted over the image like the rest of the detail chrome, tinted to the theme for legible text.
+                .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = shape)
                 // Taps on the sheet itself must not fall through to the scrim.
                 .pointerInput(Unit) { detectTapGestures { } }
                 .nestedScroll(nestedScroll),

@@ -1,5 +1,7 @@
 package com.azusachino.latte.ui.settings
 
+import com.azusachino.latte.ui.common.GlassAlertDialog
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,7 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -63,7 +64,7 @@ fun ClearCacheDialog(
         selectedTypes.sumOf { typeSizes[it] ?: 0L }
     }
 
-    AlertDialog(
+    GlassAlertDialog(
         onDismissRequest = {
             if (!isClearing) onDismissRequest()
         },

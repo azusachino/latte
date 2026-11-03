@@ -1,5 +1,7 @@
 package com.azusachino.latte.ui.explore
 
+import com.azusachino.latte.ui.common.GlassAlertDialog
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
@@ -8,7 +10,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -116,7 +117,7 @@ private fun GoToPageDialog(
 ) {
     var text by remember { mutableStateOf(currentPage.toString()) }
     val page = parsePageInput(text, maxPage)
-    AlertDialog(
+    GlassAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Go to page") },
         text = {

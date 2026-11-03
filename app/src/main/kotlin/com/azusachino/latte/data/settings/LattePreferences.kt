@@ -361,7 +361,7 @@ class LattePreferences(private val context: Context) {
 
         /** Choosable posts-per-page sizes. */
         val PAGE_SIZES = listOf(30, 50, 100)
-        const val DEFAULT_PAGE_SIZE = 100
+        const val DEFAULT_PAGE_SIZE = 30
         private val KEY_FAVORITE_TAGS = stringPreferencesKey("favorite_tags")
         private val KEY_RECENT_SEARCHES = stringPreferencesKey("recent_searches")
         private val KEY_VIEW_HISTORY = stringPreferencesKey("view_history")

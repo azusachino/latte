@@ -641,7 +641,7 @@ fun DetailScreen(
 
         // Inspect sheet: drawn in this window, so the app's toast stack stays above it.
         if (showInspectSheet && currentPost != null) {
-            DetailInspectSheet(onDismiss = { showInspectSheet = false }) {
+            DetailInspectSheet(hazeState = hazeState, onDismiss = { showInspectSheet = false }) {
                 CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
                     Column(
                         modifier = Modifier

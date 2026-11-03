@@ -51,6 +51,10 @@ object GlassDefaults {
     val LightSurface: Color = Color(0xD9FFFFFF)
     val LightSurfaceElevated: Color = Color(0xE6FFFFFF)
 
+    // Dialog containers over a blurred window backdrop: translucent enough for the blur to read
+    val DarkDialog: Color = Color(0xB314171A)
+    val LightDialog: Color = Color(0xBFFFFFFF)
+
     // Haze backdrop tints: lower alpha than the surfaces above so the blur shows through
     val DarkBackdropTint: Color = Color(0x9914171A)
     val LightBackdropTint: Color = Color(0x99FFFFFF)
