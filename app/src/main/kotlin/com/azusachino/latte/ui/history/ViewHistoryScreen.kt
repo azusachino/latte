@@ -1,7 +1,6 @@
 package com.azusachino.latte.ui.history
 
 import com.azusachino.latte.ui.common.GlassAlertDialog
-
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box

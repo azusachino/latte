@@ -1,7 +1,6 @@
 package com.azusachino.latte.ui.settings
 
 import com.azusachino.latte.ui.common.GlassAlertDialog
-
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

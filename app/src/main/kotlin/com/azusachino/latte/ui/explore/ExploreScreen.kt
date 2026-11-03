@@ -1,6 +1,9 @@
 package com.azusachino.latte.ui.explore
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -233,7 +236,7 @@ fun ExploreScreen(
     var isSearchExpanded by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf(uiState.activeSearchTags) }
     var platformMenuOpen by remember { mutableStateOf(false) }
-    val platformAccent = Color(uiState.platform.accentColor)
+    val platformAccent by animateColorAsState(Color(uiState.platform.accentColor), tween(500), label = "platformAccent")
     val pixivIsLoggedIn = pixivPlugin?.let { plugin ->
         val isLoggedIn by plugin.isLoggedInFlow.collectAsStateWithLifecycle(initialValue = plugin.isLoggedIn)
         isLoggedIn
@@ -396,6 +399,17 @@ fun ExploreScreen(
             // author header) slides away on a downward scroll and returns on
             // the first upward one, via a draw-time transform so scrolling
             // never re-lays-out the haze header or the grid.
+            // The header glass carries a breath of the platform's accent and shifts with it.
+            val isDarkHeader = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+            val headerTint by animateColorAsState(
+                targetValue = lerp(
+                    if (isDarkHeader) GlassDefaults.DarkBackdropTint else GlassDefaults.LightBackdropTint,
+                    platformAccent.copy(alpha = 0.6f),
+                    if (isDarkHeader) 0.22f else 0.14f,
+                ),
+                animationSpec = tween(500),
+                label = "headerTint",
+            )
             SlideAwayHeader(hidden = !topBarVisible) {
             Column(
                 modifier = Modifier
@@ -404,6 +418,7 @@ fun ExploreScreen(
                         hazeState = hazeState,
                         backgroundColor = MaterialTheme.colorScheme.background,
                         shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
+                        tint = headerTint,
                     ),
             ) {
                 if (isSelectionMode) {
@@ -617,10 +632,18 @@ fun ExploreScreen(
                         titleContentColor = MaterialTheme.colorScheme.onSurface,
                     ),
                     actions = {
+                        // One glass capsule holds the actions, instead of four loose icons.
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .padding(end = 8.dp)
+                                .glassSurface(shape = RoundedCornerShape(GlassDefaults.PillCornerRadius))
+                                .padding(horizontal = 2.dp),
+                        ) {
                         // Search toggle
                         IconButton(
                             onClick = { isSearchExpanded = !isSearchExpanded },
-                            modifier = Modifier.pressScale(),
+                            modifier = Modifier.size(40.dp).pressScale(),
                         ) {
                             Icon(
                                 // Always the magnifier: the expanded input's
@@ -634,7 +657,7 @@ fun ExploreScreen(
                         // Moebooru-parity column toggle button: cycles 1 -> 2 -> 3 -> 1
                         IconButton(
                             onClick = { viewModel.cycleColumns() },
-                            modifier = Modifier.pressScale(),
+                            modifier = Modifier.size(40.dp).pressScale(),
                         ) {
                             val columnIcon = when (columnCount) {
                                 1 -> LatteIcons.ViewAgenda
@@ -650,7 +673,7 @@ fun ExploreScreen(
                         // Bookmarks: saved tags and their update feeds
                         IconButton(
                             onClick = onOpenBookmarks,
-                            modifier = Modifier.pressScale(),
+                            modifier = Modifier.size(40.dp).pressScale(),
                         ) {
                             Icon(
                                 // Bookmark, not star: the star means "add to
@@ -668,12 +691,13 @@ fun ExploreScreen(
                         // Settings button
                         IconButton(
                             onClick = onOpenSettings,
-                            modifier = Modifier.pressScale(),
+                            modifier = Modifier.size(40.dp).pressScale(),
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Settings,
                                 contentDescription = "Settings",
                             )
+                        }
                         }
                     },
                 )
@@ -779,8 +803,10 @@ fun ExploreScreen(
                         tabs = tabTitles,
                         selectedIndex = pagerState.currentPage,
                         onTabSelected = { index ->
-                            coroutineScope.launch { pagerState.scrollToPage(index) }
+                            coroutineScope.launch { pagerState.animateScrollToPage(index) }
                         },
+                        position = pagerState.currentPage + pagerState.currentPageOffsetFraction,
+                        accent = platformAccent,
                     )
                 }
                 // Author works header: shows whose works these are and the

@@ -1,15 +1,10 @@
 package com.azusachino.latte.ui.explore
 
 import androidx.compose.ui.platform.LocalDensity
-
 import androidx.compose.animation.core.FastOutSlowInEasing
-
 import androidx.compose.animation.core.LinearEasing
-
 import androidx.compose.animation.core.tween
-
 import androidx.compose.animation.core.Animatable
-
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState

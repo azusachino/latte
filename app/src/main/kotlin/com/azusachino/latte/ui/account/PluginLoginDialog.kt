@@ -1,7 +1,6 @@
 package com.azusachino.latte.ui.account
 
 import com.azusachino.latte.ui.common.GlassAlertDialog
-
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer

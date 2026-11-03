@@ -1,7 +1,6 @@
 package com.azusachino.latte.ui.settings
 
 import com.azusachino.latte.ui.common.GlassAlertDialog
-
 import android.content.Intent
 import android.net.Uri
 import androidx.core.content.ContextCompat
