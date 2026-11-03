@@ -10,6 +10,7 @@
 
 ### Fixed
 
+- A predictive back swipe could crash the app as the screen settled: the settle spring dipped below zero and produced a negative corner radius.
 - Toasts show above the post details sheet. The sheet is now drawn in the app window instead of a separate dialog window.
 - The details sheet no longer jumps or closes by itself while scrolling long tag lists. Its height stops below the top bar, and it closes on back, a tap outside, or a downward drag on the handle or on content scrolled to its top.
 
@@ -18,6 +19,7 @@
 - The page-mode pager shows only the page number between its arrows.
 - Go to page is now a page dial: a rolling page readout, quick jumps (First, ±1, ±10, Last), a scrubber when the last page is known, and a built-in glass keypad with haptics. An out-of-range page shakes the readout.
 - Page turns animate: the current page recedes while the next loads, then the new page slides in from the direction of travel and its tiles cascade in. The pager number rolls the same way, with a haptic tick.
+- Opening a post morphs its grid tile into the viewer, and going back shrinks the image into its tile again, including from the predictive back gesture.
 - Glass beyond the image viewer: the details sheet frosts the image behind it, every dialog blurs the app behind it with the platform's cross-window blur and a translucent container, and the Settings list scrolls under a frosted header.
 
 ## 0.3.10 - 2026-11-02

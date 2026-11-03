@@ -88,6 +88,7 @@ import androidx.core.view.WindowCompat
 import com.azusachino.latte.ui.theme.GlassDefaults
 import com.azusachino.latte.ui.theme.glassBackdrop
 import com.azusachino.latte.ui.theme.glassSurface
+import com.azusachino.latte.ui.common.LocalSharedPostTransition
 import com.azusachino.latte.ui.theme.pressScale
 import coil3.compose.AsyncImage
 import coil3.compose.SubcomposeAsyncImage
@@ -163,6 +164,7 @@ fun DetailScreen(
     }
 
     val hazeState = rememberHazeState()
+    val sharedOriginGrid = LocalSharedPostTransition.current?.originGrid
     var showControls by remember { mutableStateOf(true) }
     // Pushes the toast pill below the top controls row (10dp + 44dp + 8dp) while it is shown.
     val toastInsetOwner = remember { Any() }
@@ -279,6 +281,8 @@ fun DetailScreen(
                 AmbientBackdrop(previewUrl = post.previewUrl)
                 DetailImageView(
                     targetPost = post,
+                    // Only the page on screen morphs; the pager keeps neighbours composed off-screen.
+                    sharedGrid = if (page == pagerState.currentPage) sharedOriginGrid else null,
                     onZoomChanged = { zoomed ->
                         if (page == pagerState.currentPage) {
                             isCurrentPageZoomed = zoomed

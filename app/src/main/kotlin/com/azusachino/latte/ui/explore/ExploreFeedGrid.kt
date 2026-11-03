@@ -78,6 +78,8 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
 import com.azusachino.latte.ui.common.BackToTopButton
 import com.azusachino.latte.ui.common.FeedScrollbar
+import com.azusachino.latte.ui.common.LocalSharedPostTransition
+import com.azusachino.latte.ui.common.sharedPostImage
 import com.azusachino.latte.ui.common.LatteIcons
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
@@ -191,6 +193,7 @@ internal fun FeedGrid(
     pager: FeedPager? = null,
     modifier: Modifier = Modifier,
 ) {
+    val sharedPostTransition = LocalSharedPostTransition.current
     // The header is grid item 0 while shown, so post indices are offset by one.
     val headerCount = if (header != null) 1 else 0
     val latestHeaderCount by rememberUpdatedState(headerCount)
@@ -418,6 +421,7 @@ internal fun FeedGrid(
                         val isSelected = post.id in selectedPostIds
                         PostGridItem(
                             post = post,
+                            sharedGrid = gridKey.toString(),
                             modifier = Modifier
                                 // Page mode swaps every tile at once; the grid's own fades would
                                 // ghost the old page over the cascade, so only placement animates.
@@ -442,6 +446,7 @@ internal fun FeedGrid(
                                     onToggleSelect?.invoke(post.id)
                                 } else {
                                     viewModel.saveGridPosition(gridKey, currentGridPosition())
+                                    sharedPostTransition?.originGrid = gridKey.toString()
                                     onPostClick(index)
                                 }
                             },
@@ -716,6 +721,8 @@ internal fun PostGridItem(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     bottomLabel: String? = null,
+    /** Grid identity for the tile-to-viewer morph; null opts the tile out. */
+    sharedGrid: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val imageSources = remember(post.siteId, post.id, post.pageIndex) { post.imageSources }
@@ -737,6 +744,7 @@ internal fun PostGridItem(
     val imageModifier = Modifier
         .fillMaxWidth()
         .aspectRatio(post.aspectRatio.coerceIn(0.4f, 2.5f))
+        .sharedPostImage(sharedGrid, post)
 
     val cardShape = RoundedCornerShape(GlassDefaults.CardCornerRadius)
     val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
