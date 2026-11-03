@@ -26,7 +26,18 @@ The [setup-gradle documentation](https://github.com/gradle/actions/blob/v5/docs/
 
 Baseline `make check lint validate` passed, including Markdown checks, unit tests, lint and debug/release assembly. Existing local build outputs were reused; this is not a cold-build measurement. The patched combined command passed twice with existing local outputs: 1.325s, then 0.553s (58.2% less elapsed time on the second invocation). Post-edit `make check lint validate` passed in 2.169s. These are warm local timings, not hosted-runner or cold-compilation results.
 
-Actionlint and `git diff --check` passed for the new workflow. Hosted cold/warm measurements and second-pass assessment: pending. No speedup is claimed before those runs.
+Actionlint and `git diff --check` passed for the new workflow. Hosted measurements are complete for implementation `49eebd2615f12c4f03a3848a38a2094458b248e0`, [PR #44](https://github.com/azusachino/latte/pull/44):
+
+| Run / attempt | Gradle cache setup | Validation/build work | Cache cleanup/save | Job total | Result |
+| --- | --- | --- | --- | --- | --- |
+| [41611701740 / 1](https://github.com/azusachino/latte/actions/runs/41611701740/attempts/1), cold Gradle cache | 1s | 256s | 18s | 291s | Passed |
+| [41611701740 / 2](https://github.com/azusachino/latte/actions/runs/41611701740/attempts/2), warm cache | 5s | 19s | 5s | 43s | Passed |
+
+The warm log reports `FROM-CACHE` for Kotlin/Java compilation, unit tests, lint analysis and dexing. These are Gradle's input-keyed results, not removed tasks. The first cold build runs and populates those results. Source or relevant build-input changes invalidate the corresponding task entries.
+
+The 43s warm job is 84.8% below the historical 282s Android-job median and 86.3% below the latest 313s baseline. The cold job is 7.0% below the latest baseline but 3.2% above the historical median. This is one cold/warm pair with hosted-runner and source-revision variation, not a guaranteed cold-build speedup.
+
+Second-pass assessment: restore/save costs 10s in the warm job but avoids approximately 237s of Gradle work relative to the cold experiment. Mise setup is 7s and the actual Gradle invocation 19s; adding another job would duplicate checkout/setup/cache restore, and an additional hand-written cache would overlap the native one. Keep the single job and current native cache. Total repository cache usage is 1,225,173,913 bytes across seven entries, below 10GB. No cache deletion, release or main push was performed.
 
 ## Every baseline job
 
