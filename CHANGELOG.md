@@ -6,6 +6,16 @@
 
 - Browse by page (Settings → Content): feeds show one page at a time with Prev, Next and Go to page instead of infinite scroll. Each page change is one request: Pixiv Following, search and author works jump straight to page N by offset (up to page 167, Pixiv's 5000-item cap), yande.re/konachan by page number. Pixiv Favorites pages by cursor, so it has Prev/Next but no direct jump. Popular stays infinite. In page mode nothing auto-loads.
 - Feed grids have a draggable scrollbar thumb that appears while scrolling.
+- Posts per page (Settings → Content): 30, 50 or 100 for yande.re and konachan, in both browsing modes. Pixiv always serves 30.
+
+### Fixed
+
+- Toasts show above the post details sheet. The sheet is now drawn in the app window instead of a separate dialog window.
+- The details sheet no longer jumps or closes by itself while scrolling long tag lists. Its height stops below the top bar, and it closes on back, a tap outside, or a downward drag on the handle or on content scrolled to its top.
+
+### Changed
+
+- The page-mode pager shows only the page number between its arrows.
 
 ## 0.3.10 - 2026-11-02
 

@@ -43,6 +43,8 @@ data class PluginFeedRequest(
     val cursor: String? = null,
     val refresh: Boolean = false,
     val safeMode: Boolean = false,
+    /** Items per page, for sources that let the reader choose; null keeps the source default. */
+    val pageSize: Int? = null,
 )
 
 data class PluginFeedPage(

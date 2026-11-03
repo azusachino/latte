@@ -106,6 +106,7 @@ fun SettingsScreen(
     val themeMode by preferences.themeMode.collectAsStateWithLifecycle()
     val safeMode by preferences.safeMode.collectAsStateWithLifecycle()
     val pagedBrowsing by preferences.pagedBrowsing.collectAsStateWithLifecycle()
+    val pageSize by preferences.pageSize.collectAsStateWithLifecycle()
 
     val cacheManager = remember {
         CacheManager(
@@ -298,6 +299,29 @@ fun SettingsScreen(
                     checked = pagedBrowsing,
                     onCheckedChange = { preferences.setPagedBrowsing(it) },
                 )
+                SettingsDivider()
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+                    Text(
+                        text = "Posts per page",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        text = "yande.re and konachan. Pixiv always serves 30.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LattePreferences.PAGE_SIZES.forEach { size ->
+                            GlassPillChip(
+                                selected = pageSize == size,
+                                onClick = { preferences.setPageSize(size) },
+                                label = size.toString(),
+                            )
+                        }
+                    }
+                }
             }
 
             // Appearance Section

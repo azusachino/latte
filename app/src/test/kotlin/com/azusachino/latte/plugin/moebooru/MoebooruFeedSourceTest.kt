@@ -52,6 +52,20 @@ class MoebooruFeedSourceTest {
     }
 
     @Test
+    fun chosenPageSizeBecomesTheLimitAndPageJumpsDirectly() = runTest {
+        server.enqueue(MockResponse().setBody("[]"))
+        val source = MoebooruFeedSource(
+            api = MoebooruApi(server.url("/").toString().removeSuffix("/"), PlatformId.YANDE),
+            username = { null },
+        )
+
+        source.load(PluginFeedRequest(kind = PluginFeedKind.NEWEST, page = 40, pageSize = 30))
+
+        assertEquals("/post.json?page=40&limit=30", server.takeRequest().path)
+        assertEquals(1, server.requestCount)
+    }
+
+    @Test
     fun safeModeFiltersMoebooruPagesAtTheSource() = runTest {
         val source = MoebooruFeedSource(
             api = MoebooruApi(server.url("/").toString().removeSuffix("/"), PlatformId.YANDE),

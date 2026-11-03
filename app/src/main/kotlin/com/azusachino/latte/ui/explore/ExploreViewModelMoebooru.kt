@@ -65,6 +65,7 @@ internal suspend fun ExploreViewModel.loadPosts(
         period = period,
         date = date,
         safeMode = preferences.safeMode.value,
+        pageSize = preferences.pageSize.value,
     )) ?: PluginFeedResult.TransportFailure("Active platform feed is not configured")
     return result.feedPostsOrThrow(::applyLocalFilters)
 }
@@ -140,6 +141,7 @@ internal fun ExploreViewModel.loadNewestInitial() {
                     page = 1,
                     refresh = true,
                     safeMode = preferences.safeMode.value,
+                    pageSize = preferences.pageSize.value,
                 ),
             ) ?: PluginFeedResult.TransportFailure("Active platform feed is not configured")
             val posts = result.feedPostsOrThrow(::applyLocalFilters)

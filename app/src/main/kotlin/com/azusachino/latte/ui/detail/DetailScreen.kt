@@ -54,15 +54,14 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -85,7 +84,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
 import com.azusachino.latte.ui.theme.GlassDefaults
 import com.azusachino.latte.ui.theme.glassBackdrop
@@ -641,49 +639,18 @@ fun DetailScreen(
             }
         }
 
-        // Inspect ModalBottomSheet
+        // Inspect sheet: drawn in this window, so the app's toast stack stays above it.
         if (showInspectSheet && currentPost != null) {
-            ModalBottomSheet(
-                onDismissRequest = { showInspectSheet = false },
-                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                containerColor = Color.Transparent,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-                dragHandle = null,
-            ) {
-                // The sheet is its own window and sets its own bar appearance; keep the status bar icons light.
-                val sheetView = LocalView.current
-                val sheetWindow = (sheetView.parent as? DialogWindowProvider)?.window
-                SideEffect {
-                    sheetWindow?.let {
-                        WindowCompat.getInsetsController(it, sheetView).isAppearanceLightStatusBars = false
-                    }
-                }
-                val sheetShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surface, sheetShape)
-                        .glassSurface(
-                            shape = sheetShape,
-                            isElevated = true,
-                        ),
-                ) {
+            DetailInspectSheet(onDismiss = { showInspectSheet = false }) {
+                CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
                             .padding(horizontal = 20.dp)
-                            .padding(top = 12.dp, bottom = 36.dp)
-                            .verticalScroll(rememberScrollState()),
+                            .padding(top = 4.dp, bottom = 36.dp)
+                            .navigationBarsPadding(),
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.CenterHorizontally)
-                                .padding(bottom = 16.dp)
-                                .size(width = 36.dp, height = 4.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)),
-                        )
-
                         Text(
                             text = "Post #${currentPost.id}",
                             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),

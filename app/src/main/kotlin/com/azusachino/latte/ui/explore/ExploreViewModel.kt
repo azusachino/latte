@@ -129,6 +129,12 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                 onContentFiltersChanged()
             }
         }
+        viewModelScope.launch {
+            // A new page size reshuffles every page boundary.
+            preferences.pageSizeChanges.collect {
+                onContentFiltersChanged()
+            }
+        }
     }
 
     private fun onContentFiltersChanged() {
