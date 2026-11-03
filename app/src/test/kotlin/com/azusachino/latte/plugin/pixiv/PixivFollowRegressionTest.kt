@@ -107,6 +107,29 @@ class PixivFollowRegressionTest {
         assertEquals("/v2/illust/follow?restrict=public", server.takeRequest().path)
     }
 
+    @Test
+    fun directPageJumpIsOneOffsetRequestAndBookmarksNeverJump() = runTest {
+        val api = PixivApi(
+            httpClient = OkHttpClient(),
+            baseUrl = server.url("/").toString().trimEnd('/'),
+            sessionProvider = { PixivSession(accessToken = "access-token", userId = 42) },
+        )
+        val source = PixivFeedSource(api)
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"illusts":[],"next_url":null}"""))
+
+        source.load(PluginFeedRequest(kind = PluginFeedKind.FOLLOWED, page = 40))
+
+        assertEquals("/v2/illust/follow?restrict=public&offset=1170", server.takeRequest().path)
+        assertEquals(1, server.requestCount)
+        assertEquals(167, source.maxDirectPage(PluginFeedKind.FOLLOWED))
+        assertNull(source.maxDirectPage(PluginFeedKind.FAVORITES))
+
+        // Bookmarks page by cursor only: a page number never becomes an offset.
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"illusts":[],"next_url":null}"""))
+        source.load(PluginFeedRequest(kind = PluginFeedKind.FAVORITES, page = 3))
+        assertEquals("/v1/user/bookmarks/illust?user_id=42&restrict=public", server.takeRequest().path)
+    }
+
     private fun plugin(): PixivPlugin = PixivPlugin(
         storage = InMemoryStorage(),
         httpClient = OkHttpClient(),

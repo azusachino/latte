@@ -123,6 +123,12 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
                 onContentFiltersChanged()
             }
         }
+        viewModelScope.launch {
+            // Switching between pages and infinite scroll restarts every feed at page 1.
+            preferences.pagedBrowsingChanges.collect {
+                onContentFiltersChanged()
+            }
+        }
     }
 
     private fun onContentFiltersChanged() {
@@ -275,6 +281,13 @@ class ExploreViewModel(application: Application) : AndroidViewModel(application)
 
     fun loadMoreActiveFeed() {
         val state = _uiState.value
+        // Page mode replaces the feed per page; the detail pager must not append to it.
+        val activeKind = when {
+            state.isSearch -> PluginFeedKind.SEARCH
+            state.supportsUserFeeds -> pixivKindForTab(state.selectedTab) ?: PluginFeedKind.POPULAR
+            else -> activePlugin()?.feedTabs?.getOrNull(state.selectedTab)?.kind
+        }
+        if (activeKind != null && isPaged(activeKind)) return
         if (state.isSearch) {
             loadMoreSearch()
             return

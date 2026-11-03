@@ -105,6 +105,7 @@ fun SettingsScreen(
     val columnCount by preferences.columnCount.collectAsStateWithLifecycle()
     val themeMode by preferences.themeMode.collectAsStateWithLifecycle()
     val safeMode by preferences.safeMode.collectAsStateWithLifecycle()
+    val pagedBrowsing by preferences.pagedBrowsing.collectAsStateWithLifecycle()
 
     val cacheManager = remember {
         CacheManager(
@@ -288,6 +289,14 @@ fun SettingsScreen(
                     subtitle = "Show safe content only on yande.re and konachan",
                     checked = safeMode,
                     onCheckedChange = { preferences.setSafeMode(it) },
+                )
+                SettingsDivider()
+                SettingsSwitchRow(
+                    icon = LatteIcons.ViewAgenda,
+                    title = "Browse by page",
+                    subtitle = "One page at a time with Prev, Next and Go to page, instead of infinite scroll",
+                    checked = pagedBrowsing,
+                    onCheckedChange = { preferences.setPagedBrowsing(it) },
                 )
             }
 

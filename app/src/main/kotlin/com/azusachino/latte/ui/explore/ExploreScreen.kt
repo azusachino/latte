@@ -196,6 +196,7 @@ fun ExploreScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val columnCount by viewModel.columnCount.collectAsStateWithLifecycle()
+    val pagedBrowsing by viewModel.preferences.pagedBrowsing.collectAsStateWithLifecycle()
     val popularGridState = rememberLazyStaggeredGridState()
     val newestGridState = rememberLazyStaggeredGridState()
     val favoritesGridState = rememberLazyStaggeredGridState()
@@ -860,6 +861,10 @@ fun ExploreScreen(
                     onToggleSelect = onToggleSelect,
                     emptyTitle = "No results",
                     emptyHint = "Try a different tag.",
+                    pager = viewModel.feedPager(
+                        if (uiState.supportsUserFeeds && uiState.pixivAuthorId != null) PluginFeedKind.AUTHOR_WORKS else PluginFeedKind.SEARCH,
+                        pagedBrowsing,
+                    ),
                 )
             } else {
                 HorizontalPager(
@@ -992,6 +997,7 @@ fun ExploreScreen(
                                     },
                                     selectedPostIds = selectedPostIds,
                                     onToggleSelect = onToggleSelect,
+                                    pager = viewModel.feedPager(tab.kind, pagedBrowsing),
                                 )
                             } else {
                                 FeedGrid(
@@ -1007,6 +1013,7 @@ fun ExploreScreen(
                                     onRefresh = { viewModel.refreshNewest() },
                                     selectedPostIds = selectedPostIds,
                                     onToggleSelect = onToggleSelect,
+                                    pager = viewModel.feedPager(PluginFeedKind.NEWEST, pagedBrowsing),
                                 )
                             }
                         }

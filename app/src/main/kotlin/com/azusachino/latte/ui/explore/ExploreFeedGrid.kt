@@ -67,6 +67,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
 import com.azusachino.latte.ui.common.BackToTopButton
+import com.azusachino.latte.ui.common.FeedScrollbar
 import com.azusachino.latte.ui.common.LatteIcons
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
@@ -102,6 +103,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -176,6 +178,7 @@ internal fun FeedGrid(
     header: (@Composable () -> Unit)? = null,
     emptyTitle: String = "No posts yet",
     emptyHint: String = "Pull to refresh or try again later.",
+    pager: FeedPager? = null,
     modifier: Modifier = Modifier,
 ) {
     // The header is grid item 0 while shown, so post indices are offset by one.
@@ -190,14 +193,16 @@ internal fun FeedGrid(
         }
     }
 
+    // Page mode never fetches on its own: every request is a Prev/Next/Go tap.
     LaunchedEffect(shouldLoadMore) {
-        if (shouldLoadMore) {
+        if (shouldLoadMore && pager == null) {
             onLoadMore()
         }
     }
 
     LaunchedEffect(feed.posts.size, feed.hasMore, feed.nextCursor, feed.isLoading, feed.isLoadingMore) {
         if (
+            pager == null &&
             feed.posts.isEmpty() &&
             feed.hasMore &&
             feed.nextCursor != null &&
@@ -222,7 +227,7 @@ internal fun FeedGrid(
     val pullToRefreshState = rememberPullToRefreshState()
     PullToRefreshBox(
         isRefreshing = feed.isRefreshing,
-        onRefresh = onRefresh,
+        onRefresh = if (pager != null) { { pager.onGoToPage(feed.page) } } else onRefresh,
         modifier = modifier.fillMaxSize(),
         state = pullToRefreshState,
         indicator = {
@@ -348,6 +353,12 @@ internal fun FeedGrid(
                         .distinctUntilChanged()
                         .collect { viewModel.saveGridPosition(gridKey, it) }
                 }
+                // A new page starts at its top; the first composition keeps the restored position.
+                var shownPage by remember(gridKey) { mutableIntStateOf(feed.page) }
+                LaunchedEffect(feed.page) {
+                    if (pager != null && feed.page != shownPage) gridState.scrollToItem(0)
+                    shownPage = feed.page
+                }
                 LazyVerticalStaggeredGrid(
                     columns = StaggeredGridCells.Fixed(columnCount),
                     state = gridState,
@@ -407,6 +418,15 @@ internal fun FeedGrid(
                 }
             }
 
+            if (feed.posts.isNotEmpty()) {
+                FeedScrollbar(
+                    state = gridState,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = topPadding + 8.dp, bottom = 72.dp),
+                )
+            }
+
             if ((feed.isLoading || (feed.isLoadingMore && feed.posts.isEmpty())) && !feed.isRefreshing) {
                 LinearProgressIndicator(
                     modifier = Modifier
@@ -446,7 +466,19 @@ internal fun FeedGrid(
                     gridState.firstVisibleItemIndex / perPage + 1
                 }
             }
-            AnimatedVisibility(
+            if (pager != null) {
+                // Stays up on an empty page past 1 so the reader can step back.
+                AnimatedVisibility(
+                    visible = feed.posts.isNotEmpty() || feed.page > 1,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(start = 12.dp, bottom = 12.dp),
+                ) {
+                    FeedPagerBar(pager = pager, feed = feed)
+                }
+            } else AnimatedVisibility(
                 visible = feed.posts.isNotEmpty(),
                 enter = fadeIn(),
                 exit = fadeOut(),
@@ -494,6 +526,7 @@ internal fun PersonalFeedContent(
     selectedPostIds: Set<Long> = emptySet(),
     onToggleSelect: ((Long) -> Unit)? = null,
     topPadding: androidx.compose.ui.unit.Dp = 0.dp,
+    pager: FeedPager? = null,
     modifier: Modifier = Modifier,
 ) {
     if (plugin == null) return
@@ -537,6 +570,8 @@ internal fun PersonalFeedContent(
             feed.hasMore &&
             !feed.isLoading &&
             !feed.isRefreshing &&
+            // A notice (e.g. Safe Mode hid a whole page) is a settled state, not a reason to refetch.
+            feed.notice == null &&
             (feed.error == null || shouldRetryStaleAuth)
         ) {
             onRetry()
@@ -559,6 +594,7 @@ internal fun PersonalFeedContent(
         onRequireLogin = { onRequireLogin(plugin) },
         selectedPostIds = selectedPostIds,
         onToggleSelect = onToggleSelect,
+        pager = pager,
         modifier = modifier,
     )
 }

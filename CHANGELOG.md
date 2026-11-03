@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Browse by page (Settings → Content): feeds show one page at a time with Prev, Next and Go to page instead of infinite scroll. Each page change is one request: Pixiv Following, search and author works jump straight to page N by offset (up to page 167, Pixiv's 5000-item cap), yande.re/konachan by page number. Pixiv Favorites pages by cursor, so it has Prev/Next but no direct jump. Popular stays infinite. In page mode nothing auto-loads.
+- Feed grids have a draggable scrollbar thumb that appears while scrolling.
+
 ## 0.3.10 - 2026-11-02
 
 ### Fixed

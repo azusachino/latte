@@ -241,6 +241,7 @@ class PixivApi(
                     .addQueryParameter("type", "illust")
             }
         }
+        request.offset?.takeIf { it > 0 }?.let { builder.addQueryParameter("offset", it.toString()) }
         return builder.build()
     }
 
