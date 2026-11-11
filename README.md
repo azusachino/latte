@@ -1,6 +1,6 @@
 # Latte
 
-![Latte app icon](app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png)
+<img src="app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png" alt="Latte app icon" width="96">
 
 [![CI](https://github.com/azusachino/latte/actions/workflows/ci.yml/badge.svg)](https://github.com/azusachino/latte/actions/workflows/ci.yml)
 
