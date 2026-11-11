@@ -2,4 +2,3 @@
 android-sdk = "23.0"
 gradle = "9.9"
 java = "corretto-25.0"
-rumdl = "0.2.73"
