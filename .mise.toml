@@ -1,5 +1,5 @@
 [tools]
 android-sdk = "23.0"
-gradle = "9.9"
+gradle = "9.9.1"
 java = "corretto-25.0"
 rumdl = "0.3"
