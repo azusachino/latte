@@ -32,6 +32,21 @@ enum class ThemeMode {
     SYSTEM, LIGHT, DARK
 }
 
+@Serializable
+enum class ThemePalette {
+    ADAPTIVE,
+    KAZUMI,
+    YANDE,
+    PIXIV,
+    KONACHAN,
+}
+
+@Serializable
+enum class UiStyle {
+    GLASS,
+    MATERIAL,
+}
+
 // One DataStore per file, held by the Context so every LattePreferences
 // instance (Explore, Settings) shares the same single-writer pipeline.
 private val Context.latteDataStore by preferencesDataStore(name = "latte_settings")
@@ -103,6 +118,15 @@ class LattePreferences(private val context: Context) {
     private val _themeMode = MutableStateFlow(ThemeMode.SYSTEM)
     val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
 
+    private val _themePalette = MutableStateFlow(ThemePalette.ADAPTIVE)
+    val themePalette: StateFlow<ThemePalette> = _themePalette.asStateFlow()
+
+    private val _uiStyle = MutableStateFlow(UiStyle.GLASS)
+    val uiStyle: StateFlow<UiStyle> = _uiStyle.asStateFlow()
+
+    private val _oledDarkTheme = MutableStateFlow(false)
+    val oledDarkTheme: StateFlow<Boolean> = _oledDarkTheme.asStateFlow()
+
     private val _safeMode = MutableStateFlow(true)
     val safeMode: StateFlow<Boolean> = _safeMode.asStateFlow()
 
@@ -149,6 +173,13 @@ class LattePreferences(private val context: Context) {
                 _themeMode.value = values[KEY_THEME_MODE]
                     ?.let { mode -> runCatching { ThemeMode.valueOf(mode) }.getOrNull() }
                     ?: ThemeMode.SYSTEM
+                _themePalette.value = values[KEY_THEME_PALETTE]
+                    ?.let { palette -> runCatching { ThemePalette.valueOf(palette) }.getOrNull() }
+                    ?: ThemePalette.ADAPTIVE
+                _uiStyle.value = values[KEY_UI_STYLE]
+                    ?.let { style -> runCatching { UiStyle.valueOf(style) }.getOrNull() }
+                    ?: UiStyle.GLASS
+                _oledDarkTheme.value = values[KEY_OLED_DARK_THEME] ?: false
                 _safeMode.value = values[KEY_SAFE_MODE] ?: true
                 _pagedBrowsing.value = values[KEY_PAGED_BROWSING] ?: false
                 _pageSize.value = values[KEY_PAGE_SIZE] ?: DEFAULT_PAGE_SIZE
@@ -208,6 +239,18 @@ class LattePreferences(private val context: Context) {
 
     fun setThemeMode(mode: ThemeMode) {
         scope.launch { dataStore.edit { it[KEY_THEME_MODE] = mode.name } }
+    }
+
+    fun setThemePalette(palette: ThemePalette) {
+        scope.launch { dataStore.edit { it[KEY_THEME_PALETTE] = palette.name } }
+    }
+
+    fun setUiStyle(style: UiStyle) {
+        scope.launch { dataStore.edit { it[KEY_UI_STYLE] = style.name } }
+    }
+
+    fun setOledDarkTheme(enabled: Boolean) {
+        scope.launch { dataStore.edit { it[KEY_OLED_DARK_THEME] = enabled } }
     }
 
     fun setSafeMode(enabled: Boolean) {
@@ -289,6 +332,9 @@ class LattePreferences(private val context: Context) {
         LatteBackup(
             columnCount = _columnCount.value,
             themeMode = _themeMode.value,
+            themePalette = _themePalette.value,
+            uiStyle = _uiStyle.value,
+            oledDarkTheme = _oledDarkTheme.value,
             safeMode = _safeMode.value,
             pagedBrowsing = _pagedBrowsing.value,
             pageSize = _pageSize.value,
@@ -306,6 +352,9 @@ class LattePreferences(private val context: Context) {
         dataStore.edit { values ->
             values[KEY_COLUMN_COUNT] = backup.columnCount
             values[KEY_THEME_MODE] = backup.themeMode.name
+            values[KEY_THEME_PALETTE] = backup.themePalette.name
+            values[KEY_UI_STYLE] = backup.uiStyle.name
+            values[KEY_OLED_DARK_THEME] = backup.oledDarkTheme
             values[KEY_SAFE_MODE] = backup.safeMode
             values[KEY_PAGED_BROWSING] = backup.pagedBrowsing
             values[KEY_PAGE_SIZE] = backup.pageSize.takeIf { it in PAGE_SIZES } ?: DEFAULT_PAGE_SIZE
@@ -355,6 +404,9 @@ class LattePreferences(private val context: Context) {
     companion object {
         private val KEY_COLUMN_COUNT = intPreferencesKey("column_count")
         private val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
+        private val KEY_THEME_PALETTE = stringPreferencesKey("theme_palette")
+        private val KEY_UI_STYLE = stringPreferencesKey("ui_style")
+        private val KEY_OLED_DARK_THEME = booleanPreferencesKey("oled_dark_theme")
         private val KEY_SAFE_MODE = booleanPreferencesKey("safe_mode")
         private val KEY_PAGED_BROWSING = booleanPreferencesKey("paged_browsing")
         private val KEY_PAGE_SIZE = intPreferencesKey("page_size")

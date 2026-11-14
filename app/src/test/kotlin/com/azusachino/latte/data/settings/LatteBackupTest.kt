@@ -36,6 +36,9 @@ class LatteBackupTest {
         val backup = LatteBackup(
             columnCount = 3,
             themeMode = ThemeMode.DARK,
+            themePalette = ThemePalette.KAZUMI,
+            uiStyle = UiStyle.MATERIAL,
+            oledDarkTheme = true,
             safeMode = false,
             bookmarks = listOf(Bookmark("landscape", PlatformId.YANDE)),
             recentSearches = listOf("sky", "forest"),

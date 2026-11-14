@@ -86,7 +86,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
+import com.azusachino.latte.data.settings.UiStyle
 import com.azusachino.latte.ui.theme.GlassDefaults
+import com.azusachino.latte.ui.theme.LocalUiStyle
 import com.azusachino.latte.ui.theme.glassBackdrop
 import com.azusachino.latte.ui.theme.glassSurface
 import com.azusachino.latte.ui.theme.pressScale
@@ -324,7 +326,13 @@ internal fun TagChip(
             .pressScale()
             .clip(shape)
             .background(containerColor, shape)
-            .border(GlassDefaults.RimStrokeWidth, rimColor, shape)
+            .then(
+                if (LocalUiStyle.current == UiStyle.MATERIAL && !isFavorite) {
+                    Modifier
+                } else {
+                    Modifier.border(GlassDefaults.RimStrokeWidth, rimColor, shape)
+                }
+            )
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick,

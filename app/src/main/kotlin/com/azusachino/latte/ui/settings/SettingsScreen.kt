@@ -69,6 +69,8 @@ import com.azusachino.latte.data.cache.CacheManager
 import com.azusachino.latte.data.settings.LatteBackupCodec
 import com.azusachino.latte.data.settings.LattePreferences
 import com.azusachino.latte.data.settings.ThemeMode
+import com.azusachino.latte.data.settings.ThemePalette
+import com.azusachino.latte.data.settings.UiStyle
 import com.azusachino.latte.data.update.ApkInstaller
 import com.azusachino.latte.data.update.DownloadProgress
 import com.azusachino.latte.data.update.UpdateCheckResult
@@ -106,6 +108,9 @@ fun SettingsScreen(
     val context = LocalContext.current
     val columnCount by preferences.columnCount.collectAsStateWithLifecycle()
     val themeMode by preferences.themeMode.collectAsStateWithLifecycle()
+    val themePalette by preferences.themePalette.collectAsStateWithLifecycle()
+    val uiStyle by preferences.uiStyle.collectAsStateWithLifecycle()
+    val oledDarkTheme by preferences.oledDarkTheme.collectAsStateWithLifecycle()
     val safeMode by preferences.safeMode.collectAsStateWithLifecycle()
     val pagedBrowsing by preferences.pagedBrowsing.collectAsStateWithLifecycle()
     val pageSize by preferences.pageSize.collectAsStateWithLifecycle()
@@ -335,7 +340,7 @@ fun SettingsScreen(
             SettingsGroupCard {
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
                     Text(
-                        text = "Theme",
+                        text = "Theme Mode",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium,
                     )
@@ -358,6 +363,93 @@ fun SettingsScreen(
                             selected = themeMode == ThemeMode.DARK,
                             onClick = { preferences.setThemeMode(ThemeMode.DARK) },
                             label = "Dark",
+                        )
+                    }
+                }
+
+                SettingsDivider()
+
+                SettingsSwitchRow(
+                    icon = LatteIcons.DarkMode,
+                    title = "Pure Black (OLED)",
+                    subtitle = "Pitch black surfaces in dark mode for AMOLED screens",
+                    checked = oledDarkTheme,
+                    onCheckedChange = { preferences.setOledDarkTheme(it) },
+                )
+
+                SettingsDivider()
+
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+                    Text(
+                        text = "Palette",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        text = "Color scheme across the app",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        GlassPillChip(
+                            selected = themePalette == ThemePalette.ADAPTIVE,
+                            onClick = { preferences.setThemePalette(ThemePalette.ADAPTIVE) },
+                            label = "Adaptive",
+                        )
+                        GlassPillChip(
+                            selected = themePalette == ThemePalette.KAZUMI,
+                            onClick = { preferences.setThemePalette(ThemePalette.KAZUMI) },
+                            label = "Kazumi (Emerald)",
+                        )
+                        GlassPillChip(
+                            selected = themePalette == ThemePalette.YANDE,
+                            onClick = { preferences.setThemePalette(ThemePalette.YANDE) },
+                            label = "Yande",
+                        )
+                        GlassPillChip(
+                            selected = themePalette == ThemePalette.PIXIV,
+                            onClick = { preferences.setThemePalette(ThemePalette.PIXIV) },
+                            label = "Pixiv",
+                        )
+                        GlassPillChip(
+                            selected = themePalette == ThemePalette.KONACHAN,
+                            onClick = { preferences.setThemePalette(ThemePalette.KONACHAN) },
+                            label = "Konachan",
+                        )
+                    }
+                }
+
+                SettingsDivider()
+
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+                    Text(
+                        text = "UI Style",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        text = "Visual design system",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        GlassPillChip(
+                            selected = uiStyle == UiStyle.GLASS,
+                            onClick = { preferences.setUiStyle(UiStyle.GLASS) },
+                            label = "Liquid Glass",
+                        )
+                        GlassPillChip(
+                            selected = uiStyle == UiStyle.MATERIAL,
+                            onClick = { preferences.setUiStyle(UiStyle.MATERIAL) },
+                            label = "Material 3 (Kazumi)",
                         )
                     }
                 }

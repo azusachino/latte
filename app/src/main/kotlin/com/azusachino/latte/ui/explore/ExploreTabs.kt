@@ -148,13 +148,16 @@ import com.azusachino.latte.plugin.PluginFeedPeriod
 import com.azusachino.latte.plugin.PlatformCapability
 import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.plugin.SitePlugin
+import com.azusachino.latte.data.settings.UiStyle
 import com.azusachino.latte.ui.common.ToastManager
 import com.azusachino.latte.ui.common.ToastType
 import com.azusachino.latte.ui.theme.GlassDefaults
+import com.azusachino.latte.ui.theme.LocalUiStyle
 import com.azusachino.latte.ui.theme.glassBackdrop
 import com.azusachino.latte.ui.theme.glassPillSelection
 import com.azusachino.latte.ui.theme.glassSurface
 import com.azusachino.latte.ui.theme.pressScale
+import androidx.compose.ui.graphics.SolidColor
 import dev.chrisbanes.haze.rememberHazeState
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.launch
@@ -196,8 +199,9 @@ fun GlassSegmentedTabs(
         val livePosition = position?.coerceIn(0f, (tabCount - 1).toFloat())
         val indicatorOffset = if (livePosition != null) tabWidth * livePosition else settledOffset
         val focus = livePosition ?: selectedIndex.toFloat()
+        val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
 
-        // Sliding indicator: an accent-tinted glass pill with a soft accent rim.
+        // Sliding indicator: an accent-tinted glass pill with a soft accent rim (or solid M3 container).
         Box(
             modifier = Modifier
                 .offset(x = indicatorOffset)
@@ -205,11 +209,21 @@ fun GlassSegmentedTabs(
                 .height(36.dp)
                 .clip(RoundedCornerShape(GlassDefaults.PillCornerRadius))
                 .background(
-                    Brush.verticalGradient(
-                        listOf(accent.copy(alpha = 0.26f), accent.copy(alpha = 0.14f)),
-                    ),
+                    if (isMaterial) {
+                        SolidColor(MaterialTheme.colorScheme.primaryContainer)
+                    } else {
+                        Brush.verticalGradient(
+                            listOf(accent.copy(alpha = 0.26f), accent.copy(alpha = 0.14f)),
+                        )
+                    }
                 )
-                .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(GlassDefaults.PillCornerRadius)),
+                .then(
+                    if (isMaterial) {
+                        Modifier
+                    } else {
+                        Modifier.border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(GlassDefaults.PillCornerRadius))
+                    }
+                ),
         )
 
         Row(
@@ -223,6 +237,7 @@ fun GlassSegmentedTabs(
                 val isSelected = index == selectedIndex
                 // 1 under the indicator, 0 a full tab away: colour blends as it slides past.
                 val nearness = (1f - kotlin.math.abs(focus - index)).coerceIn(0f, 1f)
+                val activeTextColor = if (isMaterial) MaterialTheme.colorScheme.onPrimaryContainer else accent
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -241,7 +256,7 @@ fun GlassSegmentedTabs(
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontWeight = if (nearness > 0.5f) FontWeight.Bold else FontWeight.Medium,
                         ),
-                        color = lerp(MaterialTheme.colorScheme.onSurfaceVariant, accent, nearness),
+                        color = lerp(MaterialTheme.colorScheme.onSurfaceVariant, activeTextColor, nearness),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )

@@ -47,6 +47,7 @@ import com.azusachino.latte.plugin.yande.YandePlugin
 import com.azusachino.latte.data.network.PixivOAuthClient
 import com.azusachino.latte.plugin.pixiv.PixivPlugin
 import com.azusachino.latte.plugin.SitePluginManager
+import com.azusachino.latte.data.settings.ThemePalette
 import com.azusachino.latte.ui.account.AccountManagerScreen
 import com.azusachino.latte.ui.account.PluginLoginDialog
 import com.azusachino.latte.data.network.OkHttpProvider
@@ -83,11 +84,20 @@ fun LatteApp(
     val context = LocalContext.current
     val downloadManager = remember { DownloadManager(context) }
     val themeMode by exploreViewModel.preferences.themeMode.collectAsStateWithLifecycle()
+    val themePalette by exploreViewModel.preferences.themePalette.collectAsStateWithLifecycle()
+    val uiStyle by exploreViewModel.preferences.uiStyle.collectAsStateWithLifecycle()
+    val oledDarkTheme by exploreViewModel.preferences.oledDarkTheme.collectAsStateWithLifecycle()
     val exploreUiState by exploreViewModel.uiState.collectAsStateWithLifecycle()
-    val palette = when (exploreUiState.platform) {
-        PlatformId.PIXIV -> LattePalette.PIXIV
-        PlatformId.YANDE -> LattePalette.YANDE
-        PlatformId.KONACHAN -> LattePalette.KONACHAN
+    val palette = when (themePalette) {
+        ThemePalette.ADAPTIVE -> when (exploreUiState.platform) {
+            PlatformId.PIXIV -> LattePalette.PIXIV
+            PlatformId.YANDE -> LattePalette.YANDE
+            PlatformId.KONACHAN -> LattePalette.KONACHAN
+        }
+        ThemePalette.KAZUMI -> LattePalette.KAZUMI
+        ThemePalette.YANDE -> LattePalette.YANDE
+        ThemePalette.PIXIV -> LattePalette.PIXIV
+        ThemePalette.KONACHAN -> LattePalette.KONACHAN
     }
 
     val pluginStorage = remember { SecurePluginStorage(context) }
@@ -181,7 +191,12 @@ fun LatteApp(
         }
     }
 
-    LatteTheme(themeMode = themeMode, palette = palette) {
+    LatteTheme(
+        themeMode = themeMode,
+        palette = palette,
+        uiStyle = uiStyle,
+        oledDarkTheme = oledDarkTheme,
+    ) {
         // Root content the toast pill blurs; screens keep their own sources inside it.
         val toastHazeState = rememberHazeState()
         val backSettleScope = rememberCoroutineScope()

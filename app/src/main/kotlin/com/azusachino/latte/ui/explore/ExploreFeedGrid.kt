@@ -151,7 +151,9 @@ import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.ui.common.ToastManager
 import com.azusachino.latte.ui.common.ToastType
+import com.azusachino.latte.data.settings.UiStyle
 import com.azusachino.latte.ui.theme.GlassDefaults
+import com.azusachino.latte.ui.theme.LocalUiStyle
 import com.azusachino.latte.ui.theme.glassBackdrop
 import com.azusachino.latte.ui.theme.glassPillSelection
 import com.azusachino.latte.ui.theme.glassSurface
@@ -775,10 +777,10 @@ internal fun PostGridItem(
     val cardShape = RoundedCornerShape(GlassDefaults.CardCornerRadius)
     val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val rimBrush = if (isDark) GlassDefaults.DarkRimGradient else GlassDefaults.LightRimGradient
-    val borderStroke = if (isSelected) {
-        BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
-    } else {
-        BorderStroke(GlassDefaults.RimStrokeWidth, rimBrush)
+    val borderStroke = when {
+        isSelected -> BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+        LocalUiStyle.current == UiStyle.MATERIAL -> null
+        else -> BorderStroke(GlassDefaults.RimStrokeWidth, rimBrush)
     }
 
     Card(
