@@ -19,6 +19,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -199,25 +200,24 @@ internal fun DetailImageView(
             val currentImageUrl = imageSources[safeImageSourceIndex]
             val hasPreview = targetPost.previewUrl.isNotBlank() && targetPost.previewUrl != currentImageUrl
 
-            val effectiveAspectRatio = loadedAspectRatio ?: if (targetPost.pageIndex == 0 && targetPost.width > 0 && targetPost.height > 0) {
-                targetPost.aspectRatio
-            } else {
-                null
-            }
+            val effectiveAspectRatio = loadedAspectRatio
+                ?: (if (targetPost.width > 0 && targetPost.height > 0) targetPost.aspectRatio else null)
+                ?: 1f
 
-            Box(
+            BoxWithConstraints(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
-            // Sized to the picture itself, so the shared bounds are the visible image, not the screen.
-            Box(
-                modifier = (if (effectiveAspectRatio != null) {
-                    Modifier.aspectRatio(effectiveAspectRatio)
-                } else {
-                    Modifier.fillMaxSize()
-                }).sharedPostImage(if (targetPost.pageIndex == 0) sharedGrid else null, targetPost),
-                contentAlignment = Alignment.Center,
-            ) {
+                val screenRatio = if (maxHeight.value > 0f) maxWidth.value / maxHeight.value else 1f
+                val matchHeight = effectiveAspectRatio < screenRatio
+
+                // Sized to the picture itself, so the shared bounds match the visible image, not the screen.
+                Box(
+                    modifier = Modifier
+                        .aspectRatio(effectiveAspectRatio, matchHeightConstraintsFirst = matchHeight)
+                        .sharedPostImage(if (targetPost.pageIndex == 0) sharedGrid else null, targetPost),
+                    contentAlignment = Alignment.Center,
+                ) {
                 // If a low-res preview is available, display it immediately so the screen never blanks black
                 if (hasPreview) {
                     AsyncImage(
