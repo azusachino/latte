@@ -143,9 +143,9 @@ fun LatteApp(
                 }
             }
             else -> {
-                if (state.isSearch) {
-                    exploreViewModel.clearSearch()
-                }
+                // If detail was opened from a root feed, do not clear search while on DetailScreen.
+                // Detail only views its own posts; clearing search prematurely causes any exiting
+                // TagSearch or AuthorWorks screen to flash empty/scramble during transition.
             }
         }
     }

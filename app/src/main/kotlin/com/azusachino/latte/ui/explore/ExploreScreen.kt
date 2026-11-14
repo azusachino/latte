@@ -1,6 +1,7 @@
 package com.azusachino.latte.ui.explore
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.lerp
@@ -241,6 +242,12 @@ fun ExploreScreen(
         val isLoggedIn by plugin.isLoggedInFlow.collectAsStateWithLifecycle(initialValue = plugin.isLoggedIn)
         isLoggedIn
     } ?: false
+
+    LaunchedEffect(pagerState.targetPage) {
+        if (!uiState.isSearch) {
+            viewModel.selectTab(pagerState.targetPage)
+        }
+    }
 
     LaunchedEffect(pagerState.settledPage) {
         viewModel.selectTab(pagerState.settledPage)
@@ -803,6 +810,7 @@ fun ExploreScreen(
                         tabs = tabTitles,
                         selectedIndex = pagerState.currentPage,
                         onTabSelected = { index ->
+                            viewModel.selectTab(index)
                             coroutineScope.launch { pagerState.animateScrollToPage(index) }
                         },
                         position = pagerState.currentPage + pagerState.currentPageOffsetFraction,
@@ -854,8 +862,14 @@ fun ExploreScreen(
                 .hazeSource(hazeState)
                 .padding(bottom = bottomPadding),
         ) {
-            if (uiState.isSearch) {
-                FeedGrid(
+            val isSearchScreen = uiState.isSearch || title != null
+            Crossfade(
+                targetState = isSearchScreen,
+                animationSpec = tween(durationMillis = 200),
+                label = "ExploreSearchCrossfade",
+            ) { isSearch ->
+                if (isSearch) {
+                    FeedGrid(
                     feed = when {
                         !uiState.supportsUserFeeds -> uiState.feed(PluginFeedKind.SEARCH)
                         uiState.pixivAuthorId != null -> uiState.feed(PlatformId.PIXIV, PluginFeedKind.AUTHOR_WORKS)
@@ -1048,4 +1062,5 @@ fun ExploreScreen(
             }
         }
     }
+}
 }

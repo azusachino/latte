@@ -10,6 +10,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import okhttp3.FormBody
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
@@ -119,7 +121,7 @@ class PixivOAuthClient(
                 PixivSession(
                     accessToken = accessToken,
                     refreshToken = payload.refreshToken?.takeIf(String::isNotBlank),
-                    userId = payload.user?.id,
+                    userId = payload.user?.id?.let { it.longOrNull ?: it.content.toLongOrNull() },
                     username = payload.user?.name?.takeIf(String::isNotBlank),
                 )
             }
@@ -162,7 +164,7 @@ class PixivOAuthClient(
                 PixivSession(
                     accessToken = accessToken,
                     refreshToken = payload.refreshToken?.takeIf(String::isNotBlank) ?: refreshToken,
-                    userId = payload.user?.id,
+                    userId = payload.user?.id?.let { it.longOrNull ?: it.content.toLongOrNull() },
                     username = payload.user?.name?.takeIf(String::isNotBlank),
                 )
             }
@@ -204,6 +206,6 @@ private data class PixivOAuthEnvelope(
 
 @Serializable
 private data class PixivOAuthUser(
-    val id: Long? = null,
+    val id: JsonPrimitive? = null,
     val name: String? = null,
 )

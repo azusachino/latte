@@ -186,6 +186,7 @@ internal fun FeedGrid(
     emptyTitle: String = "No posts yet",
     emptyHint: String = "Pull to refresh or try again later.",
     pager: FeedPager? = null,
+    isLoggedIn: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val sharedPostTransition = LocalSharedPostTransition.current
@@ -254,7 +255,7 @@ internal fun FeedGrid(
                     header?.invoke()
                     Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                         when {
-                            feed.authRequired -> {
+                            feed.authRequired && !isLoggedIn -> {
                                 // Signed-out state, NOT a failure: render with the same neutral
                                 // styling as PersonalFeedContent so every tab looks identical.
                                 Box(
@@ -304,7 +305,7 @@ internal fun FeedGrid(
                                     )
                                 }
                             }
-                            feed.error != null -> {
+                            feed.error != null && !(feed.authRequired && isLoggedIn) -> {
                                 FeedErrorState(
                                     error = feed.error,
                                     onRetry = onRetry,
@@ -312,29 +313,44 @@ internal fun FeedGrid(
                                 )
                             }
                             !feed.isLoading && !feed.isLoadingMore -> {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(
-                                            text = emptyTitle,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            textAlign = TextAlign.Center,
+                                if ((feed.authRequired && isLoggedIn) || (feed.hasMore && feed.page <= 1)) {
+                                    // Awaiting initial load or retry: show a subtle loading spinner rather
+                                    // than flashing empty state or login card.
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(32.dp),
+                                            strokeWidth = 2.dp,
+                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
                                         )
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            text = emptyHint,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            textAlign = TextAlign.Center,
-                                        )
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                        FilledTonalButton(onClick = onRetry, modifier = Modifier.pressScale()) {
-                                            Text("Refresh")
+                                    }
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text(
+                                                text = emptyTitle,
+                                                style = MaterialTheme.typography.titleMedium,
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                textAlign = TextAlign.Center,
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = emptyHint,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                textAlign = TextAlign.Center,
+                                            )
+                                            Spacer(modifier = Modifier.height(16.dp))
+                                            FilledTonalButton(onClick = onRetry, modifier = Modifier.pressScale()) {
+                                                Text("Refresh")
+                                            }
                                         }
                                     }
                                 }
@@ -651,8 +667,14 @@ internal fun PersonalFeedContent(
         }
     }
 
+    val safeFeed = if (isLoggedIn && feed.authRequired) {
+        feed.copy(authRequired = false)
+    } else {
+        feed
+    }
+
     FeedGrid(
-        feed = feed,
+        feed = safeFeed,
         viewModel = viewModel,
         gridKey = gridKey,
         gridState = gridState,
@@ -668,6 +690,7 @@ internal fun PersonalFeedContent(
         selectedPostIds = selectedPostIds,
         onToggleSelect = onToggleSelect,
         pager = pager,
+        isLoggedIn = isLoggedIn,
         modifier = modifier,
     )
 }
