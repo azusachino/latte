@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.12 - 2026-11-14
+
+### Added
+
+- Scroll up at media page to open the detail sheet: dragging upwards with a single finger while unzoomed springs the post information sheet open.
+- Set as wallpaper: set any artwork directly as home screen, lock screen, or both from the detail sheet via a glass dialog.
+- Copy link quick action in the post detail sheet and long-press on any metadata row (Dimensions, Rating, Date, File, Source) to copy its value to the clipboard with confirmation toasts.
+
+### Fixed
+
+- Pixiv images in media view no longer float in the center without reaching screen borders: image aspect ratios dynamically adapt to loaded intrinsic dimensions and multi-page works avoid inheriting page 0's aspect ratio.
+
+### Changed
+
+- Dependency updates: bumped `activity-compose` to 1.10.1, `browser` to 1.9.0, `datastore-preferences` to 1.1.7, `work-runtime-ktx` to 2.10.5, and toolchain gradle pin to 9.9.1.
+
 ## 0.3.11 - 2026-11-03
 
 ### Added
