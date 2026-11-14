@@ -231,6 +231,7 @@ internal fun MetadataTable(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun MetadataTableRow(
     label: String,
@@ -238,12 +239,24 @@ internal fun MetadataTableRow(
     modifier: Modifier = Modifier,
     isClickable: Boolean = false,
     onClick: () -> Unit = {},
+    onLongClick: (() -> Unit)? = null,
     valueColor: Color = MaterialTheme.colorScheme.onSurface,
 ) {
+    val context = LocalContext.current
+    val handleLongClick: () -> Unit = onLongClick ?: {
+        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+        clipboard?.setPrimaryClip(android.content.ClipData.newPlainText(label, value))
+        ToastManager.showSuccess("Copied $label")
+    }
+
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .then(if (isClickable) Modifier.pressScale().clickable(onClick = onClick) else Modifier)
+            .pressScale(GlassDefaults.PressScale)
+            .combinedClickable(
+                onClick = { if (isClickable) onClick() },
+                onLongClick = handleLongClick,
+            )
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

@@ -1,6 +1,7 @@
 package com.azusachino.latte.ui.detail
 
 import android.app.Activity
+import android.app.WallpaperManager
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
@@ -51,6 +52,7 @@ import androidx.compose.material.icons.filled.Star
 import com.azusachino.latte.ui.common.LatteIcons
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -88,6 +90,7 @@ import androidx.core.view.WindowCompat
 import com.azusachino.latte.ui.theme.GlassDefaults
 import com.azusachino.latte.ui.theme.glassBackdrop
 import com.azusachino.latte.ui.theme.glassSurface
+import com.azusachino.latte.ui.common.GlassAlertDialog
 import com.azusachino.latte.ui.common.LocalSharedPostTransition
 import com.azusachino.latte.ui.theme.pressScale
 import coil3.compose.AsyncImage
@@ -95,6 +98,8 @@ import coil3.compose.SubcomposeAsyncImage
 import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import coil3.toBitmap
+import kotlinx.coroutines.Dispatchers
 import com.azusachino.latte.data.download.DownloadIdentity
 import com.azusachino.latte.data.download.DownloadManager
 import com.azusachino.latte.data.download.DownloadResult
@@ -173,6 +178,7 @@ fun DetailScreen(
         onDispose { ToastManager.clearTopInset(toastInsetOwner) }
     }
     var showInspectSheet by remember { mutableStateOf(false) }
+    var showWallpaperDialog by remember { mutableStateOf(false) }
     var localScores by remember { mutableStateOf(mapOf<Long, Int>()) }
     // Server-confirmed favorite state per post (Moebooru probe). Kept apart
     // from localScores: the probe's "not favorited" must not blank out the
@@ -282,7 +288,7 @@ fun DetailScreen(
                 DetailImageView(
                     targetPost = post,
                     // Only the page on screen morphs; the pager keeps neighbours composed off-screen.
-                    sharedGrid = if (page == pagerState.currentPage) sharedOriginGrid else null,
+                    sharedGrid = if (page == pagerState.currentPage && pixivPageIndex == 0) sharedOriginGrid else null,
                     onZoomChanged = { zoomed ->
                         if (page == pagerState.currentPage) {
                             isCurrentPageZoomed = zoomed
@@ -293,6 +299,11 @@ fun DetailScreen(
                             DetailTapAction.PreviousPage -> pixivPageIndex -= 1
                             DetailTapAction.NextPage -> pixivPageIndex += 1
                             DetailTapAction.ToggleControls -> showControls = !showControls
+                        }
+                    },
+                    onSwipeUp = {
+                        if (page == pagerState.currentPage) {
+                            showInspectSheet = true
                         }
                     },
                 )
@@ -659,7 +670,48 @@ fun DetailScreen(
                             text = "Post #${currentPost.id}",
                             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 10.dp, bottom = 14.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            FilledTonalButton(
+                                onClick = { showWallpaperDialog = true },
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                            ) {
+                                Icon(
+                                    imageVector = LatteIcons.Wallpaper,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Wallpaper")
+                            }
+
+                            val sharePostUrl = currentPlugin?.postUrl(currentPost)
+                                ?: currentPost.canonicalUrl
+                                ?: currentPost.source
+                            if (!sharePostUrl.isNullOrBlank()) {
+                                FilledTonalButton(
+                                    onClick = {
+                                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                                        clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("Post Link", sharePostUrl))
+                                        ToastManager.showSuccess("Link copied")
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = LatteIcons.ContentCopy,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Copy Link")
+                                }
+                            }
+                        }
 
                         // Metadata Table
                         Text(
@@ -777,6 +829,87 @@ fun DetailScreen(
                     }
                 }
             }
+        }
+
+        if (showWallpaperDialog && currentPost != null) {
+            val targetPost = displayPost ?: currentPost
+            val wallpaperUrl = targetPost.bestVariant.url
+            GlassAlertDialog(
+                onDismissRequest = { showWallpaperDialog = false },
+                title = { Text("Set Wallpaper") },
+                text = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = "Set this image as wallpaper for:",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        FilledTonalButton(
+                            onClick = {
+                                showWallpaperDialog = false
+                                applyWallpaper(context, wallpaperUrl, WallpaperManager.FLAG_SYSTEM, scope)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Home Screen")
+                        }
+                        FilledTonalButton(
+                            onClick = {
+                                showWallpaperDialog = false
+                                applyWallpaper(context, wallpaperUrl, WallpaperManager.FLAG_LOCK, scope)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Lock Screen")
+                        }
+                        FilledTonalButton(
+                            onClick = {
+                                showWallpaperDialog = false
+                                applyWallpaper(context, wallpaperUrl, WallpaperManager.FLAG_SYSTEM or WallpaperManager.FLAG_LOCK, scope)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Both Screens")
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showWallpaperDialog = false }) {
+                        Text("Cancel")
+                    }
+                },
+            )
+        }
+    }
+}
+
+private fun applyWallpaper(
+    context: android.content.Context,
+    imageUrl: String,
+    whichFlags: Int,
+    scope: kotlinx.coroutines.CoroutineScope,
+) {
+    ToastManager.showInfo("Setting wallpaper...")
+    scope.launch(Dispatchers.IO) {
+        val request = ImageRequest.Builder(context)
+            .data(imageUrl)
+            .size(coil3.size.Size.ORIGINAL)
+            .build()
+        val result = context.imageLoader.execute(request)
+        if (result is coil3.request.SuccessResult) {
+            try {
+                val bitmap = result.image.toBitmap()
+                val wallpaperManager = WallpaperManager.getInstance(context)
+                wallpaperManager.setBitmap(bitmap, null, true, whichFlags)
+                ToastManager.showSuccess("Wallpaper updated")
+            } catch (e: Exception) {
+                ToastManager.showError("Failed to set wallpaper: ${e.message ?: "error"}")
+            }
+        } else {
+            ToastManager.showError("Failed to load image for wallpaper")
         }
     }
 }
