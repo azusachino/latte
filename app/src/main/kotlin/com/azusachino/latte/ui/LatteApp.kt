@@ -291,6 +291,7 @@ fun LatteApp(
                                             parentSearchTags = parentSearchTags,
                                             parentAuthorId = parentAuthorId,
                                             parentAuthorName = parentAuthorName,
+                                            originGrid = sharedPostTransition.originGrid,
                                         ),
                                     )
                                 },
@@ -314,6 +315,7 @@ fun LatteApp(
                                 downloadManager = downloadManager,
                                 pluginManager = sitePluginManager,
                                 bookmarks = exploreUiState.bookmarks,
+                                originGrid = screen.originGrid,
                                 onLoadMore = {
                                     exploreViewModel.loadMoreActiveFeed()
                                 },

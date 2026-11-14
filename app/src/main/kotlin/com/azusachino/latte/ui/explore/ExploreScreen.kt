@@ -862,7 +862,7 @@ fun ExploreScreen(
                 .hazeSource(hazeState)
                 .padding(bottom = bottomPadding),
         ) {
-            val isSearchScreen = uiState.isSearch || title != null
+            val isSearchScreen = uiState.isSearch || title != null || onBack != null
             Crossfade(
                 targetState = isSearchScreen,
                 animationSpec = tween(durationMillis = 200),

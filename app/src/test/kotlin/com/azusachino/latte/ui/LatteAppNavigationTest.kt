@@ -430,6 +430,13 @@ class LatteAppNavigationTest {
     }
 
     @Test
+    fun detailCarriesOriginGrid() {
+        val post = samplePost(1)
+        val detail = Screen.Detail(posts = listOf(post), initialIndex = 0, originGrid = "popular")
+        assertEquals("popular", detail.originGrid)
+    }
+
+    @Test
     fun stackEntryStateKeysAreUniqueWhenSameScreenPushedMultipleTimes() {
         val tagSearch = Screen.TagSearch(query = "citlali")
         val detail = Screen.Detail(posts = listOf(samplePost(1)), initialIndex = 0)

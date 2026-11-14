@@ -138,6 +138,7 @@ fun DetailScreen(
     bookmarks: List<Bookmark> = emptyList(),
     onToggleBookmark: ((tag: String, platform: PlatformId) -> Unit)? = null,
     onPostViewed: (Post) -> Unit = {},
+    originGrid: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val detailPosts = posts
@@ -169,7 +170,7 @@ fun DetailScreen(
     }
 
     val hazeState = rememberHazeState()
-    val sharedOriginGrid = LocalSharedPostTransition.current?.originGrid
+    val sharedOriginGrid = originGrid ?: LocalSharedPostTransition.current?.originGrid
     var showControls by remember { mutableStateOf(true) }
     // Pushes the toast pill below the top controls row (10dp + 44dp + 8dp) while it is shown.
     val toastInsetOwner = remember { Any() }
