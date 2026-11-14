@@ -401,9 +401,9 @@ fun SettingsScreen(
                             label = "Adaptive",
                         )
                         GlassPillChip(
-                            selected = themePalette == ThemePalette.KAZUMI,
-                            onClick = { preferences.setThemePalette(ThemePalette.KAZUMI) },
-                            label = "Kazumi (Emerald)",
+                            selected = themePalette == ThemePalette.EMERALD,
+                            onClick = { preferences.setThemePalette(ThemePalette.EMERALD) },
+                            label = "Emerald",
                         )
                         GlassPillChip(
                             selected = themePalette == ThemePalette.YANDE,
@@ -449,7 +449,7 @@ fun SettingsScreen(
                         GlassPillChip(
                             selected = uiStyle == UiStyle.MATERIAL,
                             onClick = { preferences.setUiStyle(UiStyle.MATERIAL) },
-                            label = "Material 3 (Kazumi)",
+                            label = "Material 3",
                         )
                     }
                 }

@@ -36,7 +36,7 @@ class LatteBackupTest {
         val backup = LatteBackup(
             columnCount = 3,
             themeMode = ThemeMode.DARK,
-            themePalette = ThemePalette.KAZUMI,
+            themePalette = ThemePalette.EMERALD,
             uiStyle = UiStyle.MATERIAL,
             oledDarkTheme = true,
             safeMode = false,

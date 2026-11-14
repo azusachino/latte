@@ -110,6 +110,13 @@ fun Modifier.glassSurface(
         return this
             .clip(shape)
             .background(containerColor, shape)
+            .then(
+                if (rimStroke > 0.dp) {
+                    Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f), shape)
+                } else {
+                    Modifier
+                }
+            )
     }
 
     val isDark = dark ?: (MaterialTheme.colorScheme.surface.luminance() < 0.5f)
@@ -164,6 +171,7 @@ fun Modifier.glassBackdrop(
         return this
             .clip(shape)
             .background(containerColor, shape)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), shape)
     }
 
     val rimBrush = if (isDark) GlassDefaults.DarkRimGradient else GlassDefaults.LightRimGradient
@@ -190,10 +198,17 @@ fun Modifier.glassPillSelection(
 ): Modifier {
     val uiStyle = LocalUiStyle.current
     if (uiStyle == UiStyle.MATERIAL) {
-        val bg = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh
-        return this
-            .clip(shape)
-            .background(bg, shape)
+        return if (selected) {
+            this
+                .clip(shape)
+                .background(MaterialTheme.colorScheme.primaryContainer, shape)
+                .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f), shape)
+        } else {
+            this
+                .clip(shape)
+                .background(MaterialTheme.colorScheme.surfaceContainerLow, shape)
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape)
+        }
     }
     if (!selected) return glassSurface(shape = shape)
     return this

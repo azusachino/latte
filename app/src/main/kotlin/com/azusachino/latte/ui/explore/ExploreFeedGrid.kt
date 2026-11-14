@@ -779,7 +779,7 @@ internal fun PostGridItem(
     val rimBrush = if (isDark) GlassDefaults.DarkRimGradient else GlassDefaults.LightRimGradient
     val borderStroke = when {
         isSelected -> BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
-        LocalUiStyle.current == UiStyle.MATERIAL -> null
+        LocalUiStyle.current == UiStyle.MATERIAL -> BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         else -> BorderStroke(GlassDefaults.RimStrokeWidth, rimBrush)
     }
 

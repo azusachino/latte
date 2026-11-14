@@ -35,7 +35,7 @@ enum class ThemeMode {
 @Serializable
 enum class ThemePalette {
     ADAPTIVE,
-    KAZUMI,
+    EMERALD,
     YANDE,
     PIXIV,
     KONACHAN,
@@ -174,7 +174,10 @@ class LattePreferences(private val context: Context) {
                     ?.let { mode -> runCatching { ThemeMode.valueOf(mode) }.getOrNull() }
                     ?: ThemeMode.SYSTEM
                 _themePalette.value = values[KEY_THEME_PALETTE]
-                    ?.let { palette -> runCatching { ThemePalette.valueOf(palette) }.getOrNull() }
+                    ?.let { palette ->
+                        if (palette == "KAZUMI") ThemePalette.EMERALD
+                        else runCatching { ThemePalette.valueOf(palette) }.getOrNull()
+                    }
                     ?: ThemePalette.ADAPTIVE
                 _uiStyle.value = values[KEY_UI_STYLE]
                     ?.let { style -> runCatching { UiStyle.valueOf(style) }.getOrNull() }

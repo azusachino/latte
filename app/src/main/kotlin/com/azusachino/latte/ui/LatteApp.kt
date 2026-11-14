@@ -94,7 +94,7 @@ fun LatteApp(
             PlatformId.YANDE -> LattePalette.YANDE
             PlatformId.KONACHAN -> LattePalette.KONACHAN
         }
-        ThemePalette.KAZUMI -> LattePalette.KAZUMI
+        ThemePalette.EMERALD -> LattePalette.EMERALD
         ThemePalette.YANDE -> LattePalette.YANDE
         ThemePalette.PIXIV -> LattePalette.PIXIV
         ThemePalette.KONACHAN -> LattePalette.KONACHAN
