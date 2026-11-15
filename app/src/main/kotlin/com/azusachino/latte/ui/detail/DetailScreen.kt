@@ -51,6 +51,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import com.azusachino.latte.ui.common.LatteIcons
+import com.azusachino.latte.ui.common.LatteActionButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -647,53 +648,28 @@ fun DetailScreen(
                             }
                         }
                         val saveShape = RoundedCornerShape(16.dp)
-                        if (isMaterial) {
-                            Button(
-                                onClick = onSaveClick,
-                                shape = saveShape,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary,
-                                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                                ),
-                                modifier = Modifier.height(44.dp),
-                                contentPadding = PaddingValues(horizontal = 20.dp),
-                            ) {
+                        Box(
+                            modifier = Modifier
+                                .height(44.dp)
+                                .latteMediaControl(shape = saveShape, hazeState = hazeState)
+                                .clickable(onClick = onSaveClick)
+                                .padding(horizontal = 18.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
                                     imageVector = LatteIcons.Download,
                                     contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.size(18.dp),
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "Save",
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 13.sp,
                                 )
-                            }
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .height(44.dp)
-                                    .latteMediaControl(shape = saveShape, hazeState = hazeState)
-                                    .clickable(onClick = onSaveClick)
-                                    .padding(horizontal = 20.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = LatteIcons.Download,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "Save",
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 14.sp,
-                                    )
-                                }
                             }
                         }
                     }
@@ -724,39 +700,25 @@ fun DetailScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            FilledTonalButton(
+                            LatteActionButton(
                                 onClick = { showWallpaperDialog = true },
-                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                            ) {
-                                Icon(
-                                    imageVector = LatteIcons.Wallpaper,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Wallpaper")
-                            }
+                                icon = LatteIcons.Wallpaper,
+                                label = "Wallpaper",
+                            )
 
                             val sharePostUrl = currentPlugin?.postUrl(currentPost)
                                 ?: currentPost.canonicalUrl
                                 ?: currentPost.source
                             if (!sharePostUrl.isNullOrBlank()) {
-                                FilledTonalButton(
+                                LatteActionButton(
                                     onClick = {
                                         val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
                                         clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("Post Link", sharePostUrl))
                                         ToastManager.showSuccess("Link copied")
                                     },
-                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                                ) {
-                                    Icon(
-                                        imageVector = LatteIcons.ContentCopy,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Copy Link")
-                                }
+                                    icon = LatteIcons.ContentCopy,
+                                    label = "Copy Link",
+                                )
                             }
                         }
 

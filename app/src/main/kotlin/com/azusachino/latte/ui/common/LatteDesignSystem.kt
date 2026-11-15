@@ -3,6 +3,8 @@ package com.azusachino.latte.ui.common
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -267,6 +269,57 @@ fun LatteSectionHeader(title: String, modifier: Modifier = Modifier) {
         color = MaterialTheme.colorScheme.primary,
         modifier = modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 8.dp),
     )
+}
+
+/**
+ * Action pill button for quick actions (e.g. Wallpaper, Copy Link) in sheets and headers.
+ *
+ * Material 3: subtle pill with surfaceContainerHigh container, outlineVariant border, and ripple.
+ * Glass: elevated glass capsule with press spring scale and specular rim.
+ */
+@Composable
+fun LatteActionButton(
+    onClick: () -> Unit,
+    icon: ImageVector,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
+    val shape = RoundedCornerShape(percent = 50)
+    Row(
+        modifier = modifier
+            .then(
+                if (isMaterial) {
+                    Modifier
+                        .clip(shape)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), shape)
+                        .clickable(onClick = onClick)
+                } else {
+                    Modifier
+                        .pressScale()
+                        .glassSurface(shape = shape, isElevated = true)
+                        .clickable(onClick = onClick)
+                },
+            )
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(16.dp),
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    }
 }
 
 /**
