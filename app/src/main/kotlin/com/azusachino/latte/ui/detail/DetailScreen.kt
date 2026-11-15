@@ -153,6 +153,12 @@ fun DetailScreen(
         pageCount = { detailPosts.size },
     )
 
+    LaunchedEffect(initialIndex) {
+        if (pagerState.currentPage != initialIndex && initialIndex in 0 until detailPosts.size) {
+            pagerState.scrollToPage(initialIndex)
+        }
+    }
+
     LaunchedEffect(pagerState.currentPage, detailPosts.size) {
         if (shouldLoadMoreDetail(pagerState.currentPage, detailPosts.size)) {
             onLoadMore()

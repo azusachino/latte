@@ -161,9 +161,11 @@ fun LatteApp(
     }
 
     fun popNavigation() {
+        val poppedKey = navigation.currentStateKey
         navigation = navigation.popAndRestoreDetailFeed { targetDetail ->
             restoreFeedForDetail(targetDetail)
         }
+        saveableStateHolder.removeState(poppedKey)
     }
 
     LaunchedEffect(navigation.current) {
