@@ -286,9 +286,9 @@ fun LatteTopBar(
 }
 
 /**
- * Surface styling for floating media viewer controls (Back, Title, Actions, Details, Favorite).
+ * Surface styling for floating media viewer controls (Back, Title, Actions, Details, Favorite, Save).
  *
- * In Material 3: a dark surface container with a 1dp subtle border and native ripple.
+ * In Material 3: a clean 50% black scrim with no border and native ripple (following Kazumi / M3 media viewers).
  * In Glass: frosted backdrop blur with specular gradient rim and press spring scale.
  */
 @Composable
@@ -300,8 +300,7 @@ fun Modifier.latteMediaControl(
     return if (isMaterial) {
         this
             .clip(shape)
-            .background(Color(0xFF1E1E1E).copy(alpha = 0.72f), shape)
-            .border(1.dp, Color.White.copy(alpha = 0.22f), shape)
+            .background(Color.Black.copy(alpha = 0.5f), shape)
     } else {
         if (hazeState != null) {
             this

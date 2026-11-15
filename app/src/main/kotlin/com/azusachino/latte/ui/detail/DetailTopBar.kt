@@ -114,7 +114,7 @@ fun DetailTopBar(
                 .height(44.dp)
                 .weight(1f)
                 .padding(horizontal = 8.dp)
-                .latteMediaControl(shape = RoundedCornerShape(12.dp), hazeState = hazeState)
+                .latteMediaControl(shape = RoundedCornerShape(16.dp), hazeState = hazeState)
                 .clickable(enabled = currentPost != null, onClick = onDetails)
                 .padding(horizontal = 14.dp),
             contentAlignment = Alignment.Center,

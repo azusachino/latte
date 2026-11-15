@@ -495,10 +495,11 @@ fun DetailScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     // Details button: consistent 44dp container with latteMediaControl
+                    val detailsShape = RoundedCornerShape(16.dp)
                     Box(
                         modifier = Modifier
                             .height(44.dp)
-                            .latteMediaControl(shape = RoundedCornerShape(12.dp), hazeState = hazeState)
+                            .latteMediaControl(shape = detailsShape, hazeState = hazeState)
                             .clickable { showInspectSheet = true }
                             .padding(horizontal = 14.dp),
                         contentAlignment = Alignment.Center,
@@ -546,9 +547,7 @@ fun DetailScreen(
                                     .latteMediaControl(shape = CircleShape, hazeState = hazeState)
                                     .then(
                                         if (isFavorited) {
-                                            Modifier
-                                                .background(Color(0xFFE53935).copy(alpha = 0.35f), CircleShape)
-                                                .border(1.dp, Color(0xFFE53935), CircleShape)
+                                            Modifier.background(Color(0xFFE53935).copy(alpha = 0.35f), CircleShape)
                                         } else {
                                             Modifier
                                         }
@@ -640,42 +639,26 @@ fun DetailScreen(
                             }
                         }
                         // Save button: 44dp height matching Details and Favorite
-                        val saveShape = RoundedCornerShape(12.dp)
+                        val saveShape = RoundedCornerShape(16.dp)
                         Box(
                             modifier = Modifier
                                 .height(44.dp)
-                                .then(
-                                    if (isMaterial) {
-                                        Modifier
-                                            .clip(saveShape)
-                                            .background(MaterialTheme.colorScheme.primary, saveShape)
-                                    } else {
-                                        Modifier
-                                            .glassBackdrop(
-                                                hazeState,
-                                                backgroundColor = Color.Black,
-                                                shape = RoundedCornerShape(22.dp),
-                                                dark = true,
-                                            )
-                                            .pressScale()
-                                    }
-                                )
+                                .latteMediaControl(shape = saveShape, hazeState = hazeState)
                                 .clickable(onClick = onSaveClick)
                                 .padding(horizontal = 20.dp),
                             contentAlignment = Alignment.Center,
                         ) {
-                            val contentColor = if (isMaterial) MaterialTheme.colorScheme.onPrimary else Color.White
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
                                     imageVector = LatteIcons.Download,
                                     contentDescription = null,
-                                    tint = contentColor,
+                                    tint = Color.White,
                                     modifier = Modifier.size(18.dp),
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "Save",
-                                    color = contentColor,
+                                    color = Color.White,
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 14.sp,
                                 )
