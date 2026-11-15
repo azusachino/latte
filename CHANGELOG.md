@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.14 - 2026-11-15
+
+### Fixed
+
+- **Inspect sheet bottom controls obstruction**: Bottom controls overlay (Details, Favorite, Save, and bottom gradient) now smoothly hides when opening the post metadata inspect sheet, ensuring all tags and actions are unobstructed and clickable.
+- **Favorite button styling harmonization**: Cleaned up the favorite heart button container by removing the muddy low-opacity error-red overlay in dark theme, keeping the clean surface container in sync with Details and Save, and tinting the unfavorited outline heart with the theme primary accent.
+
 ## 0.3.13 - 2026-11-15
 
 ### Added
