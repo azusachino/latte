@@ -8,6 +8,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -326,14 +327,8 @@ fun DetailScreen(
         // Top Controls Overlay
         AnimatedVisibility(
             visible = showControls,
-            enter = slideInVertically(
-                animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
-                initialOffsetY = { -it },
-            ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
-            exit = slideOutVertically(
-                animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
-                targetOffsetY = { -it },
-            ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
+            enter = fadeIn(animationSpec = tween(200)),
+            exit = fadeOut(animationSpec = tween(200)),
             modifier = Modifier.align(Alignment.TopCenter),
         ) {
             DetailTopBar(
@@ -357,14 +352,8 @@ fun DetailScreen(
         // Bottom Controls Overlay
         AnimatedVisibility(
             visible = showControls,
-            enter = slideInVertically(
-                animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
-                initialOffsetY = { it },
-            ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
-            exit = slideOutVertically(
-                animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
-                targetOffsetY = { it },
-            ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
+            enter = fadeIn(animationSpec = tween(200)),
+            exit = fadeOut(animationSpec = tween(200)),
             modifier = Modifier.align(Alignment.BottomCenter),
         ) {
             val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
