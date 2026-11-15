@@ -371,7 +371,7 @@ fun DetailScreen(
 
         // Bottom Controls Overlay
         AnimatedVisibility(
-            visible = effectiveShowControls,
+            visible = effectiveShowControls && !showInspectSheet,
             enter = fadeIn(animationSpec = tween(200)),
             exit = fadeOut(animationSpec = tween(120)),
             modifier = Modifier
