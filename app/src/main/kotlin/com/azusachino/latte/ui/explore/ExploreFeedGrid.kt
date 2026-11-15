@@ -560,14 +560,29 @@ internal fun FeedGrid(
                     .align(Alignment.BottomStart)
                     .padding(start = 16.dp, bottom = 16.dp),
             ) {
+                val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
                 Text(
                     text = "Page $feedPageCursor",
                     style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White,
+                    fontWeight = if (isMaterial) FontWeight.SemiBold else FontWeight.Medium,
+                    color = if (isMaterial) MaterialTheme.colorScheme.onSurfaceVariant else Color.White,
                     modifier = Modifier
-                        .clip(RoundedCornerShape(999.dp))
-                        .background(Color.Black.copy(alpha = 0.32f))
+                        .then(
+                            if (isMaterial) {
+                                Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                                    .border(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                        RoundedCornerShape(8.dp),
+                                    )
+                            } else {
+                                Modifier
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(Color.Black.copy(alpha = 0.32f))
+                            },
+                        )
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                 )
             }

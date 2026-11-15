@@ -523,15 +523,15 @@ fun ExploreScreen(
                             DropdownMenu(
                                 expanded = platformMenuOpen,
                                 onDismissRequest = { platformMenuOpen = false },
-                                modifier = Modifier.glassSurface(
+                                modifier = if (isMaterial) Modifier else Modifier.glassSurface(
                                     shape = RoundedCornerShape(16.dp),
                                     isElevated = true,
                                 ),
                                 shape = RoundedCornerShape(16.dp),
-                                containerColor = Color.Transparent,
-                                tonalElevation = 0.dp,
-                                shadowElevation = 0.dp,
-                                border = null,
+                                containerColor = if (isMaterial) MaterialTheme.colorScheme.surfaceContainer else Color.Transparent,
+                                tonalElevation = if (isMaterial) 3.dp else 0.dp,
+                                shadowElevation = if (isMaterial) 3.dp else 0.dp,
+                                border = if (isMaterial) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)) else null,
                             ) {
                                 DropdownMenuItem(
                                     leadingIcon = {
@@ -788,10 +788,19 @@ fun ExploreScreen(
                             .padding(horizontal = 16.dp, vertical = 6.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
+                        val searchBoxShape = RoundedCornerShape(if (isMaterial) 28.dp else 16.dp)
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .glassSurface(shape = RoundedCornerShape(16.dp)),
+                                .then(
+                                    if (isMaterial) {
+                                        Modifier
+                                            .clip(searchBoxShape)
+                                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                                    } else {
+                                        Modifier.glassSurface(shape = searchBoxShape)
+                                    },
+                                ),
                         ) {
                             OutlinedTextField(
                                 value = searchQuery,
@@ -830,7 +839,7 @@ fun ExploreScreen(
                                                         toggle = viewModel::toggleBookmark,
                                                     )
                                                 },
-                                                modifier = Modifier.pressScale(),
+                                                modifier = if (!isMaterial) Modifier.pressScale() else Modifier,
                                             ) {
                                                 Icon(
                                                     imageVector = if (isBookmarked) LatteIcons.LibraryAddCheck else LatteIcons.LibraryAdd,
@@ -847,14 +856,14 @@ fun ExploreScreen(
                                                         viewModel.clearSearch()
                                                     }
                                                 },
-                                                modifier = Modifier.pressScale(),
+                                                modifier = if (!isMaterial) Modifier.pressScale() else Modifier,
                                             ) {
                                                 Icon(Icons.Default.Close, contentDescription = "Clear")
                                             }
                                         }
                                     }
                                 },
-                                shape = RoundedCornerShape(16.dp),
+                                shape = searchBoxShape,
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedContainerColor = Color.Transparent,
                                     unfocusedContainerColor = Color.Transparent,
@@ -905,7 +914,7 @@ fun ExploreScreen(
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                                 modifier = Modifier
                                     .padding(start = 8.dp)
-                                    .pressScale(),
+                                    .then(if (!isMaterial) Modifier.pressScale() else Modifier),
                             ) {
                                 Text(if (followed) "Following" else "Follow")
                             }

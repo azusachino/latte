@@ -21,8 +21,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.azusachino.latte.ui.common.latteMediaControl
 import com.azusachino.latte.ui.theme.GlassDefaults
-import com.azusachino.latte.ui.theme.glassBackdrop
 import dev.chrisbanes.haze.HazeState
 
 internal fun detailPageIndicatorText(
@@ -56,11 +56,9 @@ fun DetailTopCapsule(
 
     Box(
         modifier = modifier
-            .glassBackdrop(
-                hazeState = hazeState,
-                backgroundColor = Color.Black,
+            .latteMediaControl(
                 shape = RoundedCornerShape(GlassDefaults.PillCornerRadius),
-                dark = true,
+                hazeState = hazeState,
             )
             .clickable(enabled = enabled, role = Role.Button, onClickLabel = "Show details", onClick = onClick)
             .sizeIn(minHeight = 48.dp)
@@ -110,11 +108,9 @@ fun TransientDetailPageIndicator(
     ) {
         Box(
             modifier = Modifier
-                .glassBackdrop(
-                    hazeState = hazeState,
-                    backgroundColor = Color.Black,
+                .latteMediaControl(
                     shape = RoundedCornerShape(GlassDefaults.PillCornerRadius),
-                    dark = true,
+                    hazeState = hazeState,
                 )
                 .padding(horizontal = 14.dp, vertical = 6.dp),
             contentAlignment = Alignment.Center,

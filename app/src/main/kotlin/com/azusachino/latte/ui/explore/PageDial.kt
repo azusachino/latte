@@ -37,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.border
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -50,8 +51,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.azusachino.latte.data.settings.UiStyle
 import com.azusachino.latte.ui.common.DialogBackdropBlur
 import com.azusachino.latte.ui.common.glassDialogColor
+import com.azusachino.latte.ui.theme.LocalUiStyle
 import com.azusachino.latte.ui.theme.glassPillSelection
 import com.azusachino.latte.ui.theme.glassSurface
 import com.azusachino.latte.ui.theme.pressScale
@@ -316,13 +319,25 @@ private fun DialKeyButton(
         primary -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
         else -> MaterialTheme.colorScheme.onSurface
     }
+    val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .width(76.dp)
             .aspectRatio(1.45f)
-            .pressScale(enabled = enabled)
-            .then(if (primary) Modifier.clip(shape).background(container, shape) else Modifier.glassSurface(shape = shape))
+            .then(if (!isMaterial) Modifier.pressScale(enabled = enabled) else Modifier)
+            .then(
+                if (primary) {
+                    Modifier.clip(shape).background(container, shape)
+                } else if (isMaterial) {
+                    Modifier
+                        .clip(shape)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh, shape)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), shape)
+                } else {
+                    Modifier.glassSurface(shape = shape)
+                },
+            )
             .clickable(enabled = enabled) { onClick() }
             .then(if (contentDescription != null) Modifier.semantics { this.contentDescription = contentDescription } else Modifier),
     ) {

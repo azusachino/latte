@@ -10,6 +10,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SmallFloatingActionButton
+import com.azusachino.latte.data.settings.UiStyle
+import com.azusachino.latte.ui.theme.LocalUiStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -98,23 +101,39 @@ fun SlideAwayHeader(
 }
 
 /**
- * Glass-styled back-to-top affordance: a translucent circle matching the
- * glass bars, instead of a solid Material floating action button.
+ * Back-to-top affordance:
+ * - Material 3: [SmallFloatingActionButton] using `surfaceContainerHigh` and native ripples.
+ * - Glass: translucent elevated glass circle matching floating glass chrome with spring press scale.
  */
 @Composable
 fun BackToTopButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .size(44.dp)
-            .glassSurface(shape = CircleShape, isElevated = true)
-            .pressScale()
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = Icons.Default.KeyboardArrowUp,
-            contentDescription = "Back to top",
-            tint = MaterialTheme.colorScheme.onSurface,
-        )
+    val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
+    if (isMaterial) {
+        SmallFloatingActionButton(
+            onClick = onClick,
+            modifier = modifier,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.primary,
+        ) {
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowUp,
+                contentDescription = "Back to top",
+            )
+        }
+    } else {
+        Box(
+            modifier = modifier
+                .size(44.dp)
+                .glassSurface(shape = CircleShape, isElevated = true)
+                .pressScale()
+                .clickable(onClick = onClick),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowUp,
+                contentDescription = "Back to top",
+                tint = MaterialTheme.colorScheme.onSurface,
+            )
+        }
     }
 }

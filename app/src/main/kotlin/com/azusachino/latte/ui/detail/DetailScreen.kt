@@ -851,45 +851,145 @@ fun DetailScreen(
         if (showWallpaperDialog && currentPost != null) {
             val targetPost = displayPost ?: currentPost
             val wallpaperUrl = targetPost.bestVariant.url
+            var selectedTemplate by remember { mutableStateOf(WallpaperTemplate.FILL_SCREEN) }
+
             GlassAlertDialog(
                 onDismissRequest = { showWallpaperDialog = false },
                 title = { Text("Set Wallpaper") },
                 text = {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         Text(
-                            text = "Set this image as wallpaper for:",
-                            style = MaterialTheme.typography.bodyMedium,
+                            text = "Framing & Ratio Template:",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary,
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        FilledTonalButton(
-                            onClick = {
-                                showWallpaperDialog = false
-                                applyWallpaper(context, wallpaperUrl, WallpaperManager.FLAG_SYSTEM, scope)
-                            },
+                        Row(
                             modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Text("Home Screen")
+                            WallpaperTemplate.entries.forEach { template ->
+                                val isSelected = template == selectedTemplate
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(
+                                            if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                                            else MaterialTheme.colorScheme.surfaceContainerHighest,
+                                        )
+                                        .border(
+                                            1.dp,
+                                            if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                            RoundedCornerShape(8.dp),
+                                        )
+                                        .clickable { selectedTemplate = template }
+                                        .padding(vertical = 8.dp, horizontal = 4.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        text = template.title,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
                         }
-                        FilledTonalButton(
-                            onClick = {
-                                showWallpaperDialog = false
-                                applyWallpaper(context, wallpaperUrl, WallpaperManager.FLAG_LOCK, scope)
-                            },
+                        Text(
+                            text = selectedTemplate.subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 2.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                        )
+
+                        Text(
+                            text = "Apply to:",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Row(
                             modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
-                            Text("Lock Screen")
+                            FilledTonalButton(
+                                onClick = {
+                                    showWallpaperDialog = false
+                                    WallpaperHelper.applyWallpaper(
+                                        context,
+                                        wallpaperUrl,
+                                        selectedTemplate,
+                                        WallpaperManager.FLAG_SYSTEM,
+                                        scope,
+                                    )
+                                },
+                                modifier = Modifier.weight(1f),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                            ) {
+                                Text("Home", style = MaterialTheme.typography.labelMedium)
+                            }
+                            FilledTonalButton(
+                                onClick = {
+                                    showWallpaperDialog = false
+                                    WallpaperHelper.applyWallpaper(
+                                        context,
+                                        wallpaperUrl,
+                                        selectedTemplate,
+                                        WallpaperManager.FLAG_LOCK,
+                                        scope,
+                                    )
+                                },
+                                modifier = Modifier.weight(1f),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                            ) {
+                                Text("Lock", style = MaterialTheme.typography.labelMedium)
+                            }
+                            FilledTonalButton(
+                                onClick = {
+                                    showWallpaperDialog = false
+                                    WallpaperHelper.applyWallpaper(
+                                        context,
+                                        wallpaperUrl,
+                                        selectedTemplate,
+                                        WallpaperManager.FLAG_SYSTEM or WallpaperManager.FLAG_LOCK,
+                                        scope,
+                                    )
+                                },
+                                modifier = Modifier.weight(1f),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                            ) {
+                                Text("Both", style = MaterialTheme.typography.labelMedium)
+                            }
                         }
-                        FilledTonalButton(
+
+                        Button(
                             onClick = {
                                 showWallpaperDialog = false
-                                applyWallpaper(context, wallpaperUrl, WallpaperManager.FLAG_SYSTEM or WallpaperManager.FLAG_LOCK, scope)
+                                WallpaperHelper.launchSystemCropper(context, wallpaperUrl, scope)
                             },
                             modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            ),
+                            contentPadding = PaddingValues(vertical = 8.dp),
                         ) {
-                            Text("Both Screens")
+                            Icon(
+                                imageVector = LatteIcons.Wallpaper,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Interactive Crop & Pan Tool", style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 },
@@ -899,34 +999,6 @@ fun DetailScreen(
                     }
                 },
             )
-        }
-    }
-}
-
-private fun applyWallpaper(
-    context: android.content.Context,
-    imageUrl: String,
-    whichFlags: Int,
-    scope: kotlinx.coroutines.CoroutineScope,
-) {
-    ToastManager.showInfo("Setting wallpaper...")
-    scope.launch(Dispatchers.IO) {
-        val request = ImageRequest.Builder(context)
-            .data(imageUrl)
-            .size(coil3.size.Size.ORIGINAL)
-            .build()
-        val result = context.imageLoader.execute(request)
-        if (result is coil3.request.SuccessResult) {
-            try {
-                val bitmap = result.image.toBitmap()
-                val wallpaperManager = WallpaperManager.getInstance(context)
-                wallpaperManager.setBitmap(bitmap, null, true, whichFlags)
-                ToastManager.showSuccess("Wallpaper updated")
-            } catch (e: Exception) {
-                ToastManager.showError("Failed to set wallpaper: ${e.message ?: "error"}")
-            }
-        } else {
-            ToastManager.showError("Failed to load image for wallpaper")
         }
     }
 }

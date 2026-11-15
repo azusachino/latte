@@ -2,6 +2,7 @@ package com.azusachino.latte.ui.explore
 
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -11,6 +12,9 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.dp
+import com.azusachino.latte.data.settings.UiStyle
+import com.azusachino.latte.ui.theme.LocalUiStyle
 import com.azusachino.latte.ui.theme.pressScale
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
@@ -60,24 +64,44 @@ internal fun FeedPagerBar(
         haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
         pager.onGoToPage(page)
     }
+    val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
+    val rowShape = RoundedCornerShape(if (isMaterial) 12.dp else 999.dp)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
-            .clip(RoundedCornerShape(999.dp))
-            .background(Color.Black.copy(alpha = 0.45f)),
+            .then(
+                if (isMaterial) {
+                    Modifier
+                        .clip(rowShape)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                        .border(
+                            1.dp,
+                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                            rowShape,
+                        )
+                } else {
+                    Modifier
+                        .clip(rowShape)
+                        .background(Color.Black.copy(alpha = 0.45f))
+                },
+            ),
     ) {
         IconButton(
             onClick = { turn(feed.page - 1) },
             enabled = idle && feed.page > 1,
-            modifier = Modifier.size(40.dp).pressScale(),
+            modifier = Modifier.size(40.dp).then(if (!isMaterial) Modifier.pressScale() else Modifier),
         ) {
-            Icon(LatteIcons.ChevronLeft, contentDescription = "Previous page", tint = Color.White)
+            Icon(
+                LatteIcons.ChevronLeft,
+                contentDescription = "Previous page",
+                tint = if (isMaterial) MaterialTheme.colorScheme.onSurface else Color.White,
+            )
         }
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .semantics { contentDescription = "Page ${feed.page}" }
-                .clip(RoundedCornerShape(999.dp))
+                .clip(rowShape)
                 .then(
                     if (maxPage != null && idle) {
                         Modifier.clickable(onClickLabel = "Go to page") { showJump = true }
@@ -101,16 +125,20 @@ internal fun FeedPagerBar(
                     text = "$page",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Medium,
-                    color = Color.White,
+                    color = if (isMaterial) MaterialTheme.colorScheme.onSurface else Color.White,
                 )
             }
         }
         IconButton(
             onClick = { turn(feed.page + 1) },
             enabled = idle && feed.hasMore,
-            modifier = Modifier.size(40.dp).pressScale(),
+            modifier = Modifier.size(40.dp).then(if (!isMaterial) Modifier.pressScale() else Modifier),
         ) {
-            Icon(LatteIcons.ChevronRight, contentDescription = "Next page", tint = Color.White)
+            Icon(
+                LatteIcons.ChevronRight,
+                contentDescription = "Next page",
+                tint = if (isMaterial) MaterialTheme.colorScheme.onSurface else Color.White,
+            )
         }
     }
 

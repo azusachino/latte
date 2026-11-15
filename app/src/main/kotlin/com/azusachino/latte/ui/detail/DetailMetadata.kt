@@ -87,6 +87,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
 import com.azusachino.latte.data.settings.UiStyle
+import com.azusachino.latte.ui.common.LatteGroupCard
 import com.azusachino.latte.ui.theme.GlassDefaults
 import com.azusachino.latte.ui.theme.LocalUiStyle
 import com.azusachino.latte.ui.theme.glassBackdrop
@@ -127,13 +128,8 @@ internal fun MetadataTable(
     onSourceClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .glassSurface(
-                shape = RoundedCornerShape(GlassDefaults.CardCornerRadius),
-                isElevated = true,
-            ),
+    LatteGroupCard(
+        modifier = modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
                     // Author

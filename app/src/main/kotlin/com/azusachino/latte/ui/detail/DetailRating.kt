@@ -87,6 +87,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
+import com.azusachino.latte.ui.common.LatteGroupCard
 import com.azusachino.latte.ui.theme.GlassDefaults
 import com.azusachino.latte.ui.theme.glassBackdrop
 import com.azusachino.latte.ui.theme.glassSurface
@@ -126,13 +127,8 @@ internal fun PersonalRatingSection(
     onLoginRequest: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .glassSurface(
-                shape = RoundedCornerShape(GlassDefaults.CardCornerRadius),
-                isElevated = true,
-            ),
+    LatteGroupCard(
+        modifier = modifier.fillMaxWidth(),
     ) {
         Row(
             modifier = Modifier

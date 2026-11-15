@@ -1,6 +1,7 @@
 package com.azusachino.latte.ui.common
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -122,8 +123,23 @@ fun GlassPillChip(
     }
 }
 
-/** A rounded glass card for list rows. */
+/** A rounded card for list rows: surfaceContainer in M3, elevated glassSurface in Glass. */
 @Composable
-fun Modifier.glassCard(): Modifier = this
-    .pressScale()
-    .glassSurface(shape = RoundedCornerShape(GlassDefaults.CardCornerRadius))
+fun Modifier.glassCard(): Modifier {
+    val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
+    val cardShape = RoundedCornerShape(if (isMaterial) 12.dp else GlassDefaults.CardCornerRadius)
+    return if (isMaterial) {
+        this
+            .clip(cardShape)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .border(
+                1.dp,
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                cardShape,
+            )
+    } else {
+        this
+            .pressScale()
+            .glassSurface(shape = cardShape)
+    }
+}
