@@ -66,6 +66,35 @@ class LatteAppNavigationTest {
     }
 
     @Test
+    fun returningFromDetailOpenedFromRootFeedRestoresCleanFeed() {
+        var feedRestored = false
+        val rootDetail = Screen.Detail(
+            posts = listOf(samplePost(1)),
+            initialIndex = 0,
+            parentSearchTags = null,
+            parentAuthorId = null,
+        )
+        val tagSearch = Screen.TagSearch(query = "tag")
+
+        var stack = ScreenStack()
+            .push(rootDetail)
+            .push(tagSearch)
+
+        // 1. Pop TagSearch -> calls callback on rootDetail
+        stack = stack.popAndRestoreDetailFeed { target ->
+            if (target.parentSearchTags == null && target.parentAuthorId == null) {
+                feedRestored = true
+            }
+        }
+        assertTrue(feedRestored)
+        assertEquals(rootDetail, stack.current)
+
+        // 2. Pop Detail -> returns to Screen.Explore
+        stack = stack.pop()
+        assertEquals(Screen.Explore, stack.current)
+    }
+
+    @Test
     fun tagSearchBackAndForwardKeepsTheOriginalDetailFeedAndPage() {
         val originalPosts = listOf(samplePost(1), samplePost(2), samplePost(3))
         val firstTagResults = listOf(samplePost(90), samplePost(91))

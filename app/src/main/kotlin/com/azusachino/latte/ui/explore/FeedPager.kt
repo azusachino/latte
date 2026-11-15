@@ -2,6 +2,7 @@ package com.azusachino.latte.ui.explore
 
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -11,6 +12,10 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.dp
+import com.azusachino.latte.data.settings.UiStyle
+import com.azusachino.latte.ui.theme.LocalUiStyle
+import com.azusachino.latte.ui.theme.glassSurface
 import com.azusachino.latte.ui.theme.pressScale
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
@@ -60,24 +65,44 @@ internal fun FeedPagerBar(
         haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
         pager.onGoToPage(page)
     }
+    val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
+    val rowShape = RoundedCornerShape(percent = 50)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
-            .clip(RoundedCornerShape(999.dp))
-            .background(Color.Black.copy(alpha = 0.45f)),
+            .then(
+                if (isMaterial) {
+                    Modifier
+                        .clip(rowShape)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.90f))
+                        .border(
+                            1.dp,
+                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                            rowShape,
+                        )
+                } else {
+                    Modifier
+                        .clip(rowShape)
+                        .glassSurface(shape = rowShape, isElevated = true)
+                },
+            ),
     ) {
         IconButton(
             onClick = { turn(feed.page - 1) },
             enabled = idle && feed.page > 1,
-            modifier = Modifier.size(40.dp).pressScale(),
+            modifier = Modifier.size(40.dp).then(if (!isMaterial) Modifier.pressScale() else Modifier),
         ) {
-            Icon(LatteIcons.ChevronLeft, contentDescription = "Previous page", tint = Color.White)
+            Icon(
+                LatteIcons.ChevronLeft,
+                contentDescription = "Previous page",
+                tint = if (idle && feed.page > 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+            )
         }
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .semantics { contentDescription = "Page ${feed.page}" }
-                .clip(RoundedCornerShape(999.dp))
+                .clip(rowShape)
                 .then(
                     if (maxPage != null && idle) {
                         Modifier.clickable(onClickLabel = "Go to page") { showJump = true }
@@ -100,17 +125,21 @@ internal fun FeedPagerBar(
                 Text(
                     text = "$page",
                     style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
                 )
             }
         }
         IconButton(
             onClick = { turn(feed.page + 1) },
             enabled = idle && feed.hasMore,
-            modifier = Modifier.size(40.dp).pressScale(),
+            modifier = Modifier.size(40.dp).then(if (!isMaterial) Modifier.pressScale() else Modifier),
         ) {
-            Icon(LatteIcons.ChevronRight, contentDescription = "Next page", tint = Color.White)
+            Icon(
+                LatteIcons.ChevronRight,
+                contentDescription = "Next page",
+                tint = if (idle && feed.hasMore) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+            )
         }
     }
 

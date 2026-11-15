@@ -66,7 +66,11 @@ fun DetailTopBar(
                 if (isMaterial) {
                     Modifier.background(
                         Brush.verticalGradient(
-                            listOf(Color.Black.copy(alpha = 0.7f), Color.Black.copy(alpha = 0.25f), Color.Transparent),
+                            listOf(
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.45f),
+                                Color.Transparent,
+                            ),
                         ),
                     )
                 } else {
@@ -95,7 +99,7 @@ fun DetailTopBar(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.onSurface,
                 )
             }
         }
@@ -125,7 +129,7 @@ fun DetailTopBar(
             ) {
                 Text(
                     text = centerTitle,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 13.sp,
                     maxLines = 1,
@@ -134,7 +138,8 @@ fun DetailTopBar(
                 if (pageIndicatorText.isNotBlank()) {
                     Text(
                         text = pageIndicatorText,
-                        color = Color.White.copy(alpha = 0.75f),
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium,
                         fontSize = 11.sp,
                         maxLines = 1,
                     )
@@ -167,7 +172,7 @@ fun DetailTopBar(
                         Icon(
                             imageVector = LatteIcons.OpenInBrowser,
                             contentDescription = "Open in browser",
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.onSurface,
                         )
                     }
                 }
@@ -194,7 +199,7 @@ fun DetailTopBar(
                         Icon(
                             imageVector = Icons.Default.Share,
                             contentDescription = "Share",
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.onSurface,
                         )
                     }
                 }

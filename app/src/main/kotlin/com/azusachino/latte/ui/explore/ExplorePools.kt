@@ -137,6 +137,7 @@ import com.azusachino.latte.data.model.PoolSummary
 import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.model.forPage
 import com.azusachino.latte.plugin.PluginFeedKind
+import com.azusachino.latte.data.settings.UiStyle
 import com.azusachino.latte.plugin.PluginFeedPeriod
 import com.azusachino.latte.plugin.PlatformCapability
 import com.azusachino.latte.plugin.PlatformId
@@ -144,6 +145,7 @@ import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.ui.common.ToastManager
 import com.azusachino.latte.ui.common.ToastType
 import com.azusachino.latte.ui.theme.GlassDefaults
+import com.azusachino.latte.ui.theme.LocalUiStyle
 import com.azusachino.latte.ui.theme.glassBackdrop
 import com.azusachino.latte.ui.theme.glassPillSelection
 import com.azusachino.latte.ui.theme.glassSurface
@@ -296,14 +298,29 @@ internal fun PoolListItem(
         if (coverUrl == null) onNeedCover()
     }
 
-    val poolShape = RoundedCornerShape(GlassDefaults.CardCornerRadius)
+    val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
+    val poolShape = RoundedCornerShape(if (isMaterial) 12.dp else GlassDefaults.CardCornerRadius)
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .pressScale()
-            .glassSurface(shape = poolShape)
-            .clip(poolShape)
+            .then(
+                if (isMaterial) {
+                    Modifier
+                        .clip(poolShape)
+                        .background(MaterialTheme.colorScheme.surfaceContainer)
+                        .border(
+                            1.dp,
+                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                            poolShape,
+                        )
+                } else {
+                    Modifier
+                        .pressScale()
+                        .glassSurface(shape = poolShape)
+                        .clip(poolShape)
+                },
+            )
             .clickable(onClick = onClick)
             .padding(12.dp),
     ) {

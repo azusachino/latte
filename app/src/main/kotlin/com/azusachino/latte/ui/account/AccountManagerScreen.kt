@@ -40,6 +40,8 @@ import androidx.compose.ui.unit.sp
 import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.plugin.SitePluginManager
 import com.azusachino.latte.ui.common.GlassTopBar
+import com.azusachino.latte.ui.common.LatteGroupCard
+import com.azusachino.latte.ui.common.LatteSectionHeader
 import com.azusachino.latte.ui.common.ToastManager
 import com.azusachino.latte.ui.theme.glassSurface
 import com.azusachino.latte.ui.theme.pressScale
@@ -69,22 +71,12 @@ fun AccountManagerScreen(
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState()),
         ) {
-            Text(
-                text = "PLATFORM CONNECTIONS",
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 0.5.sp,
-                ),
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 8.dp),
-            )
+            LatteSectionHeader(title = "Platform Connections")
 
-            // Apple-style inset grouped glass card
-            Column(
+            LatteGroupCard(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .glassSurface(shape = RoundedCornerShape(16.dp), isElevated = true),
+                    .padding(horizontal = 16.dp),
             ) {
                 pluginManager.plugins.forEachIndexed { index, plugin ->
                     val isLoggedIn by plugin.isLoggedInFlow.collectAsStateWithLifecycle(initialValue = plugin.isLoggedIn)
@@ -112,18 +104,14 @@ fun AccountManagerScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Security Note: Render using glassSurface(shape = RoundedCornerShape(16.dp)) with subtle rim border
-            Box(
+            // Security Note: Render using LatteGroupCard
+            LatteGroupCard(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .glassSurface(
-                        shape = RoundedCornerShape(16.dp),
-                        isElevated = false,
-                    )
-                    .padding(16.dp),
+                    .padding(horizontal = 16.dp),
             ) {
-                Row(verticalAlignment = Alignment.Top) {
+                Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.Top) {
                     Icon(
                         imageVector = Icons.Default.Lock,
                         contentDescription = null,
@@ -150,6 +138,7 @@ fun AccountManagerScreen(
                     }
                 }
             }
+        }
 
             Spacer(modifier = Modifier.height(32.dp))
         }

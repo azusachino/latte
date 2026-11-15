@@ -58,6 +58,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.graphics.luminance
+import com.azusachino.latte.data.settings.UiStyle
+import com.azusachino.latte.ui.theme.GlassDefaults
+import com.azusachino.latte.ui.theme.LocalUiStyle
 import androidx.compose.ui.unit.dp
 import com.azusachino.latte.ui.theme.glassBackdrop
 import dev.chrisbanes.haze.HazeState
@@ -381,16 +385,17 @@ private fun ToastBulletin(
     val dismissUpPx = with(density) { 40.dp.toPx() }
     val dismissSidePx = with(density) { 96.dp.toPx() }
 
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+
     Box(
         modifier = Modifier
             .widthIn(min = 160.dp)
             .offset { IntOffset(animatedDragX.roundToInt(), animatedDragY.roundToInt()) }
             .glassBackdrop(
                 hazeState = hazeState,
-                backgroundColor = MaterialTheme.colorScheme.background,
+                backgroundColor = MaterialTheme.colorScheme.surface,
                 shape = RoundedCornerShape(percent = 50),
-                dark = true,
-                tint = IslandTint,
+                tint = if (isDark) IslandTint else GlassDefaults.LightSurfaceElevated,
             )
             .pointerInput(toast.id) {
                 detectDragGestures(
@@ -469,10 +474,12 @@ private fun ToastContent(
             )
         }
         Spacer(modifier = Modifier.width(10.dp))
+        val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
+        val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
         Text(
             text = toast.message,
             modifier = Modifier.weight(1f, fill = false),
-            color = Color.White,
+            color = if (isMaterial) MaterialTheme.colorScheme.onSurface else if (isDark) Color.White else MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
             maxLines = 2,

@@ -4,7 +4,9 @@ import android.app.Activity
 import android.app.WallpaperManager
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -51,6 +53,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import com.azusachino.latte.ui.common.LatteIcons
+import com.azusachino.latte.ui.common.LatteActionButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -275,10 +278,19 @@ fun DetailScreen(
         }
     }
 
+    val screenVisibility = com.azusachino.latte.ui.common.LocalScreenVisibilityScope.current
+    val isTransitioningAway = screenVisibility?.transition?.targetState == EnterExitState.PostExit
+    val effectiveShowControls = showControls && !isTransitioningAway
+
+    BackHandler(enabled = true) {
+        showControls = false
+        onBack()
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black),
+            .background(MaterialTheme.colorScheme.surface),
     ) {
         // Horizontal Pager for browsing posts
         HorizontalPager(
@@ -327,9 +339,9 @@ fun DetailScreen(
 
         // Top Controls Overlay
         AnimatedVisibility(
-            visible = showControls,
+            visible = effectiveShowControls,
             enter = fadeIn(animationSpec = tween(200)),
-            exit = fadeOut(animationSpec = tween(200)),
+            exit = fadeOut(animationSpec = tween(120)),
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .renderAboveSharedImage(zIndex = 1f),
@@ -339,7 +351,10 @@ fun DetailScreen(
                 postUrl = currentPost?.let { currentPlugin?.postUrl(it) ?: it.canonicalUrl ?: it.source },
                 pageIndicatorText = pageIndicatorText,
                 hazeState = hazeState,
-                onBack = onBack,
+                onBack = {
+                    showControls = false
+                    onBack()
+                },
                 onDetails = { showInspectSheet = true },
             )
         }
@@ -347,7 +362,7 @@ fun DetailScreen(
         // Transient Page Indicator when controls are hidden
         TransientDetailPageIndicator(
             text = pageIndicatorText,
-            visible = !showControls && showTransientPageIndicator,
+            visible = !effectiveShowControls && !isTransitioningAway && showTransientPageIndicator,
             hazeState = hazeState,
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -356,9 +371,9 @@ fun DetailScreen(
 
         // Bottom Controls Overlay
         AnimatedVisibility(
-            visible = showControls,
+            visible = effectiveShowControls,
             enter = fadeIn(animationSpec = tween(200)),
-            exit = fadeOut(animationSpec = tween(200)),
+            exit = fadeOut(animationSpec = tween(120)),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .renderAboveSharedImage(zIndex = 1f),
@@ -371,7 +386,11 @@ fun DetailScreen(
                         if (isMaterial) {
                             Modifier.background(
                                 Brush.verticalGradient(
-                                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.45f), Color.Black.copy(alpha = 0.85f)),
+                                    listOf(
+                                        Color.Transparent,
+                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.50f),
+                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.90f),
+                                    ),
                                 ),
                             )
                         } else {
@@ -389,12 +408,13 @@ fun DetailScreen(
                     Box(
                         modifier = Modifier
                             .padding(bottom = 10.dp)
-                            .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = RoundedCornerShape(12.dp), dark = true)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.errorContainer)
                             .padding(horizontal = 14.dp, vertical = 6.dp),
                     ) {
                         Text(
                             text = message,
-                            color = MaterialTheme.colorScheme.error,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
                             style = MaterialTheme.typography.labelMedium,
                         )
                     }
@@ -404,7 +424,7 @@ fun DetailScreen(
                     Box(
                         modifier = Modifier
                             .padding(bottom = 12.dp)
-                            .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = RoundedCornerShape(GlassDefaults.PillCornerRadius), dark = true)
+                            .latteMediaControl(shape = RoundedCornerShape(GlassDefaults.PillCornerRadius), hazeState = hazeState)
                             .padding(horizontal = 6.dp, vertical = 2.dp),
                     ) {
                         Row(
@@ -425,15 +445,15 @@ fun DetailScreen(
                                 Icon(
                                     imageVector = LatteIcons.ChevronLeft,
                                     contentDescription = "Previous illustration page",
-                                    tint = if (pixivPageIndex > 0) Color.White else Color.White.copy(alpha = 0.35f),
+                                    tint = if (pixivPageIndex > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.38f),
                                     modifier = Modifier.size(20.dp),
                                 )
                             }
                             Text(
                                 text = "Page ${pixivPageIndex + 1} of ${currentPost.pageCount}",
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.primary,
                                 style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Medium,
+                                fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.padding(horizontal = 8.dp),
                             )
                             IconButton(
@@ -450,7 +470,7 @@ fun DetailScreen(
                                 Icon(
                                     imageVector = LatteIcons.ChevronRight,
                                     contentDescription = "Next illustration page",
-                                    tint = if (pixivPageIndex < currentPost.pageCount - 1) Color.White else Color.White.copy(alpha = 0.35f),
+                                    tint = if (pixivPageIndex < currentPost.pageCount - 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.38f),
                                     modifier = Modifier.size(20.dp),
                                 )
                             }
@@ -510,7 +530,7 @@ fun DetailScreen(
                             Icon(
                                 imageVector = Icons.Default.Info,
                                 contentDescription = "Details",
-                                tint = Color.White,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp),
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -518,7 +538,7 @@ fun DetailScreen(
                                 text = if (displayPost != null) "${displayPost.width}×${displayPost.height}" else "Details",
                                 fontWeight = FontWeight.Medium,
                                 fontSize = 13.sp,
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onSurface,
                             )
                         }
                     }
@@ -542,18 +562,12 @@ fun DetailScreen(
                             } else {
                                 favoriteOverrides[post.id] ?: (currentScore == 3)
                             }
+                            val isFavoritedColor = MaterialTheme.colorScheme.error
 
                             Box(
                                 modifier = Modifier
                                     .size(44.dp)
-                                    .latteMediaControl(shape = CircleShape, hazeState = hazeState)
-                                    .then(
-                                        if (isFavorited) {
-                                            Modifier.background(Color(0xFFE53935).copy(alpha = 0.35f), CircleShape)
-                                        } else {
-                                            Modifier
-                                        }
-                                    ),
+                                    .latteMediaControl(shape = CircleShape, hazeState = hazeState),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 IconButton(
@@ -605,7 +619,7 @@ fun DetailScreen(
                                     Icon(
                                         imageVector = if (isFavorited) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                                         contentDescription = if (isFavorited) "Remove from favorites" else "Add to favorites",
-                                        tint = if (isFavorited) Color(0xFFE53935) else Color.White,
+                                        tint = if (isFavorited) isFavoritedColor else MaterialTheme.colorScheme.primary,
                                         modifier = Modifier
                                             .size(22.dp)
                                             .graphicsLayer {
@@ -640,29 +654,28 @@ fun DetailScreen(
                                 }
                             }
                         }
-                        // Save button: 44dp height matching Details and Favorite
                         val saveShape = RoundedCornerShape(16.dp)
                         Box(
                             modifier = Modifier
                                 .height(44.dp)
                                 .latteMediaControl(shape = saveShape, hazeState = hazeState)
                                 .clickable(onClick = onSaveClick)
-                                .padding(horizontal = 20.dp),
+                                .padding(horizontal = 18.dp),
                             contentAlignment = Alignment.Center,
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
                                     imageVector = LatteIcons.Download,
                                     contentDescription = null,
-                                    tint = Color.White,
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(18.dp),
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "Save",
-                                    color = Color.White,
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 13.sp,
                                 )
                             }
                         }
@@ -694,39 +707,25 @@ fun DetailScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            FilledTonalButton(
+                            LatteActionButton(
                                 onClick = { showWallpaperDialog = true },
-                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                            ) {
-                                Icon(
-                                    imageVector = LatteIcons.Wallpaper,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Wallpaper")
-                            }
+                                icon = LatteIcons.Wallpaper,
+                                label = "Wallpaper",
+                            )
 
                             val sharePostUrl = currentPlugin?.postUrl(currentPost)
                                 ?: currentPost.canonicalUrl
                                 ?: currentPost.source
                             if (!sharePostUrl.isNullOrBlank()) {
-                                FilledTonalButton(
+                                LatteActionButton(
                                     onClick = {
                                         val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
                                         clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("Post Link", sharePostUrl))
                                         ToastManager.showSuccess("Link copied")
                                     },
-                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                                ) {
-                                    Icon(
-                                        imageVector = LatteIcons.ContentCopy,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Copy Link")
-                                }
+                                    icon = LatteIcons.ContentCopy,
+                                    label = "Copy Link",
+                                )
                             }
                         }
 
@@ -851,45 +850,145 @@ fun DetailScreen(
         if (showWallpaperDialog && currentPost != null) {
             val targetPost = displayPost ?: currentPost
             val wallpaperUrl = targetPost.bestVariant.url
+            var selectedTemplate by remember { mutableStateOf(WallpaperTemplate.FILL_SCREEN) }
+
             GlassAlertDialog(
                 onDismissRequest = { showWallpaperDialog = false },
                 title = { Text("Set Wallpaper") },
                 text = {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         Text(
-                            text = "Set this image as wallpaper for:",
-                            style = MaterialTheme.typography.bodyMedium,
+                            text = "Framing & Ratio Template:",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary,
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        FilledTonalButton(
-                            onClick = {
-                                showWallpaperDialog = false
-                                applyWallpaper(context, wallpaperUrl, WallpaperManager.FLAG_SYSTEM, scope)
-                            },
+                        Row(
                             modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Text("Home Screen")
+                            WallpaperTemplate.entries.forEach { template ->
+                                val isSelected = template == selectedTemplate
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(
+                                            if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                                            else MaterialTheme.colorScheme.surfaceContainerHighest,
+                                        )
+                                        .border(
+                                            1.dp,
+                                            if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                            RoundedCornerShape(8.dp),
+                                        )
+                                        .clickable { selectedTemplate = template }
+                                        .padding(vertical = 8.dp, horizontal = 4.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        text = template.title,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
                         }
-                        FilledTonalButton(
-                            onClick = {
-                                showWallpaperDialog = false
-                                applyWallpaper(context, wallpaperUrl, WallpaperManager.FLAG_LOCK, scope)
-                            },
+                        Text(
+                            text = selectedTemplate.subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 2.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                        )
+
+                        Text(
+                            text = "Apply to:",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Row(
                             modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
-                            Text("Lock Screen")
+                            FilledTonalButton(
+                                onClick = {
+                                    showWallpaperDialog = false
+                                    WallpaperHelper.applyWallpaper(
+                                        context,
+                                        wallpaperUrl,
+                                        selectedTemplate,
+                                        WallpaperManager.FLAG_SYSTEM,
+                                        scope,
+                                    )
+                                },
+                                modifier = Modifier.weight(1f),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                            ) {
+                                Text("Home", style = MaterialTheme.typography.labelMedium)
+                            }
+                            FilledTonalButton(
+                                onClick = {
+                                    showWallpaperDialog = false
+                                    WallpaperHelper.applyWallpaper(
+                                        context,
+                                        wallpaperUrl,
+                                        selectedTemplate,
+                                        WallpaperManager.FLAG_LOCK,
+                                        scope,
+                                    )
+                                },
+                                modifier = Modifier.weight(1f),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                            ) {
+                                Text("Lock", style = MaterialTheme.typography.labelMedium)
+                            }
+                            FilledTonalButton(
+                                onClick = {
+                                    showWallpaperDialog = false
+                                    WallpaperHelper.applyWallpaper(
+                                        context,
+                                        wallpaperUrl,
+                                        selectedTemplate,
+                                        WallpaperManager.FLAG_SYSTEM or WallpaperManager.FLAG_LOCK,
+                                        scope,
+                                    )
+                                },
+                                modifier = Modifier.weight(1f),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                            ) {
+                                Text("Both", style = MaterialTheme.typography.labelMedium)
+                            }
                         }
-                        FilledTonalButton(
+
+                        Button(
                             onClick = {
                                 showWallpaperDialog = false
-                                applyWallpaper(context, wallpaperUrl, WallpaperManager.FLAG_SYSTEM or WallpaperManager.FLAG_LOCK, scope)
+                                WallpaperHelper.launchSystemCropper(context, wallpaperUrl, scope)
                             },
                             modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            ),
+                            contentPadding = PaddingValues(vertical = 8.dp),
                         ) {
-                            Text("Both Screens")
+                            Icon(
+                                imageVector = LatteIcons.Wallpaper,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Interactive Crop & Pan Tool", style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 },
@@ -899,34 +998,6 @@ fun DetailScreen(
                     }
                 },
             )
-        }
-    }
-}
-
-private fun applyWallpaper(
-    context: android.content.Context,
-    imageUrl: String,
-    whichFlags: Int,
-    scope: kotlinx.coroutines.CoroutineScope,
-) {
-    ToastManager.showInfo("Setting wallpaper...")
-    scope.launch(Dispatchers.IO) {
-        val request = ImageRequest.Builder(context)
-            .data(imageUrl)
-            .size(coil3.size.Size.ORIGINAL)
-            .build()
-        val result = context.imageLoader.execute(request)
-        if (result is coil3.request.SuccessResult) {
-            try {
-                val bitmap = result.image.toBitmap()
-                val wallpaperManager = WallpaperManager.getInstance(context)
-                wallpaperManager.setBitmap(bitmap, null, true, whichFlags)
-                ToastManager.showSuccess("Wallpaper updated")
-            } catch (e: Exception) {
-                ToastManager.showError("Failed to set wallpaper: ${e.message ?: "error"}")
-            }
-        } else {
-            ToastManager.showError("Failed to load image for wallpaper")
         }
     }
 }

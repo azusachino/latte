@@ -105,13 +105,14 @@ fun AccountPreferenceWidget(
 
         // Status Badge
         if (isLoggedIn) {
+            val statusColor = MaterialTheme.colorScheme.primary
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(GlassDefaults.PillCornerRadius))
-                    .background(Color(0xFF4CAF50).copy(alpha = 0.12f))
+                    .background(statusColor.copy(alpha = 0.12f))
                     .border(
                         width = 1.dp,
-                        color = Color(0xFF4CAF50).copy(alpha = 0.35f),
+                        color = statusColor.copy(alpha = 0.35f),
                         shape = RoundedCornerShape(GlassDefaults.PillCornerRadius),
                     )
                     .padding(horizontal = 10.dp, vertical = 5.dp),
@@ -125,12 +126,12 @@ fun AccountPreferenceWidget(
                         modifier = Modifier
                             .size(7.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF4CAF50)),
+                            .background(statusColor),
                     )
                     Text(
                         text = "Connected",
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                        color = Color(0xFF4CAF50),
+                        color = statusColor,
                     )
                 }
             }

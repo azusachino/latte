@@ -560,15 +560,31 @@ internal fun FeedGrid(
                     .align(Alignment.BottomStart)
                     .padding(start = 16.dp, bottom = 16.dp),
             ) {
+                val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
+                val badgeShape = RoundedCornerShape(percent = 50)
                 Text(
                     text = "Page $feedPageCursor",
                     style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
-                        .clip(RoundedCornerShape(999.dp))
-                        .background(Color.Black.copy(alpha = 0.32f))
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                        .then(
+                            if (isMaterial) {
+                                Modifier
+                                    .clip(badgeShape)
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.90f))
+                                    .border(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                        badgeShape,
+                                    )
+                            } else {
+                                Modifier
+                                    .clip(badgeShape)
+                                    .glassSurface(shape = badgeShape, isElevated = true)
+                            },
+                        )
+                        .padding(horizontal = 14.dp, vertical = 6.dp),
                 )
             }
         }
@@ -875,11 +891,11 @@ internal fun PostGridItem(
                         }
                         .clip(CircleShape)
                         .background(
-                            if (isSelected) MaterialTheme.colorScheme.primary else Color.Black.copy(alpha = 0.35f),
+                            if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.70f),
                         )
                         .border(
                             1.5.dp,
-                            if (isSelected) Color.White.copy(alpha = 0.9f) else Color.White,
+                            if (isSelected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f) else MaterialTheme.colorScheme.outline,
                             CircleShape,
                         ),
                     contentAlignment = Alignment.Center,

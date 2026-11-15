@@ -3,6 +3,8 @@ package com.azusachino.latte.ui.common
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -270,6 +272,57 @@ fun LatteSectionHeader(title: String, modifier: Modifier = Modifier) {
 }
 
 /**
+ * Action pill button for quick actions (e.g. Wallpaper, Copy Link) in sheets and headers.
+ *
+ * Material 3: subtle pill with surfaceContainerHigh container, outlineVariant border, and ripple.
+ * Glass: elevated glass capsule with press spring scale and specular rim.
+ */
+@Composable
+fun LatteActionButton(
+    onClick: () -> Unit,
+    icon: ImageVector,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
+    val shape = RoundedCornerShape(percent = 50)
+    Row(
+        modifier = modifier
+            .then(
+                if (isMaterial) {
+                    Modifier
+                        .clip(shape)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), shape)
+                        .clickable(onClick = onClick)
+                } else {
+                    Modifier
+                        .pressScale()
+                        .glassSurface(shape = shape, isElevated = true)
+                        .clickable(onClick = onClick)
+                },
+            )
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(16.dp),
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    }
+}
+
+/**
  * Screen top bar. Material 3: flat edge-to-edge `surfaceContainer` with a hairline divider and
  * loose icon buttons. Glass: rounded-bottom elevated glass with a specular rim.
  *
@@ -288,8 +341,8 @@ fun LatteTopBar(
 /**
  * Surface styling for floating media viewer controls (Back, Title, Actions, Details, Favorite, Save).
  *
- * In Material 3: a clean 50% black scrim with no border and native ripple (following Kazumi / M3 media viewers).
- * In Glass: frosted backdrop blur with specular gradient rim and press spring scale.
+ * In Material 3: elevated surface container matching the chosen palette with outlineVariant border.
+ * In Glass: theme-adaptive frosted backdrop blur with specular gradient rim and press spring scale.
  */
 @Composable
 fun Modifier.latteMediaControl(
@@ -300,15 +353,20 @@ fun Modifier.latteMediaControl(
     return if (isMaterial) {
         this
             .clip(shape)
-            .background(Color.Black.copy(alpha = 0.5f), shape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.88f), shape)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), shape)
     } else {
         if (hazeState != null) {
             this
-                .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = shape, dark = true)
+                .glassBackdrop(
+                    hazeState,
+                    backgroundColor = MaterialTheme.colorScheme.surface,
+                    shape = shape,
+                )
                 .pressScale()
         } else {
             this
-                .glassSurface(shape = shape, isElevated = true, dark = true)
+                .glassSurface(shape = shape, isElevated = true)
                 .pressScale()
         }
     }

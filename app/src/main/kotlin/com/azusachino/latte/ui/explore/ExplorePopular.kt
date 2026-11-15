@@ -137,12 +137,14 @@ import com.azusachino.latte.data.model.Post
 import com.azusachino.latte.data.model.forPage
 import com.azusachino.latte.plugin.PluginFeedKind
 import com.azusachino.latte.plugin.PluginFeedPeriod
+import com.azusachino.latte.data.settings.UiStyle
 import com.azusachino.latte.plugin.PlatformCapability
 import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.ui.common.ToastManager
 import com.azusachino.latte.ui.common.ToastType
 import com.azusachino.latte.ui.theme.GlassDefaults
+import com.azusachino.latte.ui.theme.LocalUiStyle
 import com.azusachino.latte.ui.theme.glassBackdrop
 import com.azusachino.latte.ui.theme.glassPillSelection
 import com.azusachino.latte.ui.theme.glassSurface
@@ -216,6 +218,7 @@ internal fun PopularControls(
         }
 
         // Date range navigation: [<] [📅 Date / Range] [>]
+        val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -224,9 +227,23 @@ internal fun PopularControls(
             Box(
                 modifier = Modifier
                     .size(38.dp)
-                    .pressScale()
-                    .glassSurface(shape = CircleShape)
-                    .clip(CircleShape)
+                    .then(
+                        if (isMaterial) {
+                            Modifier
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                                .border(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                    CircleShape,
+                                )
+                        } else {
+                            Modifier
+                                .pressScale()
+                                .glassSurface(shape = CircleShape)
+                                .clip(CircleShape)
+                        },
+                    )
                     .clickable { onShiftDate(-1) },
                 contentAlignment = Alignment.Center,
             ) {
@@ -238,14 +255,29 @@ internal fun PopularControls(
                 )
             }
 
+            val pillShape = RoundedCornerShape(if (isMaterial) 12.dp else GlassDefaults.PillCornerRadius)
             Box(
                 modifier = Modifier
-                    .pressScale()
-                    .glassSurface(
-                        shape = RoundedCornerShape(GlassDefaults.PillCornerRadius),
-                        isElevated = true,
+                    .then(
+                        if (isMaterial) {
+                            Modifier
+                                .clip(pillShape)
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                                .border(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                    pillShape,
+                                )
+                        } else {
+                            Modifier
+                                .pressScale()
+                                .glassSurface(
+                                    shape = pillShape,
+                                    isElevated = true,
+                                )
+                                .clip(pillShape)
+                        },
                     )
-                    .clip(RoundedCornerShape(GlassDefaults.PillCornerRadius))
                     .clickable { showDatePicker = true }
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 contentAlignment = Alignment.Center,
@@ -274,9 +306,26 @@ internal fun PopularControls(
             Box(
                 modifier = Modifier
                     .size(38.dp)
-                    .pressScale(enabled = canShiftForward)
-                    .glassSurface(shape = CircleShape)
-                    .clip(CircleShape)
+                    .then(
+                        if (isMaterial) {
+                            Modifier
+                                .clip(CircleShape)
+                                .background(
+                                    if (canShiftForward) MaterialTheme.colorScheme.surfaceContainerHigh
+                                    else MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.38f),
+                                )
+                                .border(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (canShiftForward) 0.5f else 0.2f),
+                                    CircleShape,
+                                )
+                        } else {
+                            Modifier
+                                .pressScale(enabled = canShiftForward)
+                                .glassSurface(shape = CircleShape)
+                                .clip(CircleShape)
+                        },
+                    )
                     .clickable(enabled = canShiftForward) { onShiftDate(1) },
                 contentAlignment = Alignment.Center,
             ) {

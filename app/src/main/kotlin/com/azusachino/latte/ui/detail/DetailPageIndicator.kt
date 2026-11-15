@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -21,8 +22,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.azusachino.latte.ui.common.latteMediaControl
 import com.azusachino.latte.ui.theme.GlassDefaults
-import com.azusachino.latte.ui.theme.glassBackdrop
 import dev.chrisbanes.haze.HazeState
 
 internal fun detailPageIndicatorText(
@@ -56,11 +57,9 @@ fun DetailTopCapsule(
 
     Box(
         modifier = modifier
-            .glassBackdrop(
-                hazeState = hazeState,
-                backgroundColor = Color.Black,
+            .latteMediaControl(
                 shape = RoundedCornerShape(GlassDefaults.PillCornerRadius),
-                dark = true,
+                hazeState = hazeState,
             )
             .clickable(enabled = enabled, role = Role.Button, onClickLabel = "Show details", onClick = onClick)
             .sizeIn(minHeight = 48.dp)
@@ -74,7 +73,7 @@ fun DetailTopCapsule(
             if (title.isNotBlank()) {
                 Text(
                     text = title,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 13.sp,
                     maxLines = 1,
@@ -84,7 +83,8 @@ fun DetailTopCapsule(
             if (pageIndicator.isNotBlank()) {
                 Text(
                     text = pageIndicator,
-                    color = Color.White.copy(alpha = 0.75f),
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium,
                     fontSize = 11.sp,
                     maxLines = 1,
                 )
@@ -110,19 +110,17 @@ fun TransientDetailPageIndicator(
     ) {
         Box(
             modifier = Modifier
-                .glassBackdrop(
-                    hazeState = hazeState,
-                    backgroundColor = Color.Black,
+                .latteMediaControl(
                     shape = RoundedCornerShape(GlassDefaults.PillCornerRadius),
-                    dark = true,
+                    hazeState = hazeState,
                 )
                 .padding(horizontal = 14.dp, vertical = 6.dp),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = text,
-                color = Color.White,
-                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold,
                 fontSize = 12.sp,
             )
         }

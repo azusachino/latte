@@ -153,17 +153,29 @@ fun LatteApp(
                 }
             }
             else -> {
-                // If detail was opened from a root feed, do not clear search while on DetailScreen.
-                // Detail only views its own posts; clearing search prematurely causes any exiting
-                // TagSearch or AuthorWorks screen to flash empty/scramble during transition.
+                // If detail was opened from a root feed (e.g. Following or Daily), restore
+                // the clean non-search feed state so that returning to Explore does not
+                // remain hijacked by a sub-screen tag search.
+                if (state.isSearch) {
+                    exploreViewModel.clearSearch()
+                }
             }
         }
     }
 
     fun popNavigation() {
         val poppedKey = navigation.currentStateKey
+        val poppedScreen = navigation.current
         navigation = navigation.popAndRestoreDetailFeed { targetDetail ->
             restoreFeedForDetail(targetDetail)
+        }
+        if (navigation.current is Screen.Explore) {
+            val fromDetailWithoutSearch = (poppedScreen as? Screen.Detail)?.let {
+                it.parentSearchTags == null && it.parentAuthorId == null
+            } ?: false
+            if (fromDetailWithoutSearch && exploreViewModel.uiState.value.isSearch) {
+                exploreViewModel.clearSearch()
+            }
         }
         saveableStateHolder.removeState(poppedKey)
     }

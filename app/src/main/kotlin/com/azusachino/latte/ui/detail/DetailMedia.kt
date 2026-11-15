@@ -143,7 +143,7 @@ internal fun AmbientBackdrop(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.6f)),
+                .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.6f)),
         )
     }
 }
@@ -178,7 +178,7 @@ internal fun DetailImageView(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("Image unavailable", color = Color.White)
+                Text("Image unavailable", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             var imageSourceIndex by rememberSaveable(
@@ -266,7 +266,7 @@ internal fun DetailImageView(
                             CircularProgressIndicator(
                                 modifier = Modifier.size(24.dp),
                                 strokeWidth = 2.dp,
-                                color = Color.White.copy(alpha = 0.5f),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
                             )
                         }
                     },
@@ -279,7 +279,7 @@ internal fun DetailImageView(
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(24.dp),
                                     strokeWidth = 2.dp,
-                                    color = Color.White.copy(alpha = 0.5f),
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
                                 )
                             }
                         } else {
@@ -288,7 +288,7 @@ internal fun DetailImageView(
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text("Image unavailable", color = Color.White.copy(alpha = 0.8f))
+                                    Text("Image unavailable", color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     TextButton(
                                         onClick = {
                                             imageSourceIndex = 0

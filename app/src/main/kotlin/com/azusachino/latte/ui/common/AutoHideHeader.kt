@@ -2,6 +2,8 @@ package com.azusachino.latte.ui.common
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
@@ -10,6 +12,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import com.azusachino.latte.data.settings.UiStyle
+import com.azusachino.latte.ui.theme.LocalUiStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -22,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
@@ -98,23 +103,36 @@ fun SlideAwayHeader(
 }
 
 /**
- * Glass-styled back-to-top affordance: a translucent circle matching the
- * glass bars, instead of a solid Material floating action button.
+ * Back-to-top affordance:
+ * Harmonized floating circular pill across Material 3 and Glass with the palette-tinted arrow icon.
  */
 @Composable
 fun BackToTopButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
     Box(
         modifier = modifier
             .size(44.dp)
-            .glassSurface(shape = CircleShape, isElevated = true)
-            .pressScale()
-            .clickable(onClick = onClick),
+            .then(
+                if (isMaterial) {
+                    Modifier
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.90f))
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), CircleShape)
+                        .clickable(onClick = onClick)
+                } else {
+                    Modifier
+                        .pressScale()
+                        .glassSurface(shape = CircleShape, isElevated = true)
+                        .clickable(onClick = onClick)
+                },
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             imageVector = Icons.Default.KeyboardArrowUp,
             contentDescription = "Back to top",
-            tint = MaterialTheme.colorScheme.onSurface,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(24.dp),
         )
     }
 }

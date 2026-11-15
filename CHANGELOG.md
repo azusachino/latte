@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.13 - 2026-11-15
+
+### Added
+
+- **Wallpaper Framing & Ratio Templates**: Choose between Fill Screen (center-cropped to device aspect ratio), Fit Screen (full artwork with ambient blurred backdrop), Direct (original bitmap), or open Android's native system interactive crop & pan tool with live home/lock screen clock guides.
+- **FileProvider wallpaper path**: Added `cached_wallpaper` cache path allowing external wallpaper croppers to read cached artwork securely.
+
+### Fixed
+
+- **Tag search back-stack feed restoration**: Returning from a tag or author search opened while viewing an image now properly clears search state if the image was opened from a non-search root feed (e.g. Following or Daily), preventing Explore from remaining hijacked on the tag-search page.
+- **Material 3 Design System Alignment**:
+  - Replaced hardcoded glass circle back-to-top button with an authentic Material 3 `SmallFloatingActionButton` in M3 mode.
+  - Aligned feed page cursor and page dial buttons with Material 3 tonal surface tokens (`surfaceContainerHigh`, `outlineVariant`).
+  - Swapped hardcoded glass search container with Material 3 28dp tonal search pill.
+  - Upgraded platform selection `DropdownMenu`, account manager cards, pool list cards, and popular date navigation pills to authentic M3 surface styling.
+
 ## 0.3.12 - 2026-11-14
 
 ### Added
