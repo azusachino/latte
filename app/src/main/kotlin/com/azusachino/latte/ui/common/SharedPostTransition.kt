@@ -2,6 +2,7 @@ package com.azusachino.latte.ui.common
 
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.BoundsTransform
+import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.Spring
@@ -71,8 +72,16 @@ fun Modifier.sharedPostImage(grid: String?, post: Post): Modifier {
 @Composable
 fun Modifier.renderAboveSharedImage(zIndex: Float = 1f): Modifier {
     val transition = LocalSharedPostTransition.current ?: return this
+    val visibility = LocalScreenVisibilityScope.current
     return with(transition.scope) {
         this@renderAboveSharedImage.renderInSharedTransitionScopeOverlay(
+            renderInOverlay = {
+                // Only render in the overlay while entering or active on the screen.
+                // When navigating away (e.g. popping back to Explore), targetState becomes PostExit;
+                // immediately stop rendering in the shared transition overlay so bars do not linger
+                // on top of the destination screen.
+                visibility == null || visibility.transition.targetState != EnterExitState.PostExit
+            },
             zIndexInOverlay = zIndex,
         )
     }

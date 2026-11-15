@@ -138,7 +138,8 @@ fun DetailTopBar(
                 if (pageIndicatorText.isNotBlank()) {
                     Text(
                         text = pageIndicatorText,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium,
                         fontSize = 11.sp,
                         maxLines = 1,
                     )

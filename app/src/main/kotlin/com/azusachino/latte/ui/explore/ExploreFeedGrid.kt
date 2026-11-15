@@ -561,29 +561,30 @@ internal fun FeedGrid(
                     .padding(start = 16.dp, bottom = 16.dp),
             ) {
                 val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
+                val badgeShape = RoundedCornerShape(percent = 50)
                 Text(
                     text = "Page $feedPageCursor",
                     style = MaterialTheme.typography.labelMedium,
-                    fontWeight = if (isMaterial) FontWeight.SemiBold else FontWeight.Medium,
-                    color = if (isMaterial) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .then(
                             if (isMaterial) {
                                 Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                                    .clip(badgeShape)
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.90f))
                                     .border(
                                         1.dp,
                                         MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                                        RoundedCornerShape(8.dp),
+                                        badgeShape,
                                     )
                             } else {
                                 Modifier
-                                    .clip(RoundedCornerShape(999.dp))
-                                    .glassSurface(shape = RoundedCornerShape(999.dp))
+                                    .clip(badgeShape)
+                                    .glassSurface(shape = badgeShape, isElevated = true)
                             },
                         )
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                        .padding(horizontal = 14.dp, vertical = 6.dp),
                 )
             }
         }

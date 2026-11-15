@@ -2,6 +2,8 @@ package com.azusachino.latte.ui.common
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
@@ -10,7 +12,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SmallFloatingActionButton
 import com.azusachino.latte.data.settings.UiStyle
 import com.azusachino.latte.ui.theme.LocalUiStyle
 import androidx.compose.runtime.Composable
@@ -25,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
@@ -102,38 +104,35 @@ fun SlideAwayHeader(
 
 /**
  * Back-to-top affordance:
- * - Material 3: [SmallFloatingActionButton] using `primaryContainer` and native ripples.
- * - Glass: translucent elevated glass circle matching floating glass chrome with spring press scale.
+ * Harmonized floating circular pill across Material 3 and Glass with the palette-tinted arrow icon.
  */
 @Composable
 fun BackToTopButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
-    if (isMaterial) {
-        SmallFloatingActionButton(
-            onClick = onClick,
-            modifier = modifier,
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        ) {
-            Icon(
-                imageVector = Icons.Default.KeyboardArrowUp,
-                contentDescription = "Back to top",
-            )
-        }
-    } else {
-        Box(
-            modifier = modifier
-                .size(44.dp)
-                .glassSurface(shape = CircleShape, isElevated = true)
-                .pressScale()
-                .clickable(onClick = onClick),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Default.KeyboardArrowUp,
-                contentDescription = "Back to top",
-                tint = MaterialTheme.colorScheme.onSurface,
-            )
-        }
+    Box(
+        modifier = modifier
+            .size(44.dp)
+            .then(
+                if (isMaterial) {
+                    Modifier
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.90f))
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), CircleShape)
+                        .clickable(onClick = onClick)
+                } else {
+                    Modifier
+                        .pressScale()
+                        .glassSurface(shape = CircleShape, isElevated = true)
+                        .clickable(onClick = onClick)
+                },
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Default.KeyboardArrowUp,
+            contentDescription = "Back to top",
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(24.dp),
+        )
     }
 }

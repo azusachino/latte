@@ -4,7 +4,9 @@ import android.app.Activity
 import android.app.WallpaperManager
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -276,6 +278,15 @@ fun DetailScreen(
         }
     }
 
+    val screenVisibility = com.azusachino.latte.ui.common.LocalScreenVisibilityScope.current
+    val isTransitioningAway = screenVisibility?.transition?.targetState == EnterExitState.PostExit
+    val effectiveShowControls = showControls && !isTransitioningAway
+
+    BackHandler(enabled = true) {
+        showControls = false
+        onBack()
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -328,9 +339,9 @@ fun DetailScreen(
 
         // Top Controls Overlay
         AnimatedVisibility(
-            visible = showControls,
+            visible = effectiveShowControls,
             enter = fadeIn(animationSpec = tween(200)),
-            exit = fadeOut(animationSpec = tween(200)),
+            exit = fadeOut(animationSpec = tween(120)),
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .renderAboveSharedImage(zIndex = 1f),
@@ -340,7 +351,10 @@ fun DetailScreen(
                 postUrl = currentPost?.let { currentPlugin?.postUrl(it) ?: it.canonicalUrl ?: it.source },
                 pageIndicatorText = pageIndicatorText,
                 hazeState = hazeState,
-                onBack = onBack,
+                onBack = {
+                    showControls = false
+                    onBack()
+                },
                 onDetails = { showInspectSheet = true },
             )
         }
@@ -348,7 +362,7 @@ fun DetailScreen(
         // Transient Page Indicator when controls are hidden
         TransientDetailPageIndicator(
             text = pageIndicatorText,
-            visible = !showControls && showTransientPageIndicator,
+            visible = !effectiveShowControls && !isTransitioningAway && showTransientPageIndicator,
             hazeState = hazeState,
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -357,9 +371,9 @@ fun DetailScreen(
 
         // Bottom Controls Overlay
         AnimatedVisibility(
-            visible = showControls,
+            visible = effectiveShowControls,
             enter = fadeIn(animationSpec = tween(200)),
-            exit = fadeOut(animationSpec = tween(200)),
+            exit = fadeOut(animationSpec = tween(120)),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .renderAboveSharedImage(zIndex = 1f),
@@ -431,15 +445,15 @@ fun DetailScreen(
                                 Icon(
                                     imageVector = LatteIcons.ChevronLeft,
                                     contentDescription = "Previous illustration page",
-                                    tint = if (pixivPageIndex > 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                                    tint = if (pixivPageIndex > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.38f),
                                     modifier = Modifier.size(20.dp),
                                 )
                             }
                             Text(
                                 text = "Page ${pixivPageIndex + 1} of ${currentPost.pageCount}",
-                                color = MaterialTheme.colorScheme.onSurface,
+                                color = MaterialTheme.colorScheme.primary,
                                 style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Medium,
+                                fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.padding(horizontal = 8.dp),
                             )
                             IconButton(
@@ -456,7 +470,7 @@ fun DetailScreen(
                                 Icon(
                                     imageVector = LatteIcons.ChevronRight,
                                     contentDescription = "Next illustration page",
-                                    tint = if (pixivPageIndex < currentPost.pageCount - 1) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                                    tint = if (pixivPageIndex < currentPost.pageCount - 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.38f),
                                     modifier = Modifier.size(20.dp),
                                 )
                             }
@@ -516,7 +530,7 @@ fun DetailScreen(
                             Icon(
                                 imageVector = Icons.Default.Info,
                                 contentDescription = "Details",
-                                tint = MaterialTheme.colorScheme.onSurface,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp),
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -660,7 +674,7 @@ fun DetailScreen(
                                 Icon(
                                     imageVector = LatteIcons.Download,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurface,
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(18.dp),
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))

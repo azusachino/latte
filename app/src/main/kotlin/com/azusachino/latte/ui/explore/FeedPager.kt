@@ -66,7 +66,7 @@ internal fun FeedPagerBar(
         pager.onGoToPage(page)
     }
     val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
-    val rowShape = RoundedCornerShape(if (isMaterial) 12.dp else 999.dp)
+    val rowShape = RoundedCornerShape(percent = 50)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
@@ -74,7 +74,7 @@ internal fun FeedPagerBar(
                 if (isMaterial) {
                     Modifier
                         .clip(rowShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.90f))
                         .border(
                             1.dp,
                             MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
@@ -95,7 +95,7 @@ internal fun FeedPagerBar(
             Icon(
                 LatteIcons.ChevronLeft,
                 contentDescription = "Previous page",
-                tint = MaterialTheme.colorScheme.onSurface,
+                tint = if (idle && feed.page > 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
             )
         }
         Box(
@@ -125,8 +125,8 @@ internal fun FeedPagerBar(
                 Text(
                     text = "$page",
                     style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
                 )
             }
         }
@@ -138,7 +138,7 @@ internal fun FeedPagerBar(
             Icon(
                 LatteIcons.ChevronRight,
                 contentDescription = "Next page",
-                tint = MaterialTheme.colorScheme.onSurface,
+                tint = if (idle && feed.hasMore) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
             )
         }
     }

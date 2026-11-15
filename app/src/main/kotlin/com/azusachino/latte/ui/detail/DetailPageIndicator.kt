@@ -83,7 +83,8 @@ fun DetailTopCapsule(
             if (pageIndicator.isNotBlank()) {
                 Text(
                     text = pageIndicator,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium,
                     fontSize = 11.sp,
                     maxLines = 1,
                 )
@@ -118,8 +119,8 @@ fun TransientDetailPageIndicator(
         ) {
             Text(
                 text = text,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold,
                 fontSize = 12.sp,
             )
         }
