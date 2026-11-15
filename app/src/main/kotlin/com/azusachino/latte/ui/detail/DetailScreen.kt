@@ -99,6 +99,7 @@ import com.azusachino.latte.ui.theme.glassSurface
 import com.azusachino.latte.ui.common.GlassAlertDialog
 import com.azusachino.latte.ui.common.LocalSharedPostTransition
 import com.azusachino.latte.ui.common.latteMediaControl
+import com.azusachino.latte.ui.common.renderAboveSharedImage
 import com.azusachino.latte.ui.theme.pressScale
 import coil3.compose.AsyncImage
 import coil3.compose.SubcomposeAsyncImage
@@ -329,7 +330,9 @@ fun DetailScreen(
             visible = showControls,
             enter = fadeIn(animationSpec = tween(200)),
             exit = fadeOut(animationSpec = tween(200)),
-            modifier = Modifier.align(Alignment.TopCenter),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .renderAboveSharedImage(zIndex = 1f),
         ) {
             DetailTopBar(
                 currentPost = currentPost,
@@ -346,7 +349,9 @@ fun DetailScreen(
             text = pageIndicatorText,
             visible = !showControls && showTransientPageIndicator,
             hazeState = hazeState,
-            modifier = Modifier.align(Alignment.TopCenter),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .renderAboveSharedImage(zIndex = 1f),
         )
 
         // Bottom Controls Overlay
@@ -354,7 +359,9 @@ fun DetailScreen(
             visible = showControls,
             enter = fadeIn(animationSpec = tween(200)),
             exit = fadeOut(animationSpec = tween(200)),
-            modifier = Modifier.align(Alignment.BottomCenter),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .renderAboveSharedImage(zIndex = 1f),
         ) {
             val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
             Column(

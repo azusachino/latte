@@ -61,3 +61,19 @@ fun Modifier.sharedPostImage(grid: String?, post: Post): Modifier {
         )
     }
 }
+
+/**
+ * Renders this component in the shared transition overlay above flying images
+ * (e.g. top bars and floating action chrome), so transitioning artwork never
+ * renders on top of the bars and snaps underneath them on settle.
+ */
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+fun Modifier.renderAboveSharedImage(zIndex: Float = 1f): Modifier {
+    val transition = LocalSharedPostTransition.current ?: return this
+    return with(transition.scope) {
+        this@renderAboveSharedImage.renderInSharedTransitionScopeOverlay(
+            zIndexInOverlay = zIndex,
+        )
+    }
+}
