@@ -178,15 +178,24 @@ fun GlassSegmentedTabs(
     position: Float? = null,
     accent: Color = MaterialTheme.colorScheme.primary,
 ) {
+    val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .glassSurface(shape = RoundedCornerShape(GlassDefaults.PillCornerRadius))
-            .padding(4.dp),
+            .then(
+                if (isMaterial) {
+                    Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                } else {
+                    Modifier
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .glassSurface(shape = RoundedCornerShape(GlassDefaults.PillCornerRadius))
+                        .padding(4.dp)
+                }
+            ),
     ) {
         val tabCount = tabs.size.coerceAtLeast(1)
         val tabWidth = maxWidth / tabCount
+        val indicatorShape = if (isMaterial) RoundedCornerShape(12.dp) else RoundedCornerShape(GlassDefaults.PillCornerRadius)
         val settledOffset by animateDpAsState(
             targetValue = tabWidth * selectedIndex.coerceIn(0, tabCount - 1),
             animationSpec = spring(
@@ -199,7 +208,6 @@ fun GlassSegmentedTabs(
         val livePosition = position?.coerceIn(0f, (tabCount - 1).toFloat())
         val indicatorOffset = if (livePosition != null) tabWidth * livePosition else settledOffset
         val focus = livePosition ?: selectedIndex.toFloat()
-        val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
 
         // Sliding indicator: an accent-tinted glass pill with a soft accent rim (or solid M3 container).
         Box(
@@ -207,7 +215,7 @@ fun GlassSegmentedTabs(
                 .offset(x = indicatorOffset)
                 .width(tabWidth)
                 .height(36.dp)
-                .clip(RoundedCornerShape(GlassDefaults.PillCornerRadius))
+                .clip(indicatorShape)
                 .background(
                     if (isMaterial) {
                         SolidColor(MaterialTheme.colorScheme.primaryContainer)
@@ -221,7 +229,7 @@ fun GlassSegmentedTabs(
                     if (isMaterial) {
                         Modifier
                     } else {
-                        Modifier.border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(GlassDefaults.PillCornerRadius))
+                        Modifier.border(1.dp, accent.copy(alpha = 0.35f), indicatorShape)
                     }
                 ),
         )
@@ -242,8 +250,8 @@ fun GlassSegmentedTabs(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .clip(RoundedCornerShape(GlassDefaults.PillCornerRadius))
-                        .pressScale()
+                        .clip(indicatorShape)
+                        .then(if (!isMaterial) Modifier.pressScale() else Modifier)
                         .selectable(
                             selected = isSelected,
                             onClick = { onTabSelected(index) },

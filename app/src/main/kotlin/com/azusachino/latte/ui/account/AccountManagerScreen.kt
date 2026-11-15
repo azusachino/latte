@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.plugin.SitePluginManager
+import com.azusachino.latte.ui.common.GlassTopBar
 import com.azusachino.latte.ui.common.ToastManager
 import com.azusachino.latte.ui.theme.glassSurface
 import com.azusachino.latte.ui.theme.pressScale
@@ -56,39 +57,10 @@ fun AccountManagerScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .glassSurface(
-                        shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
-                        isElevated = true,
-                    ),
-            ) {
-                TopAppBar(
-                    title = {
-                        Text(
-                            text = "Platforms & accounts",
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(
-                            onClick = onBack,
-                            modifier = Modifier.pressScale(),
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
-                        titleContentColor = MaterialTheme.colorScheme.onSurface,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
-                    ),
-                )
-            }
+            GlassTopBar(
+                title = "Platforms & accounts",
+                onBack = onBack,
+            )
         },
     ) { innerPadding ->
         Column(

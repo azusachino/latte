@@ -147,12 +147,16 @@ import com.azusachino.latte.plugin.PlatformCapability
 import com.azusachino.latte.plugin.PlatformId
 import com.azusachino.latte.plugin.SitePlugin
 import com.azusachino.latte.ui.common.ToastManager
+import com.azusachino.latte.data.settings.UiStyle
 import com.azusachino.latte.ui.common.ToastType
 import com.azusachino.latte.ui.theme.GlassDefaults
+import com.azusachino.latte.ui.theme.LocalUiStyle
 import com.azusachino.latte.ui.theme.glassBackdrop
 import com.azusachino.latte.ui.theme.glassPillSelection
 import com.azusachino.latte.ui.theme.glassSurface
 import com.azusachino.latte.ui.theme.pressScale
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import dev.chrisbanes.haze.rememberHazeState
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.launch
@@ -418,14 +422,31 @@ fun ExploreScreen(
                 label = "headerTint",
             )
             SlideAwayHeader(hidden = !topBarVisible) {
+            val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
+            val outlineVariant = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .glassBackdrop(
-                        hazeState = hazeState,
-                        backgroundColor = MaterialTheme.colorScheme.background,
-                        shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
-                        tint = headerTint,
+                    .then(
+                        if (isMaterial) {
+                            Modifier
+                                .background(MaterialTheme.colorScheme.surfaceContainer)
+                                .drawBehind {
+                                    drawLine(
+                                        color = outlineVariant,
+                                        start = Offset(0f, size.height),
+                                        end = Offset(size.width, size.height),
+                                        strokeWidth = 1.dp.toPx(),
+                                    )
+                                }
+                        } else {
+                            Modifier.glassBackdrop(
+                                hazeState = hazeState,
+                                backgroundColor = MaterialTheme.colorScheme.background,
+                                shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
+                                tint = headerTint,
+                            )
+                        }
                     ),
             ) {
                 if (isSelectionMode) {
@@ -639,72 +660,113 @@ fun ExploreScreen(
                         titleContentColor = MaterialTheme.colorScheme.onSurface,
                     ),
                     actions = {
-                        // One glass capsule holds the actions, instead of four loose icons.
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .padding(end = 8.dp)
-                                .glassSurface(shape = RoundedCornerShape(GlassDefaults.PillCornerRadius))
-                                .padding(horizontal = 2.dp),
-                        ) {
-                        // Search toggle
-                        IconButton(
-                            onClick = { isSearchExpanded = !isSearchExpanded },
-                            modifier = Modifier.size(40.dp).pressScale(),
-                        ) {
-                            Icon(
-                                // Always the magnifier: the expanded input's
-                                // clear button stays the only close affordance,
-                                // so search mode never shows two X icons.
-                                imageVector = Icons.Default.Search,
-                                contentDescription = "Search",
-                            )
-                        }
-
-                        // Moebooru-parity column toggle button: cycles 1 -> 2 -> 3 -> 1
-                        IconButton(
-                            onClick = { viewModel.cycleColumns() },
-                            modifier = Modifier.size(40.dp).pressScale(),
-                        ) {
-                            val columnIcon = when (columnCount) {
-                                1 -> LatteIcons.ViewAgenda
-                                2 -> LatteIcons.GridView
-                                else -> LatteIcons.ViewColumn
+                        if (isMaterial) {
+                            // Standard Material 3 actions: loose icon buttons directly on the bar
+                            IconButton(
+                                onClick = { isSearchExpanded = !isSearchExpanded },
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = "Search",
+                                )
                             }
-                            Icon(
-                                imageVector = columnIcon,
-                                contentDescription = "Columns ($columnCount)",
-                            )
-                        }
+                            IconButton(
+                                onClick = { viewModel.cycleColumns() },
+                            ) {
+                                val columnIcon = when (columnCount) {
+                                    1 -> LatteIcons.ViewAgenda
+                                    2 -> LatteIcons.GridView
+                                    else -> LatteIcons.ViewColumn
+                                }
+                                Icon(
+                                    imageVector = columnIcon,
+                                    contentDescription = "Columns ($columnCount)",
+                                )
+                            }
+                            IconButton(
+                                onClick = onOpenBookmarks,
+                            ) {
+                                Icon(
+                                    imageVector = LatteIcons.Bookmark,
+                                    contentDescription = "Bookmarks",
+                                    tint = if (uiState.bookmarks.isNotEmpty()) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                )
+                            }
+                            IconButton(
+                                onClick = onOpenSettings,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Settings,
+                                    contentDescription = "Settings",
+                                )
+                            }
+                        } else {
+                            // One glass capsule holds the actions, instead of four loose icons.
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .padding(end = 8.dp)
+                                    .glassSurface(shape = RoundedCornerShape(GlassDefaults.PillCornerRadius))
+                                    .padding(horizontal = 2.dp),
+                            ) {
+                                // Search toggle
+                                IconButton(
+                                    onClick = { isSearchExpanded = !isSearchExpanded },
+                                    modifier = Modifier.size(40.dp).pressScale(),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Search,
+                                        contentDescription = "Search",
+                                    )
+                                }
 
-                        // Bookmarks: saved tags and their update feeds
-                        IconButton(
-                            onClick = onOpenBookmarks,
-                            modifier = Modifier.size(40.dp).pressScale(),
-                        ) {
-                            Icon(
-                                // Bookmark, not star: the star means "add to
-                                // favorite"; this opens the saved-tags page.
-                                imageVector = LatteIcons.Bookmark,
-                                contentDescription = "Bookmarks",
-                                tint = if (uiState.bookmarks.isNotEmpty()) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                            )
-                        }
+                                // Moebooru-parity column toggle button: cycles 1 -> 2 -> 3 -> 1
+                                IconButton(
+                                    onClick = { viewModel.cycleColumns() },
+                                    modifier = Modifier.size(40.dp).pressScale(),
+                                ) {
+                                    val columnIcon = when (columnCount) {
+                                        1 -> LatteIcons.ViewAgenda
+                                        2 -> LatteIcons.GridView
+                                        else -> LatteIcons.ViewColumn
+                                    }
+                                    Icon(
+                                        imageVector = columnIcon,
+                                        contentDescription = "Columns ($columnCount)",
+                                    )
+                                }
 
-                        // Settings button
-                        IconButton(
-                            onClick = onOpenSettings,
-                            modifier = Modifier.size(40.dp).pressScale(),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = "Settings",
-                            )
-                        }
+                                // Bookmarks: saved tags and their update feeds
+                                IconButton(
+                                    onClick = onOpenBookmarks,
+                                    modifier = Modifier.size(40.dp).pressScale(),
+                                ) {
+                                    Icon(
+                                        imageVector = LatteIcons.Bookmark,
+                                        contentDescription = "Bookmarks",
+                                        tint = if (uiState.bookmarks.isNotEmpty()) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        },
+                                    )
+                                }
+
+                                // Settings button
+                                IconButton(
+                                    onClick = onOpenSettings,
+                                    modifier = Modifier.size(40.dp).pressScale(),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Settings,
+                                        contentDescription = "Settings",
+                                    )
+                                }
+                            }
                         }
                     },
                 )

@@ -86,8 +86,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.Brush
 import androidx.core.view.WindowCompat
+import com.azusachino.latte.data.settings.UiStyle
 import com.azusachino.latte.ui.theme.GlassDefaults
+import com.azusachino.latte.ui.theme.LocalUiStyle
 import com.azusachino.latte.ui.theme.glassBackdrop
 import com.azusachino.latte.ui.theme.glassSurface
 import com.azusachino.latte.ui.common.GlassAlertDialog
@@ -355,9 +358,21 @@ fun DetailScreen(
             ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
             modifier = Modifier.align(Alignment.BottomCenter),
         ) {
+            val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .then(
+                        if (isMaterial) {
+                            Modifier.background(
+                                Brush.verticalGradient(
+                                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.45f), Color.Black.copy(alpha = 0.85f)),
+                                ),
+                            )
+                        } else {
+                            Modifier
+                        },
+                    )
                     .pointerInput(Unit) {
                         detectTapGestures { }
                     }
@@ -476,13 +491,23 @@ fun DetailScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // Details pill: same glass as the top pills, icon & resolution
+                    // Details pill: matching M3 chip or glass capsule
                     Box(
                         modifier = Modifier
                             .height(44.dp)
-                            .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = RoundedCornerShape(22.dp), dark = true)
+                            .then(
+                                if (isMaterial) {
+                                    Modifier
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+                                        .border(1.dp, Color.White.copy(alpha = 0.28f), RoundedCornerShape(12.dp))
+                                } else {
+                                    Modifier
+                                        .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = RoundedCornerShape(22.dp), dark = true)
+                                        .pressScale()
+                                }
+                            )
                             .clickable { showInspectSheet = true }
-                            .pressScale()
                             .padding(horizontal = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -526,11 +551,28 @@ fun DetailScreen(
                             Box(
                                 modifier = Modifier
                                     .size(44.dp)
-                                    .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = CircleShape, dark = true)
-                                    .pressScale(),
+                                    .then(
+                                        if (isMaterial) {
+                                            Modifier
+                                                .clip(CircleShape)
+                                                .background(
+                                                    if (isFavorited) Color(0xFFE53935).copy(alpha = 0.25f) else Color.White.copy(alpha = 0.15f),
+                                                    CircleShape,
+                                                )
+                                                .border(
+                                                    1.dp,
+                                                    if (isFavorited) Color(0xFFE53935) else Color.White.copy(alpha = 0.28f),
+                                                    CircleShape,
+                                                )
+                                        } else {
+                                            Modifier
+                                                .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = CircleShape, dark = true)
+                                                .pressScale()
+                                        }
+                                    ),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                if (isFavorited) {
+                                if (isFavorited && !isMaterial) {
                                     Box(
                                         modifier = Modifier
                                             .matchParentSize()
@@ -602,13 +644,22 @@ fun DetailScreen(
                         Box(
                             modifier = Modifier
                                 .height(44.dp)
-                                .glassBackdrop(
-                                    hazeState,
-                                    backgroundColor = Color.Black,
-                                    shape = RoundedCornerShape(22.dp),
-                                    dark = true,
+                                .then(
+                                    if (isMaterial) {
+                                        Modifier
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
+                                    } else {
+                                        Modifier
+                                            .glassBackdrop(
+                                                hazeState,
+                                                backgroundColor = Color.Black,
+                                                shape = RoundedCornerShape(22.dp),
+                                                dark = true,
+                                            )
+                                            .pressScale()
+                                    }
                                 )
-                                .pressScale()
                                 .clickable {
                                     if (displayPost != null) {
                                         scope.launch {
@@ -634,17 +685,18 @@ fun DetailScreen(
                                 .padding(horizontal = 22.dp),
                             contentAlignment = Alignment.Center,
                         ) {
+                            val contentColor = if (isMaterial) MaterialTheme.colorScheme.onPrimary else Color.White
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
                                     imageVector = LatteIcons.Download,
                                     contentDescription = null,
-                                    tint = Color.White,
+                                    tint = contentColor,
                                     modifier = Modifier.size(18.dp),
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "Save",
-                                    color = Color.White,
+                                    color = contentColor,
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 14.sp,
                                 )

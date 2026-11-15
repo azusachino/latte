@@ -78,6 +78,7 @@ import com.azusachino.latte.data.update.UpdateDownloader
 import com.azusachino.latte.data.update.UpdateInfo
 import com.azusachino.latte.data.update.UpdateService
 import com.azusachino.latte.ui.common.GlassPillChip
+import com.azusachino.latte.ui.common.GlassTopBar
 import com.azusachino.latte.ui.common.LatteIcons
 import com.azusachino.latte.data.download.DownloadLibrary
 import com.azusachino.latte.ui.common.ToastManager
@@ -237,40 +238,10 @@ fun SettingsScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .glassBackdrop(
-                        hazeState = hazeState,
-                        backgroundColor = MaterialTheme.colorScheme.background,
-                        shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
-                    ),
-            ) {
-                TopAppBar(
-                    title = {
-                        Text(
-                            text = "Settings",
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(
-                            onClick = onBack,
-                            modifier = Modifier.pressScale(),
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
-                        titleContentColor = MaterialTheme.colorScheme.onSurface,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
-                    ),
-                )
-            }
+            GlassTopBar(
+                title = "Settings",
+                onBack = onBack,
+            )
         },
     ) { innerPadding ->
         Column(
