@@ -55,6 +55,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -491,21 +493,31 @@ fun DetailScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // Details pill: matching M3 chip or glass capsule
-                    Box(
+                    // Details: M3 text button with native ripple; glass capsule otherwise
+                    if (isMaterial) {
+                        TextButton(
+                            onClick = { showInspectSheet = true },
+                            contentPadding = PaddingValues(horizontal = 12.dp),
+                            colors = ButtonDefaults.textButtonColors(contentColor = Color.White),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = "Details",
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (displayPost != null) "${displayPost.width}×${displayPost.height}" else "Details",
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                        }
+                    } else Box(
                         modifier = Modifier
                             .height(44.dp)
                             .then(
-                                if (isMaterial) {
-                                    Modifier
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
-                                        .border(1.dp, Color.White.copy(alpha = 0.28f), RoundedCornerShape(12.dp))
-                                } else {
-                                    Modifier
-                                        .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = RoundedCornerShape(22.dp), dark = true)
-                                        .pressScale()
-                                }
+                                Modifier
+                                    .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = RoundedCornerShape(22.dp), dark = true)
+                                    .pressScale()
                             )
                             .clickable { showInspectSheet = true }
                             .padding(horizontal = 14.dp),
@@ -640,66 +652,78 @@ fun DetailScreen(
                             }
                         }
 
-                        // Download button: matching 44dp pill
-                        Box(
-                            modifier = Modifier
-                                .height(44.dp)
-                                .then(
-                                    if (isMaterial) {
-                                        Modifier
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
-                                    } else {
-                                        Modifier
-                                            .glassBackdrop(
-                                                hazeState,
-                                                backgroundColor = Color.Black,
-                                                shape = RoundedCornerShape(22.dp),
-                                                dark = true,
-                                            )
-                                            .pressScale()
-                                    }
-                                )
-                                .clickable {
-                                    if (displayPost != null) {
-                                        scope.launch {
-                                            when (val result = downloadManager.enqueueDownload(displayPost)) {
-                                                is DownloadResult.AlreadySaved -> {
-                                                    ToastManager.showWarning("Already saved ${DownloadIdentity.toastLabel(displayPost)}")
-                                                }
-                                                is DownloadResult.AlreadyRunning -> {
-                                                    ToastManager.showWarning("Already downloading ${DownloadIdentity.toastLabel(displayPost)}")
-                                                }
-                                                is DownloadResult.Started -> {
-                                                    inlineActionError = null
-                                                    ToastManager.showSuccess("Saving ${DownloadIdentity.toastLabel(displayPost)}")
-                                                }
-                                                is DownloadResult.Failed -> {
-                                                    android.util.Log.w("LatteDetail", "save failed for ${displayPost.id}: ${result.message}")
-                                                    ToastManager.showError("Couldn't save ${DownloadIdentity.toastLabel(displayPost)}")
-                                                }
-                                            }
+                        // Save: M3 filled primary Button in Material; glass capsule otherwise
+                        val onSaveClick: () -> Unit = {
+                            if (displayPost != null) {
+                                scope.launch {
+                                    when (val result = downloadManager.enqueueDownload(displayPost)) {
+                                        is DownloadResult.AlreadySaved -> {
+                                            ToastManager.showWarning("Already saved ${DownloadIdentity.toastLabel(displayPost)}")
+                                        }
+                                        is DownloadResult.AlreadyRunning -> {
+                                            ToastManager.showWarning("Already downloading ${DownloadIdentity.toastLabel(displayPost)}")
+                                        }
+                                        is DownloadResult.Started -> {
+                                            inlineActionError = null
+                                            ToastManager.showSuccess("Saving ${DownloadIdentity.toastLabel(displayPost)}")
+                                        }
+                                        is DownloadResult.Failed -> {
+                                            android.util.Log.w("LatteDetail", "save failed for ${displayPost.id}: ${result.message}")
+                                            ToastManager.showError("Couldn't save ${DownloadIdentity.toastLabel(displayPost)}")
                                         }
                                     }
                                 }
-                                .padding(horizontal = 22.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            val contentColor = if (isMaterial) MaterialTheme.colorScheme.onPrimary else Color.White
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            }
+                        }
+                        if (isMaterial) {
+                            Button(
+                                onClick = onSaveClick,
+                                modifier = Modifier.height(44.dp),
+                                shape = CircleShape,
+                                contentPadding = PaddingValues(horizontal = 22.dp),
+                            ) {
                                 Icon(
                                     imageVector = LatteIcons.Download,
                                     contentDescription = null,
-                                    tint = contentColor,
                                     modifier = Modifier.size(18.dp),
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "Save",
-                                    color = contentColor,
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 14.sp,
                                 )
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .height(44.dp)
+                                    .glassBackdrop(
+                                        hazeState,
+                                        backgroundColor = Color.Black,
+                                        shape = RoundedCornerShape(22.dp),
+                                        dark = true,
+                                    )
+                                    .pressScale()
+                                    .clickable(onClick = onSaveClick)
+                                    .padding(horizontal = 22.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = LatteIcons.Download,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Save",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 14.sp,
+                                    )
+                                }
                             }
                         }
                     }

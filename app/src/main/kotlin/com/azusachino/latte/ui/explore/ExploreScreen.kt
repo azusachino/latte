@@ -72,6 +72,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
 import com.azusachino.latte.ui.common.LatteIcons
+import com.azusachino.latte.ui.common.LatteTabRow
 import com.azusachino.latte.ui.common.SlideAwayHeader
 import com.azusachino.latte.ui.common.rememberHeaderVisibleState
 import androidx.compose.material3.Button
@@ -868,7 +869,7 @@ fun ExploreScreen(
                 // Front page tabs: Apple/Telegram-style segmented pill control (hidden during search)
                 if (!uiState.isSearch && !isSelectionMode) {
                     val tabTitles = feedTabs.map { it.title }
-                    GlassSegmentedTabs(
+                    LatteTabRow(
                         tabs = tabTitles,
                         selectedIndex = pagerState.currentPage,
                         onTabSelected = { index ->

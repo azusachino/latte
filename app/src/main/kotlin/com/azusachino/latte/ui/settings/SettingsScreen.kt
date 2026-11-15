@@ -77,8 +77,10 @@ import com.azusachino.latte.data.update.UpdateCheckResult
 import com.azusachino.latte.data.update.UpdateDownloader
 import com.azusachino.latte.data.update.UpdateInfo
 import com.azusachino.latte.data.update.UpdateService
-import com.azusachino.latte.ui.common.GlassPillChip
-import com.azusachino.latte.ui.common.GlassTopBar
+import com.azusachino.latte.ui.common.LatteFilterChip
+import com.azusachino.latte.ui.common.LatteGroupCard
+import com.azusachino.latte.ui.common.LatteSectionHeader
+import com.azusachino.latte.ui.common.LatteTopBar
 import com.azusachino.latte.ui.common.LatteIcons
 import com.azusachino.latte.data.download.DownloadLibrary
 import com.azusachino.latte.ui.common.ToastManager
@@ -238,7 +240,7 @@ fun SettingsScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            GlassTopBar(
+            LatteTopBar(
                 title = "Settings",
                 onBack = onBack,
             )
@@ -252,8 +254,8 @@ fun SettingsScreen(
                 .padding(innerPadding),
         ) {
             // Accounts Section
-            SettingsSectionHeader("Accounts")
-            SettingsGroupCard {
+            LatteSectionHeader("Accounts")
+            LatteGroupCard(modifier = Modifier.padding(horizontal = 16.dp)) {
                 SettingsRow(
                     icon = LatteIcons.AccountCircle,
                     title = "Platforms & accounts",
@@ -264,8 +266,8 @@ fun SettingsScreen(
             }
 
             // Content Section
-            SettingsSectionHeader("Content")
-            SettingsGroupCard {
+            LatteSectionHeader("Content")
+            LatteGroupCard(modifier = Modifier.padding(horizontal = 16.dp)) {
                 SettingsSwitchRow(
                     icon = LatteIcons.Security,
                     title = "Safe Mode",
@@ -296,7 +298,7 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         LattePreferences.PAGE_SIZES.forEach { size ->
-                            GlassPillChip(
+                            LatteFilterChip(
                                 selected = pageSize == size,
                                 onClick = { preferences.setPageSize(size) },
                                 label = size.toString(),
@@ -307,8 +309,8 @@ fun SettingsScreen(
             }
 
             // Appearance Section
-            SettingsSectionHeader("Appearance")
-            SettingsGroupCard {
+            LatteSectionHeader("Appearance")
+            LatteGroupCard(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
                     Text(
                         text = "Theme Mode",
@@ -320,17 +322,17 @@ fun SettingsScreen(
                         modifier = Modifier.horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        GlassPillChip(
+                        LatteFilterChip(
                             selected = themeMode == ThemeMode.SYSTEM,
                             onClick = { preferences.setThemeMode(ThemeMode.SYSTEM) },
                             label = "System",
                         )
-                        GlassPillChip(
+                        LatteFilterChip(
                             selected = themeMode == ThemeMode.LIGHT,
                             onClick = { preferences.setThemeMode(ThemeMode.LIGHT) },
                             label = "Light",
                         )
-                        GlassPillChip(
+                        LatteFilterChip(
                             selected = themeMode == ThemeMode.DARK,
                             onClick = { preferences.setThemeMode(ThemeMode.DARK) },
                             label = "Dark",
@@ -366,27 +368,27 @@ fun SettingsScreen(
                         modifier = Modifier.horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        GlassPillChip(
+                        LatteFilterChip(
                             selected = themePalette == ThemePalette.ADAPTIVE,
                             onClick = { preferences.setThemePalette(ThemePalette.ADAPTIVE) },
                             label = "Adaptive",
                         )
-                        GlassPillChip(
+                        LatteFilterChip(
                             selected = themePalette == ThemePalette.EMERALD,
                             onClick = { preferences.setThemePalette(ThemePalette.EMERALD) },
                             label = "Emerald",
                         )
-                        GlassPillChip(
+                        LatteFilterChip(
                             selected = themePalette == ThemePalette.YANDE,
                             onClick = { preferences.setThemePalette(ThemePalette.YANDE) },
                             label = "Yande",
                         )
-                        GlassPillChip(
+                        LatteFilterChip(
                             selected = themePalette == ThemePalette.PIXIV,
                             onClick = { preferences.setThemePalette(ThemePalette.PIXIV) },
                             label = "Pixiv",
                         )
-                        GlassPillChip(
+                        LatteFilterChip(
                             selected = themePalette == ThemePalette.KONACHAN,
                             onClick = { preferences.setThemePalette(ThemePalette.KONACHAN) },
                             label = "Konachan",
@@ -412,12 +414,12 @@ fun SettingsScreen(
                         modifier = Modifier.horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        GlassPillChip(
+                        LatteFilterChip(
                             selected = uiStyle == UiStyle.GLASS,
                             onClick = { preferences.setUiStyle(UiStyle.GLASS) },
                             label = "Liquid Glass",
                         )
-                        GlassPillChip(
+                        LatteFilterChip(
                             selected = uiStyle == UiStyle.MATERIAL,
                             onClick = { preferences.setUiStyle(UiStyle.MATERIAL) },
                             label = "Material 3",
@@ -439,7 +441,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         (1..3).forEach { count ->
-                            GlassPillChip(
+                            LatteFilterChip(
                                 selected = columnCount == count,
                                 onClick = { preferences.setColumnCount(count) },
                                 label = "$count column${if (count > 1) "s" else ""}",
@@ -450,8 +452,8 @@ fun SettingsScreen(
             }
 
             // Storage & Network Section
-            SettingsSectionHeader("Data")
-            SettingsGroupCard {
+            LatteSectionHeader("Data")
+            LatteGroupCard(modifier = Modifier.padding(horizontal = 16.dp)) {
                 SettingsRow(
                     icon = Icons.Default.DateRange,
                     title = "Viewing History",
@@ -479,8 +481,8 @@ fun SettingsScreen(
                 )
             }
 
-            SettingsSectionHeader("Storage & Network")
-            SettingsGroupCard {
+            LatteSectionHeader("Storage & Network")
+            LatteGroupCard(modifier = Modifier.padding(horizontal = 16.dp)) {
                 SettingsRow(
                     icon = Icons.Default.Delete,
                     title = "Clear Cache",
@@ -523,8 +525,8 @@ fun SettingsScreen(
             }
 
             // Updates & About Section
-            SettingsSectionHeader("Updates & About")
-            SettingsGroupCard {
+            LatteSectionHeader("Updates & About")
+            LatteGroupCard(modifier = Modifier.padding(horizontal = 16.dp)) {
                 SettingsRow(
                     icon = LatteIcons.SystemUpdate,
                     title = "Check for Updates",
