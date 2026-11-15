@@ -102,7 +102,7 @@ fun SlideAwayHeader(
 
 /**
  * Back-to-top affordance:
- * - Material 3: [SmallFloatingActionButton] using `surfaceContainerHigh` and native ripples.
+ * - Material 3: [SmallFloatingActionButton] using `primaryContainer` and native ripples.
  * - Glass: translucent elevated glass circle matching floating glass chrome with spring press scale.
  */
 @Composable
@@ -112,8 +112,8 @@ fun BackToTopButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
         SmallFloatingActionButton(
             onClick = onClick,
             modifier = modifier,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            contentColor = MaterialTheme.colorScheme.primary,
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         ) {
             Icon(
                 imageVector = Icons.Default.KeyboardArrowUp,

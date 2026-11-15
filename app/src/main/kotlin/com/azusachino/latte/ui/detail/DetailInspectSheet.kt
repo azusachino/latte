@@ -6,6 +6,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.draggable
@@ -45,7 +46,9 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.offset
+import com.azusachino.latte.data.settings.UiStyle
 import com.azusachino.latte.ui.theme.GlassDefaults
+import com.azusachino.latte.ui.theme.LocalUiStyle
 import com.azusachino.latte.ui.theme.glassBackdrop
 import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.launch
@@ -132,7 +135,7 @@ internal fun BoxScope.DetailInspectSheet(
         modifier = Modifier
             .matchParentSize()
             .graphicsLayer { alpha = 1f - hidden.value }
-            .background(Color.Black.copy(alpha = 0.4f))
+            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.45f))
             .pointerInput(Unit) { detectTapGestures { close() } },
     )
 
@@ -144,19 +147,27 @@ internal fun BoxScope.DetailInspectSheet(
             .padding(top = TOP_BAR_CLEARANCE),
     ) {
         val shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .onSizeChanged { sheetHeight = it.height }
                 .offset { IntOffset(0, (hidden.value * sheetHeight).roundToInt()) }
-                // Frosted over the image, but tinted nearly opaque: a thin tint takes on the
-                // photo's colour and washes out the pastel tag chips.
-                .glassBackdrop(
-                    hazeState,
-                    backgroundColor = Color.Black,
-                    shape = shape,
-                    tint = if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) GlassDefaults.DarkSurfaceElevated else GlassDefaults.LightSurfaceElevated,
+                .then(
+                    if (isMaterial) {
+                        Modifier
+                            .clip(shape)
+                            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), shape)
+                    } else {
+                        Modifier.glassBackdrop(
+                            hazeState,
+                            backgroundColor = MaterialTheme.colorScheme.surface,
+                            shape = shape,
+                            tint = if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) GlassDefaults.DarkSurfaceElevated else GlassDefaults.LightSurfaceElevated,
+                        )
+                    },
                 )
                 // Taps on the sheet itself must not fall through to the scrim.
                 .pointerInput(Unit) { detectTapGestures { } }

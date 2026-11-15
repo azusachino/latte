@@ -288,8 +288,8 @@ fun LatteTopBar(
 /**
  * Surface styling for floating media viewer controls (Back, Title, Actions, Details, Favorite, Save).
  *
- * In Material 3: a clean 50% black scrim with no border and native ripple (following Kazumi / M3 media viewers).
- * In Glass: frosted backdrop blur with specular gradient rim and press spring scale.
+ * In Material 3: elevated surface container matching the chosen palette with outlineVariant border.
+ * In Glass: theme-adaptive frosted backdrop blur with specular gradient rim and press spring scale.
  */
 @Composable
 fun Modifier.latteMediaControl(
@@ -300,15 +300,20 @@ fun Modifier.latteMediaControl(
     return if (isMaterial) {
         this
             .clip(shape)
-            .background(Color.Black.copy(alpha = 0.5f), shape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.88f), shape)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), shape)
     } else {
         if (hazeState != null) {
             this
-                .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = shape, dark = true)
+                .glassBackdrop(
+                    hazeState,
+                    backgroundColor = MaterialTheme.colorScheme.surface,
+                    shape = shape,
+                )
                 .pressScale()
         } else {
             this
-                .glassSurface(shape = shape, isElevated = true, dark = true)
+                .glassSurface(shape = shape, isElevated = true)
                 .pressScale()
         }
     }

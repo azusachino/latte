@@ -278,7 +278,7 @@ fun DetailScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black),
+            .background(MaterialTheme.colorScheme.surface),
     ) {
         // Horizontal Pager for browsing posts
         HorizontalPager(
@@ -371,7 +371,11 @@ fun DetailScreen(
                         if (isMaterial) {
                             Modifier.background(
                                 Brush.verticalGradient(
-                                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.45f), Color.Black.copy(alpha = 0.85f)),
+                                    listOf(
+                                        Color.Transparent,
+                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.50f),
+                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.90f),
+                                    ),
                                 ),
                             )
                         } else {
@@ -389,12 +393,13 @@ fun DetailScreen(
                     Box(
                         modifier = Modifier
                             .padding(bottom = 10.dp)
-                            .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = RoundedCornerShape(12.dp), dark = true)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.errorContainer)
                             .padding(horizontal = 14.dp, vertical = 6.dp),
                     ) {
                         Text(
                             text = message,
-                            color = MaterialTheme.colorScheme.error,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
                             style = MaterialTheme.typography.labelMedium,
                         )
                     }
@@ -404,7 +409,7 @@ fun DetailScreen(
                     Box(
                         modifier = Modifier
                             .padding(bottom = 12.dp)
-                            .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = RoundedCornerShape(GlassDefaults.PillCornerRadius), dark = true)
+                            .latteMediaControl(shape = RoundedCornerShape(GlassDefaults.PillCornerRadius), hazeState = hazeState)
                             .padding(horizontal = 6.dp, vertical = 2.dp),
                     ) {
                         Row(
@@ -425,13 +430,13 @@ fun DetailScreen(
                                 Icon(
                                     imageVector = LatteIcons.ChevronLeft,
                                     contentDescription = "Previous illustration page",
-                                    tint = if (pixivPageIndex > 0) Color.White else Color.White.copy(alpha = 0.35f),
+                                    tint = if (pixivPageIndex > 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                                     modifier = Modifier.size(20.dp),
                                 )
                             }
                             Text(
                                 text = "Page ${pixivPageIndex + 1} of ${currentPost.pageCount}",
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Medium,
                                 modifier = Modifier.padding(horizontal = 8.dp),
@@ -450,7 +455,7 @@ fun DetailScreen(
                                 Icon(
                                     imageVector = LatteIcons.ChevronRight,
                                     contentDescription = "Next illustration page",
-                                    tint = if (pixivPageIndex < currentPost.pageCount - 1) Color.White else Color.White.copy(alpha = 0.35f),
+                                    tint = if (pixivPageIndex < currentPost.pageCount - 1) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                                     modifier = Modifier.size(20.dp),
                                 )
                             }
@@ -510,7 +515,7 @@ fun DetailScreen(
                             Icon(
                                 imageVector = Icons.Default.Info,
                                 contentDescription = "Details",
-                                tint = Color.White,
+                                tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(20.dp),
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -518,7 +523,7 @@ fun DetailScreen(
                                 text = if (displayPost != null) "${displayPost.width}×${displayPost.height}" else "Details",
                                 fontWeight = FontWeight.Medium,
                                 fontSize = 13.sp,
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onSurface,
                             )
                         }
                     }
@@ -542,6 +547,7 @@ fun DetailScreen(
                             } else {
                                 favoriteOverrides[post.id] ?: (currentScore == 3)
                             }
+                            val isFavoritedColor = MaterialTheme.colorScheme.error
 
                             Box(
                                 modifier = Modifier
@@ -549,7 +555,7 @@ fun DetailScreen(
                                     .latteMediaControl(shape = CircleShape, hazeState = hazeState)
                                     .then(
                                         if (isFavorited) {
-                                            Modifier.background(Color(0xFFE53935).copy(alpha = 0.35f), CircleShape)
+                                            Modifier.background(isFavoritedColor.copy(alpha = 0.25f), CircleShape)
                                         } else {
                                             Modifier
                                         }
@@ -605,7 +611,7 @@ fun DetailScreen(
                                     Icon(
                                         imageVector = if (isFavorited) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                                         contentDescription = if (isFavorited) "Remove from favorites" else "Add to favorites",
-                                        tint = if (isFavorited) Color(0xFFE53935) else Color.White,
+                                        tint = if (isFavorited) isFavoritedColor else MaterialTheme.colorScheme.onSurface,
                                         modifier = Modifier
                                             .size(22.dp)
                                             .graphicsLayer {
@@ -640,30 +646,54 @@ fun DetailScreen(
                                 }
                             }
                         }
-                        // Save button: 44dp height matching Details and Favorite
                         val saveShape = RoundedCornerShape(16.dp)
-                        Box(
-                            modifier = Modifier
-                                .height(44.dp)
-                                .latteMediaControl(shape = saveShape, hazeState = hazeState)
-                                .clickable(onClick = onSaveClick)
-                                .padding(horizontal = 20.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (isMaterial) {
+                            Button(
+                                onClick = onSaveClick,
+                                shape = saveShape,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                                ),
+                                modifier = Modifier.height(44.dp),
+                                contentPadding = PaddingValues(horizontal = 20.dp),
+                            ) {
                                 Icon(
                                     imageVector = LatteIcons.Download,
                                     contentDescription = null,
-                                    tint = Color.White,
                                     modifier = Modifier.size(18.dp),
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "Save",
-                                    color = Color.White,
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 14.sp,
                                 )
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .height(44.dp)
+                                    .latteMediaControl(shape = saveShape, hazeState = hazeState)
+                                    .clickable(onClick = onSaveClick)
+                                    .padding(horizontal = 20.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = LatteIcons.Download,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Save",
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 14.sp,
+                                    )
+                                }
                             }
                         }
                     }

@@ -565,13 +565,13 @@ internal fun FeedGrid(
                     text = "Page $feedPageCursor",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = if (isMaterial) FontWeight.SemiBold else FontWeight.Medium,
-                    color = if (isMaterial) MaterialTheme.colorScheme.onSurfaceVariant else Color.White,
+                    color = if (isMaterial) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier
                         .then(
                             if (isMaterial) {
                                 Modifier
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                                    .background(MaterialTheme.colorScheme.secondaryContainer)
                                     .border(
                                         1.dp,
                                         MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
@@ -580,7 +580,7 @@ internal fun FeedGrid(
                             } else {
                                 Modifier
                                     .clip(RoundedCornerShape(999.dp))
-                                    .background(Color.Black.copy(alpha = 0.32f))
+                                    .glassSurface(shape = RoundedCornerShape(999.dp))
                             },
                         )
                         .padding(horizontal = 12.dp, vertical = 6.dp),
@@ -890,11 +890,11 @@ internal fun PostGridItem(
                         }
                         .clip(CircleShape)
                         .background(
-                            if (isSelected) MaterialTheme.colorScheme.primary else Color.Black.copy(alpha = 0.35f),
+                            if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.70f),
                         )
                         .border(
                             1.5.dp,
-                            if (isSelected) Color.White.copy(alpha = 0.9f) else Color.White,
+                            if (isSelected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f) else MaterialTheme.colorScheme.outline,
                             CircleShape,
                         ),
                     contentAlignment = Alignment.Center,

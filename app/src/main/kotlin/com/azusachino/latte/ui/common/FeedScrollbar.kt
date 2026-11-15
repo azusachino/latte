@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridLayoutInfo
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -28,6 +29,8 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import com.azusachino.latte.data.settings.UiStyle
+import com.azusachino.latte.ui.theme.LocalUiStyle
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
@@ -137,8 +140,18 @@ internal fun FeedScrollbar(
                     )
                 },
         ) {
-            // Light pill with a dark rim: it reads over any artwork, in either theme.
+            val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
             val thumbShape = RoundedCornerShape(50)
+            val thumbBg = if (isMaterial) {
+                MaterialTheme.colorScheme.primary.copy(alpha = if (dragging) 0.95f else 0.75f)
+            } else {
+                MaterialTheme.colorScheme.onSurface.copy(alpha = if (dragging) 0.85f else 0.60f)
+            }
+            val thumbBorder = if (isMaterial) {
+                MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
+            } else {
+                MaterialTheme.colorScheme.surface.copy(alpha = 0.35f)
+            }
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
@@ -146,8 +159,8 @@ internal fun FeedScrollbar(
                     .shadow(if (dragging) 6.dp else 3.dp, thumbShape)
                     .size(width = if (dragging) 12.dp else 8.dp, height = THUMB_HEIGHT)
                     .clip(thumbShape)
-                    .background(Color.White.copy(alpha = if (dragging) 0.95f else 0.85f))
-                    .border(1.dp, Color.Black.copy(alpha = 0.22f), thumbShape),
+                    .background(thumbBg)
+                    .border(1.dp, thumbBorder, thumbShape),
             )
         }
     }

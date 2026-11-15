@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.azusachino.latte.data.settings.UiStyle
 import com.azusachino.latte.ui.theme.LocalUiStyle
+import com.azusachino.latte.ui.theme.glassSurface
 import com.azusachino.latte.ui.theme.pressScale
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
@@ -82,7 +83,7 @@ internal fun FeedPagerBar(
                 } else {
                     Modifier
                         .clip(rowShape)
-                        .background(Color.Black.copy(alpha = 0.45f))
+                        .glassSurface(shape = rowShape, isElevated = true)
                 },
             ),
     ) {
@@ -94,7 +95,7 @@ internal fun FeedPagerBar(
             Icon(
                 LatteIcons.ChevronLeft,
                 contentDescription = "Previous page",
-                tint = if (isMaterial) MaterialTheme.colorScheme.onSurface else Color.White,
+                tint = MaterialTheme.colorScheme.onSurface,
             )
         }
         Box(
@@ -125,7 +126,7 @@ internal fun FeedPagerBar(
                     text = "$page",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Medium,
-                    color = if (isMaterial) MaterialTheme.colorScheme.onSurface else Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             }
         }
@@ -137,7 +138,7 @@ internal fun FeedPagerBar(
             Icon(
                 LatteIcons.ChevronRight,
                 contentDescription = "Next page",
-                tint = if (isMaterial) MaterialTheme.colorScheme.onSurface else Color.White,
+                tint = MaterialTheme.colorScheme.onSurface,
             )
         }
     }
