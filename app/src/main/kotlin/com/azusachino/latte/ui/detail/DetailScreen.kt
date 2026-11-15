@@ -1,12 +1,14 @@
 package com.azusachino.latte.ui.detail
 
 import android.app.Activity
+import android.app.WallpaperManager
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -51,8 +53,11 @@ import androidx.compose.material.icons.filled.Star
 import com.azusachino.latte.ui.common.LatteIcons
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -84,17 +89,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.Brush
 import androidx.core.view.WindowCompat
+import com.azusachino.latte.data.settings.UiStyle
 import com.azusachino.latte.ui.theme.GlassDefaults
+import com.azusachino.latte.ui.theme.LocalUiStyle
 import com.azusachino.latte.ui.theme.glassBackdrop
 import com.azusachino.latte.ui.theme.glassSurface
+import com.azusachino.latte.ui.common.GlassAlertDialog
 import com.azusachino.latte.ui.common.LocalSharedPostTransition
+import com.azusachino.latte.ui.common.latteMediaControl
+import com.azusachino.latte.ui.common.renderAboveSharedImage
 import com.azusachino.latte.ui.theme.pressScale
 import coil3.compose.AsyncImage
 import coil3.compose.SubcomposeAsyncImage
 import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import coil3.toBitmap
+import kotlinx.coroutines.Dispatchers
 import com.azusachino.latte.data.download.DownloadIdentity
 import com.azusachino.latte.data.download.DownloadManager
 import com.azusachino.latte.data.download.DownloadResult
@@ -133,6 +146,7 @@ fun DetailScreen(
     bookmarks: List<Bookmark> = emptyList(),
     onToggleBookmark: ((tag: String, platform: PlatformId) -> Unit)? = null,
     onPostViewed: (Post) -> Unit = {},
+    originGrid: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val detailPosts = posts
@@ -140,6 +154,12 @@ fun DetailScreen(
         initialPage = initialIndex.coerceIn(0, (detailPosts.size - 1).coerceAtLeast(0)),
         pageCount = { detailPosts.size },
     )
+
+    LaunchedEffect(initialIndex) {
+        if (pagerState.currentPage != initialIndex && initialIndex in 0 until detailPosts.size) {
+            pagerState.scrollToPage(initialIndex)
+        }
+    }
 
     LaunchedEffect(pagerState.currentPage, detailPosts.size) {
         if (shouldLoadMoreDetail(pagerState.currentPage, detailPosts.size)) {
@@ -164,7 +184,7 @@ fun DetailScreen(
     }
 
     val hazeState = rememberHazeState()
-    val sharedOriginGrid = LocalSharedPostTransition.current?.originGrid
+    val sharedOriginGrid = originGrid ?: LocalSharedPostTransition.current?.originGrid
     var showControls by remember { mutableStateOf(true) }
     // Pushes the toast pill below the top controls row (10dp + 44dp + 8dp) while it is shown.
     val toastInsetOwner = remember { Any() }
@@ -173,6 +193,7 @@ fun DetailScreen(
         onDispose { ToastManager.clearTopInset(toastInsetOwner) }
     }
     var showInspectSheet by remember { mutableStateOf(false) }
+    var showWallpaperDialog by remember { mutableStateOf(false) }
     var localScores by remember { mutableStateOf(mapOf<Long, Int>()) }
     // Server-confirmed favorite state per post (Moebooru probe). Kept apart
     // from localScores: the probe's "not favorited" must not blank out the
@@ -282,7 +303,7 @@ fun DetailScreen(
                 DetailImageView(
                     targetPost = post,
                     // Only the page on screen morphs; the pager keeps neighbours composed off-screen.
-                    sharedGrid = if (page == pagerState.currentPage) sharedOriginGrid else null,
+                    sharedGrid = if (page == pagerState.currentPage && pixivPageIndex == 0) sharedOriginGrid else null,
                     onZoomChanged = { zoomed ->
                         if (page == pagerState.currentPage) {
                             isCurrentPageZoomed = zoomed
@@ -295,6 +316,11 @@ fun DetailScreen(
                             DetailTapAction.ToggleControls -> showControls = !showControls
                         }
                     },
+                    onSwipeUp = {
+                        if (page == pagerState.currentPage) {
+                            showInspectSheet = true
+                        }
+                    },
                 )
             }
         }
@@ -302,15 +328,11 @@ fun DetailScreen(
         // Top Controls Overlay
         AnimatedVisibility(
             visible = showControls,
-            enter = slideInVertically(
-                animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
-                initialOffsetY = { -it },
-            ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
-            exit = slideOutVertically(
-                animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
-                targetOffsetY = { -it },
-            ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
-            modifier = Modifier.align(Alignment.TopCenter),
+            enter = fadeIn(animationSpec = tween(200)),
+            exit = fadeOut(animationSpec = tween(200)),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .renderAboveSharedImage(zIndex = 1f),
         ) {
             DetailTopBar(
                 currentPost = currentPost,
@@ -327,25 +349,35 @@ fun DetailScreen(
             text = pageIndicatorText,
             visible = !showControls && showTransientPageIndicator,
             hazeState = hazeState,
-            modifier = Modifier.align(Alignment.TopCenter),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .renderAboveSharedImage(zIndex = 1f),
         )
 
         // Bottom Controls Overlay
         AnimatedVisibility(
             visible = showControls,
-            enter = slideInVertically(
-                animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
-                initialOffsetY = { it },
-            ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
-            exit = slideOutVertically(
-                animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
-                targetOffsetY = { it },
-            ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
-            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = fadeIn(animationSpec = tween(200)),
+            exit = fadeOut(animationSpec = tween(200)),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .renderAboveSharedImage(zIndex = 1f),
         ) {
+            val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .then(
+                        if (isMaterial) {
+                            Modifier.background(
+                                Brush.verticalGradient(
+                                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.45f), Color.Black.copy(alpha = 0.85f)),
+                                ),
+                            )
+                        } else {
+                            Modifier
+                        },
+                    )
                     .pointerInput(Unit) {
                         detectTapGestures { }
                     }
@@ -464,13 +496,13 @@ fun DetailScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // Details pill: same glass as the top pills, icon & resolution
+                    // Details button: consistent 44dp container with latteMediaControl
+                    val detailsShape = RoundedCornerShape(16.dp)
                     Box(
                         modifier = Modifier
                             .height(44.dp)
-                            .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = RoundedCornerShape(22.dp), dark = true)
+                            .latteMediaControl(shape = detailsShape, hazeState = hazeState)
                             .clickable { showInspectSheet = true }
-                            .pressScale()
                             .padding(horizontal = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -514,17 +546,16 @@ fun DetailScreen(
                             Box(
                                 modifier = Modifier
                                     .size(44.dp)
-                                    .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = CircleShape, dark = true)
-                                    .pressScale(),
+                                    .latteMediaControl(shape = CircleShape, hazeState = hazeState)
+                                    .then(
+                                        if (isFavorited) {
+                                            Modifier.background(Color(0xFFE53935).copy(alpha = 0.35f), CircleShape)
+                                        } else {
+                                            Modifier
+                                        }
+                                    ),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                if (isFavorited) {
-                                    Box(
-                                        modifier = Modifier
-                                            .matchParentSize()
-                                            .background(Color(0xFFE53935).copy(alpha = 0.25f), CircleShape),
-                                    )
-                                }
                                 IconButton(
                                     onClick = {
                                         if (!isPluginLoggedIn) {
@@ -586,40 +617,37 @@ fun DetailScreen(
                             }
                         }
 
-                        // Download button: matching 44dp pill
-                        Box(
-                            modifier = Modifier
-                                .height(44.dp)
-                                .glassBackdrop(
-                                    hazeState,
-                                    backgroundColor = Color.Black,
-                                    shape = RoundedCornerShape(22.dp),
-                                    dark = true,
-                                )
-                                .pressScale()
-                                .clickable {
-                                    if (displayPost != null) {
-                                        scope.launch {
-                                            when (val result = downloadManager.enqueueDownload(displayPost)) {
-                                                is DownloadResult.AlreadySaved -> {
-                                                    ToastManager.showWarning("Already saved ${DownloadIdentity.toastLabel(displayPost)}")
-                                                }
-                                                is DownloadResult.AlreadyRunning -> {
-                                                    ToastManager.showWarning("Already downloading ${DownloadIdentity.toastLabel(displayPost)}")
-                                                }
-                                                is DownloadResult.Started -> {
-                                                    inlineActionError = null
-                                                    ToastManager.showSuccess("Saving ${DownloadIdentity.toastLabel(displayPost)}")
-                                                }
-                                                is DownloadResult.Failed -> {
-                                                    android.util.Log.w("LatteDetail", "save failed for ${displayPost.id}: ${result.message}")
-                                                    ToastManager.showError("Couldn't save ${DownloadIdentity.toastLabel(displayPost)}")
-                                                }
-                                            }
+                        // Save: M3 filled primary Button in Material; glass capsule otherwise
+                        val onSaveClick: () -> Unit = {
+                            if (displayPost != null) {
+                                scope.launch {
+                                    when (val result = downloadManager.enqueueDownload(displayPost)) {
+                                        is DownloadResult.AlreadySaved -> {
+                                            ToastManager.showWarning("Already saved ${DownloadIdentity.toastLabel(displayPost)}")
+                                        }
+                                        is DownloadResult.AlreadyRunning -> {
+                                            ToastManager.showWarning("Already downloading ${DownloadIdentity.toastLabel(displayPost)}")
+                                        }
+                                        is DownloadResult.Started -> {
+                                            inlineActionError = null
+                                            ToastManager.showSuccess("Saving ${DownloadIdentity.toastLabel(displayPost)}")
+                                        }
+                                        is DownloadResult.Failed -> {
+                                            android.util.Log.w("LatteDetail", "save failed for ${displayPost.id}: ${result.message}")
+                                            ToastManager.showError("Couldn't save ${DownloadIdentity.toastLabel(displayPost)}")
                                         }
                                     }
                                 }
-                                .padding(horizontal = 22.dp),
+                            }
+                        }
+                        // Save button: 44dp height matching Details and Favorite
+                        val saveShape = RoundedCornerShape(16.dp)
+                        Box(
+                            modifier = Modifier
+                                .height(44.dp)
+                                .latteMediaControl(shape = saveShape, hazeState = hazeState)
+                                .clickable(onClick = onSaveClick)
+                                .padding(horizontal = 20.dp),
                             contentAlignment = Alignment.Center,
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -659,7 +687,48 @@ fun DetailScreen(
                             text = "Post #${currentPost.id}",
                             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 10.dp, bottom = 14.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            FilledTonalButton(
+                                onClick = { showWallpaperDialog = true },
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                            ) {
+                                Icon(
+                                    imageVector = LatteIcons.Wallpaper,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Wallpaper")
+                            }
+
+                            val sharePostUrl = currentPlugin?.postUrl(currentPost)
+                                ?: currentPost.canonicalUrl
+                                ?: currentPost.source
+                            if (!sharePostUrl.isNullOrBlank()) {
+                                FilledTonalButton(
+                                    onClick = {
+                                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                                        clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("Post Link", sharePostUrl))
+                                        ToastManager.showSuccess("Link copied")
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = LatteIcons.ContentCopy,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Copy Link")
+                                }
+                            }
+                        }
 
                         // Metadata Table
                         Text(
@@ -777,6 +846,87 @@ fun DetailScreen(
                     }
                 }
             }
+        }
+
+        if (showWallpaperDialog && currentPost != null) {
+            val targetPost = displayPost ?: currentPost
+            val wallpaperUrl = targetPost.bestVariant.url
+            GlassAlertDialog(
+                onDismissRequest = { showWallpaperDialog = false },
+                title = { Text("Set Wallpaper") },
+                text = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = "Set this image as wallpaper for:",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        FilledTonalButton(
+                            onClick = {
+                                showWallpaperDialog = false
+                                applyWallpaper(context, wallpaperUrl, WallpaperManager.FLAG_SYSTEM, scope)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Home Screen")
+                        }
+                        FilledTonalButton(
+                            onClick = {
+                                showWallpaperDialog = false
+                                applyWallpaper(context, wallpaperUrl, WallpaperManager.FLAG_LOCK, scope)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Lock Screen")
+                        }
+                        FilledTonalButton(
+                            onClick = {
+                                showWallpaperDialog = false
+                                applyWallpaper(context, wallpaperUrl, WallpaperManager.FLAG_SYSTEM or WallpaperManager.FLAG_LOCK, scope)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Both Screens")
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showWallpaperDialog = false }) {
+                        Text("Cancel")
+                    }
+                },
+            )
+        }
+    }
+}
+
+private fun applyWallpaper(
+    context: android.content.Context,
+    imageUrl: String,
+    whichFlags: Int,
+    scope: kotlinx.coroutines.CoroutineScope,
+) {
+    ToastManager.showInfo("Setting wallpaper...")
+    scope.launch(Dispatchers.IO) {
+        val request = ImageRequest.Builder(context)
+            .data(imageUrl)
+            .size(coil3.size.Size.ORIGINAL)
+            .build()
+        val result = context.imageLoader.execute(request)
+        if (result is coil3.request.SuccessResult) {
+            try {
+                val bitmap = result.image.toBitmap()
+                val wallpaperManager = WallpaperManager.getInstance(context)
+                wallpaperManager.setBitmap(bitmap, null, true, whichFlags)
+                ToastManager.showSuccess("Wallpaper updated")
+            } catch (e: Exception) {
+                ToastManager.showError("Failed to set wallpaper: ${e.message ?: "error"}")
+            }
+        } else {
+            ToastManager.showError("Failed to load image for wallpaper")
         }
     }
 }

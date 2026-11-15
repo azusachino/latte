@@ -104,4 +104,26 @@ class DetailPagingTest {
             detailTapAction(xFraction = 0.1f, zoomed = false, isMultiPage = true, pageIndex = 1, pageCount = 3, controlsVisible = true),
         )
     }
+
+    @Test
+    fun swipeUpTriggersWhenUnzoomedAndDragExceedsThreshold() {
+        assertTrue(shouldTriggerSwipeUp(totalDragY = -50f, thresholdPx = 48f, isZoomed = false))
+        assertTrue(shouldTriggerSwipeUp(totalDragY = -48f, thresholdPx = 48f, isZoomed = false))
+    }
+
+    @Test
+    fun swipeUpDoesNotTriggerWhenDragIsInsufficient() {
+        assertFalse(shouldTriggerSwipeUp(totalDragY = -30f, thresholdPx = 48f, isZoomed = false))
+        assertFalse(shouldTriggerSwipeUp(totalDragY = 0f, thresholdPx = 48f, isZoomed = false))
+    }
+
+    @Test
+    fun swipeUpDoesNotTriggerOnDownwardDrag() {
+        assertFalse(shouldTriggerSwipeUp(totalDragY = 50f, thresholdPx = 48f, isZoomed = false))
+    }
+
+    @Test
+    fun swipeUpDoesNotTriggerWhenZoomed() {
+        assertFalse(shouldTriggerSwipeUp(totalDragY = -100f, thresholdPx = 48f, isZoomed = true))
+    }
 }

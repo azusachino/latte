@@ -339,6 +339,9 @@ internal fun ExploreViewModel.ensurePixivFeedLoaded(kind: PluginFeedKind) {
         hasBlockingError ||
         !feed.hasMore
     ) return
+    if (feed.authRequired && isLoggedIn) {
+        updatePixivFeed(kind) { it.copy(authRequired = false, error = null) }
+    }
     loadPixivInitial(kind)
 }
 

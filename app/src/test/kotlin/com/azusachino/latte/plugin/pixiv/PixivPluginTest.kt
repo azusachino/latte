@@ -205,6 +205,7 @@ class PixivPluginTest {
         assertTrue(plugin.isLoggedIn)
         assertEquals("browser-access", storage.get("pixiv", "access_token"))
         assertEquals("browser-refresh", storage.get("pixiv", "refresh_token"))
+        assertEquals("42", storage.get("pixiv", "user_id"))
         assertEquals("artist", plugin.getDisplayUsername())
 
         val request = server.takeRequest()
@@ -214,6 +215,37 @@ class PixivPluginTest {
         assertTrue(body.contains("code=fixture-code"))
         assertTrue(body.contains("code_verifier="))
         assertTrue(body.contains("redirect_uri="))
+    }
+
+    @Test
+    fun browserAuthorizationHandlesStringUserIdInResponse() = runTest {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """
+                {"response":{"access_token":"string-id-access","refresh_token":"string-id-refresh","user":{"id":"987654","name":"pixiv_user"}}}
+                """.trimIndent(),
+            ),
+        )
+
+        val storage = InMemoryStorage()
+        val plugin = plugin(
+            storage,
+            PixivOAuthClient(
+                OkHttpClient(),
+                PixivOAuthConfiguration(
+                    clientId = "fixture-client",
+                    clientSecret = "fixture-secret",
+                    tokenEndpoint = server.url("/auth/token").toString(),
+                ),
+            ),
+        )
+
+        plugin.beginBrowserLogin().getOrThrow()
+        assertTrue(plugin.completeBrowserLogin("fixture-code").isSuccess)
+        assertTrue(plugin.isLoggedIn)
+        assertEquals("string-id-access", storage.get("pixiv", "access_token"))
+        assertEquals("987654", storage.get("pixiv", "user_id"))
+        assertEquals("pixiv_user", plugin.getDisplayUsername())
     }
 
     @Test

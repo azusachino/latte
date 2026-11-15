@@ -12,7 +12,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindowProvider
+import com.azusachino.latte.data.settings.UiStyle
 import com.azusachino.latte.ui.theme.GlassDefaults
+import com.azusachino.latte.ui.theme.LocalUiStyle
 
 /**
  * [AlertDialog] as glass. A dialog is its own window, so in-app Haze blur cannot
@@ -31,6 +33,7 @@ fun GlassAlertDialog(
     text: (@Composable () -> Unit)? = null,
 ) {
     val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val uiStyle = LocalUiStyle.current
     AlertDialog(
         onDismissRequest = onDismissRequest,
         confirmButton = {
@@ -42,13 +45,18 @@ fun GlassAlertDialog(
         icon = icon,
         title = title,
         text = text,
-        containerColor = if (isDark) GlassDefaults.DarkDialog else GlassDefaults.LightDialog,
+        containerColor = when {
+            uiStyle == UiStyle.MATERIAL -> MaterialTheme.colorScheme.surfaceContainerHigh
+            isDark -> GlassDefaults.DarkDialog
+            else -> GlassDefaults.LightDialog
+        },
     )
 }
 
 /** Blurs the app behind the enclosing dialog window. Call from inside dialog content. */
 @Composable
 internal fun DialogBackdropBlur() {
+    if (LocalUiStyle.current == UiStyle.MATERIAL) return
     val view = LocalView.current
     val radiusPx = with(LocalDensity.current) { BLUR_RADIUS.roundToPx() }
     SideEffect {
@@ -72,4 +80,8 @@ private const val DIM_AMOUNT = 0.25f
 /** Translucent container colour for a glass dialog over a blurred backdrop. */
 @Composable
 internal fun glassDialogColor(): androidx.compose.ui.graphics.Color =
-    if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) GlassDefaults.DarkDialog else GlassDefaults.LightDialog
+    when {
+        LocalUiStyle.current == UiStyle.MATERIAL -> MaterialTheme.colorScheme.surfaceContainerHigh
+        MaterialTheme.colorScheme.surface.luminance() < 0.5f -> GlassDefaults.DarkDialog
+        else -> GlassDefaults.LightDialog
+    }

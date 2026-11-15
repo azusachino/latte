@@ -19,6 +19,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -152,6 +153,7 @@ internal fun DetailImageView(
     targetPost: Post,
     onZoomChanged: (Boolean) -> Unit = {},
     onTap: (xFraction: Float, zoomed: Boolean) -> Unit,
+    onSwipeUp: () -> Unit = {},
     modifier: Modifier = Modifier,
     /** Grid this image morphs to and from; null keeps it out of the shared transition. */
     sharedGrid: String? = null,
@@ -162,6 +164,7 @@ internal fun DetailImageView(
         resetKey = Triple(targetPost.siteId, targetPost.id, targetPost.pageIndex),
         onZoomChanged = onZoomChanged,
         onTap = onTap,
+        onSwipeUp = onSwipeUp,
     ) {
         val imageSources = remember(targetPost.siteId, targetPost.id, targetPost.pageIndex) {
             buildList {
@@ -188,23 +191,33 @@ internal fun DetailImageView(
                 targetPost.id,
                 targetPost.pageIndex,
             ) { mutableStateOf(0) }
+            var loadedAspectRatio by remember(
+                targetPost.siteId,
+                targetPost.id,
+                targetPost.pageIndex,
+            ) { mutableStateOf<Float?>(null) }
             val safeImageSourceIndex = imageSourceIndex.coerceIn(imageSources.indices)
             val currentImageUrl = imageSources[safeImageSourceIndex]
             val hasPreview = targetPost.previewUrl.isNotBlank() && targetPost.previewUrl != currentImageUrl
 
-            Box(
+            val effectiveAspectRatio = loadedAspectRatio
+                ?: (if (targetPost.width > 0 && targetPost.height > 0) targetPost.aspectRatio else null)
+                ?: 1f
+
+            BoxWithConstraints(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
-            // Sized to the picture itself, so the shared bounds are the visible image, not the screen.
-            Box(
-                modifier = if (targetPost.width > 0 && targetPost.height > 0) {
-                    Modifier.aspectRatio(targetPost.aspectRatio)
-                } else {
-                    Modifier.fillMaxSize()
-                }.sharedPostImage(sharedGrid, targetPost),
-                contentAlignment = Alignment.Center,
-            ) {
+                val screenRatio = if (maxHeight.value > 0f) maxWidth.value / maxHeight.value else 1f
+                val matchHeight = effectiveAspectRatio < screenRatio
+
+                // Sized to the picture itself, so the shared bounds match the visible image, not the screen.
+                Box(
+                    modifier = Modifier
+                        .aspectRatio(effectiveAspectRatio, matchHeightConstraintsFirst = matchHeight)
+                        .sharedPostImage(if (targetPost.pageIndex == 0) sharedGrid else null, targetPost),
+                    contentAlignment = Alignment.Center,
+                ) {
                 // If a low-res preview is available, display it immediately so the screen never blanks black
                 if (hasPreview) {
                     AsyncImage(
@@ -214,6 +227,14 @@ internal fun DetailImageView(
                             .build(),
                         contentDescription = null,
                         contentScale = ContentScale.Fit,
+                        onSuccess = { state ->
+                            val size = state.painter.intrinsicSize
+                            if (size.width > 0f && size.height > 0f && !size.width.isNaN() && !size.height.isNaN()) {
+                                if (loadedAspectRatio == null) {
+                                    loadedAspectRatio = size.width / size.height
+                                }
+                            }
+                        },
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -229,6 +250,12 @@ internal fun DetailImageView(
                     model = imageRequest,
                     contentDescription = null,
                     contentScale = ContentScale.Fit,
+                    onSuccess = { state ->
+                        val size = state.painter.intrinsicSize
+                        if (size.width > 0f && size.height > 0f && !size.width.isNaN() && !size.height.isNaN()) {
+                            loadedAspectRatio = size.width / size.height
+                        }
+                    },
                     loading = {
                         // Subtle, small loading indicator (24dp, 2dp stroke, semi-transparent)
                         // Never an unsized huge spinner covering the screen

@@ -8,7 +8,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -60,7 +58,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.azusachino.latte.BuildConfig
 import com.azusachino.latte.data.cache.CacheManager
 import com.azusachino.latte.data.settings.LatteBackupCodec
@@ -78,7 +75,8 @@ import com.azusachino.latte.ui.common.LatteIcons
 import com.azusachino.latte.ui.common.ToastManager
 import com.azusachino.latte.ui.theme.GlassDefaults
 import com.azusachino.latte.ui.theme.glassPillSelection
-import com.azusachino.latte.ui.theme.glassSurface
+import com.azusachino.latte.data.settings.UiStyle
+import com.azusachino.latte.ui.theme.LocalUiStyle
 import com.azusachino.latte.ui.theme.pressScale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -86,43 +84,30 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
-@Composable
-internal fun SettingsGroupCard(
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .glassSurface(
-                shape = RoundedCornerShape(16.dp),
-                isElevated = true,
-            ),
-        content = content,
-    )
-}
-
+/** Row separator inside a [LatteGroupCard]. */
 @Composable
 internal fun SettingsDivider() {
+    val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
     HorizontalDivider(
         modifier = Modifier.padding(horizontal = 16.dp),
-        thickness = 0.5.dp,
-        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+        thickness = if (isMaterial) 1.dp else 0.5.dp,
+        color = if (isMaterial) {
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        } else {
+            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+        },
     )
 }
 
+/** Ripple in Material 3, spring press scale in Glass. */
 @Composable
-internal fun SettingsSectionHeader(title: String) {
-    Text(
-        text = title.uppercase(),
-        style = MaterialTheme.typography.labelMedium.copy(
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 0.5.sp,
-        ),
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 8.dp),
-    )
+private fun Modifier.rowInteraction(onClick: () -> Unit): Modifier {
+    val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
+    return if (isMaterial) {
+        this.clickable(onClick = onClick)
+    } else {
+        this.pressScale().clickable(onClick = onClick)
+    }
 }
 
 @Composable
@@ -136,8 +121,7 @@ internal fun SettingsRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .pressScale()
-            .clickable(onClick = onClick)
+            .rowInteraction(onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -183,8 +167,7 @@ internal fun SettingsSwitchRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .pressScale()
-            .clickable { onCheckedChange(!checked) }
+            .rowInteraction { onCheckedChange(!checked) }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

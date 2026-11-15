@@ -17,6 +17,7 @@ sealed interface Screen {
         val parentAuthorId: Long? = null,
         val parentAuthorName: String? = null,
         val fromHistory: Boolean = false,
+        val originGrid: String? = null,
     ) : Screen
     data object Settings : Screen
     data object Bookmarks : Screen

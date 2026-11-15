@@ -184,6 +184,7 @@ fun GlassSegmentedTabs(
     ) {
         val tabCount = tabs.size.coerceAtLeast(1)
         val tabWidth = maxWidth / tabCount
+        val indicatorShape = RoundedCornerShape(GlassDefaults.PillCornerRadius)
         val settledOffset by animateDpAsState(
             targetValue = tabWidth * selectedIndex.coerceIn(0, tabCount - 1),
             animationSpec = spring(
@@ -203,13 +204,13 @@ fun GlassSegmentedTabs(
                 .offset(x = indicatorOffset)
                 .width(tabWidth)
                 .height(36.dp)
-                .clip(RoundedCornerShape(GlassDefaults.PillCornerRadius))
+                .clip(indicatorShape)
                 .background(
                     Brush.verticalGradient(
                         listOf(accent.copy(alpha = 0.26f), accent.copy(alpha = 0.14f)),
-                    ),
+                    )
                 )
-                .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(GlassDefaults.PillCornerRadius)),
+                .border(1.dp, accent.copy(alpha = 0.35f), indicatorShape),
         )
 
         Row(
@@ -227,7 +228,7 @@ fun GlassSegmentedTabs(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .clip(RoundedCornerShape(GlassDefaults.PillCornerRadius))
+                        .clip(indicatorShape)
                         .pressScale()
                         .selectable(
                             selected = isSelected,

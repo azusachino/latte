@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -29,11 +30,14 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.azusachino.latte.data.settings.UiStyle
 import dev.chrisbanes.haze.HazeInput
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.blur.HazeBlurStyle
 import dev.chrisbanes.haze.blur.HazeColorEffect
 import dev.chrisbanes.haze.blur.hazeBlur
+
+val LocalUiStyle = staticCompositionLocalOf { UiStyle.GLASS }
 
 /**
  * Design tokens and styling parameters for Apple-style Liquid Glass UI components.
@@ -96,6 +100,25 @@ fun Modifier.glassSurface(
     rimStroke: Dp = GlassDefaults.RimStrokeWidth,
     dark: Boolean? = null,
 ): Modifier {
+    val uiStyle = LocalUiStyle.current
+    if (uiStyle == UiStyle.MATERIAL) {
+        val containerColor = if (isElevated) {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        } else {
+            MaterialTheme.colorScheme.surfaceContainer
+        }
+        return this
+            .clip(shape)
+            .background(containerColor, shape)
+            .then(
+                if (rimStroke > 0.dp) {
+                    Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f), shape)
+                } else {
+                    Modifier
+                }
+            )
+    }
+
     val isDark = dark ?: (MaterialTheme.colorScheme.surface.luminance() < 0.5f)
     val surfaceColor = when {
         isDark && isElevated -> GlassDefaults.DarkSurfaceElevated
@@ -138,6 +161,19 @@ fun Modifier.glassBackdrop(
     tint: Color? = null,
 ): Modifier {
     val isDark = dark ?: (MaterialTheme.colorScheme.surface.luminance() < 0.5f)
+    val uiStyle = LocalUiStyle.current
+    if (uiStyle == UiStyle.MATERIAL) {
+        val containerColor = if (isDark) {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        } else {
+            MaterialTheme.colorScheme.surfaceContainer
+        }
+        return this
+            .clip(shape)
+            .background(containerColor, shape)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), shape)
+    }
+
     val rimBrush = if (isDark) GlassDefaults.DarkRimGradient else GlassDefaults.LightRimGradient
     val style = HazeBlurStyle {
         backgroundColor(backgroundColor)
@@ -160,6 +196,20 @@ fun Modifier.glassPillSelection(
     selected: Boolean,
     shape: Shape = RoundedCornerShape(GlassDefaults.PillCornerRadius),
 ): Modifier {
+    val uiStyle = LocalUiStyle.current
+    if (uiStyle == UiStyle.MATERIAL) {
+        return if (selected) {
+            this
+                .clip(shape)
+                .background(MaterialTheme.colorScheme.primaryContainer, shape)
+                .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f), shape)
+        } else {
+            this
+                .clip(shape)
+                .background(MaterialTheme.colorScheme.surfaceContainerLow, shape)
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape)
+        }
+    }
     if (!selected) return glassSurface(shape = shape)
     return this
         .clip(shape)
@@ -176,6 +226,7 @@ fun Modifier.pressScale(
     enabled: Boolean = true,
 ): Modifier {
     if (!enabled) return this
+    if (LocalUiStyle.current == UiStyle.MATERIAL) return this
 
     var isPressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(

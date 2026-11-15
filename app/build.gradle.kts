@@ -7,7 +7,7 @@ plugins {
 fun String.asBuildConfigString(): String =
     "\"${replace("\\", "\\\\").replace("\"", "\\\"")}\""
 
-val latteVersion = "0.3.11"
+val latteVersion = "0.3.12"
 
 val pixivOAuthClientId = System.getenv("LATTE_PIXIV_CLIENT_ID").orEmpty()
 val pixivOAuthClientSecret = System.getenv("LATTE_PIXIV_CLIENT_SECRET").orEmpty()
@@ -20,7 +20,7 @@ android {
         applicationId = "com.azusachino.latte"
         minSdk = 33
         targetSdk = 35
-        versionCode = 26
+        versionCode = 27
         versionName = latteVersion
 
         buildConfigField("String", "PIXIV_OAUTH_CLIENT_ID", pixivOAuthClientId.asBuildConfigString())
@@ -87,7 +87,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
-    implementation("androidx.activity:activity-compose:1.10.0")
+    implementation("androidx.activity:activity-compose:1.10.1")
 
     val composeBom = platform("androidx.compose:compose-bom:2026.09.00")
     implementation(composeBom)
@@ -112,11 +112,11 @@ dependencies {
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
 
-    implementation("androidx.work:work-runtime-ktx:2.10.0")
+    implementation("androidx.work:work-runtime-ktx:2.10.5")
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
-    implementation("androidx.datastore:datastore-preferences:1.1.2")
-    implementation("androidx.browser:browser:1.8.0")
+    implementation("androidx.datastore:datastore-preferences:1.1.7")
+    implementation("androidx.browser:browser:1.9.0")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.1")

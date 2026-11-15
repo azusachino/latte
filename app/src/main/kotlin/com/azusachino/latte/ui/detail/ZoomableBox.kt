@@ -4,6 +4,8 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
@@ -21,15 +23,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
 /**
  * Pinch-zoomable box. [onTap] receives the tap's horizontal position as a 0..1 fraction of the
  * box width and whether the content is currently zoomed (scale > 1.05). Scale and offset reset
  * whenever [resetKey] changes. [onZoomChanged] reports whether the content is currently zoomed.
+ * [onSwipeUp] is triggered when swiping up with a single finger while unzoomed.
  */
 
 @Composable
@@ -40,14 +46,18 @@ fun ZoomableBox(
     resetKey: Any? = null,
     onZoomChanged: (Boolean) -> Unit = {},
     onTap: (xFraction: Float, zoomed: Boolean) -> Unit = { _, _ -> },
+    onSwipeUp: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     val scaleAnim = remember(resetKey) { Animatable(1f) }
     val offsetAnim = remember(resetKey) { Animatable(Offset.Zero, Offset.VectorConverter) }
     var boxSize by remember { mutableStateOf(IntSize.Zero) }
     val currentOnTap by rememberUpdatedState(onTap)
+    val currentOnSwipeUp by rememberUpdatedState(onSwipeUp)
     val currentOnZoomChanged by rememberUpdatedState(onZoomChanged)
     val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val swipeUpThresholdPx = remember(density) { with(density) { 48.dp.toPx() } }
 
     val isZoomed = scaleAnim.value > 1.05f
     LaunchedEffect(isZoomed) {
@@ -87,6 +97,31 @@ fun ZoomableBox(
         modifier = modifier
             .fillMaxSize()
             .onSizeChanged { boxSize = it }
+            .pointerInput(resetKey, isZoomed, onSwipeUp != null) {
+                if (isZoomed || onSwipeUp == null) return@pointerInput
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    var totalDragY = 0f
+                    var triggered = false
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        if (event.changes.size > 1) {
+                            break
+                        }
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        if (change.isConsumed) break
+                        val drag = change.position.y - change.previousPosition.y
+                        totalDragY += drag
+                        if (!triggered && shouldTriggerSwipeUp(totalDragY, swipeUpThresholdPx, isZoomed)) {
+                            triggered = true
+                            change.consume()
+                            currentOnSwipeUp?.invoke()
+                            break
+                        }
+                        if (change.changedToUpIgnoreConsumed()) break
+                    }
+                }
+            }
             .pointerInput(resetKey) {
                 detectTapGestures(
                     onTap = { tapOffset ->
@@ -135,4 +170,12 @@ fun ZoomableBox(
     ) {
         content()
     }
+}
+
+internal fun shouldTriggerSwipeUp(
+    totalDragY: Float,
+    thresholdPx: Float,
+    isZoomed: Boolean,
+): Boolean {
+    return !isZoomed && totalDragY <= -thresholdPx
 }

@@ -69,13 +69,18 @@ import com.azusachino.latte.data.cache.CacheManager
 import com.azusachino.latte.data.settings.LatteBackupCodec
 import com.azusachino.latte.data.settings.LattePreferences
 import com.azusachino.latte.data.settings.ThemeMode
+import com.azusachino.latte.data.settings.ThemePalette
+import com.azusachino.latte.data.settings.UiStyle
 import com.azusachino.latte.data.update.ApkInstaller
 import com.azusachino.latte.data.update.DownloadProgress
 import com.azusachino.latte.data.update.UpdateCheckResult
 import com.azusachino.latte.data.update.UpdateDownloader
 import com.azusachino.latte.data.update.UpdateInfo
 import com.azusachino.latte.data.update.UpdateService
-import com.azusachino.latte.ui.common.GlassPillChip
+import com.azusachino.latte.ui.common.LatteFilterChip
+import com.azusachino.latte.ui.common.LatteGroupCard
+import com.azusachino.latte.ui.common.LatteSectionHeader
+import com.azusachino.latte.ui.common.LatteTopBar
 import com.azusachino.latte.ui.common.LatteIcons
 import com.azusachino.latte.data.download.DownloadLibrary
 import com.azusachino.latte.ui.common.ToastManager
@@ -106,6 +111,9 @@ fun SettingsScreen(
     val context = LocalContext.current
     val columnCount by preferences.columnCount.collectAsStateWithLifecycle()
     val themeMode by preferences.themeMode.collectAsStateWithLifecycle()
+    val themePalette by preferences.themePalette.collectAsStateWithLifecycle()
+    val uiStyle by preferences.uiStyle.collectAsStateWithLifecycle()
+    val oledDarkTheme by preferences.oledDarkTheme.collectAsStateWithLifecycle()
     val safeMode by preferences.safeMode.collectAsStateWithLifecycle()
     val pagedBrowsing by preferences.pagedBrowsing.collectAsStateWithLifecycle()
     val pageSize by preferences.pageSize.collectAsStateWithLifecycle()
@@ -232,40 +240,10 @@ fun SettingsScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .glassBackdrop(
-                        hazeState = hazeState,
-                        backgroundColor = MaterialTheme.colorScheme.background,
-                        shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
-                    ),
-            ) {
-                TopAppBar(
-                    title = {
-                        Text(
-                            text = "Settings",
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(
-                            onClick = onBack,
-                            modifier = Modifier.pressScale(),
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
-                        titleContentColor = MaterialTheme.colorScheme.onSurface,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
-                    ),
-                )
-            }
+            LatteTopBar(
+                title = "Settings",
+                onBack = onBack,
+            )
         },
     ) { innerPadding ->
         Column(
@@ -276,8 +254,8 @@ fun SettingsScreen(
                 .padding(innerPadding),
         ) {
             // Accounts Section
-            SettingsSectionHeader("Accounts")
-            SettingsGroupCard {
+            LatteSectionHeader("Accounts")
+            LatteGroupCard(modifier = Modifier.padding(horizontal = 16.dp)) {
                 SettingsRow(
                     icon = LatteIcons.AccountCircle,
                     title = "Platforms & accounts",
@@ -288,8 +266,8 @@ fun SettingsScreen(
             }
 
             // Content Section
-            SettingsSectionHeader("Content")
-            SettingsGroupCard {
+            LatteSectionHeader("Content")
+            LatteGroupCard(modifier = Modifier.padding(horizontal = 16.dp)) {
                 SettingsSwitchRow(
                     icon = LatteIcons.Security,
                     title = "Safe Mode",
@@ -320,7 +298,7 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         LattePreferences.PAGE_SIZES.forEach { size ->
-                            GlassPillChip(
+                            LatteFilterChip(
                                 selected = pageSize == size,
                                 onClick = { preferences.setPageSize(size) },
                                 label = size.toString(),
@@ -331,11 +309,11 @@ fun SettingsScreen(
             }
 
             // Appearance Section
-            SettingsSectionHeader("Appearance")
-            SettingsGroupCard {
+            LatteSectionHeader("Appearance")
+            LatteGroupCard(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
                     Text(
-                        text = "Theme",
+                        text = "Theme Mode",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium,
                     )
@@ -344,20 +322,107 @@ fun SettingsScreen(
                         modifier = Modifier.horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        GlassPillChip(
+                        LatteFilterChip(
                             selected = themeMode == ThemeMode.SYSTEM,
                             onClick = { preferences.setThemeMode(ThemeMode.SYSTEM) },
                             label = "System",
                         )
-                        GlassPillChip(
+                        LatteFilterChip(
                             selected = themeMode == ThemeMode.LIGHT,
                             onClick = { preferences.setThemeMode(ThemeMode.LIGHT) },
                             label = "Light",
                         )
-                        GlassPillChip(
+                        LatteFilterChip(
                             selected = themeMode == ThemeMode.DARK,
                             onClick = { preferences.setThemeMode(ThemeMode.DARK) },
                             label = "Dark",
+                        )
+                    }
+                }
+
+                SettingsDivider()
+
+                SettingsSwitchRow(
+                    icon = LatteIcons.DarkMode,
+                    title = "Pure Black (OLED)",
+                    subtitle = "Pitch black surfaces in dark mode for AMOLED screens",
+                    checked = oledDarkTheme,
+                    onCheckedChange = { preferences.setOledDarkTheme(it) },
+                )
+
+                SettingsDivider()
+
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+                    Text(
+                        text = "Palette",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        text = "Color scheme across the app",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        LatteFilterChip(
+                            selected = themePalette == ThemePalette.ADAPTIVE,
+                            onClick = { preferences.setThemePalette(ThemePalette.ADAPTIVE) },
+                            label = "Adaptive",
+                        )
+                        LatteFilterChip(
+                            selected = themePalette == ThemePalette.EMERALD,
+                            onClick = { preferences.setThemePalette(ThemePalette.EMERALD) },
+                            label = "Emerald",
+                        )
+                        LatteFilterChip(
+                            selected = themePalette == ThemePalette.YANDE,
+                            onClick = { preferences.setThemePalette(ThemePalette.YANDE) },
+                            label = "Yande",
+                        )
+                        LatteFilterChip(
+                            selected = themePalette == ThemePalette.PIXIV,
+                            onClick = { preferences.setThemePalette(ThemePalette.PIXIV) },
+                            label = "Pixiv",
+                        )
+                        LatteFilterChip(
+                            selected = themePalette == ThemePalette.KONACHAN,
+                            onClick = { preferences.setThemePalette(ThemePalette.KONACHAN) },
+                            label = "Konachan",
+                        )
+                    }
+                }
+
+                SettingsDivider()
+
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+                    Text(
+                        text = "UI Style",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        text = "Visual design system",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        LatteFilterChip(
+                            selected = uiStyle == UiStyle.GLASS,
+                            onClick = { preferences.setUiStyle(UiStyle.GLASS) },
+                            label = "Liquid Glass",
+                        )
+                        LatteFilterChip(
+                            selected = uiStyle == UiStyle.MATERIAL,
+                            onClick = { preferences.setUiStyle(UiStyle.MATERIAL) },
+                            label = "Material 3",
                         )
                     }
                 }
@@ -376,7 +441,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         (1..3).forEach { count ->
-                            GlassPillChip(
+                            LatteFilterChip(
                                 selected = columnCount == count,
                                 onClick = { preferences.setColumnCount(count) },
                                 label = "$count column${if (count > 1) "s" else ""}",
@@ -387,8 +452,8 @@ fun SettingsScreen(
             }
 
             // Storage & Network Section
-            SettingsSectionHeader("Data")
-            SettingsGroupCard {
+            LatteSectionHeader("Data")
+            LatteGroupCard(modifier = Modifier.padding(horizontal = 16.dp)) {
                 SettingsRow(
                     icon = Icons.Default.DateRange,
                     title = "Viewing History",
@@ -416,8 +481,8 @@ fun SettingsScreen(
                 )
             }
 
-            SettingsSectionHeader("Storage & Network")
-            SettingsGroupCard {
+            LatteSectionHeader("Storage & Network")
+            LatteGroupCard(modifier = Modifier.padding(horizontal = 16.dp)) {
                 SettingsRow(
                     icon = Icons.Default.Delete,
                     title = "Clear Cache",
@@ -460,8 +525,8 @@ fun SettingsScreen(
             }
 
             // Updates & About Section
-            SettingsSectionHeader("Updates & About")
-            SettingsGroupCard {
+            LatteSectionHeader("Updates & About")
+            LatteGroupCard(modifier = Modifier.padding(horizontal = 16.dp)) {
                 SettingsRow(
                     icon = LatteIcons.SystemUpdate,
                     title = "Check for Updates",

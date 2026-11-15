@@ -86,7 +86,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
+import com.azusachino.latte.data.settings.UiStyle
 import com.azusachino.latte.ui.theme.GlassDefaults
+import com.azusachino.latte.ui.theme.LocalUiStyle
 import com.azusachino.latte.ui.theme.glassBackdrop
 import com.azusachino.latte.ui.theme.glassSurface
 import com.azusachino.latte.ui.theme.pressScale
@@ -231,6 +233,7 @@ internal fun MetadataTable(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun MetadataTableRow(
     label: String,
@@ -238,12 +241,24 @@ internal fun MetadataTableRow(
     modifier: Modifier = Modifier,
     isClickable: Boolean = false,
     onClick: () -> Unit = {},
+    onLongClick: (() -> Unit)? = null,
     valueColor: Color = MaterialTheme.colorScheme.onSurface,
 ) {
+    val context = LocalContext.current
+    val handleLongClick: () -> Unit = onLongClick ?: {
+        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+        clipboard?.setPrimaryClip(android.content.ClipData.newPlainText(label, value))
+        ToastManager.showSuccess("Copied $label")
+    }
+
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .then(if (isClickable) Modifier.pressScale().clickable(onClick = onClick) else Modifier)
+            .pressScale(GlassDefaults.PressScale)
+            .combinedClickable(
+                onClick = { if (isClickable) onClick() },
+                onLongClick = handleLongClick,
+            )
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -311,7 +326,13 @@ internal fun TagChip(
             .pressScale()
             .clip(shape)
             .background(containerColor, shape)
-            .border(GlassDefaults.RimStrokeWidth, rimColor, shape)
+            .then(
+                if (LocalUiStyle.current == UiStyle.MATERIAL && !isFavorite) {
+                    Modifier
+                } else {
+                    Modifier.border(GlassDefaults.RimStrokeWidth, rimColor, shape)
+                }
+            )
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick,

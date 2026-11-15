@@ -173,14 +173,9 @@ internal fun ExploreViewModel.clearSearch() {
     cancelAllPixivJobs()
     _uiState.update {
         if (it.supportsUserFeeds) {
-            listOf(
-                PluginFeedKind.SEARCH,
-                PluginFeedKind.AUTHOR_WORKS,
-            ).fold(it.copy(pixivSearchTags = "", pixivAuthorId = null, pixivAuthorName = null, activePoolName = null)) { state, kind ->
-                state.withFeed(PlatformId.PIXIV, kind) { FeedState() }
-            }
+            it.copy(pixivSearchTags = "", pixivAuthorId = null, pixivAuthorName = null, activePoolName = null)
         } else {
-            it.copy(searchTags = "", activePoolName = null).withFeed(PluginFeedKind.SEARCH) { FeedState() }
+            it.copy(searchTags = "", activePoolName = null)
         }
     }
 }
