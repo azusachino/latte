@@ -97,6 +97,7 @@ import com.azusachino.latte.ui.theme.glassBackdrop
 import com.azusachino.latte.ui.theme.glassSurface
 import com.azusachino.latte.ui.common.GlassAlertDialog
 import com.azusachino.latte.ui.common.LocalSharedPostTransition
+import com.azusachino.latte.ui.common.latteMediaControl
 import com.azusachino.latte.ui.theme.pressScale
 import coil3.compose.AsyncImage
 import coil3.compose.SubcomposeAsyncImage
@@ -493,32 +494,11 @@ fun DetailScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // Details: M3 text button with native ripple; glass capsule otherwise
-                    if (isMaterial) {
-                        TextButton(
-                            onClick = { showInspectSheet = true },
-                            contentPadding = PaddingValues(horizontal = 12.dp),
-                            colors = ButtonDefaults.textButtonColors(contentColor = Color.White),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = "Details",
-                                modifier = Modifier.size(20.dp),
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = if (displayPost != null) "${displayPost.width}×${displayPost.height}" else "Details",
-                                style = MaterialTheme.typography.labelLarge,
-                            )
-                        }
-                    } else Box(
+                    // Details button: consistent 44dp container with latteMediaControl
+                    Box(
                         modifier = Modifier
                             .height(44.dp)
-                            .then(
-                                Modifier
-                                    .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = RoundedCornerShape(22.dp), dark = true)
-                                    .pressScale()
-                            )
+                            .latteMediaControl(shape = RoundedCornerShape(12.dp), hazeState = hazeState)
                             .clickable { showInspectSheet = true }
                             .padding(horizontal = 14.dp),
                         contentAlignment = Alignment.Center,
@@ -563,34 +543,18 @@ fun DetailScreen(
                             Box(
                                 modifier = Modifier
                                     .size(44.dp)
+                                    .latteMediaControl(shape = CircleShape, hazeState = hazeState)
                                     .then(
-                                        if (isMaterial) {
+                                        if (isFavorited) {
                                             Modifier
-                                                .clip(CircleShape)
-                                                .background(
-                                                    if (isFavorited) Color(0xFFE53935).copy(alpha = 0.25f) else Color.White.copy(alpha = 0.15f),
-                                                    CircleShape,
-                                                )
-                                                .border(
-                                                    1.dp,
-                                                    if (isFavorited) Color(0xFFE53935) else Color.White.copy(alpha = 0.28f),
-                                                    CircleShape,
-                                                )
+                                                .background(Color(0xFFE53935).copy(alpha = 0.35f), CircleShape)
+                                                .border(1.dp, Color(0xFFE53935), CircleShape)
                                         } else {
                                             Modifier
-                                                .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = CircleShape, dark = true)
-                                                .pressScale()
                                         }
                                     ),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                if (isFavorited && !isMaterial) {
-                                    Box(
-                                        modifier = Modifier
-                                            .matchParentSize()
-                                            .background(Color(0xFFE53935).copy(alpha = 0.25f), CircleShape),
-                                    )
-                                }
                                 IconButton(
                                     onClick = {
                                         if (!isPluginLoggedIn) {
@@ -675,55 +639,46 @@ fun DetailScreen(
                                 }
                             }
                         }
-                        if (isMaterial) {
-                            Button(
-                                onClick = onSaveClick,
-                                modifier = Modifier.height(44.dp),
-                                shape = CircleShape,
-                                contentPadding = PaddingValues(horizontal = 22.dp),
-                            ) {
+                        // Save button: 44dp height matching Details and Favorite
+                        val saveShape = RoundedCornerShape(12.dp)
+                        Box(
+                            modifier = Modifier
+                                .height(44.dp)
+                                .then(
+                                    if (isMaterial) {
+                                        Modifier
+                                            .clip(saveShape)
+                                            .background(MaterialTheme.colorScheme.primary, saveShape)
+                                    } else {
+                                        Modifier
+                                            .glassBackdrop(
+                                                hazeState,
+                                                backgroundColor = Color.Black,
+                                                shape = RoundedCornerShape(22.dp),
+                                                dark = true,
+                                            )
+                                            .pressScale()
+                                    }
+                                )
+                                .clickable(onClick = onSaveClick)
+                                .padding(horizontal = 20.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            val contentColor = if (isMaterial) MaterialTheme.colorScheme.onPrimary else Color.White
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
                                     imageVector = LatteIcons.Download,
                                     contentDescription = null,
+                                    tint = contentColor,
                                     modifier = Modifier.size(18.dp),
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "Save",
+                                    color = contentColor,
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 14.sp,
                                 )
-                            }
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .height(44.dp)
-                                    .glassBackdrop(
-                                        hazeState,
-                                        backgroundColor = Color.Black,
-                                        shape = RoundedCornerShape(22.dp),
-                                        dark = true,
-                                    )
-                                    .pressScale()
-                                    .clickable(onClick = onSaveClick)
-                                    .padding(horizontal = 22.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = LatteIcons.Download,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "Save",
-                                        color = Color.White,
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 14.sp,
-                                    )
-                                }
                             }
                         }
                     }

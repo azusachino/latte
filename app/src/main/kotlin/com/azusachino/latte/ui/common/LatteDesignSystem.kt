@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -38,7 +39,10 @@ import androidx.compose.ui.unit.sp
 import com.azusachino.latte.data.settings.UiStyle
 import com.azusachino.latte.ui.explore.GlassSegmentedTabs
 import com.azusachino.latte.ui.theme.LocalUiStyle
+import com.azusachino.latte.ui.theme.glassBackdrop
 import com.azusachino.latte.ui.theme.glassSurface
+import com.azusachino.latte.ui.theme.pressScale
+import dev.chrisbanes.haze.HazeState
 
 /**
  * The two design systems Latte ships, selected by [LocalUiStyle]:
@@ -279,4 +283,34 @@ fun LatteTopBar(
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     GlassTopBar(title = title, onBack = onBack, actions = actions)
+}
+
+/**
+ * Surface styling for floating media viewer controls (Back, Title, Actions, Details, Favorite).
+ *
+ * In Material 3: a dark surface container with a 1dp subtle border and native ripple.
+ * In Glass: frosted backdrop blur with specular gradient rim and press spring scale.
+ */
+@Composable
+fun Modifier.latteMediaControl(
+    shape: Shape,
+    hazeState: HazeState? = null,
+): Modifier {
+    val isMaterial = LocalUiStyle.current == UiStyle.MATERIAL
+    return if (isMaterial) {
+        this
+            .clip(shape)
+            .background(Color(0xFF1E1E1E).copy(alpha = 0.72f), shape)
+            .border(1.dp, Color.White.copy(alpha = 0.22f), shape)
+    } else {
+        if (hazeState != null) {
+            this
+                .glassBackdrop(hazeState, backgroundColor = Color.Black, shape = shape, dark = true)
+                .pressScale()
+        } else {
+            this
+                .glassSurface(shape = shape, isElevated = true, dark = true)
+                .pressScale()
+        }
+    }
 }
