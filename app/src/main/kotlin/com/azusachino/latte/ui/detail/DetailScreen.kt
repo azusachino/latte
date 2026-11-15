@@ -567,14 +567,7 @@ fun DetailScreen(
                             Box(
                                 modifier = Modifier
                                     .size(44.dp)
-                                    .latteMediaControl(shape = CircleShape, hazeState = hazeState)
-                                    .then(
-                                        if (isFavorited) {
-                                            Modifier.background(isFavoritedColor.copy(alpha = 0.25f), CircleShape)
-                                        } else {
-                                            Modifier
-                                        }
-                                    ),
+                                    .latteMediaControl(shape = CircleShape, hazeState = hazeState),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 IconButton(
@@ -626,7 +619,7 @@ fun DetailScreen(
                                     Icon(
                                         imageVector = if (isFavorited) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                                         contentDescription = if (isFavorited) "Remove from favorites" else "Add to favorites",
-                                        tint = if (isFavorited) isFavoritedColor else MaterialTheme.colorScheme.onSurface,
+                                        tint = if (isFavorited) isFavoritedColor else MaterialTheme.colorScheme.primary,
                                         modifier = Modifier
                                             .size(22.dp)
                                             .graphicsLayer {
