@@ -19,12 +19,10 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Check out repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@v7
 
       - name: Set up mise toolchain
-        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
-        with:
-          version: 2026.5.12
+        uses: jdx/mise-action@v5
 
       - name: Accept Android SDK licenses
         run: |
@@ -64,7 +62,7 @@ jobs:
           sha256sum "$APK_NAME" > checksums.txt
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             dist/latte-${{ github.ref_name }}.apk
